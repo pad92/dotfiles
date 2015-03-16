@@ -1,0 +1,25 @@
+#compdef passswitch
+#autoload
+
+# Copyright (C) 2012 - 2014:
+#    Johan Venant <jvenant@invicem.pro>
+#    Brian Mattern <rephorm@rephorm.com>
+#    Jason A. Donenfeld <Jason@zx2c4.com>.
+# All Rights Reserved.
+# This file is licensed under the GPLv2+. Please see COPYING for more information.
+
+
+_passswitch () {
+    _arguments : \
+        "-h[Output help message]" \
+        "--help[Output help message]" \
+        "-l[List password-store]" \
+        "--list[List password-store]"
+    _passswitch_complete
+}
+
+_passswitch_complete () {
+    local IFS=$'\n'
+    local prefix="${HOME}/.passswitch"
+    _values -C 'password-store' $(find -L "$prefix" -name "*.conf" -prune -type f -print | sed -e "s#${prefix}/\(.*\).conf#\1#")
+}
