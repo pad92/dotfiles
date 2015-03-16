@@ -1,22 +1,26 @@
-# load zgen
-source "${HOME}/.dotfiles/zgen/zgen.zsh"
+export ZSH=${HOME}/.dotfiles/zsh/
 
-# check if there's no init script
-if ! zgen saved; then
-    echo "Creating a zgen save"
+ZSH_THEME="disaster"
 
-    zgen oh-my-zsh
+# Uncomment the following line to use case-sensitive completion.
+# CASE_SENSITIVE="true"
 
-    # plugins
-    #zgen oh-my-zsh plugins/git
-    #zgen load zsh-users/zsh-syntax-highlighting
+# Uncomment the following line to disable colors in ls.
+# DISABLE_LS_COLORS="true"
 
-    # completions
-    zgen load zsh-users/zsh-completions src
+# Uncomment the following line to disable auto-setting terminal title.
+# DISABLE_AUTO_TITLE="true"
 
-    # theme
-    zgen oh-my-zsh themes/mh
+plugins=(command-not-found  extract  github  httpie  rsync  virtualenv  zsh_reload)
 
-    # save all to init script
-    zgen save
-fi
+# User configuration
+export ZSH_CACHE_DIR=~/.zcache
+
+source ${ZSH}/init.zsh
+
+export LANG=en_US.UTF-8
+export EDITOR='vim'
+
+export WORKON_HOME=$HOME/.virtualenvs
+export PROJECT_HOME=$HOME/Devel
+source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
