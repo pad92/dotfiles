@@ -21,6 +21,15 @@ source ${ZSH}/init.zsh
 export LANG=en_US.UTF-8
 export EDITOR='vim'
 
+sshclean()
+{
+  rm ${HOME}/.ssh/tmp/*
+}
+
+source /home/bsaiz/.passswitch/lina.conf
+
 export WORKON_HOME=$HOME/.virtualenvs
 export PROJECT_HOME=$HOME/Devel
 source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+
+
