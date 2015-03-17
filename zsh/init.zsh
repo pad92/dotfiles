@@ -1,13 +1,13 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 
 # Create cache dir if not exist
-[[ -d ${HOME}/.zcache ]] || mkdir ${HOME}/.zcache
+ZSH_CACHE_DIR="${HOME}/.zcache"
+[[ -d ${ZSH_CACHE_DIR} ]] || mkdir ${ZSH_CACHE_DIR}
 
-# add a function path
+# add a function path for completion
 fpath=($ZSH/completions $fpath)
 
-# Load all of the config files in ~/oh-my-zsh that end in .zsh
-# TIP: Add files you don't want in git to .gitignore
+# Load all of the config files that end in .zsh
 for config_file ($ZSH/init/*.zsh); do
   source $config_file
 done
@@ -16,8 +16,7 @@ unset config_file
 is_plugin() {
   local base_dir=$1
   local name=$2
-  test -f $base_dir/plugins/$name/$name.plugin.zsh \
-    || test -f $base_dir/plugins/$name/_$name
+  test -f $base_dir/plugins/$name/$name.plugin.zsh
 }
 # Add all defined plugins to fpath. This must be done
 # before running compinit.
@@ -30,7 +29,7 @@ unset plugin
 unset -f is_plugin
 
 # Load all functions script
-for funcfiles ($ZSH/functions/*); do
+for funcfiles ($ZSH/functions/*.zsh); do
   source $funcfiles
 done
 unset funcfiles
@@ -40,7 +39,7 @@ SHORT_HOST=${HOST/.*/}
 
 # Load and run compinit
 autoload -U compinit
-compinit -i -d "${ZSH_COMPDUMP}"
+compinit -i -d "${ZSH_CACHE_DIR}"
 
 # Load all of the plugins that were defined in ~/.zshrc
 for plugin ($plugins); do
