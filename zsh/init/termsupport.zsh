@@ -1,53 +1,94 @@
-# Set terminal window and tab/icon title
 #
-# usage: title short_tab_title [long_window_title]
+# Sets terminal window and tab titles.
 #
-# See: http://www.faqs.org/docs/Linux-mini/Xterm-Title.html#ss3.1
-# Fully supports screen, iterm, and probably most modern xterm and rxvt
-# (In screen, only short_tab_title is used)
-# Limited support for Apple Terminal (Terminal can't set window and tab separately)
-function title {
-  [[ "$EMACS" == *term* ]] && return
+# Authors:
+#   James Cox <james@imaj.es>
+#   Sorin Ionescu <sorin.ionescu@gmail.com>
+#
 
-  # if $2 is unset use $1 as default
-  # if it is set and empty, leave it as is
-  : ${2=$1}
+# Dumb terminals lack support.
+if [[ "$TERM" == 'dumb' ]]; then
+  return
+fi
 
+# Set the GNU Screen window number.
+if [[ -n "$WINDOW" ]]; then
+  export SCREEN_NO="%B${WINDOW}%b "
+else
+  export SCREEN_NO=""
+fi
+
+# Sets the GNU Screen title.
+function set-screen-title() {
   if [[ "$TERM" == screen* ]]; then
-    print -Pn "\ek$1:q\e\\" #set screen hardstatus, usually truncated at 20 chars
-  elif [[ "$TERM" == xterm* ]] || [[ "$TERM" == rxvt* ]] || [[ "$TERM" == ansi ]]; then
-    print -Pn "\e]2;$2:q\a" #set window name
-    print -Pn "\e]1;$1:q\a" #set icon (=tab) name
+    printf "\ek%s\e\\" ${(V)argv}
   fi
 }
 
-ZSH_THEME_TERM_TAB_TITLE_IDLE="%15<..<%~%<<" #15 char left truncated PWD
-ZSH_THEME_TERM_TITLE_IDLE="%n@%m: %~"
-
-# Runs before showing the prompt
-function omz_termsupport_precmd {
-  if [[ $DISABLE_AUTO_TITLE == true ]]; then
-    return
+# Sets the terminal window title.
+function set-window-title() {
+  if [[ "$TERM" == ((x|a|ml|dt|E)term*|(u|)rxvt*) ]]; then
+    printf "\e]2;%s\a" ${(V)argv}
   fi
-
-  title $ZSH_THEME_TERM_TAB_TITLE_IDLE $ZSH_THEME_TERM_TITLE_IDLE
 }
 
-# Runs before executing the command
-function omz_termsupport_preexec {
-  if [[ $DISABLE_AUTO_TITLE == true ]]; then
-    return
+# Sets the terminal tab title.
+function set-tab-title() {
+  if [[ "$TERM" == ((x|a|ml|dt|E)term*|(u|)rxvt*) ]]; then
+    printf "\e]1;%s\a" ${(V)argv}
   fi
+}
 
+# Sets the tab and window titles with the command name.
+function set-title-by-command() {
   emulate -L zsh
-  setopt extended_glob
+  setopt LOCAL_OPTIONS EXTENDED_GLOB
 
-  # cmd name only, or if this is sudo or ssh, the next cmd
-  local CMD=${1[(wr)^(*=*|sudo|ssh|rake|-*)]:gs/%/%%}
-  local LINE="${2:gs/%/%%}"
+  # Get the command name that is under job control.
+  if [[ "${1[(w)1]}" == (fg|%*)(\;|) ]]; then
+    # Get the job name, and, if missing, set it to the default %+.
+    local job_name="${${1[(wr)%*(\;|)]}:-%+}"
 
-  title '$CMD' '%100>...>$LINE%<<'
+    # Make a local copy for use in the subshell.
+    local -A jobtexts_from_parent_shell
+    jobtexts_from_parent_shell=(${(kv)jobtexts})
+
+    jobs $job_name 2>/dev/null > >(
+      read index discarded
+      # The index is already surrounded by brackets: [1].
+      set-title-by-command "${(e):-\$jobtexts_from_parent_shell$index}"
+    )
+  else
+    # Set the command name, or in the case of sudo or ssh, the next command.
+    local cmd=${1[(wr)^(*=*|sudo|ssh|-*)]}
+
+    # Right-truncate the command name to 15 characters.
+    if (( $#cmd > 15 )); then
+      cmd="${cmd[1,15]}..."
+    fi
+
+    
+    for kind in window tab screen; do
+      set-${kind}-title "${USER}@${HOST}: $cmd"
+    done
+  fi
 }
 
-precmd_functions+=(omz_termsupport_precmd)
-preexec_functions+=(omz_termsupport_preexec)
+# Don't override precmd/preexec; append to hook array.
+autoload -Uz add-zsh-hook
+
+# Sets the tab and window titles before the prompt is displayed.
+function set-title-precmd() {
+  set-window-title "${USER}@${HOST}: ${(%):-%~}"
+  for kind in tab screen; do
+    # Left-truncate the current working directory to 15 characters.
+    set-${kind}-title "${USER}@${HOST}: ${(%):-%15<...<%~%<<}"
+  done
+}
+add-zsh-hook precmd set-title-precmd
+
+# Sets the tab and window titles before command execution.
+function set-title-preexec() {
+  set-title-by-command "$2"
+}
+add-zsh-hook preexec set-title-preexec

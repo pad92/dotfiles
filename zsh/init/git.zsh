@@ -118,6 +118,9 @@ git_prompt_status() {
   if $(echo "$INDEX" | grep '^## .*diverged' &> /dev/null); then
     STATUS="$ZSH_THEME_GIT_PROMPT_DIVERGED$STATUS"
   fi
+  if [ "$STATUS" != "" ]; then
+    STATUS="$ZSH_THEME_GIT_PROMPT_STATUS_PREFIX$STATUS$ZSH_THEME_GIT_PROMPT_STATUS_SUFFIX"
+  fi
   echo $STATUS
 }
 

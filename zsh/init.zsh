@@ -1,5 +1,8 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 
+# Create cache dir if not exist
+[[ -d ${HOME}/.zcache ]] || mkdir ${HOME}/.zcache
+
 # add a function path
 fpath=($ZSH/completions $fpath)
 
