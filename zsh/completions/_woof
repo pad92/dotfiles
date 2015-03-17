@@ -1,0 +1,20 @@
+#compdef woof
+
+# zsh completions for 'woof'
+# automatically generated with http://github.com/RobSis/zsh-completion-generator
+local arguments
+
+arguments=(
+    '-i[IP addres to Bind]' \
+    '-p[Port to Bind (Default 8080)]' \
+    '-c[Serve file for count time]' \
+    '-z[gzip compression]' \
+    '-j[bzip2 compression]' \
+    '-Z[ZIP compression]' \
+    '-u[No compression]' \
+    '-s[Woof Distribute itself]' \
+    '-U[Provide upload form]' \
+    '*:filename:_files'
+)
+
+_arguments -s $arguments
