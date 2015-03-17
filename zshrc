@@ -21,12 +21,10 @@ source ${ZSH}/init.zsh
 export LANG=en_US.UTF-8
 export EDITOR='vim'
 
-sshclean()
-{
-  rm ${HOME}/.ssh/tmp/*
-}
-
-source /home/bsaiz/.passswitch/lina.conf
+if [ -f ${HOME}/.zshaliases ]
+then
+  source ${HOME}/.zshaliases
+fi
 
 export WORKON_HOME=$HOME/.virtualenvs
 export PROJECT_HOME=$HOME/Devel
