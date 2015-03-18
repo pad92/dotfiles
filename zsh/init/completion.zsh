@@ -32,9 +32,6 @@ fi
 
 zstyle ':completion:*' list-colors ''
 
-## should this be in keybindings?
-#bindkey -M menuselect '^o' accept-and-infer-next-history
-
 # Group matches and describe.
 zstyle ':completion:*:*:*:*:*' menu select
 zstyle ':completion:*:matches' group 'yes'

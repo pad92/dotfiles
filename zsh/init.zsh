@@ -1,4 +1,4 @@
-export ZSH=${HOME}/.dotfiles/zsh/
+export ZSH=${HOME}/.dotfiles/zsh
 
 # Create cache dir if not exist
 ZSH_CACHE_DIR="${HOME}/.zcache"
@@ -7,11 +7,12 @@ ZSH_CACHE_DIR="${HOME}/.zcache"
 # add a function path for completion
 fpath=($ZSH/completions $fpath)
 
-# Load all of the config files that end in .zsh
+# Load all of the config init files that end in .zsh
 for config_file ($ZSH/init/*.zsh); do
   source $config_file
 done
 unset config_file
+
 
 is_plugin() {
   local base_dir=$1
@@ -33,13 +34,6 @@ for funcfiles ($ZSH/functions/*.zsh); do
   source $funcfiles
 done
 unset funcfiles
-
-# Figure out the SHORT hostname
-SHORT_HOST=${HOST/.*/}
-
-# Load and run compinit
-autoload -U compinit
-compinit -i -d "${ZSH_CACHE_DIR}"
 
 # Load all of the plugins that were defined in ~/.zshrc
 for plugin ($plugins); do

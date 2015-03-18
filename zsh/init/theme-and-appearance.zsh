@@ -19,10 +19,10 @@ then
   fi
 fi
 
-#setopt no_beep
-setopt auto_cd
-setopt multios
-setopt cdablevars
+setopt NO_BEEP
+setopt AUTO_CD
+setopt MULTIOS
+setopt CDABLEVARS
 
 if [[ x$WINDOW != x ]]
 then
@@ -41,4 +41,4 @@ ZSH_THEME_GIT_PROMPT_DIRTY="*"              # Text to display if the branch is d
 ZSH_THEME_GIT_PROMPT_CLEAN=""               # Text to display if the branch is clean
 
 # Setup the prompt with pretty colors
-setopt prompt_subst
+setopt PROMPT_SUBST

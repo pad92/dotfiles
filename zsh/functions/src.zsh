@@ -1,11 +1,11 @@
 # reload zshrc
 function src()
 {
-  local cache=$ZSH_CACHE_DIR
   autoload -U compinit zrecompile
-  compinit -d "$cache/zcomp-$HOST"
+  compinit -i
 
-  for f in ~/.zshrc "$cache/zcomp-$HOST"; do
+  for f in ~/.zshrc ~/.zcompdump
+  do
     zrecompile -p $f && command rm -f $f.zwc.old
   done
 

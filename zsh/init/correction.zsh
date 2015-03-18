@@ -8,4 +8,5 @@ alias mv='nocorrect mv'
 alias mysql='nocorrect mysql'
 alias sudo='nocorrect sudo'
 
-setopt correct_all
+setopt CORRECT
+setopt CORRECT_ALL

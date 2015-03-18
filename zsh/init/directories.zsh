@@ -1,7 +1,7 @@
 # Changing/making/removing directory
-setopt auto_pushd
-setopt pushd_ignore_dups
-setopt pushdminus
+setopt AUTO_PUSHD
+setopt PUSHD_IGNORE_DUPS
+setopt PUSHDMINUS
 
 alias -g ...='../..'
 alias -g ....='../../..'
