@@ -83,16 +83,17 @@ ${=${=${=${${(f)"$(cat {/etc/ssh_,~/.ssh/known_}hosts(|2)(N) 2>/dev/null)"}%%[#|
 ${=${(f)"$(cat /etc/hosts(|)(N) <<(ypcat hosts 2>/dev/null))"}%%\#*}
 ${=${${${${(@M)${(f)"$(cat ~/.ssh/config 2>/dev/null)"}:#Host *}#Host }:#*\**}:#*\?*}}
 )'
-
-zstyle ':completion:*:*:*:users' ignored-patterns \
-        adm amanda apache at avahi avahi-autoipd beaglidx bin cacti canna \
-        clamav daemon dbus distcache dnsmasq dovecot fax ftp games gdm \
-        gkrellmd gopher hacluster haldaemon halt hsqldb ident junkbust kdm \
-        ldap lp mail mailman mailnull man messagebus  mldonkey mysql nagios \
-        named netdump news nfsnobody nobody nscd ntp nut nx obsrun openvpn \
-        operator pcap polkitd postfix postgres privoxy pulse pvm quagga radvd \
-        rpc rpcuser rpm rtkit scard shutdown squid sshd statd svn sync tftp \
-        usbmux uucp vcsa wwwrun xfs '_*'
+users=(${${(f)"$(cat /etc/passwd 2>/dev/null)"}%%[#:]*})
+zstyle ':completion:*' users $users linagora disaster
+zstyle ':completion:*:(ssh|scp|rsync):*:users' ignored-patterns \
+        adm amanda apache at avahi avahi-autoipd backup beaglidx bin cacti canna \
+        clamav colord daemon dbus debian-spamd distcache dnsmasq dovecot fax ftp games gdm \
+        gkrellmd geoclue gnats gopher hacluster haldaemon halt hplip hsqldb ident irc junkbust kdm \
+        kernoops ldap list lp mail mailman mailnull man messagebus mldonkey mysql nagios \
+        named netdump news nfsnobody nobody nm-openconnect nscd ntp nut nvidia-persistenced nx obsrun openvpn \
+        operator pcap polkitd postfix postgres privoxy proxy pulse pvm quagga radvd \
+        rpc rpcuser rpm rtkit saned scard shutdown speech-dispatcher squid sshd statd svn sync sys syslog tftp \
+        usbmux uucp uuidd vcsa wwwrun whoopsie xfs '_*'
 
 # ... unless we really want to.
 zstyle '*' single-ignored show

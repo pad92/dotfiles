@@ -1,8 +1,5 @@
 # ------------------------------------------------------------------------------
 #          FILE:  extract.plugin.zsh
-#   DESCRIPTION:  oh-my-zsh plugin file.
-#        AUTHOR:  Sorin Ionescu (sorin.ionescu@gmail.com)
-#       VERSION:  1.0.1
 # ------------------------------------------------------------------------------
 
 
@@ -18,7 +15,6 @@ function extract() {
     echo Options:
     echo "    -r, --remove    Remove archive."
     echo
-    echo "Report bugs to <sorin.ionescu@gmail.com>."
   fi
 
   remove_archive=1
