@@ -1,0 +1,209 @@
+#compdef lxc-start lxc-stop lxc-console lxc-restart lxc-create lxc-destroy lxc-monitor lxc-cgroup lxc-checkpoint lxc-execute lxc-freeze lxc-unfreeze lxc-info lxc-netstat lxc-ps lxc-wait lxc-attach
+
+_lxc_containers() {
+        local -a containers
+        containers=( $(/usr/bin/lxc-ls -1) )
+        compadd "$@" -a containers
+}
+
+_lxc_archs() {
+        local -a archs
+        archs="amd64 i386"
+        compadd "$@" -a archs
+}
+
+_lxc_common_opts=(
+        '(-o --logfile)'{-o,--logfile=}'[Output log to FILE instead of stderr]:logfile:_files' \
+        '(-l --logpriority)'{-l,--logpriority=}'[Set log priority to LEVEL]:level:' \
+        '(-q --quiet)'{-q,--quiet}'[Dont produce any output]' \
+        '(-P --lxcpath)'{-P,--lxcpath=}'[Use specified container path]:containerpath:' \
+        '(-h --help)'{-h,--help}'[Help list]' \
+        '--usage[Give a short usage message]' \
+        '--version[Print the version number]'
+)
+
+_lxc_name_opt=(
+        '(-n --name)'{-n,--name=}'[Name of the container]:name:_lxc_containers'
+)
+
+_lxc_start_opts=(
+        '(-d --daemon)'{-d,--daemon}'[Daemonize the container]' \
+        '(-F --foreground)'{-F,--foreground}'[Start with the current tty attached to /dev/console]' \
+        '(-p --pidfile)'{-p,--pidfile=}'[Create a file with the process id]:pidfile:_files' \
+        '(-f --rcfile)'{-f,--rcfile=}'[Load configuration file FILE]:config:_files' \
+        '(-c --console)'{-c,--console=}'[Use specified FILE for the container console]:console:_files' \
+        '(-L --console-log)'{-L,--console-log=}'[Log container console output to FILE]:console-log:_files' \
+        '(-C --close-all-fds)'{-C,--close-all-fds}'[If any fds are inherited, close them If not specified, exit with failure instead Note: --daemon implies --close-all-fds]' \
+        '(-s --define)'{-s,--define}'[Assign VAL to configuration variable KEY]'
+)
+
+_lxc_stop_opts=(
+        '(-r --reboot)'{-r,--reboot}'[reboot the container]' \
+        '(-W --nowait)'{-W,--nowait}'[dont wait for shutdown or reboot to complete]' \
+        '(-t --timeout)'{-t,--timeout=}'[wait T seconds before hard-stopping]' \
+        '(-k --kill)'{-k,--kill}'[kill container rather than request clean shutdown]' \
+        '--nolock[Avoid using API locks]' \
+        '--nokill[Only request clean shutdown, dont force kill after timeout]'
+)
+
+_lxc_attach_opts=(
+        '(-e --elevated-privileges)'{-e,--elevated-privileges=}'[Use elevated privileges instead of those of the container.]' \
+        '(-a --arch)'{-a,--arch=}'[Use ARCH for program instead of containers arch.]:arch:_lxc_archs' \
+        '(-R --remount-sys-proc)'{-R,--remount-sys-proc}'[Remount /sys and /proc.]' \
+        '--clear-env[Clear all environment variables before attaching.]' \
+        '--keep-env[Keep all current environment variables. (default)]' \
+        '(-v --set-var)'{-v,--set-var}'[Set additional environment.]' \
+        '--keep-var[Keep an additional environment variable. (if --clear-env)]'
+)
+
+_lxc_console_opts=(
+        '(-t --tty)'{-t,--tty=}'[Console TTY number]' \
+        '(-e --escape)'{-e,--escape=}'[Prefix for escape command]'
+)
+
+_lxc_restart_opts=(
+        '(-p --pause)'{-p,--pause}'[Do not release the container after the restart]' \
+        '(-d --directory)'{-d,--directory=}'[Name of statefile]:name:_files' \
+        '(-f --rcfile)'{-f,--rcfile=}'[Load configuration file FILE]:config:_files' \
+        '(-s --define)'{-s,--define}'[Assign VAL to configuration variable KEY]'
+)
+
+_lxc_create_opts=(
+        '(-n --name)'{-n,--name=}'[Name of the container]:name' \
+        '(-f --config)'{-f,--config=}'[Load configuration file FILE]:config:_files' \
+        '(-t --template)'{-t,--template=}'[LXC template script]:tpl:_files' \
+        '(-h --help)'{-h,--help}'[Help list]'
+)
+
+_lxc_checkpoint_opts=(
+        '(-k --kill)'{-k,--kill}'[Stop the container after the checkpoint]' \
+        '(-p --pause)'{-p,--pause}'[Dont unfreeze the container after the checkpoint]' \
+        '(-d --directory)'{-d,--directory=}'[Where to store the statefile]:statefile:_files'
+)
+
+_lxc_execute_opts=(
+        '(-f --rcfile)'{-f,--rcfile=}'[Load configuration file FILE]:config:_files' \
+        '(-s --define)'{-s,--define}'[Assign VAL to configuration variable KEY]'
+)
+
+_lxc_ps_opts=(
+        '--help[Display the help]' \
+        '--usage[Display the command usage]' \
+        '--name[Display processes related to given containers. Containers are identified by a comma separated list of their names.]'
+        '--lxc[Display processes related to all LXC containers]'
+)
+
+_lxc_wait_opts=(
+        '(-s --state)'{-s,--state=}'[ORed states to wait for: STOPPED, STARTING, RUNNING, STOPPING, ABORTING, FREEZING, FROZEN]:state'
+)
+
+
+_lxc() {
+    case "$service" in
+	lxc-start)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_start_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-stop)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_stop_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+    lxc-attach)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+        "$_lxc_attach_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+        ;;
+	lxc-console)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_console_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-restart)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_restart_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-create)
+	    _arguments -s : "$_lxc_create_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-destroy)
+	    _arguments -s : "$_lxc_name_opt[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-monitor)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-cgroup)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-checkpoint)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_checkpoint_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-execute)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_execute_opts[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-freeze)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-unfreeze)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-info)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_common_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-netstat)
+	    _arguments -s : "$_lxc_name_opt[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-ps)
+	    _arguments -s : "$_lxc_ps_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	lxc-wait)
+	    _arguments -s : \
+		"$_lxc_name_opt[@]" \
+		"$_lxc_wait_opts[@]" \
+        '*::arguments: _normal'
+	    ;;
+	*)
+	    return 1
+    esac
+}
+
+_lxc "$@"
