@@ -1,0 +1,15 @@
+#! /bin/bash
+
+if [ "z$3" = "z" ]; then
+  echo "3 arguments expected." >&2
+  echo "Usage:" >&2
+  echo "  $0 <left> <right> <cmd>" >&2
+  exit 1
+fi
+
+CMD=$3
+CMD1="${CMD/IN/$1}"
+CMD2="${CMD/IN/$2}"
+
+diff -wB --label "$1" --label "$2" -u <(eval $CMD1) <(eval $CMD2)
+#meld -L "$1" -L "$2" <(eval $CMD1) <(eval $CMD2)
