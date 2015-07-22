@@ -1,0 +1,23 @@
+#compdef apt-history
+#autoload
+
+_apt-history () {
+#    _arguments : \
+#        "-h[Output help message]" \
+#        "--help[Output help message]" \
+#        "-l[List password-store]" \
+#        "--list[List password-store]"
+#    _apt-history_complete
+    _values -C 'options' : \
+        "install[Last Installed Packages]" \
+        "upgrade[Last Upgraded Packages]" \
+        "remove[Last Removed Packages]" \
+        "purge[Last Puged Packages]" \
+        "rollback[Rollback Informations]"
+}
+
+_passswitch_complete () {
+    local IFS=$'\n'
+    local prefix="${HOME}/.passswitch"
+    _values -C 'password-store' $(find -L "$prefix" -name "*.conf" -prune -type f -print | sed -e "s#${prefix}/\(.*\).conf#\1#")
+}
