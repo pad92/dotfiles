@@ -7,5 +7,7 @@ ln -s ~/.dotfiles/zshrc ~/.zshrc
 
 ## Screen
 ln -s ~/.dotfiles/screenrc ~/.screenrc
+
 ln -s ~/.dotfiles/byobu ~/.byobu      
 
+ln -s ~/.dotfiles/vimrc ~/.vimrc
