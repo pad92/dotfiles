@@ -84,7 +84,7 @@ ${=${(f)"$(cat /etc/hosts(|)(N) <<(ypcat hosts 2>/dev/null))"}%%\#*}
 ${=${${${${(@M)${(f)"$(cat ~/.ssh/config 2>/dev/null)"}:#Host *}#Host }:#*\**}:#*\?*}}
 )'
 users=(${${(f)"$(cat /etc/passwd 2>/dev/null)"}%%[#:]*})
-zstyle ':completion:*' users $users linagora disaster
+zstyle ':completion:*' users $users disaster
 zstyle ':completion:*:(ssh|scp|rsync):*:users' ignored-patterns \
         adm amanda apache at avahi avahi-autoipd backup beaglidx bin cacti canna \
         clamav colord daemon dbus debian-spamd distcache dnsmasq dovecot fax ftp games gdm \
