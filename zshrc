@@ -22,6 +22,9 @@ then
   source ${HOME}/.zshaliases
 fi
 
-export WORKON_HOME=$HOME/.virtualenvs
-export PROJECT_HOME=$HOME/Devel
-source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+if [ -f /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
+then
+  export WORKON_HOME=$HOME/.virtualenvs
+  export PROJECT_HOME=$HOME/Devel
+  source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+fi
