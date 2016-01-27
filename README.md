@@ -8,7 +8,9 @@ ln -s ~/.dotfiles/zshrc ~/.zshrc
 ## Screen
 ln -s ~/.dotfiles/screenrc ~/.screenrc
 
-ln -s ~/.dotfiles/byobu ~/.byobu      
+ln -s ~/.dotfiles/byobu ~/.byobu
+
+apt-get install python python-newt
 
 ## Vim
 ln -s ~/.dotfiles/vimrc ~/.vimrc
