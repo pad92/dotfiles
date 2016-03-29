@@ -1,0 +1,9 @@
+#lvs() {
+#   ssh -t sshgate@belfort.nexen.net nexen@nslvs$1.nexen.net
+#}
+#
+#sshb() {
+#   ssh -t sshgate@belfort.nexen.net nexen@$1.nexen.net
+#}
+#
+#alias happy='ssh -t sshgate@belfort.nexen.net rescue@happy.nexen.net'

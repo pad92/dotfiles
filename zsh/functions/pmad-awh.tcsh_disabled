@@ -1,0 +1,13 @@
+##
+# $Date: 2011-12-12 11:03:24 +0100 (Mon, 12 Dec 2011) $
+# $Id: pmad.tcsh 267 2011-12-12 10:03:24Z pascal $
+#
+
+#alias   pmad-mep    'ssh -t sshgate@belfort.nexen.net rescue@happy.nexen.net'
+#alias   pmad-kvm    'echo Cbv:3941 ; java -jar ~/Documents/Scripts/bin/KViewer.jar'
+#alias   pmad-fram   'echo xie1Uwah ; ssh framssh@212.99.29.83 -p20022'
+#alias   pmad-spm    'echo 9g398gYHkUxGs; ssh parmand@eels2.nexen.net'
+#alias   lvsb        'ssh -t sshgate@belfort.nexen.net ssh nexen@nslvs\!:1.nexen.net'
+#alias   lvs         'ssh nslvs\!:1.nexen.net'
+alias   lvs         'ssh -t sshgate@belfort.nexen.net nexen@nslvs\!:1.nexen.net'
+alias   sshb        'ssh -t sshgate@belfort.nexen.net nexen@\!:1.nexen.net'
