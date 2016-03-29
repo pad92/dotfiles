@@ -1,6 +1,8 @@
+Fork of github.com:DisasteR
+
 # dotfiles
 
-git clone --recursive git@github.com:DisasteR/dotfiles.git ~/.dotfiles
+git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
 
 ## Zsh
 ln -s ~/.dotfiles/zshrc ~/.zshrc

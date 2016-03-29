@@ -20,41 +20,41 @@
 ### avoid false positives.
 
 function echoHistory() {
-    if [[ $1 == *.gz ]] ; then
-        gzip -cd $1
+if [[ $1 == *.gz ]] ; then
+    gzip -cd $1
+else
+    if [[ $1 == *.log || $1 == *.log.1 ]] ; then
+        cat $1
     else
-        if [[ $1 == *.log || $1 == *.log.1 ]] ; then
-            cat $1
-        else
-            echo "\*\*\* Invalid File: ${1} \*\*\*" 1>&2
-        fi
+        echo "\*\*\* Invalid File: ${1} \*\*\*" 1>&2
     fi
+fi
 }
 
 function apt-history() {
-    FILES=( `ls -rt /var/log/dpkg.log*` ) || exit 1
-    
-    for file in "${FILES[@]}"
-    do
-        case "$1" in
-            install)
-                echoHistory $file | grep " install "
+FILES=( `ls -rt /var/log/dpkg.log*` ) || exit 1
+
+for file in "${FILES[@]}"
+do
+    case "$1" in
+        install)
+            echoHistory $file | grep " install "
             ;;
-    
-            upgrade|remove|purge)
-                echoHistory $file | grep " ${1} "
+
+        upgrade|remove|purge)
+            echoHistory $file | grep " ${1} "
             ;;
-                      
-            rollback)
-                echoHistory $file | grep upgrade | \
-                    grep "$2" -A10000000 | \
-                    grep "$3" -B10000000 | \
-                    awk '{print $4"="$5}'
+
+        rollback)
+            echoHistory $file | grep upgrade | \
+                grep "$2" -A10000000 | \
+                grep "$3" -B10000000 | \
+                awk '{print $4"="$5}'
             ;;
-    
-            *)
-                echoHistory $file
+
+        *)
+            echoHistory $file
             ;;
-        esac
-    done
+    esac
+done
 }
