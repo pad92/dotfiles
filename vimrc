@@ -64,12 +64,34 @@ set incsearch		" Incremental search
 set autowrite		" Automatically save before commands like :next and :make
 "set hidden		" Hide buffers when they are abandoned
 "set mouse=a		" Enable mouse usage (all modes)
+set laststatus=2 " Always show status bar
+"set showtabline=2 " Always show tabs
+
+
+""" Custom backup and swap files
+let myVimDir = expand("$HOME/.vim")
+let myBackupDir = myVimDir . '/backup'
+let mySwapDir = myVimDir . '/swap'
+function! EnsureDirExists (dir)
+  if !isdirectory(a:dir)
+    call mkdir(a:dir,'p')
+  endif
+endfunction
+call EnsureDirExists(myVimDir)
+call EnsureDirExists(myBackupDir)
+call EnsureDirExists(mySwapDir)
+set backup
+set backupskip=/tmp/*
+set backupext=.bak
+let &directory = mySwapDir
+let &backupdir = myBackupDir
+set writebackup
 
 " Source a global configuration file if available
 if filereadable("/etc/vim/vimrc.local")
   source /etc/vim/vimrc.local
 endif
 
-set number
+"set number
 :nmap <C-N><C-N> :set invnumber<CR>
 :highlight LineNr term=bold cterm=NONE ctermfg=DarkGrey ctermbg=Black gui=NONE guifg=DarkGrey guibg=Black
