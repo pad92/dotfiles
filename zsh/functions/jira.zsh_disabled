@@ -1,0 +1,3 @@
+# jira() {
+#     xdg-open "http://tracker.alterwayhosting.fr/browse/$*"
+# }
