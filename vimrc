@@ -88,7 +88,7 @@ let &backupdir = myBackupDir
 set writebackup
 
 """ folding
-set foldmethod=marker
+set foldmethod=indent
 set foldenable
 highlight Folded ctermfg=DarkGreen ctermbg=Black
 
