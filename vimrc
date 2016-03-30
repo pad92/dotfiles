@@ -87,6 +87,12 @@ let &directory = mySwapDir
 let &backupdir = myBackupDir
 set writebackup
 
+""" folding
+set foldmethod=marker
+set foldenable
+highlight Folded ctermfg=DarkGreen ctermbg=Black
+
+
 " Source a global configuration file if available
 if filereadable("/etc/vim/vimrc.local")
   source /etc/vim/vimrc.local
