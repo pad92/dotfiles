@@ -1,6 +1,6 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 
-ZSH_THEME="disaster"
+ZSH_THEME="bullet-train"
 
 # Uncomment the following line to use case-sensitive completion.
 # CASE_SENSITIVE="true"
