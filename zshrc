@@ -1,7 +1,7 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
-ZSH_THEME="bullet-train"
+ZSH_THEME="disaster"
 
 # Uncomment the following line to use case-sensitive completion.
 # CASE_SENSITIVE="true"
