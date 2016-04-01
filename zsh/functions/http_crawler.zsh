@@ -1,4 +1,4 @@
-crawler () {
+http_crawler () {
     BIN_DEPS='xml2 curl'
     # === CHECKS ===
     for BIN in `echo $BIN_DEPS`; do
@@ -13,7 +13,7 @@ crawler () {
         SITEMAPS=$(curl -s $1 | xml2 | grep '/loc=' | sed 's/.*=//' 2>/dev/null)
         for URL in `echo $SITEMAPS`; do
             if [[ $URL =~ '\.xml$' ]]; then
-                crawler $URL
+                http_crawler $URL
             else
                 HTTP_CODE=$(curl -s -w "%{http_code}" $URL -o /dev/null 2>/dev/null)
                 echo "$HTTP_CODE - $URL"
