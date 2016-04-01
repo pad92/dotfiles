@@ -1,14 +1,6 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
-ZSH_THEME="disaster"
-
-# Uncomment the following line to use case-sensitive completion.
-# CASE_SENSITIVE="true"
-
-# Uncomment the following line to disable colors in ls.
-# DISABLE_LS_COLORS="true"
-
 plugins=(command-not-found  extract  github  httpie  rsync)
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
@@ -20,7 +12,7 @@ export EDITOR='vim'
 
 # History
 export HISTCONTROL=erasedups  # Ignore duplicate entries in history
-export HISTFILE=$HOME/.zsh_history
+export HISTFILE=${HOME}/.zsh_history
 export HISTSIZE=10000
 export SAVEHIST=10000
 export HISTIGNORE="&:ls:ll:la:l.:pwd:exit:clear:clr:[bf]g"
@@ -45,7 +37,7 @@ fi
 
 if [ -f /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
-  export WORKON_HOME=$HOME/.virtualenvs
-  export PROJECT_HOME=$HOME/Devel
+  export WORKON_HOME=${HOME}/.virtualenvs
+  export PROJECT_HOME=${HOME}/Devel
   source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
