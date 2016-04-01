@@ -1,6 +1,8 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
+ZSH_THEME="disaster"
+
 plugins=(command-not-found  extract  github  httpie  rsync)
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
