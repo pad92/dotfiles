@@ -8,7 +8,7 @@ fi
 PROMPT='%{$fg[cyan]%}%m%{$reset_color%} %{$fg[${_USERCOLOR}]%}%B[${USER}]%b%{$reset_color%} %B%{$fg[yellow]%}%30<...<%~%b %{$fg[cyan]%}%#%{$reset_color%} '
 
 # The right-hand prompt
-RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %T'
+RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %D %T'
 
 # local time, color coded by last return code
 time_enabled="%(?.%{$fg[green]%}.%{$fg[red]%})%T%{$reset_color%}"

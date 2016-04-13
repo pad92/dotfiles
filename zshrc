@@ -1,7 +1,7 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
-ZSH_THEME="disaster"
+ZSH_THEME="pad"
 
 plugins=(command-not-found  extract  github  httpie  rsync)
 
