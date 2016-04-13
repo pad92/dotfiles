@@ -67,6 +67,7 @@ set autowrite		" Automatically save before commands like :next and :make
 set laststatus=2 " Always show status bar
 "set showtabline=2 " Always show tabs
 
+set listchars=tab:▸\ ,trail:·
 
 """ Custom backup and swap files
 let myVimDir = expand("$HOME/.vim")
