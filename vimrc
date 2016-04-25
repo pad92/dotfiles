@@ -24,6 +24,10 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 
 Plugin 'bling/vim-bufferline'
+Plugin 'DirDiff.vim'
+Plugin 'html5.vim'
+Plugin 'apachestyle'
+
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
