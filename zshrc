@@ -36,6 +36,10 @@ if [ -f ${HOME}/.zshaliases ]
 then
   source ${HOME}/.zshaliases
 fi
+if [ -f ${HOME}/.zshenv ]
+then
+  source ${HOME}/.zshenv
+fi
 
 if [ -f /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
