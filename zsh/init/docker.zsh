@@ -5,7 +5,6 @@ for BIN in $BIN_DEPS; do
     which $BIN 1>/dev/null 2>&1
     if [ $? -ne 0 ]; then
 		(( STATUS = $STATUS + 1 ))
-        echo "$BIN fail"
     fi
 done
 
