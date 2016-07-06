@@ -1,6 +1,11 @@
 #/usr/bin/env sh
 
-BIN_DEPS='git sudo'
+# === INIT ===
+if [ "$(id -u)" -eq "0" ]; then
+    BIN_DEPS='git apt-get'
+else
+    BIN_DEPS="$BIN_DEPS sudo"
+fi
 
 # === CHECKS ===
 for BIN in $BIN_DEPS; do
@@ -11,19 +16,23 @@ for BIN in $BIN_DEPS; do
     fi
 done
 
+# === DO ===
+if [ -d ~/.dotfiles ]; then
+    git pull ~/.dotfiles/
+else
+    git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
+fi
 
-git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
+DOTFILES='zshrc screenrc byobu vimrc vim tmux.conf'
+for DOTFILE in $DOTFILES; do
+    if [ ! -L ~/.$DOTFILE ]; then
+        ln -s ~/.dotfiles/$DOTFILE ~/.$DOTFILE
+    fi
+done
 
-ln -s ~/.dotfiles/zshrc ~/.zshrc
-ln -s ~/.dotfiles/screenrc ~/.screenrc
-ln -s ~/.dotfiles/byobu ~/.byobu
 if [ "$(id -u)" != "0" ]; then
 	sudo apt-get install python python-newt
 else
 	apt-get install python python-newt
 fi
-ln -s ~/.dotfiles/vimrc ~/.vimrc
-ln -s ~/.dotfiles/vim ~/.vim
 vim +PluginInstall +qall
-ln -s ~/.dotfiles/tmux.conf .tmux.conf
-
