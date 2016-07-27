@@ -15,8 +15,6 @@ export EDITOR='vim'
 # History
 export HISTCONTROL=erasedups  # Ignore duplicate entries in history
 export HISTFILE=${HOME}/.zsh_history
-export HISTSIZE=10000
-export SAVEHIST=10000
 export HISTIGNORE="&:ls:ll:la:l.:pwd:exit:clear:clr:[bf]g"
 
 setopt auto_cd
