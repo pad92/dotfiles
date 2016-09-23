@@ -1,6 +1,8 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
+export PATH=$PATH:~/.cabal/bin:~/.xmonad/bin
+
 ZSH_THEME="pad"
 
 plugins=(command-not-found  extract  github  httpie  rsync)
