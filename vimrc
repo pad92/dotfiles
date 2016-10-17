@@ -27,6 +27,7 @@ Plugin 'bling/vim-bufferline'
 Plugin 'DirDiff.vim'
 Plugin 'html5.vim'
 Plugin 'apachestyle'
+Plugin 'puppet'
 
 
 " All of your Plugins must be added before the following line
