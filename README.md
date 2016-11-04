@@ -25,3 +25,6 @@ ln -s ~/.dotfiles/tmux.conf .tmux.conf
 
 ## Terminator
 ln -s ~/.dotfiles/terminator ~/.config/terminator
+
+# Fonts
+ln -s -s ~/.dotfiles/fonts .fonts

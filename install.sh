@@ -23,7 +23,7 @@ else
     git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
 fi
 
-DOTFILES='zshrc screenrc byobu vimrc vim tmux.conf'
+DOTFILES='zshrc screenrc byobu vimrc vim tmux.conf fonts'
 for DOTFILE in $DOTFILES; do
     if [ ! -L ~/.$DOTFILE ]; then
         ln -s ~/.dotfiles/$DOTFILE ~/.$DOTFILE
