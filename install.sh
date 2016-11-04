@@ -29,6 +29,9 @@ for DOTFILE in $DOTFILES; do
         ln -s ~/.dotfiles/$DOTFILE ~/.$DOTFILE
     fi
 done
+if [ ! -L ~/.config/terminator ]; then
+    ln -s ~/.dotfiles/terminator ~/.config/terminator
+    fi
 
 if [ "$(id -u)" != "0" ]; then
 	sudo apt-get install python python-newt
