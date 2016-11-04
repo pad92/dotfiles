@@ -12,4 +12,7 @@
 [profiles]
   [[default]]
     background_color = "#002b36"
+    background_image = None
+    font = Monospace 10
     foreground_color = "#839496"
+    use_system_font = False
