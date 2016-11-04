@@ -24,4 +24,4 @@ vim +PluginInstall +qall
 ln -s ~/.dotfiles/tmux.conf .tmux.conf
 
 ## Terminator
-mkdir ~/.config/terminator ; ln -s ~/.dotfiles/terminator/config ~/.config/terminator/config
+ln -s ~/.dotfiles/terminator ~/.config/terminator
