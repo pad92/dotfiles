@@ -73,6 +73,9 @@ set autowrite		" Automatically save before commands like :next and :make
 set laststatus=2 " Always show status bar
 "set showtabline=2 " Always show tabs
 
+scriptencoding utf-8
+set encoding=utf-8
+
 set listchars=tab:▸\ ,trail:·
 
 """ Custom backup and swap files
