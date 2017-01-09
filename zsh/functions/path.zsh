@@ -8,3 +8,9 @@ path() {
            sub(\"/home\",  \"$fg_no_bold[red]/home$reset_color\"); \
            print }"
 }
+
+ANDROID_PATH=`realpath ~/Android/Sdk/platform-tools`
+
+if [ -d "$ANDROID_PATH" ]; then
+    export PATH=$PATH":$ANDROID_PATH"
+fi
