@@ -129,3 +129,9 @@ endif
 "set number
 :nmap <C-N><C-N> :set invnumber<CR>
 :highlight LineNr term=bold cterm=NONE ctermfg=DarkGrey ctermbg=Black gui=NONE guifg=DarkGrey guibg=Black
+
+" air-line
+set t_Co=256
+set laststatus=2
+let g:airline_powerline_fonts = 1
+let g:airline#extensions#tabline#enabled = 1
