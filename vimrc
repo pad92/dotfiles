@@ -29,7 +29,7 @@ Plugin 'html5.vim'
 Plugin 'apachestyle'
 Plugin 'Puppet-Syntax-Highlighting'
 Plugin 'Tabular'
-
+Plugin 'MicahElliott/Rocannon'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
