@@ -23,13 +23,12 @@ call vundle#begin()
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
 
-Plugin 'bling/vim-bufferline'
-Plugin 'DirDiff.vim'
-Plugin 'html5.vim'
-Plugin 'apachestyle'
-Plugin 'Puppet-Syntax-Highlighting'
-Plugin 'Tabular'
+"Plugin 'bling/vim-bufferline'
 Plugin 'MicahElliott/Rocannon'
+Plugin 'vim-airline/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
+Plugin 'airblade/vim-gitgutter'
+Plugin 'tpope/vim-fugitive'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
