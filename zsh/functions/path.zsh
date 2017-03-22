@@ -9,8 +9,6 @@ path() {
            print }"
 }
 
-ANDROID_PATH=`realpath ~/Android/Sdk/platform-tools`
-
-if [ -d "$ANDROID_PATH" ]; then
-    export PATH=$PATH":$ANDROID_PATH"
+if [ -d "$HOME/Android/Sdk/platform-tools" ] ; then
+    PATH="$HOME/Android/Sdk/platform-tools:$PATH"
 fi
