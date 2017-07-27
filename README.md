@@ -21,10 +21,26 @@ ln -s ~/.dotfiles/vim ~/.vim
 vim +PluginInstall +qall
 
 ## Tmux
-ln -s ~/.dotfiles/tmux.conf .tmux.conf
+ln -s ~/.dotfiles/tmux.conf ~/.tmux.conf
 
 ## Terminator
 ln -s ~/.dotfiles/terminator ~/.config/terminator
 
 # Fonts
-ln -s -s ~/.dotfiles/fonts .fonts
+ln -s -s ~/.dotfiles/fonts ~/.fonts
+
+# Gnome
+
+## Theme
+
+ln -s ~/.dotfiles/themes ~/.themes
+gsettings set org.gnome.shell.extensions.user-theme name "Flat Remix"
+
+## Icons
+
+ln -s ~/.dotfiles/icons ~/.icons
+gsettings set org.gnome.desktop.interface icon-theme "Flat Remix"
+
+## GTK
+
+https://github.com/nana-4/Flat-Plat
