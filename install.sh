@@ -1,11 +1,7 @@
 #/usr/bin/env sh
 
 # === INIT ===
-if [ "$(id -u)" -eq "0" ]; then
-    BIN_DEPS='git apt-get'
-else
-    BIN_DEPS="$BIN_DEPS sudo"
-fi
+BIN_DEPS='git'
 
 # === CHECKS ===
 for BIN in $BIN_DEPS; do
@@ -23,19 +19,35 @@ else
     git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
 fi
 
-DOTFILES='zshrc screenrc byobu vimrc vim tmux.conf fonts'
+DOTFILES='.zshrc .screenrc .byobu .vimrc .vim .tmux.conf .fonts .themes .icons'
 for DOTFILE in $DOTFILES; do
     if [ ! -L ~/.$DOTFILE ]; then
-        ln -s ~/.dotfiles/$DOTFILE ~/.$DOTFILE
+        ln -s ~/.dotfiles/$DOTFILE ~/$DOTFILE
     fi
 done
 if [ ! -L ~/.config/terminator ]; then
-    ln -s ~/.dotfiles/terminator ~/.config/terminator
+    if [ ! -d ~/.config/terminator ]; then
+        mkdir ~/.config/terminator
     fi
+    ln -s ~/.dotfiles/terminator ~/.config/terminator
+fi
 
-if [ "$(id -u)" != "0" ]; then
-	sudo apt-get install python python-newt
+if which apt-get 1>/dev/null 2>&1 ; then 
+    if [ "$(id -u)" != "0" ]; then
+        sudo apt-get install python python-newt
+    else
+        apt-get install python python-newt
+    fi
 else
-	apt-get install python python-newt
+    if [ "$(id -u)" != "0" ]; then
+        sudo dnf install newt
+    else
+        dnf newt
+    fi
 fi
 vim +PluginInstall +qall
+
+if which gsettings 1>/dev/null 2>&1 ; then 
+    gsettings set org.gnome.shell.extensions.user-theme name "Flat Remix"
+    gsettings set org.gnome.desktop.interface icon-theme "Flat Remix"
+fi
