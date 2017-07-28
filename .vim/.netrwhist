@@ -1,0 +1,7 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhist_cnt =5
+let g:netrw_dirhist_1='/home/pascal/.dotfiles/vim/bundle/Vundle.vim'
+let g:netrw_dirhist_2='/home/pascal/.dotfiles/vim/bundle'
+let g:netrw_dirhist_3='/etc/apt/apt.conf.d'
+let g:netrw_dirhist_4='/home/pascal/Documents/gitlab/ISC/Yggdrasil/inventory/group_vars'
+let g:netrw_dirhist_5='/home/pascal/.ssh/config.d'
