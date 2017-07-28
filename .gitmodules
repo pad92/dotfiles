@@ -1,12 +1,12 @@
-[submodule "vim/bundle/Vundle.vim"]
-	path = vim/bundle/Vundle.vim
+[submodule ".vim/bundle/Vundle.vim"]
+	path = .vim/bundle/Vundle.vim
 	url = https://github.com/VundleVim/Vundle.vim.git
-[submodule "vim/bundle/puppet"]
-	path = vim/bundle/puppet
+[submodule ".vim/bundle/puppet"]
+	path = .vim/bundle/puppet
 	url = https://github.com/rodjek/vim-puppet.git
-[submodule "themes/Flat-Remix-GNOME-theme"]
-	path = themes/Flat-Remix-GNOME-theme
-	url = https://github.com/daniruiz/Flat-Remix-GNOME-theme
-[submodule "icons/Flat-Remix.git"]
-	path = icons/Flat-Remix.git
+[submodule ".themes/Flat-Remix-GNOME-theme.git"]
+	path = .themes/Flat-Remix-GNOME-theme.git
+	url = https://github.com/daniruiz/Flat-Remix-GNOME-theme.git
+[submodule ".icons/Flat-Remix.git"]
+	path = .icons/Flat-Remix.git
 	url = https://github.com/daniruiz/Flat-Remix

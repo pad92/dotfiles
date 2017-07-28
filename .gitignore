@@ -1,6 +1,6 @@
-vim/.netrwhist
-vim/backup
-vim/bundle/*
-vim/swap
-!vim/bundle/Vundle.vim/
+.vim/.netrwhist
+.vim/backup
+.vim/bundle/*
+.vim/swap
+!.vim/bundle/Vundle.vim/
 
