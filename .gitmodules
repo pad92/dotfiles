@@ -10,3 +10,6 @@
 [submodule ".icons/Flat-Remix.git"]
 	path = .icons/Flat-Remix.git
 	url = https://github.com/daniruiz/Flat-Remix
+[submodule ".tmux/tmux-colors-solarized"]
+	path = .tmux/tmux-colors-solarized
+	url = https://github.com/seebi/tmux-colors-solarized.git
