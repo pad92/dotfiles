@@ -1,4 +1,4 @@
-#/usr/bin/env sh
+#/bin/sh
 
 # === INIT ===
 BIN_DEPS='git'
@@ -21,7 +21,7 @@ fi
 
 DOTFILES='.zshrc .screenrc .byobu .vimrc .vim .tmux.conf .tmux .fonts .themes .icons'
 for DOTFILE in $DOTFILES; do
-    if [ ! -L ~/.$DOTFILE ]; then
+    if [ ! -L ~/$DOTFILE ]; then
         ln -s ~/.dotfiles/$DOTFILE ~/$DOTFILE
     fi
 done
