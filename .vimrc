@@ -30,6 +30,7 @@ Plugin 'vim-airline/vim-airline-themes'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
 Plugin 'smerrill/vcl-vim-plugin.git'
+Plugin 'docker/docker'
 
 
 " All of your Plugins must be added before the following line
