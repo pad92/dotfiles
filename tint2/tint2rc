@@ -7,8 +7,8 @@
 # Backgrounds
 # Background 1: Battery, Panel
 rounded = 0
-border_width = 2
-border_sides = TBLR
+border_width = 1
+border_sides = T
 background_color = #000000 0
 border_color = #ffffff 30
 background_color_hover = #000000 0
@@ -19,9 +19,9 @@ border_color_pressed = #ffffff 30
 # Background 2: Default task, Iconified task
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #777777 0
-border_color = #777777 0
+border_color = #777777 30
 background_color_hover = #777777 4
 border_color_hover = #cccccc 30
 background_color_pressed = #333333 4
@@ -30,9 +30,9 @@ border_color_pressed = #777777 30
 # Background 3: Active task
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #555555 10
-border_color = #ffffff 60
+border_color = #ffffff 30
 background_color_hover = #cccccc 10
 border_color_hover = #ffffff 60
 background_color_pressed = #555555 10
@@ -41,7 +41,7 @@ border_color_pressed = #ffffff 60
 # Background 4: Urgent task
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #aa4400 100
 border_color = #aa7733 100
 background_color_hover = #aa4400 100
@@ -52,7 +52,7 @@ border_color_pressed = #aa7733 100
 # Background 5: Tooltip
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #ffffaa 100
 border_color = #999999 100
 background_color_hover = #ffffaa 100
@@ -63,7 +63,7 @@ border_color_pressed = #999999 100
 # Background 6: Inactive desktop name
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #777777 0
 border_color = #777777 30
 background_color_hover = #777777 4
@@ -74,7 +74,7 @@ border_color_pressed = #777777 30
 # Background 7: Active desktop name
 rounded = 0
 border_width = 1
-border_sides = TBLR
+border_sides = LR
 background_color = #555555 10
 border_color = #ffffff 60
 background_color_hover = #555555 10
