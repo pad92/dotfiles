@@ -25,12 +25,16 @@ for DOTFILE in $DOTFILES; do
         ln -s ~/.dotfiles/$DOTFILE ~/$DOTFILE
     fi
 done
-if [ ! -L ~/.config/terminator ]; then
-    if [ ! -d ~/.config/terminator ]; then
-        mkdir ~/.config/terminator
+
+CONFFILES='terminator tint2'
+for CONFFILE in $CONFFILES; do
+    if [ ! -L ~/.config/$CONFFILE ]; then
+        if [ ! -d ~/.config/$CONFFILE ]; then
+            mkdir ~/.config/$CONFFILE
+        fi
+        ln -s ~/.dotfiles/$CONFFILE ~/.config/$CONFFILE
     fi
-    ln -s ~/.dotfiles/terminator ~/.config/terminator
-fi
+done
 
 if which apt-get 1>/dev/null 2>&1 ; then 
     if [ "$(id -u)" != "0" ]; then
