@@ -22,6 +22,9 @@ Fork of github.com:DisasteR
 ## Terminator
      ln -s ~/.dotfiles/terminator ~/.config/terminator
 
+## Tint2
+     ln -s ~/.dotfiles/tint2 ~/.config/tint2
+
 # Fonts
      ln -s -s ~/.dotfiles/fonts ~/.fonts
 
