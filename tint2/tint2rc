@@ -5,8 +5,8 @@
 # Backgrounds
 # Background 1: Panel, Tooltip
 rounded = 0
-border_width = 0
-border_sides = TBLR
+border_width = 1
+border_sides = T
 background_color = #000000 0
 border_color = #16161d 30
 background_color_hover = #16161d 60
