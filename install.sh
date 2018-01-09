@@ -44,14 +44,16 @@ if which apt-get 1>/dev/null 2>&1 ; then
     fi
 else
     if [ "$(id -u)" != "0" ]; then
-        sudo dnf install newt
+        sudo dnf install newt tilix-nautilus tilix
     else
-        dnf newt
+        dnf newt tilix-nautilus tilix
     fi
 fi
 vim +PluginInstall +qall
 
 sudo dnf copr enable tcg/themes && sudo dnf install materia-theme
+
+dconf load /com/gexperts/Tilix/ < tilix.dconf
 
 if which gsettings 1>/dev/null 2>&1 ; then 
     gsettings set org.gnome.shell.extensions.user-theme name "Flat Remix"
