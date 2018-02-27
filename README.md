@@ -4,37 +4,37 @@ Fork of github.com:DisasteR
      git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
 
 ## Zsh
-     ln -s ~/.dotfiles/zshrc ~/.zshrc
+     ln -sf ~/.dotfiles/zshrc ~/.zshrc
 
 ## Screen
-     ln -s ~/.dotfiles/screenrc ~/.screenrc
-     ln -s ~/.dotfiles/byobu ~/.byobu
+     ln -sf ~/.dotfiles/screenrc ~/.screenrc
+     ln -sf ~/.dotfiles/byobu ~/.byobu
      apt-get install python python-newt
 
 ## Vim
-     ln -s ~/.dotfiles/vimrc ~/.vimrc
-     ln -s ~/.dotfiles/vim ~/.vim
+     ln -sf ~/.dotfiles/vimrc ~/.vimrc
+     ln -sf ~/.dotfiles/vim ~/.vim
      vim +PluginInstall +qall
 
 ## Tmux
-     ln -s ~/.dotfiles/tmux.conf ~/.tmux.conf
+     ln -sf ~/.dotfiles/tmux.conf ~/.tmux.conf
 
 ## Terminator
-     ln -s ~/.dotfiles/terminator ~/.config/terminator
+     ln -sf ~/.dotfiles/terminator ~/.config/terminator
 
 ## Tint2
-     ln -s ~/.dotfiles/tint2 ~/.config/tint2
+     ln -sf ~/.dotfiles/tint2 ~/.config/tint2
 
 # Fonts
-     ln -s -s ~/.dotfiles/fonts ~/.fonts
+     ln -sf -s ~/.dotfiles/fonts ~/.fonts
 
 # Gnome
 ## Theme
-     ln -s ~/.dotfiles/themes ~/.themes
+     ln -sf ~/.dotfiles/themes ~/.themes
      gsettings set org.gnome.shell.extensions.user-theme name "Flat Remix"
 
 ## Icons
-     ln -s ~/.dotfiles/icons ~/.icons
+     ln -sf ~/.dotfiles/icons ~/.icons
      gsettings set org.gnome.desktop.interface icon-theme "Flat Remix"
 
 ## GTK
