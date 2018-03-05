@@ -6,29 +6,32 @@ atom_update(){
         exit 1
     fi
 
-    ATOM_LATEST=`curl -w "%{url_effective}\n" -I -L -s -S https://github.com/atom/atom/releases/latest -o /dev/null | awk -F '/' '{print $NF}' | sed 's/v//'`
     ATOM_CURRENT=`atom -v | grep '^Atom' | awk '{print $NF}' 2>/dev/null`
+    ATOM_LATEST=$(curl -s https://api.github.com/repos/atom/atom/releases/latest)
+    ATOM_LATEST_VERSION=$(echo ${ATOM_LATEST} | grep -m 1 '"name"'                          | cut -d '"' -f 4)
+    ATOM_RPM=$(echo ${ATOM_LATEST}            | grep -E 'browser_download_url(.*)\.rpm'     | cut -d '"' -f 4)
+    ATOM_DEB=$(echo ${ATOM_LATEST}            | grep -E 'browser_download_url(.*)\.deb'     | cut -d '"' -f 4)
 
-    if [ "${ATOM_LATEST}" != "${ATOM_CURRENT}" ]; then
-        echo upgrade atom ${ATOM_CURRENT} to ${ATOM_LATEST}
+    if [ "${ATOM_LATEST_VERSION}" != "${ATOM_CURRENT}" ]; then
+        echo "upgrade atom ${ATOM_CURRENT} to ${ATOM_LATEST_VERSION}"
 
         case ${ID} in
-            fedora|centos)
-                RPM_LATEST=`curl -s https://api.github.com/repos/atom/atom/releases/latest | grep -E "${ATOM_LATEST}\/(.*)\.rpm" | cut -d '"' -f 4`
+            fedora|centos) 
                 if [[ $UID == 0 || $EUID == 0 ]]; then
-                    dnf -y install --nogpgcheck ${RPM_LATEST}
+                    dnf -y install --nogpgcheck ${ATOM_RPM}
                 else
-                    sudo dnf -y install --nogpgcheck ${RPM_LATEST}
+                    sudo dnf -y install --nogpgcheck ${ATOM_RPM}
                 fi
                 ;;
             ubuntu|debian)
-                DEB_LATEST=`curl -s https://api.github.com/repos/atom/atom/releases/latest | grep -E "${ATOM_LATEST}\/(.*)\.deb" | cut -d '"' -f 4`
                 if [[ $UID == 0 || $EUID == 0 ]]; then
-                    dpkg -i ${DEB_LATEST}
+                    dpkg -i ${ATOM_DEB}
                 else
-                    sudo dpkg -i ${DEB_LATEST}
+                    sudo dpkg -i ${ATOM_DEB}
                 fi
                 ;;
         esac
+    else
+        echo "Nothing to do, ${ATOM_LATEST_VERSION} is the current version of Atom"
     fi
 }
