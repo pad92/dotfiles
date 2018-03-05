@@ -6,9 +6,9 @@ atom_update(){
         echo upgrade atom ${ATOM_CURRENT} to ${ATOM_LATEST}
         RPM_LATEST=`curl -s https://api.github.com/repos/atom/atom/releases/latest | grep -E "${ATOM_LATEST}\/(.*)\.rpm" | cut -d '"' -f 4`
         if [[ $UID == 0 || $EUID == 0 ]]; then
-            dnf install --nogpgcheck ${RPM_LATEST}
+            dnf -y install --nogpgcheck ${RPM_LATEST}
         else
-            sudo dnf install --nogpgcheck ${RPM_LATEST}
+            sudo dnf -y install --nogpgcheck ${RPM_LATEST}
         fi
     fi
 }
