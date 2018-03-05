@@ -1,4 +1,4 @@
-#atom_update(){
+atom_update(){
     ATOM_LATEST=`curl -w "%{url_effective}\n" -I -L -s -S https://github.com/atom/atom/releases/latest -o /dev/null | awk -F '/' '{print $NF}' | sed 's/v//'`
     ATOM_CURRENT=`atom -v | grep '^Atom' | awk '{print $NF}' 2>/dev/null`
 
@@ -11,4 +11,4 @@
             sudo dnf install --nogpgcheck ${RPM_LATEST}
         fi
     fi
-#}
+}
