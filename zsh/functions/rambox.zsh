@@ -17,6 +17,7 @@ rambox_update(){
 
         case ${ID} in
             fedora|centos) 
+                pkill rambox
                 if [[ $UID == 0 || $EUID == 0 ]]; then
                     dnf -y install --nogpgcheck ${rambox_RPM}
                 else
