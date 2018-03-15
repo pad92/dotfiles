@@ -45,11 +45,18 @@ copy-on-select=true
 sidebar-on-right=false
 auto-hide-mouse=true
 terminal-title-style='none'
-window-state=87168
+prompt-on-close-process=false
 theme-variant='dark'
+session-name='${iconTitle}'
+window-state=43908
 new-instance-mode='new-session'
 enable-wide-handle=true
+app-title='${id} ${sessionName}'
 window-save-state=true
 warn-vte-config-issue=false
+focus-follow-mouse=false
 terminal-title-show-when-single=true
 window-style='disable-csd-hide-toolbar'
+
+[keybindings]
+session-name='<Primary><Alt>n'
