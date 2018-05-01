@@ -1,7 +1,7 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
-export PATH=$PATH:~/.cabal/bin:~/.xmonad/bin
+export PATH=$PATH:/var/lib/snapd/snap/bin:~/.cabal/bin:~/.xmonad/bin
 
 ZSH_THEME="pad"
 
