@@ -6,7 +6,9 @@ pmad() {
         SSH_IP='pmad'
         SSH_PORT="$1"
         SSH_CMD="$SSH_BIN -Y $SSH_IP -p $SSH_PORT"
-        SSH_CMD="$SSH_CMD -l $2"
+        if [ -n "$2" ]; then
+            SSH_CMD="$SSH_CMD -l $2"
+        fi
         if [ -n "$3" ]; then
             SSH_CMD="$SSH_CMD -L $3"
         fi
