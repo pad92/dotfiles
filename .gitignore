@@ -4,4 +4,4 @@
 .vim/swap
 !.vim/bundle/Vundle.vim/
 !.vim/bundle/puppet/
-
+.fonts/.uuid
