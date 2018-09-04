@@ -56,7 +56,7 @@ vim +PluginInstall +qall
 dconf load /com/gexperts/Tilix/ < tilix.dconf
 
 if which gsettings 1>/dev/null 2>&1 ; then
-  gsettings set org.gnome.shell.extensions.user-theme name "Flat Remix"
+  gsettings set org.gnome.shell.extensions.user-theme name "Flat-Plat"
   gsettings set org.gnome.desktop.interface icon-theme "Numix"
   gsettings set org.gnome.desktop.interface gtk-theme "Materia-compact"
 fi
