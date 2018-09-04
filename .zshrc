@@ -46,3 +46,5 @@ then
   export PROJECT_HOME=${HOME}/Devel
   source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
+
+if [ -f /usr/bin/screenfetch ]; then screenfetch; fi

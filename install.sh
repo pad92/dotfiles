@@ -38,17 +38,17 @@ done
 
 if which apt-get 1>/dev/null 2>&1 ; then
   if [ "$(id -u)" != "0" ]; then
-    sudo apt-get install python python-newt
+    sudo apt-get install python python-newt screenfetch
   else
-    apt-get install python python-newt
+    apt-get install python python-newt screenfetch
   fi
 else
   if [ "$(id -u)" != "0" ]; then
     sudo dnf copr enable tcg/themes
-    sudo dnf install newt tilix-nautilus tilix numix-icon-theme-circle materia-theme
+    sudo dnf install newt tilix-nautilus tilix numix-icon-theme-circle materia-theme screenfetch
   else
     dnf copr enable tcg/themes
-    dnf newt tilix-nautilus tilix numix-icon-theme-circle materia-theme
+    dnf newt tilix-nautilus tilix numix-icon-theme-circle materia-theme screenfetch
   fi
 fi
 vim +PluginInstall +qall
