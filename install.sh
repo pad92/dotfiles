@@ -19,7 +19,7 @@ else
   git clone --recursive http://git.depad.fr/pascal/dotfiles.git ~/.dotfiles
 fi
 
-DOTFILES='.zshrc .screenrc .byobu .vimrc .vim .tmux.conf .tmux .fonts .themes .icons'
+DOTFILES='.zshrc .screenrc .byobu .vimrc .vim .tmux.conf .tmux .fonts .themes .icons .dir_colors'
 for DOTFILE in $DOTFILES; do
   if [ ! -L ~/$DOTFILE ]; then
     ln -s ~/.dotfiles/$DOTFILE ~/$DOTFILE
