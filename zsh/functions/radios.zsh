@@ -7,5 +7,8 @@ radio(){
         fg)
             cvlc http://radiofg.impek.com/fg
         ;;
+        nova)
+            cvlc http://broadcast.infomaniak.net/novazz-128.mp3 
+        ;;
     esac
 }
