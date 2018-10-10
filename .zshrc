@@ -3,14 +3,18 @@ export TERM="xterm-256color"
 
 export PATH="${PATH}:/var/lib/snapd/snap/bin:~/.cabal/bin:~/.xmonad/bin"
 
-if [ -d ~/bin ]; then
-    export PATH="${PATH}:~/bin"
-    for MYBIN in $(ls -d ~/bin/*/); do
+if [ -d ~/.bin ]; then
+    export PATH="${PATH}:~/.bin"
+    for MYBIN in $(ls -d ~/.bin/*/); do
         if [ -d "${MYBIN}" ]; then
            export PATH="${PATH}:${MYBIN}"
         fi
     done
     rehash
+fi
+
+if [ -d ~/.local/bin ]; then
+    export PATH="${PATH}:~/.local/bin"
 fi
 
 ZSH_THEME="pad"
