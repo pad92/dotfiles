@@ -1,3 +1,3 @@
-if [ -d "$HOME/.go" ]; then
-    export PATH="$HOME/.go:$PATH"
+if [ -d "$HOME/.go/bin" ]; then
+    export PATH="$HOME/.go/bin:$PATH"
 fi
