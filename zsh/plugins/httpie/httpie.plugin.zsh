@@ -31,4 +31,3 @@ function _httpie_completion() {
 }
 
 compdef _httpie_completion http
-compdef _httpie_completion https

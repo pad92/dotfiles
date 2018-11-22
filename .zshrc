@@ -1,7 +1,7 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM="xterm-256color"
 
-export PATH="${PATH}:/var/lib/snapd/snap/bin:~/.cabal/bin:~/.xmonad/bin"
+# export PATH="${PATH}:/var/lib/snapd/snap/bin:~/.cabal/bin:~/.xmonad/bin"
 
 if [ -d ~/.bin ]; then
     export PATH="${PATH}:~/.bin"
@@ -19,7 +19,7 @@ fi
 
 ZSH_THEME="pad"
 
-plugins=(command-not-found  extract  github  httpie  rsync)
+plugins=(command-not-found dnf extract github httpie rsync)
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
 source ${ZSH}/init.zsh
