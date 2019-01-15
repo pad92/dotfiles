@@ -4,8 +4,19 @@ else
     _USERCOLOR="green"
 fi
 
+function collapse_pwd {
+    echo $(pwd | sed -e "s,^$HOME,~,")
+}
+
+function prompt_char {
+    git branch >/dev/null 2>/dev/null && echo '○' && return
+    echo '$'
+}
+
 # The prompt
-PROMPT='%{$fg[cyan]%}%m%{$reset_color%} %{$fg[${_USERCOLOR}]%}%B[${USER}]%b%{$reset_color%} %B%{$fg[yellow]%}%30<...<%~%b %{$fg[cyan]%}%#%{$reset_color%} '
+PROMPT='
+%{$fg[cyan]%}%n%{$reset_color%} at %{$fg[yellow]%}%m%{$reset_color%} in %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
+$(prompt_char) '
 
 # The right-hand prompt
 RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %D %T'
@@ -15,7 +26,7 @@ time_enabled="%(?.%{$fg[green]%}.%{$fg[red]%})%T%{$reset_color%}"
 time_disabled="%{$fg[green]%}%*%{$reset_color%}"
 time=$time_enabled
 
-ZSH_THEME_GIT_PROMPT_PREFIX="[  %{$fg[red]%}"
+ZSH_THEME_GIT_PROMPT_PREFIX=" on %{$fg[cyan]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%} ]"
 ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%} ✔"
 ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[yellow]%} ♻"
