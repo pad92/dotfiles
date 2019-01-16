@@ -27,6 +27,7 @@ source ${ZSH}/init.zsh
 # User configuration
 export LANG=en_US.UTF-8
 export EDITOR='vim'
+export ELECTRON_TRASH=gio
 
 # History
 export HISTCONTROL=erasedups  # Ignore duplicate entries in history
