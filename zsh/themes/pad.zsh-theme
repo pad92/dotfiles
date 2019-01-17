@@ -8,15 +8,11 @@ function collapse_pwd {
     echo $(pwd | sed -e "s,^$HOME,~,")
 }
 
-function prompt_char {
-    git branch >/dev/null 2>/dev/null && echo '○' && return
-    echo '$'
-}
 
 # The prompt
 PROMPT='
 %! %{$fg[cyan]%}%n%{$reset_color%} at %{$fg[yellow]%}%m%{$reset_color%} in %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
-$(prompt_char) '
+'
 
 # The right-hand prompt
 RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )'
