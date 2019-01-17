@@ -15,18 +15,18 @@ function prompt_char {
 
 # The prompt
 PROMPT='
-%{$fg[cyan]%}%n%{$reset_color%} at %{$fg[yellow]%}%m%{$reset_color%} in %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
+%! %{$fg[cyan]%}%n%{$reset_color%} at %{$fg[yellow]%}%m%{$reset_color%} in %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
 $(prompt_char) '
 
 # The right-hand prompt
-#RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %D %T'
+RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )'
 
 # local time, color coded by last return code
 time_enabled="%(?.%{$fg[green]%}.%{$fg[red]%})%T%{$reset_color%}"
 time_disabled="%{$fg[green]%}%*%{$reset_color%}"
 time=$time_enabled
 
-ZSH_THEME_GIT_PROMPT_PREFIX=" on %{$fg[cyan]%}"
+ZSH_THEME_GIT_PROMPT_PREFIX=" on [%{$fg[cyan]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%} ]"
 ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%} ✔"
 ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[yellow]%} ♻"
