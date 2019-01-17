@@ -19,7 +19,7 @@ PROMPT='
 $(prompt_char) '
 
 # The right-hand prompt
-RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %D %T'
+#RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )$(virtualenv_prompt_info)$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} %{$fg[blue]%}!%!%{$reset_color%} %D %T'
 
 # local time, color coded by last return code
 time_enabled="%(?.%{$fg[green]%}.%{$fg[red]%})%T%{$reset_color%}"
