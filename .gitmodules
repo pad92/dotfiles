@@ -14,3 +14,6 @@
 	path = .tmux/tmux-colors-solarized
 	url = https://github.com/seebi/tmux-colors-solarized.git
 	branch = master
+[submodule "submodules/rsync-homedir-excludes"]
+	path = submodules/rsync-homedir-excludes
+	url = https://github.com/pad92/rsync-homedir-excludes.git
