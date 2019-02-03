@@ -1,0 +1,10 @@
+bar {
+    swaybar_command waybar
+}
+
+include config.d/*
+include /etc/sway/config.d/*
+
+## On login
+exec /usr/bin/redshift
+exec /usr/bin/mako
