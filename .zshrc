@@ -1,5 +1,5 @@
 export ZSH=${HOME}/.dotfiles/zsh/
-export TERM="xterm-256color"
+export TERM=xterm-color
 
 
 if [ -d ${HOME}/.bin ]; then
@@ -69,3 +69,5 @@ then
   export PROJECT_HOME=${HOME}/Devel
   source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
+if [ -f /usr/bin/screenfetch ]; then screenfetch; fi
+
