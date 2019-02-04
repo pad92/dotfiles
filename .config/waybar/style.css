@@ -35,18 +35,11 @@ window#waybar {
     margin: 0 5px;
 }
 
-#clock {
-}
-
 #battery {
     color: white;
     text-shadow: 2px 2px 4px black;
 }
 
-#battery.charging {
-    color: white;
-    background-color: #26A65B;
-}
 
 @keyframes blink {
     to {
@@ -90,7 +83,7 @@ window#waybar {
 }
 
 #custom-spotify {
-    color: #2a5c45;
+    color: #26A65B;
 }
 
 #tray {
