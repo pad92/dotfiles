@@ -22,7 +22,7 @@ allow_bold = true
 audible_bell = false
 browser = xdg-open
 clickable_url = true
-font = Source Code Pro, Medium 8
+font = Anonymous Pro 10 
 scrollback_lines = 10000
 
 [colors]
