@@ -8,3 +8,5 @@ include /etc/sway/config.d/*
 ## On login
 exec /usr/bin/redshift
 exec /usr/bin/mako
+exec_always ssh-agent start
+exec --no-startup-id eval $(ssh-agent)
