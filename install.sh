@@ -21,35 +21,32 @@ fi
 
 DOTFILES='.zshrc .screenrc .byobu .vimrc .vim .tmux.conf .tmux .fonts .themes .icons .dir_colors'
 for DOTFILE in $DOTFILES; do
-  if [ ! -L ~/$DOTFILE ]; then
-    ln -s ~/.dotfiles/$DOTFILE ~/$DOTFILE
+  if [ ! -L ${HOME}/$DOTFILE ]; then
+    ln -sf ${HOME}/.dotfiles/$DOTFILE ${HOME}/$DOTFILE
   fi
 done
 
-CONFFILES='terminator tint2'
+CONFFILES='rofi sway terminator termite tint2 waybar'
 for CONFFILE in $CONFFILES; do
-  if [ ! -L ~/.config/$CONFFILE ]; then
-    if [ ! -d ~/.config/$CONFFILE ]; then
-      mkdir ~/.config/$CONFFILE
-    fi
-    ln -s ~/.dotfiles/$CONFFILE ~/.config/$CONFFILE
+  if [ ! -L ${HOME}/.config/$CONFFILE ]; then
+    ln -sf ${HOME}/.dotfiles/.config/$CONFFILE ${HOME}/.config/$CONFFILE
   fi
 done
 
 if which apt-get 1>/dev/null 2>&1 ; then
   if [ "$(id -u)" != "0" ]; then
     sudo add-apt-repository ppa:daniruiz/flat-remix
-    sudo apt-get install python python-newt screenfetch flat-remix-gnome flat-remix flat-remix-gtk
+    sudo apt-get install python python-new t screenfetch flat-remix-gnome flat-remix flat-remix-gtk
   else 
     add-apt-repository ppa:daniruiz/flat-remix
-    apt-get install python python-newt screenfetch flat-remix-gnome flat-remix flat-remix-gtk
+    apt-get install python python-newt sc reenfetch flat-remix-gnome flat-remix flat-remix-gtk
   fi
 else
   if [ "$(id -u)" != "0" ]; then
     sudo dnf copr enable daniruiz/flat-remix
-    sudo dnf install newt tilix-nautilus tilix screenfetch flat-remix-gnome flat-remix flat-remix-gtk
+    sudo dnf install newt tilix-nautilus  tilix screenfetch flat-remix-gnome flat-remix flat-remix-gtk
   else
-    dnf copr enable daniruiz/flat-remix
+    dnf copr enable daniruiz/flat-remix 
     dnf newt tilix-nautilus tilix screenfetch flat-remix-gnome flat-remix flat-remix-gtk
   fi
 fi
