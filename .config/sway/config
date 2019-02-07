@@ -17,5 +17,6 @@ set $wallpaper ${HOME}/Pictures/wallpapers.jpg
 include config.d/*
 
 ## On login
+exec --no-startup-id xrdb ~/.Xresources
 exec --no-startup-id redshift -m wayland
 exec --no-startup-id mako
