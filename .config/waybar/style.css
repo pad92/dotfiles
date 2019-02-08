@@ -31,8 +31,8 @@ window#waybar {
 }
 
 #clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode {
-    padding: 0 5px;
-    margin: 0 5px;
+    padding: 0 2px;
+    margin: 0 2px;
 }
 
 #battery {
