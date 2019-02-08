@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Save current IFS
+SAVEIFS=$IFS
+# Change IFS to new line.
+IFS=$'\n'
+weather=($(curl -s https://en.wttr.in/Kassel\?0QnT 2>&1 | sed -E 's/^.{15}//' | head -2))
+# Restore IFSClear
+IFS=$SAVEIFS
+
+temp=$(echo ${weather[1]} | sed -E 's/([[:digit:]])+-/\1 to /g')
+
+echo $temp ${weather[0]}
