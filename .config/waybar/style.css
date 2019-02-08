@@ -30,7 +30,7 @@ window#waybar {
     border-bottom: 3px solid white;
 }
 
-#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode {
+#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode, #custom-weather, #custom-spotify {
     padding: 0 2px;
     margin: 0 2px;
 }
@@ -84,6 +84,11 @@ window#waybar {
 
 #custom-spotify {
     color: #26A65B;
+    text-shadow: 2px 2px 4px black;
+}
+
+#custom-weather {
+    color: grey;
 }
 
 #tray {
