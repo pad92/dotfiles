@@ -1,1 +1,0 @@
-usr/share/byobu/profiles/common
