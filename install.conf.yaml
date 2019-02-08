@@ -1,0 +1,22 @@
+- defaults:
+    link:
+      relink: true
+
+- clean: ['~']
+
+- link:
+    ~/.dotfiles: ''
+    ~/.tmux.conf: .tmux.conf
+    ~/.tmux: .tmux
+    ~/.vim: .vim
+    ~/.vimrc: .vimrc
+    ~/.screenrc: .screenrc
+    ~/.Xresources: .Xresources
+    ~/.Xdefaults: .Xdefaults
+    ~/.zshenv: .zshenv
+    ~/.config/:
+      glob: true
+      path: .config/*
+      relink: true
+- shell:
+  - [git submodule update --init --recursive, Installing submodules]

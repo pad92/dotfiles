@@ -20,3 +20,6 @@
 [submodule ".config/rofi/themes"]
 	path = .config/rofi/themes
 	url = https://github.com/DaveDavenport/rofi-themes.git
+[submodule "dotbot"]
+	path = dotbot
+	url = https://github.com/anishathalye/dotbot
