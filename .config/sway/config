@@ -14,9 +14,17 @@ set $menu "rofi -i -modi drun,run,window -show drun"
 # Your wallpaper
 set $wallpaper ${HOME}/Pictures/wallpapers.jpg
 
+# Setting values in gsettings
+set $gnome-schema org.gnome.desktop.interface
+
+exec_always {
+    gsettings set $gnome-schema gtk-theme 'Flat-Remix-Dark'
+    gsettings set $gnome-schema icon-theme 'Flat-Remix-GTK-Darker'
+}
+
 include config.d/*
 
 ## On login
 exec --no-startup-id xrdb ~/.Xresources
-exec --no-startup-id redshift -m wayland
+exec --no-startup-id redshift
 exec --no-startup-id mako
