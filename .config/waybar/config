@@ -1,71 +1,75 @@
+// -*- mode: json -*-
 {
-    "layer": "top", // Waybar at top layer
-    "height": 28, // Waybar height
-    "modules-left": ["sway/workspaces", "sway/mode", "custom/weather", "custom/spotify"],
-    "modules-center": ["sway/window"],
-    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
-    "sway/mode": {
-        "format": "<span style=\"italic\">{}</span>"
-    },
-    "tray": {
-        // "icon-size": 21,
-        "spacing": 10
-    },
-    "clock": {
-        "format-alt": "{:%Y-%m-%d}"
-    },
-    "cpu": {
-        "format": "{usage}% "
-    },
-    "memory": {
-        "format": "{}% "
-    },
-    "battery": {
-        "states": {
-            "good": 95,
-            "warning": 30,
-            "critical": 15
+    "layer": "top",   // Waybar at top layer
+        "height": 24, // Waybar height
+        "modules-left": ["sway/workspaces", "sway/mode", "custom/weather", "custom/spotify"],
+        "modules-center": ["sway/window"],
+        "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
+        "sway/mode": {
+            "format": "{}"
         },
-        "format": "{capacity}% {icon}",
-        // "format-good": "", // An empty format will hide the module
-        // "format-full": "",
-        "format-icons": ["", "", "", "", ""]
-    },
-    "battery#bat2": {
-        "bat": "BAT2"
-    },
-    "network": {
-        "interval": 1,
-        "format-wifi": "{signalStrength}% ",
-        "format-ethernet": "",
-        "format-disconnected": ""
-    },
-    "pulseaudio": {
-        "format": "{volume}% {icon}",
-        "format-bluetooth": "{volume}% {icon}",
-        "format-muted": "",
-        "format-icons": {
-            "headphones": "",
-            "handsfree": "",
-            "headset": "",
-            "phone": "",
-            "portable": "",
-            "car": "",
-            "default": ["", ""]
+        "sway/workspaces": {
+            "format": "{index} {icon}",
+            "format-icons": {
+                "urgent": "",
+                "focused": "",
+                "default": ""
+            }
         },
-        "on-click": "pavucontrol"
-    },
-    "custom/spotify": {
-        "format": " {}",
-        "max-length": 40,
-        "exec": "$HOME/.config/waybar/modules/mediaplayer.py 2> /dev/null",
-        "exec-if": "pgrep spotify"
-
-    },
-    "custom/weather": {
-        "format": "{}",
-        "interval": 1800,
-        "exec": "~/.config/waybar/modules/weather",
-        "exec-if": "ping wttr.in -c1"
-    }
+        "tray": {
+            "spacing": 10
+        },
+        "clock": {
+            "format-alt": "{:%Y-%m-%d}"
+        },
+        "cpu": {
+            "format": "{usage}% "
+        },
+        "memory": {
+            "format": "{}% "
+        },
+        "battery": {
+            "states": {
+                "good": 95,
+                "warning": 30,
+                "critical": 15
+            },
+            "format": "{capacity}% {icon}",
+            "format-icons": ["", "", "", "", ""]
+        },
+        "battery#bat2": {
+            "bat": "BAT2"
+        },
+        "network": {
+            "format-wifi": "{essid} ({signalStrength}%) ",
+            "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
+            "format-disconnected": ""
+        },
+        "pulseaudio": {
+            "format": "{volume}% {icon}",
+            "format-bluetooth": "{volume}% {icon}",
+            "format-muted": "",
+            "format-icons": {
+                "headphones": "",
+                "handsfree": "",
+                "headset": "",
+                "phone": "",
+                "portable": "",
+                "car": "",
+                "default": ["", ""]
+            },
+            "on-click": "pavucontrol"
+        },
+        "custom/spotify": {
+            "format": " {}",
+            "max-length": 40,
+            "exec": "$HOME/.config/waybar/modules/mediaplayer.py 2> /dev/null",
+            "exec-if": "pgrep spotify"
+        },
+        "custom/weather": {
+            "format": "{}",
+            "interval": 1800,
+            "exec": "~/.config/waybar/modules/weather",
+            "exec-if": "ping wttr.in -c1"
+        }
 }
