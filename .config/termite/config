@@ -22,7 +22,7 @@ allow_bold = true
 audible_bell = false
 browser = xdg-open
 clickable_url = true
-font = Anonymous Pro 10 
+font = Source Code Pro Medium 10
 scrollback_lines = 10000
 # Solarized dark color scheme
 
