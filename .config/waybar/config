@@ -9,11 +9,9 @@
             "format": "{}"
         },
         "sway/workspaces": {
-            "format": "{index} {icon}",
+            "format": "{icon}",
             "format-icons": {
-                "urgent": "",
-                "focused": "",
-                "default": ""
+                "urgent": ""
             }
         },
         "tray": {
