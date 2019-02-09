@@ -1,2 +1,2 @@
 rofi.modi:	drun
-rofi.theme: ~/.config/rofi/themes/User\ Themes/material.rasi
+rofi.theme: ~/.config/rofi/oxide.rasi

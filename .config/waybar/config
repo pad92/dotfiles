@@ -35,7 +35,7 @@
         "bat": "BAT2"
     },
     "network": {
-        "interval": 10,
+        "interval": 1,
         "format-wifi": "{signalStrength}% ",
         "format-ethernet": "",
         "format-disconnected": ""
