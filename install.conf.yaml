@@ -2,10 +2,7 @@
     link:
       relink: true
 
-- clean: ['~']
-
 - link:
-    ~/.dotfiles: ''
     ~/.tmux.conf: .tmux.conf
     ~/.tmux: .tmux
     ~/.vim: .vim
@@ -17,6 +14,6 @@
     ~/.config/:
       glob: true
       path: .config/*
-      relink: true
+      force: true
 - shell:
   - [git submodule update --init --recursive, Installing submodules]
