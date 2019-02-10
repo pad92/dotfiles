@@ -10,6 +10,7 @@
     ~/.screenrc: .screenrc
     ~/.Xresources: .Xresources
     ~/.Xdefaults: .Xdefaults
+    ~/.zshrc: .zshrc
     ~/.zshenv: .zshenv
     ~/.config/:
       glob: true
