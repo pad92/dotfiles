@@ -57,10 +57,6 @@ if [ -f ${HOME}/.zshaliases ]
 then
   source ${HOME}/.zshaliases
 fi
-if [ -f ${HOME}/.zshenv ]
-then
-  source ${HOME}/.zshenv
-fi
 
 if [ -f /usr/bin/screenfetch ]; then screenfetch; fi
 if [ -f "${HOME}/.dir_colors" ]; then eval $(dircolors ${HOME}/.dir_colors); fi
