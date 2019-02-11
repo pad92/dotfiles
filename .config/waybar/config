@@ -41,7 +41,8 @@
         "network": {
             "format-wifi": "{essid} ({signalStrength}%) ",
             "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
-            "format-disconnected": ""
+            "format-disconnected": "",
+            "on-click": "termite -e 'sudo wifi-menu'"
         },
         "pulseaudio": {
             "format": "{volume}% {icon}",
