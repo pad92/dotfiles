@@ -3,15 +3,16 @@
       relink: true
 
 - link:
+    ~/.Xdefaults: .Xdefaults
+    ~/.Xresources: .Xresources
+    ~/.fonts: .fonts
+    ~/.screenrc: .screenrc
     ~/.tmux.conf: .tmux.conf
     ~/.tmux: .tmux
     ~/.vim: .vim
     ~/.vimrc: .vimrc
-    ~/.screenrc: .screenrc
-    ~/.Xresources: .Xresources
-    ~/.Xdefaults: .Xdefaults
-    ~/.zshrc: .zshrc
     ~/.zshenv: .zshenv
+    ~/.zshrc: .zshrc
     ~/.config/:
       glob: true
       path: .config/*
