@@ -18,9 +18,9 @@ set $wallpaper ${HOME}/Pictures/wallpapers.jpg
 set $gnome-schema org.gnome.desktop.interface
 
 exec_always {
-    gsettings set $gnome-schema gtk-theme 'Flat-Remix-GTK-Darkest-Solid-NoBorder'
-    gsettings set $gnome-schema icon-theme 'Flat-Remix-Dark'
-    gsettings set org.gnome.shell.extensions.user-theme name 'Flat-Remix-Darkest'
+    gsettings set $gnome-schema gtk-theme 'Numix'
+    gsettings set $gnome-schema icon-theme 'Numix'
+#    gsettings set org.gnome.shell.extensions.user-theme name 'Flat-Remix-Darkest'
 }
 
 include config.d/*
