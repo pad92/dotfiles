@@ -39,8 +39,9 @@
             "bat": "BAT2"
         },
         "network": {
+            "format": "{ifname}",
             "format-wifi": "{essid} ({signalStrength}%) ",
-            "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
+            "format-ethernet": "{ifname} ",
             "format-disconnected": "",
             "on-click": "termite -e 'sudo wifi-menu'"
         },
