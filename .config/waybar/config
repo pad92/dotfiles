@@ -2,9 +2,9 @@
 {
     "layer": "top",   // Waybar at top layer
         "height": 24, // Waybar height
-        "modules-left": ["sway/workspaces", "sway/mode", "custom/weather", "custom/spotify"],
+        "modules-left": ["sway/workspaces", "sway/mode", "custom/spotify"],
         "modules-center": ["sway/window"],
-        "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
+        "modules-right": ["custom/weather", "pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
         "sway/mode": {
             "format": "{}"
         },
