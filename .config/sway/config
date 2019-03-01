@@ -20,7 +20,6 @@ set $gnome-schema org.gnome.desktop.interface
 exec_always {
     gsettings set $gnome-schema gtk-theme 'Numix'
     gsettings set $gnome-schema icon-theme 'Numix'
-#    gsettings set org.gnome.shell.extensions.user-theme name 'Flat-Remix-Darkest'
 }
 
 include config.d/*
