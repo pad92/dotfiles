@@ -18,16 +18,18 @@ fi
 
 ZSH_THEME="pad"
 
-plugins=(ansible
-archlinux
-command-not-found
-docker
-docker-compose
-extract
-github
-httpie
-rsync
-ssh-agent)
+plugins=(
+  ansible
+  archlinux
+  command-not-found
+  docker
+  docker-compose
+  extract
+  github
+  httpie
+  rsync
+  ssh-agent
+)
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
 source ${ZSH}/init.zsh
