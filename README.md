@@ -11,4 +11,4 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 
 ## Archlinux
 
-https://gist.github.com/pad92/9622b29acc4fad2ac6c51a6fe973860e
+https://gist.github.com/pad92/23f901032a0c920ed92eb3f1ea117115
