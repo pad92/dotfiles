@@ -25,7 +25,7 @@ exec_always {
 include config.d/*
 
 ## On login
-exec xrdb ~/.Xresources
+exec --no-startup-id xrdb $HOME/.Xresources
 exec redshift
 exec mako
 exec networkd-notify
