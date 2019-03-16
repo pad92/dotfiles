@@ -11,4 +11,11 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 
 ## Archlinux
 
-https://gist.github.com/pad92/23f901032a0c920ed92eb3f1ea117115
+### yay
+
+[Install](https://github.com/Jguer/yay#installation)
+
+### My installed packages Lists :
+
+* [from official repo](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/pkglist.txt)
+* [from AUR](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/pkglist_aur.txt)
