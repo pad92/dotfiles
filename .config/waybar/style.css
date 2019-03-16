@@ -78,10 +78,6 @@ window#waybar {
     color: white;
 }
 
-#pulseaudio.muted {
-    color: #2a5c45;
-}
-
 #custom-spotify {
     color: #1DB954;
     text-shadow: 2px 2px 4px #0e5828;
