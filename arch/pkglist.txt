@@ -103,7 +103,6 @@ screenfetch
 seahorse
 sed
 shadow
-slim
 strace
 sudo
 sway
@@ -114,6 +113,7 @@ systemd
 systemd-sysvcompat
 tar
 texinfo
+tree
 ttf-droid
 ttf-font-awesome
 ttf-freefont
