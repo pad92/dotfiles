@@ -12,7 +12,7 @@ set $term termite
 set $menu "rofi -i -modi drun,run,window -show drun"
 
 # Your wallpaper
-set $wallpaper ${HOME}/Pictures/wallpapers.jpg
+set $wallpaper ${HOME}/.dotfiles/wallpapers/milky_way.jpg
 
 # Setting values in gsettings
 set $gnome-schema org.gnome.desktop.interface
