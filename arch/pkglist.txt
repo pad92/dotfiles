@@ -2,6 +2,7 @@ adobe-source-code-pro-fonts
 android-tools
 android-udev
 ansible
+artwiz-fonts
 atom
 autoconf
 automake
@@ -60,7 +61,12 @@ jfsutils
 jpegoptim
 jq
 keepass
+languagetool
 less
+libmythes
+libreoffice-still
+libreoffice-still-bg
+libreoffice-still-fr
 libtool
 licenses
 linux
@@ -76,6 +82,8 @@ man-pages
 mdadm
 mplayer
 mpv
+mythes-en
+mythes-fr
 nano
 nemo
 nemo-fileroller
@@ -114,6 +122,7 @@ systemd-sysvcompat
 tar
 texinfo
 tree
+ttf-dejavu
 ttf-droid
 ttf-font-awesome
 ttf-freefont
