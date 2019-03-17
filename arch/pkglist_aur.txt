@@ -2,6 +2,7 @@ aic94xx-firmware
 brave-bin
 docker-credential-secretservice
 grive
+libreoffice-extension-languagetool
 mako-git
 networkd-notify-git
 nodejs-gitmoji-cli
