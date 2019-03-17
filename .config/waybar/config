@@ -1,79 +1,78 @@
 // -*- mode: json -*-
 {
     "layer": "top",   // Waybar at top layer
-        "height": 24, // Waybar height
-        "modules-left": ["sway/workspaces", "sway/mode", "custom/spotify"],
-        "modules-center": ["sway/window"],
-        "modules-right": ["custom/weather", "pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
-        "sway/mode": {
-            "format": "{}"
-        },
-        "sway/workspaces": {
-            "format": "{icon}",
-            "format-icons": {
-                "urgent": ""
-            }
-        },
-        "sway/window": {
-            "format": "{}",
-            "max-length": 40
-        },
-        "tray": {
-            "spacing": 10
-        },
-        "clock": {
-            "format-alt": "{:%Y-%m-%d}"
-        },
-        "cpu": {
-            "format": "{usage}% "
-        },
-        "memory": {
-            "format": "{}% "
-        },
-        "battery": {
-            "states": {
-                "good": 95,
-                "warning": 30,
-                "critical": 15
-            },
-            "format": "{capacity}% {icon}",
-            "format-icons": ["", "", "", "", ""]
-        },
-        "battery#bat2": {
-            "bat": "BAT2"
-        },
-        "network": {
-            "format": "{ifname}",
-            "format-wifi": "{essid} ({signalStrength}%) ",
-            "format-ethernet": "{ifname} ",
-            "format-disconnected": "",
-            "on-click": "termite -e 'sudo wifi-menu'"
-        },
-        "pulseaudio": {
-            "format": "{volume}% {icon}",
-            "format-bluetooth": "{volume}% {icon}",
-            "format-muted": "",
-            "format-icons": {
-                "headphones": "",
-                "handsfree": "",
-                "headset": "",
-                "phone": "",
-                "portable": "",
-                "car": "",
-                "default": ["", ""]
-            },
-            "on-click": "pavucontrol"
-        },
-        "custom/spotify": {
-            "format": " {}",
-            "max-length": 40,
-            "exec": "$HOME/.config/waybar/modules/mediaplayer.py 2> /dev/null",
-            "exec-if": "pgrep spotify"
-        },
-        "custom/weather": {
-            "format": "{}",
-            "interval": 1800,
-            "exec": "~/.config/waybar/modules/weather",
-            "exec-if": "ping wttr.in -c1"
+    "height": 24, // Waybar height
+    "modules-left": ["custom/weather", "sway/workspaces", "sway/mode"],
+    //"modules-center": ["sway/window"],
+    "modules-center": ["custom/spotify"],
+    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery" "clock", "tray"],
+    "sway/mode": {
+        "format": "{}"
+    },
+    "sway/workspaces": {
+        "format": "{icon}",
+        "format-icons": {
+            "urgent": ""
         }
+    },
+    "sway/window": {
+        "format": "{}",
+        "max-length": 40
+    },
+    "tray": {
+        "spacing": 10
+    },
+    "clock": {
+        "interval": 60,
+        "format": "{:%Y-%m-%d %H:%M} "
+    },
+    "cpu": {
+        "format": "{usage}% "
+    },
+    "memory": {
+        "format": "{}% "
+    },
+    "battery": {
+        "states": {
+            "good": 95,
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{capacity}% {icon}",
+        "format-icons": ["", "", "", "", ""]
+    },
+    "network": {
+        "format": "{ifname}",
+        "format-wifi": "{signalStrength}% ",
+        "format-ethernet": "{ifname} ",
+        "format-disconnected": "",
+        "on-click": "termite -e 'sudo wifi-menu'"
+    },
+    "pulseaudio": {
+        "format": "{volume}% {icon}",
+        "format-bluetooth": "{volume}% {icon}",
+        "format-muted": "",
+        "format-icons": {
+            "headphones": "",
+            "handsfree": "",
+            "headset": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
+            "default": ["", ""]
+        },
+        "on-click": "pavucontrol"
+    },
+    "custom/spotify": {
+        "format": " {}",
+        "max-length": 40,
+        "exec": "$HOME/.config/waybar/modules/mediaplayer.py 2> /dev/null",
+        "exec-if": "pgrep spotify"
+    },
+    "custom/weather": {
+        "format": "{}",
+        "interval": 1800,
+        "exec": "~/.config/waybar/modules/weather",
+        "exec-if": "ping wttr.in -c1"
+    }
 }
