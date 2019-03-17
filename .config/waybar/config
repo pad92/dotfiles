@@ -5,7 +5,7 @@
     "modules-left": ["custom/weather", "sway/workspaces", "sway/mode"],
     //"modules-center": ["sway/window"],
     "modules-center": ["custom/spotify"],
-    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery" "clock", "tray"],
+    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock", "tray"],
     "sway/mode": {
         "format": "{}"
     },
