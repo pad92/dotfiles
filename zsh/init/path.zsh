@@ -8,10 +8,8 @@ addExportPath()
     fi
 }
 
-#addExportPath '/sbin'
-#addExportPath '/usr/sbin'
-#addExportPath '/usr/local/sbin'
-
-if [ -d "$HOME/local/bin" ]; then
-    export PATH="$HOME/local/bin:$PATH"
-fi
+addExportPath '/sbin'
+addExportPath '/usr/sbin'
+addExportPath '/usr/local/sbin'
+addExportPath "$HOME/local/bin"
+addExportPath "$HOME/.local/bin"
