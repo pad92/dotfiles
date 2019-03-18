@@ -2,6 +2,7 @@ adobe-source-code-pro-fonts
 android-tools
 android-udev
 ansible
+archlinux-wallpaper
 artwiz-fonts
 atom
 autoconf
@@ -33,6 +34,7 @@ findutils
 firefox
 firefox-i18n-fr
 flex
+galculator
 gawk
 gcc
 gcc-libs
@@ -91,6 +93,7 @@ nemo-image-converter
 nemo-preview
 nemo-seahorse
 nemo-share
+neofetch
 netctl
 openssh
 optipng
@@ -111,6 +114,7 @@ screenfetch
 seahorse
 sed
 shadow
+slurp
 strace
 sudo
 sway
