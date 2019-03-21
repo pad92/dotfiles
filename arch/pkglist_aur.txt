@@ -24,3 +24,4 @@ ttf-font-awesome-4
 ttf-ms-fonts
 wd719x-firmware
 yay
+youtube-dl-git

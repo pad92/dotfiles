@@ -147,6 +147,5 @@ wpa_supplicant
 xdg-user-dirs
 xdg-utils
 xfsprogs
-youtube-dl
 zip
 zsh
