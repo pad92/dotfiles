@@ -7,50 +7,55 @@
 }
 
 window#waybar {
-    background: rgba(43, 48, 59, 0.5);
-    border-bottom: 1px solid rgba(102, 116, 127, 0.5);
-    color:  #b8bfc6;
-    text-shadow: 2px 2px 4px black;
+    background: rgba(0, 43, 54, 0.5);
+    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
+    color: #fdf6e3;
 }
 
 #workspaces button {
     padding: 0 5px;
     background: transparent;
-    color: white;
-    border-bottom: 1px solid transparent;
+    color: #fdf6e3;
+    border-bottom: 3px solid transparent;
 }
 
 #workspaces button.focused {
-    background: #394047;
-    border-bottom: 1px solid #d5d9dd;
+    border-bottom: 3px solid #d5d9dd;
 }
 
 #mode {
     background: #64727D;
-    border-bottom: 1px solid white;
+    border-bottom: 3px solid white;
 }
 
-#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode, #custom-weather, #custom-spotify {
-    padding: 0 2px;
-    margin: 0 2px;
+#clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-spotify, #custom-weather, #tray, #mode, #idle_inhibitor {
+    padding: 0 10px;
+    margin: 0 0px;
+}
+
+#clock {
+    background-color: rgba(100, 114, 125, 0.3);
 }
 
 #battery {
-    color: white;
-    text-shadow: 2px 2px 4px black;
+    background-color: rgba(255, 255, 255, 0.3);
 }
 
+#battery.charging {
+    color: rgba(255, 255, 255, 0.3);
+    background-color: #26A65B;
+}
 
 @keyframes blink {
     to {
         background-color: #ffffff;
-        color: black;
+        color: #000000;
     }
 }
 
 #battery.warning:not(.charging) {
     background: #f53c3c;
-    color: white;
+    color: #ffffff;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -59,35 +64,56 @@ window#waybar {
 }
 
 #cpu {
-    color: white;
+    background: rgba(46, 204, 113, 0.3);
 }
 
 #memory {
-    color: white;
+    background: rgba(155, 89, 182, 0.3);
+}
+
+#backlight {
+    background: rgba(144, 177, 177, 0.3);
 }
 
 #network {
-    color: white;
+    background: rgba(41, 128, 185, 0.3);
 }
 
 #network.disconnected {
-    color: #f53c3c;
+    background: rgba(245, 60, 60, 0.3);
 }
 
 #pulseaudio {
-    color: white;
+    background: rgba(241, 196, 15, 0.3);
+}
+
+#pulseaudio.muted {
+    background: rgba(144, 177, 177, 0.3);
 }
 
 #custom-spotify {
-    color: #1DB954;
-    text-shadow: 2px 2px 4px #0e5828;
+    background: rgba(29, 185, 84, 0.2);
+    text-shadow: 2px 2px #000000;
+
+}
+
+#temperature {
+    background: rgba(240, 147, 43, 0.3);
+}
+
+#temperature.critical {
+    background: rgba(235, 77, 75, 0.3);
 }
 
 #tray {
-    background-color: #2980b9;
+    background-color: rgba(41, 128, 185, 0.3);
 }
 
-#window {
-    padding: 0 5px;
-    border-bottom: 1px solid #d5d9dd;
+#idle_inhibitor {
+    background-color: rgba(45, 52, 54, 0.3);
+}
+
+#idle_inhibitor.activated {
+    background-color: rgba(236, 240, 241, 0.3);
+    color: #2d3436;
 }
