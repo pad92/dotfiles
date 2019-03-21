@@ -14,6 +14,8 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 
 ## Archlinux
 
+![Screenshot](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/screenshot.png)
+
 ### yay
 
 [Install](https://github.com/Jguer/yay#installation)
