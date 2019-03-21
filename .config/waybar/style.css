@@ -10,6 +10,7 @@ window#waybar {
     background: rgba(0, 43, 54, 0.5);
     border-bottom: 3px solid rgba(100, 114, 125, 0.5);
     color: #fdf6e3;
+    text-shadow: 2px 2px #000000;
 }
 
 #workspaces button {
@@ -93,8 +94,6 @@ window#waybar {
 
 #custom-spotify {
     background: rgba(29, 185, 84, 0.2);
-    text-shadow: 2px 2px #000000;
-
 }
 
 #temperature {
