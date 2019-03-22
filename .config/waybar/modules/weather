@@ -1,3 +1,0 @@
-#!/bin/sh
-
-curl -s 'https://fr.wttr.in/?format=1'
