@@ -43,7 +43,7 @@
     "network": {
         "format": "{ifname}",
         "format-wifi": "{signalStrength}% ",
-        "format-ethernet": "{ifname} ",
+        "format-ethernet": "",
         "format-disconnected": "",
         "on-click": "termite -e 'sudo wifi-menu'"
     },
