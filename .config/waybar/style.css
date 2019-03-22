@@ -96,6 +96,11 @@ window#waybar {
     background: rgba(29, 185, 84, 0.2);
 }
 
+#custom-zombie {
+      background: #f53c3c;
+      color: #000000;
+}
+
 #temperature {
     background: rgba(240, 147, 43, 0.3);
 }
