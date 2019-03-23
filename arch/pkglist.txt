@@ -33,6 +33,7 @@ filesystem
 findutils
 firefox
 firefox-i18n-fr
+flashplugin
 flex
 galculator
 gawk
@@ -117,9 +118,6 @@ shadow
 slurp
 strace
 sudo
-sway
-swayidle
-swaylock
 sysfsutils
 systemd
 systemd-sysvcompat
@@ -139,7 +137,6 @@ util-linux
 vi
 vim
 virtualbox
-waybar
 wget
 which
 wpa_actiond
