@@ -1,8 +1,12 @@
 aic94xx-firmware
 arch-gdm-theme-list
 brave-bin
+brightnessctl
 docker-credential-secretservice
+forticlientsslvpn
+google-chrome
 grive
+i3status-git
 libreoffice-extension-languagetool
 mako-git
 networkd-notify-git
@@ -10,7 +14,6 @@ nodejs-gitmoji-cli
 numix-gtk-theme-git
 numix-icon-theme-git
 onedrive-abraunegg-git
-otf-font-awesome-4
 playerctl-git
 powerline-fonts-git
 rambox-bin
@@ -18,10 +21,13 @@ redshift-wayland-git
 rofi-git
 s
 spotify-dev
+sway-git
+swayidle-git
+swaylock-git
 termite-git
 ttf-emojione
-ttf-font-awesome-4
 ttf-ms-fonts
+waybar-git
 wd719x-firmware
 yay
 youtube-dl-git
