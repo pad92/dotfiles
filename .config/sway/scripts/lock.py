@@ -1,9 +1,9 @@
 #!/bin/python3
 
-import subprocess
-import tempfile
 import os
+import subprocess
 import sys
+import tempfile
 
 import i3ipc.i3ipc
 i3 = i3ipc.Connection()
