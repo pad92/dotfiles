@@ -14,6 +14,10 @@ set $menu "rofi -i -modi drun,run,window -show drun"
 # Your wallpaper
 set $wallpaper ${HOME}/.dotfiles/wallpapers/milky_way.jpg
 
+# Your lockscreen
+
+set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
+
 # Setting values in gsettings
 set $gnome-schema org.gnome.desktop.interface
 
@@ -26,10 +30,10 @@ exec_always {
 # your displays after another 300 seconds, and turn your screens back on when
 # resumed. It will also lock your screen before your computer goes to sleep.
 exec swayidle -w \
-        timeout 300 'swaylock -f -c 333333 -s fill -i $wallpaper' \
+        timeout 300 $lockscreen \
         timeout 600 'swaymsg "output * dpms off"' \
              resume 'swaymsg "output * dpms on"' \
-        before-sleep 'swaylock -f -c 333333 -s fill -i $wallpaper'
+        before-sleep $lockscreen
 
 include config.d/*
 
