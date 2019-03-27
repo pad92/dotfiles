@@ -33,6 +33,7 @@ filesystem
 findutils
 firefox
 firefox-i18n-fr
+fish
 flashplugin
 flex
 galculator
@@ -49,6 +50,7 @@ gpa
 grep
 grim
 groff
+gvfs-smb
 gzip
 hdparm
 htop
@@ -56,6 +58,7 @@ hugo
 hunspell-en_US
 hunspell-fr
 iftop
+imv
 inetutils
 intel-ucode
 iproute2
@@ -106,6 +109,7 @@ pciutils
 pepper-flash
 perl
 pkgconf
+pkgfile
 procps-ng
 psmisc
 reiserfsprogs
