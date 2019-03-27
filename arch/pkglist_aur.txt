@@ -6,6 +6,7 @@ docker-credential-secretservice
 forticlientsslvpn
 google-chrome
 grive
+i3ipc-python-git
 i3status-git
 libreoffice-extension-languagetool
 mako-git
