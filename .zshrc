@@ -1,5 +1,5 @@
 export ZSH=${HOME}/.dotfiles/zsh/
-#export TERM=xterm-color
+export TERM=xterm-color
 
 
 if [ -d ${HOME}/.bin ]; then
