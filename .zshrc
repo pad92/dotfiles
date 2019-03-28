@@ -1,5 +1,5 @@
 export ZSH=${HOME}/.dotfiles/zsh/
-export TERM=xterm-color
+#export TERM=xterm-color
 
 
 if [ -d ${HOME}/.bin ]; then
@@ -28,7 +28,6 @@ plugins=(
   github
   httpie
   rsync
-  ssh-agent
 )
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
