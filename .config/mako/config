@@ -1,8 +1,8 @@
-font=Roboto 8
+font=Roboto 12
 background-color=#1D1F21
 text-color=#C5C8C6
 width=200
-border-size=1
-border-color=#282A2E
+border-size=2
+border-color=#C5C8C6
 default-timeout=10000
 padding=8
