@@ -38,4 +38,5 @@ include config.d/*
 exec xrdb $HOME/.Xresources
 exec redshift
 exec mako
+exec greenclip daemon
 exec networkd-notify
