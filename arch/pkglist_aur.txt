@@ -20,6 +20,7 @@ powerline-fonts-git
 rambox-bin
 redshift-wayland-git
 rofi-git
+rofi-greenclip
 s
 spotify-dev
 sway-git
