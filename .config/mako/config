@@ -1,8 +1,12 @@
-font=Inconsolata 12
-background-color=#17a2b8
-text-color=#C5C8C6
-width=200
-border-size=2
-border-color=#C5C8C6
-default-timeout=10000
-padding=8
+font=Noto Sans 10
+background-color=#002b36
+border-size=3
+border-color=#073642
+text-color=#839496
+margin=10,0
+padding=10
+default-timeout=5000
+max-visible=9
+format=<span font='7'>%a</span>\n<b>%s</b>\n%b
+layer=overlay
+group-by=summary
