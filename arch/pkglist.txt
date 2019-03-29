@@ -127,6 +127,7 @@ systemd
 systemd-sysvcompat
 tar
 texinfo
+tmux
 tree
 ttf-dejavu
 ttf-droid
