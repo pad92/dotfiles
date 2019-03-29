@@ -35,7 +35,7 @@ exec swayidle -w \
 include config.d/*
 
 ## On login
-exec --no-startup-id xrdb $HOME/.Xresources
+exec xrdb $HOME/.Xresources
 exec redshift
 exec mako
 exec networkd-notify
