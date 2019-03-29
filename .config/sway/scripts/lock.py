@@ -10,7 +10,7 @@ i3 = i3ipc.Connection()
 outputs = [x['name'] for x in i3.get_outputs()]
 images = [tempfile.mktemp() for _ in outputs]
 lockcmd = ["swaylock"]
-subprocess.call(["playerctl", "play-pause"])
+subprocess.call(["playerctl", "pause"])
 
 # take the screenshots
 for output,image in zip(outputs, images):
