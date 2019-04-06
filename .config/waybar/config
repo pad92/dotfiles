@@ -4,7 +4,7 @@
     "height": 24, // Waybar height
     "modules-left": ["custom/weather", "sway/workspaces", "custom/spotify"],
     "modules-center": ["sway/mode"],
-    "modules-right": ["pulseaudio", "network", "custom/zombie" ,"cpu", "memory", "battery", "clock", "tray"],
+    "modules-right": ["pulseaudio", "backlight", "network", "custom/zombie" ,"cpu", "memory", "battery", "clock", "tray"],
     "sway/mode": {
         "format": "{}"
     },
@@ -78,5 +78,10 @@
         "format": " {}",
         "exec": "ps axo stat= | grep Z | count",
         "exec-if": "ps axo stat= | grep Z"
+    },
+    "backlight": {
+        "device": "intel_backlight",
+        "format": "{percent}% {icon}",
+        "format-icons": ["", ""]
     }
 }
