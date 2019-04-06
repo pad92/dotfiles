@@ -5,3 +5,5 @@
 !.vim/bundle/Vundle.vim/
 !.vim/bundle/puppet/
 .fonts/.uuid
+.tmux/plugins/*
+!.tmux/plugins/tpm/
