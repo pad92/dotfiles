@@ -20,3 +20,6 @@
 [submodule "dotbot"]
 	path = dotbot
 	url = https://github.com/anishathalye/dotbot
+[submodule ".tmux/nord-tmux"]
+	path = .tmux/nord-tmux
+	url = https://github.com/arcticicestudio/nord-tmux.git
