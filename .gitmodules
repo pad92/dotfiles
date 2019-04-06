@@ -2,30 +2,9 @@
 	path = .vim/bundle/Vundle.vim
 	url = https://github.com/VundleVim/Vundle.vim.git
 	branch = master
-[submodule ".themes/Flat-Remix-GNOME-theme.git"]
-	path = .themes/Flat-Remix-GNOME-theme.git
-	url = https://github.com/daniruiz/Flat-Remix-GNOME-theme.git
-	branch = master
-[submodule ".icons/Flat-Remix.git"]
-	path = .icons/Flat-Remix.git
-	url = https://github.com/daniruiz/Flat-Remix
-	branch = master
-[submodule ".tmux/tmux-colors-solarized"]
-	path = .tmux/tmux-colors-solarized
-	url = https://github.com/seebi/tmux-colors-solarized.git
-	branch = master
-[submodule ".config/rofi/themes"]
-	path = .config/rofi/themes
-	url = https://github.com/DaveDavenport/rofi-themes.git
 [submodule "dotbot"]
 	path = dotbot
 	url = https://github.com/anishathalye/dotbot
-[submodule ".tmux/nord-tmux"]
-	path = .tmux/nord-tmux
-	url = https://github.com/arcticicestudio/nord-tmux.git
-[submodule ".tmux/tmux-plugin-sysstat"]
-	path = .tmux/tmux-plugin-sysstat
-	url = https://github.com/samoshkin/tmux-plugin-sysstat.git
 [submodule ".tmux/plugins/tpm"]
 	path = .tmux/plugins/tpm
 	url = https://github.com/tmux-plugins/tpm.git
