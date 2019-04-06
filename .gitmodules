@@ -23,3 +23,9 @@
 [submodule ".tmux/nord-tmux"]
 	path = .tmux/nord-tmux
 	url = https://github.com/arcticicestudio/nord-tmux.git
+[submodule ".tmux/tmux-plugin-sysstat"]
+	path = .tmux/tmux-plugin-sysstat
+	url = https://github.com/samoshkin/tmux-plugin-sysstat.git
+[submodule ".tmux/plugins/tpm"]
+	path = .tmux/plugins/tpm
+	url = https://github.com/tmux-plugins/tpm.git
