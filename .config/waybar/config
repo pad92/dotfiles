@@ -71,7 +71,7 @@
     "custom/weather": {
         "format": "{}",
         "interval": 1800,
-        "exec": "curl -s 'https://fr.wttr.in/?format=1'",
+        "exec": "curl -s 'https://fr.wttr.in/?format=1' | grep -v 'Unknow location'",
         "exec-if": "ping wttr.in -c1"
     },
     "custom/zombie": {
