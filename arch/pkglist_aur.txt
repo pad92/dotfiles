@@ -1,5 +1,7 @@
 aic94xx-firmware
+apg
 arch-gdm-theme-list
+artwiz-fonts
 brave-bin
 brightnessctl
 docker-credential-secretservice
@@ -16,7 +18,6 @@ numix-gtk-theme-git
 numix-icon-theme-git
 onedrive-abraunegg-git
 playerctl-git
-powerline-fonts-git
 rambox-bin
 redshift-wayland-git
 rofi-git
@@ -29,7 +30,10 @@ swaylock-git
 termite-git
 ttf-emojione
 ttf-ms-fonts
+virtualbox-ext-oracle
 waybar-git
 wd719x-firmware
+woeusb
+wpa_actiond
 yay
 youtube-dl-git
