@@ -8,8 +8,8 @@ set $term termite
 # Your preferred application launcher
 set $menu "rofi -i -modi drun,run,window -show drun"
 
-# Your wallpaper
-set $wallpaper ${HOME}/.dotfiles/wallpapers/milky_way.jpg
+# Default wallpaper
+set $wallpaper ${HOME}/.dotfiles/wallpapers/spacetelescope/opo9941a_1920x1080.png
 
 # Your lockscreen
 
