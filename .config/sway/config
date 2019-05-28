@@ -9,7 +9,9 @@ set $term termite
 set $menu "rofi -i -modi drun,run,window -show drun"
 
 # Default wallpaper
-set $wallpaper ${HOME}/.dotfiles/wallpapers/spacetelescope/opo9941a_1920x1080.png
+set $wallpaper_1920x1080 ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1920x1080.jpg
+set $wallpaper_1366x768  ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1366x768.jpg 
+set $wallpaper           $wallpaper_1920x1080
 
 # Your lockscreen
 
