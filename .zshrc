@@ -46,7 +46,8 @@ export LC_ALL="en_US.UTF-8"
 export EDITOR='vim'
 
 # History
-export HISTCONTROL=erasedups  # Ignore duplicate entries in history
+export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
+export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignorespace
 export HISTFILE=${HOME}/.zsh_history
 export HISTIGNORE="&:ls:ll:la:l.:pwd:exit:clear:clr:[bf]g"
 
