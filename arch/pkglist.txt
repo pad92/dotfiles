@@ -2,6 +2,8 @@ adobe-source-code-pro-fonts
 android-tools
 android-udev
 ansible
+arc-gtk-theme
+arc-icon-theme
 archlinux-wallpaper
 atom
 autoconf
@@ -80,6 +82,7 @@ gnome-software
 gnome-system-monitor
 gnome-terminal
 gnome-todo
+gnome-tweaks
 gnome-user-docs
 gnome-user-share
 gnome-video-effects
@@ -91,6 +94,7 @@ grep
 grilo-plugins
 grim
 groff
+gtk-engine-murrine
 gvfs-afc
 gvfs-goa
 gvfs-google
@@ -187,6 +191,7 @@ sysfsutils
 systemd
 systemd-sysvcompat
 tar
+terraform
 texinfo
 tlp
 tmux
