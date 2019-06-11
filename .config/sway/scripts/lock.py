@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 
-import i3ipc.i3ipc
+import i3ipc
 i3 = i3ipc.Connection()
 outputs = [x['name'] for x in i3.get_outputs()]
 images = [tempfile.mktemp() for _ in outputs]
