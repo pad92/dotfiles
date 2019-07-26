@@ -21,16 +21,14 @@ onedrive-abraunegg-git
 playerctl-git
 python-pyvmomi
 rambox-bin
-redshift-wayland-git
+redshift-wlr-gamma-control
 rofi-git
-rofi-greenclip
 s
 spotify-dev
 sway-git
 swayidle-git
 swaylock-git
 termite-git
-ttf-emojione
 ttf-ms-fonts
 virtualbox-ext-oracle
 waybar-git
