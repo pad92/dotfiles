@@ -12,6 +12,7 @@ awesome-terminal-fonts
 aws-cli
 baobab
 bash
+bat
 bind-tools
 binutils
 bison
@@ -87,6 +88,7 @@ gnome-user-docs
 gnome-user-share
 gnome-video-effects
 gnome-weather
+gnu-free-fonts
 gpa
 gpart
 gparted
@@ -137,6 +139,7 @@ make
 man-db
 man-pages
 mdadm
+mlocate
 mousetweaks
 mplayer
 mpv
@@ -154,6 +157,7 @@ nemo-share
 neofetch
 netctl
 networkmanager
+nmap
 ntfs-3g
 openssh
 optipng
@@ -172,6 +176,7 @@ procps-ng
 psmisc
 python-beautifulsoup4
 python-pip
+python-pygithub
 qemu
 qemu-arch-extra
 reiserfsprogs
@@ -202,18 +207,20 @@ tree
 ttf-dejavu
 ttf-droid
 ttf-font-awesome
-ttf-freefont
 ttf-inconsolata
+ttf-joypixels
 ttf-liberation
 ttf-ubuntu-font-family
 unrar
 usbutils
 util-linux
+vagrant
 vi
 vim
 vino
 virt-viewer
 virtualbox
+vlc
 wget
 which
 wpa_supplicant
