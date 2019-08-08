@@ -3,7 +3,6 @@ apg
 arch-gdm-theme-list
 artwiz-fonts
 brave-bin
-brightnessctl
 docker-credential-secretservice
 forticlientsslvpn
 gnome-shell-extension-dash-to-dock
