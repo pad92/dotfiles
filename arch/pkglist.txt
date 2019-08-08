@@ -17,6 +17,7 @@ bind-tools
 binutils
 bison
 bluez-utils
+brightnessctl
 bzip2
 cheese
 chromium
@@ -144,6 +145,7 @@ mousetweaks
 mplayer
 mpv
 mtools
+mtr
 mythes-en
 mythes-fr
 nano
@@ -163,6 +165,7 @@ openssh
 optipng
 orca
 otf-font-awesome
+packer
 pacman
 patch
 pavucontrol
@@ -174,6 +177,7 @@ powerline
 powertop
 procps-ng
 psmisc
+putty
 python-beautifulsoup4
 python-pip
 python-pygithub
@@ -220,6 +224,7 @@ vim
 vino
 virt-viewer
 virtualbox
+virtualbox-guest-iso
 vlc
 wget
 which
