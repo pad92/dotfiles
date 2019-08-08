@@ -13,3 +13,59 @@ git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
 git submodule update --init --recursive "${DOTBOT_DIR}"
 
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # OSX specific installation
+  
+  # install command line tools w/o xcode
+  xcode-select --install
+
+  # install homebrew  (somewhat sketchy execution)
+  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+  brew install coreutils
+  brew install zsh
+  brew install git
+  # install a nice new version of vim
+  brew install vim --override-system vim
+  
+  brew install ctags
+  brew install tree
+  brew install watch
+  brew install wget
+  brew install ngrep
+  
+  # install brew-cask
+  brew install caskroom/cask/brew-cask
+  # install amethys and get my .amethyst config
+  brew cask install amethyst
+  cat <<EOF >> ~/.amethyst
+{
+  "layouts": [
+    "column",
+    "fullscreen",
+    "tall",
+    "row"
+  ],
+
+  "floating": [
+      "com.apple.systempreferences"
+  ],
+
+  "enables-layout-hud-on-space-change": false,
+}
+  EOF
+  
+  brew cask install atom
+  brew cast install iterm2
+  brew cast install spotify
+  brew cast install firefox
+  brew cast install font-fira-code
+  brew cast install font-camingocode
+  brew cast install font-inconsolata
+  brew cast install font-anonymous-pro
+  brew cast install font-anonymice-powerline
+  brew cast install font-interface
+
+fi
