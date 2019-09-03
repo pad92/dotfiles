@@ -70,3 +70,6 @@ fi
 
 if [ -f /usr/bin/neofetch ]; then /usr/bin/neofetch; fi
 if [ -f "${HOME}/.dir_colors" ]; then eval $(dircolors ${HOME}/.dir_colors); fi
+
+test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+
