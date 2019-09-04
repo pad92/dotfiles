@@ -157,6 +157,7 @@ nemo-preview
 nemo-seahorse
 nemo-share
 neofetch
+neovim
 netctl
 networkmanager
 nmap
