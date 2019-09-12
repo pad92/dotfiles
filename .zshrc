@@ -20,7 +20,7 @@ ZSH_THEME="pad"
 
 plugins=(
   ansible
-  archlinux
+  brew
   command-not-found
   docker
   docker-compose
