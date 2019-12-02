@@ -8,17 +8,25 @@ DOTBOT_DIR="dotbot"
 DOTBOT_BIN="bin/dotbot"
 BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+
 cd "${BASEDIR}"
 git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
 git submodule update --init --recursive "${DOTBOT_DIR}"
 
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
 
+echo "Install Atom Packages from ${BASEDIR}/.atom/packages.list"
+for ATOM_PKG in $(<"${BASEDIR}/.atom/packages.list"); do
+    if [ ! -d "~/.atom/packages/${ATOM_PKG}" ]; then
+        apm install "${ATOM_PKG}"
+    fi
+done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # OSX specific installation
-  
+
+  echo 'Install brew'
   ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-  cd ${BASEDIR} brew bundle
+  cd "${BASEDIR}" brew bundle
 
 fi
