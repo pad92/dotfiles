@@ -101,3 +101,4 @@ xfsprogs
 youtube-dl-git
 zip
 zsh
+i3lock-fancy
