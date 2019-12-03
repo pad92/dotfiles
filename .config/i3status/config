@@ -15,62 +15,16 @@ general {
 
 order += "arch_updates"
 order += "loadavg"
-order += "hddtemp"
 order += "nvidia_smi"
-order += "volume master"
 order += "spotify"
+order += "volume master"
 order += "battery_level"
 order += "tztime local"
 
-hddtemp {
-    gradients = True
-}
-
-battery_level {
-    battery_id = 'all'
-    blocks = ''
-    color_charging = '#f0c674'
-    charging_character = ''
-	format = '{icon} {percent}%'
-}
-
-wireless _first_ {
-    format_up = "  %quality, %essid, %ip"
-    format_down = "  down"
-}
-
-networkmanager {
-    devices = ['e*','w*']
-}
-
-net_rate {
-	format = " {down}  {up}"
-	format = "  {total}"
-	precision = 0
-	format_no_connection = ""
-    cache_timeout = 5
-}
-
-tztime local {
-    format = " %Y-%m-%d %H:%M:%S"
-    on_click 1 =  "exec --no-startup-id zenity --calendar"
-}
 arch_updates {
     color = '#7cafc2'
     format = ' {pacman}/{aur}'
     hide_if_zero = True
-}
-volume master {
-    format = "   %volume"
-    format_muted = "   (muted) %volume"
-    device = "default"
-    mixer = "Master"
-    mixer_idx = 0
-    on_click 1 =  "exec --no-startup-id pavucontrol"
-}
-
-disk "/" {
-    format = " %avail"
 }
 
 loadavg {
@@ -84,4 +38,26 @@ spotify {
     button_previous = 5
     format = "{title} / {artist}"
     format_down = ""
+}
+
+volume master {
+    format = "   %volume"
+    format_muted = "   (muted) %volume"
+    device = "default"
+    mixer = "Master"
+    mixer_idx = 0
+    on_click 1 =  "exec --no-startup-id pavucontrol"
+}
+
+battery_level {
+    battery_id = 'all'
+    blocks = ''
+    color_charging = '#f0c674'
+    charging_character = ''
+	format = '{icon} {percent}%'
+}
+
+tztime local {
+    format = " %Y/%m/%d %H:%M"
+    on_click 1 =  "exec --no-startup-id zenity --calendar"
 }
