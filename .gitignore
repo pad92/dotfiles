@@ -1,1 +1,4 @@
 .vim/.netrwhist
+.vim/backup
+.vim/swap
+.fonts/.uuid
