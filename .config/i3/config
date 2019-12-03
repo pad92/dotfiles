@@ -222,3 +222,5 @@ exec_always --no-startup-id ~/.bin/Dropdown-run.sh
 exec_always --no-startup-id ~/.fehbg
 exec --no-startup-id nm-applet
 exec --no-startup-id dunst
+exec --no-startup-id blueman-applet
+exec --no-startup-id feh --randomize --bg-scale /mnt/datas1/pascal/Pictures/digitalblasphemy_1920x1080/*.jpg
