@@ -1,9 +1,1 @@
 .vim/.netrwhist
-.vim/backup
-.vim/bundle/*
-.vim/swap
-!.vim/bundle/Vundle.vim/
-!.vim/bundle/puppet/
-.fonts/.uuid
-.tmux/plugins/*
-!.tmux/plugins/tpm/

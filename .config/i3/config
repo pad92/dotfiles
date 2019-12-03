@@ -39,6 +39,7 @@ bindsym $mod+Shift+q kill
 # installed.
 #bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
 bindsym $mod+Shift+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
+bindsym $mod+Tab exec --no-startup-id "rofi -i -modi drun,run,window -show window"
 
 # change focus
 bindsym $mod+j focus left
@@ -220,7 +221,7 @@ bindsym --release Shift+Print exec scrot -s ~/%Y-%m-%d-%T-screenshot.png
 # system power management
 set $mode_system [l]ock, [e]xit, [s]uspend, [h]ibernate, [R]eboot, [S]hutdown
 mode "$mode_system" {
-    bindsym l mode "default", exec ~/.dotfiles/bin/lock.sh 
+    bindsym l mode "default", exec i3lock-fancy -t '' 
     bindsym e mode "default", exec loginctl terminate-session $(cat /proc/self/sessionid)
     bindsym s mode "default", exec systemctl suspend
     bindsym h mode "default", exec systemctl hibernate
