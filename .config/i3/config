@@ -37,7 +37,8 @@ bindsym $mod+Shift+q kill
 
 # start dmenu (a program launcher)
 # installed.
-bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
+#bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
+bindsym $mod+Shift+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
 
 # change focus
 bindsym $mod+j focus left
@@ -216,6 +217,23 @@ bindsym  XF86MonBrightnessUp    exec  xbacklight -inc 10
 bindsym --release Print exec scrot ~/%Y-%m-%d-%T-screenshot.png
 bindsym --release Shift+Print exec scrot -s ~/%Y-%m-%d-%T-screenshot.png
 
+# system power management
+set $mode_system [l]ock, [e]xit, [s]uspend, [h]ibernate, [R]eboot, [S]hutdown
+mode "$mode_system" {
+    bindsym l mode "default", exec ~/.dotfiles/bin/lock.sh 
+    bindsym e mode "default", exec loginctl terminate-session $(cat /proc/self/sessionid)
+    bindsym s mode "default", exec systemctl suspend
+    bindsym h mode "default", exec systemctl hibernate
+    bindsym Shift+r mode "default", exec systemctl reboot
+    bindsym Shift+s mode "default", exec systemctl poweroff
+
+    # back to normal: Enter or Escape
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+Escape mode "$mode_system"
+
+
 ### Start-up programs ###
 # exec --no-startup-id xrandr --output $MONITOR1 --auto --output $MONITOR2 --primary --preferred --right-of $MONITOR1
 exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
@@ -225,4 +243,4 @@ exec_always --no-startup-id ~/.fehbg
 exec --no-startup-id nm-applet
 exec --no-startup-id dunst
 exec --no-startup-id blueman-applet
-exec --no-startup-id feh --randomize --bg-scale /mnt/datas1/pascal/Pictures/digitalblasphemy_1920x1080/*.jpg
+exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
