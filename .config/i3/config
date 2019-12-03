@@ -193,8 +193,8 @@ client.unfocused        #002b36 #073642 #839496 #073642
 client.urgent           #002b36 #dc322f #fdf6e3 #002b36
 
 ### i3-gaps config ###
-gaps outer 5
-gaps inner 10
+gaps outer 1
+gaps inner 5
 smart_gaps on
 hide_edge_borders smart
 workspace_auto_back_and_forth yes
@@ -209,19 +209,19 @@ bindsym $mod+Control+Up exec ~/.bin/ManageSound.sh "inc"
 bindsym $mod+Control+Down exec ~/.bin/ManageSound.sh "dec"
 bindsym  XF86AudioLowerVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  -5%
 bindsym  XF86AudioMute          exec  pactl       set-sink-mute    @DEFAULT_SINK@  toggle
-bindsym  XF86AudioNext          exec  playerctl   next                             
-bindsym  XF86AudioPlay          exec  playerctl   play-pause                       
-bindsym  XF86AudioPrev          exec  playerctl   previous                         
+bindsym  XF86AudioNext          exec  playerctl   next
+bindsym  XF86AudioPlay          exec  playerctl   play-pause
+bindsym  XF86AudioPrev          exec  playerctl   previous
 bindsym  XF86AudioRaiseVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  +5%
-bindsym  XF86MonBrightnessDown  exec  xbacklight -dec 10              
-bindsym  XF86MonBrightnessUp    exec  xbacklight -inc 10              
+bindsym  XF86MonBrightnessDown  exec  xbacklight -dec 10
+bindsym  XF86MonBrightnessUp    exec  xbacklight -inc 10
 bindsym --release Print exec scrot ~/%Y-%m-%d-%T-screenshot.png
 bindsym --release Shift+Print exec scrot -s ~/%Y-%m-%d-%T-screenshot.png
 
 # system power management
 set $mode_system [l]ock, [e]xit, [s]uspend, [h]ibernate, [R]eboot, [S]hutdown
 mode "$mode_system" {
-    bindsym l mode "default", exec i3lock-fancy -t '' 
+    bindsym l mode "default", exec i3lock-fancy -t ''
     bindsym e mode "default", exec loginctl terminate-session $(cat /proc/self/sessionid)
     bindsym s mode "default", exec systemctl suspend
     bindsym h mode "default", exec systemctl hibernate
