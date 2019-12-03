@@ -8,45 +8,65 @@
 
 general {
     colors = true
-        color_good = "#859900"
-        color_bad = "#dc322f"
-        color_degraded = "#cb4b16"
-        output_format = "i3bar"
-        interval = 2
+    color_good = '#b5bd68'
+    color_bad = '#cc6666'
+    color_degraded = '#f0c674'
 }
 
-
-order += "disk /"
 order += "arch_updates"
-order += "networkmanager"
-order += "battery_level"
 order += "loadavg"
-order += "spotify"
+order += "hddtemp"
+order += "nvidia_smi"
 order += "volume master"
+order += "spotify"
+order += "battery_level"
 order += "tztime local"
+
+hddtemp {
+    gradients = True
+}
+
+battery_level {
+    battery_id = 'all'
+    blocks = ''
+    color_charging = '#f0c674'
+    charging_character = ''
+	format = '{icon} {percent}%'
+}
 
 wireless _first_ {
     format_up = "  %quality, %essid, %ip"
-        format_down = "  down"
+    format_down = "  down"
 }
 
 networkmanager {
     devices = ['e*','w*']
 }
 
-tztime local {
-    format = " %d.%m.%Y   %H:%M"
+net_rate {
+	format = " {down}  {up}"
+	format = "  {total}"
+	precision = 0
+	format_no_connection = ""
+    cache_timeout = 5
 }
 
+tztime local {
+    format = " %Y-%m-%d %H:%M:%S"
+    on_click 1 =  "exec --no-startup-id zenity --calendar"
+}
 arch_updates {
+    color = '#7cafc2'
+    format = ' {pacman}/{aur}'
     hide_if_zero = True
 }
 volume master {
     format = "   %volume"
-        format_muted = "   (muted) %volume"
-        device = "default"
-        mixer = "Master"
-        mixer_idx = 0
+    format_muted = "   (muted) %volume"
+    device = "default"
+    mixer = "Master"
+    mixer_idx = 0
+    on_click 1 =  "exec --no-startup-id pavucontrol"
 }
 
 disk "/" {
@@ -54,18 +74,14 @@ disk "/" {
 }
 
 loadavg {
-    format = 'Loadavg [\?color=orange {1min} ][\?color=gold {5min} {15min}]'
-}
-
-weather_owm {
-    api_key = 47293b5c58f52adab1711cbdee19ec1c
-    city = 'Paris'
+    format = '[\?if=1avg>59  [\?color=1avg {1min}] '
+    format += '[\?color=5avg {5min}] [\?color=15avg {15min}]]'
 }
 
 spotify {
     button_next = 4
     button_play_pause = 1
     button_previous = 5
-    format = "{title} by {artist} -> {time}"
+    format = "{title} / {artist}"
     format_down = ""
 }

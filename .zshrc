@@ -4,11 +4,11 @@ export TERM=xterm-color
 
 if [ -d ${HOME}/.bin ]; then
     export PATH="${PATH}:${HOME}/.bin"
-    for MYBIN in $(ls -d ${HOME}/.bin/*/); do
-        if [ -d "${MYBIN}" ]; then
-            export PATH="${PATH}:${MYBIN}"
-        fi
-    done
+#    for MYBIN in $(ls -d ${HOME}/.bin/*/ 2>/dev/null); do
+#        if [ -d "${MYBIN}" ]; then
+#            export PATH="${PATH}:${MYBIN}"
+#        fi
+#    done
     rehash
 fi
 
@@ -19,15 +19,15 @@ fi
 ZSH_THEME="pad"
 
 plugins=(
-  ssh-agent
-  ansible
-  command-not-found
-  docker
-  docker-compose
-  extract
-  github
-  httpie
-  rsync
+    ssh-agent
+    ansible
+    command-not-found
+    docker
+    docker-compose
+    extract
+    github
+    httpie
+    rsync
 )
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
