@@ -165,8 +165,7 @@ bindsym $mod+r mode "resize"
 bar {
     height 28
     position top
-#    status_command i3status
-status_command py3status
+    status_command py3status
     font pango:DejaVu Sans Mono, FontAwesome 10
     strip_workspace_numbers yes
         colors {
@@ -204,13 +203,16 @@ for_window [window_role="task_dialog"] floating enable
 
 ### Own shortcuts ###
 bindsym $mod+q exec ~/.bin/SystemControl.sh
-bindsym XF86AudioMute exec ~/.bin/ManageSound.sh "mute"
-bindsym XF86AudioRaiseVolume exec ~/.bin/ManageSound.sh "inc"
-bindsym XF86AudioLowerVolume exec ~/.bin/ManageSound.sh "dec"
 bindsym $mod+Control+Up exec ~/.bin/ManageSound.sh "inc"
 bindsym $mod+Control+Down exec ~/.bin/ManageSound.sh "dec"
-bindsym XF86MonBrightnessUp exec xbacklight -inc 10
-bindsym XF86MonBrightnessDown exec xbacklight -dec 10
+bindsym  XF86AudioLowerVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  -5%
+bindsym  XF86AudioMute          exec  pactl       set-sink-mute    @DEFAULT_SINK@  toggle
+bindsym  XF86AudioNext          exec  playerctl   next                             
+bindsym  XF86AudioPlay          exec  playerctl   play-pause                       
+bindsym  XF86AudioPrev          exec  playerctl   previous                         
+bindsym  XF86AudioRaiseVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  +5%
+bindsym  XF86MonBrightnessDown  exec  xbacklight -dec 10              
+bindsym  XF86MonBrightnessUp    exec  xbacklight -inc 10              
 bindsym --release Print exec scrot ~/%Y-%m-%d-%T-screenshot.png
 bindsym --release Shift+Print exec scrot -s ~/%Y-%m-%d-%T-screenshot.png
 
