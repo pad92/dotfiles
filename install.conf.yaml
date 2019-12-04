@@ -3,7 +3,6 @@
       relink: true
 
 - link:
-    ~/.Xdefaults: .Xdefaults
     ~/.Xresources: .Xresources
     ~/.fonts: .fonts
     ~/.screenrc: .screenrc
