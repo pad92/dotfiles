@@ -14,7 +14,7 @@ general {
 }
 
 order += "arch_updates"
-order += "loadavg"
+order += "sysdata"
 order += "nvidia_smi"
 order += "spotify"
 order += "volume master"
@@ -27,9 +27,14 @@ arch_updates {
     hide_if_zero = True
 }
 
-loadavg {
-    format = '[\?if=1avg>59  [\?color=1avg {1min}] '
-    format += '[\?color=5avg {5min}] [\?color=15avg {15min}]]'
+sysdata {
+    format = "Mem [\?color=mem_used_percent {mem_used_percent}%] "
+    format += "CPU [\?color=cpu_used_percent {cpu_usage}%] [\?color=cpu_temp {cpu_temp}]°C"
+}
+
+nvidia_smi {
+    format_gpu = 'GPU [\?color=format_gpu {temperature.gpu}°C '
+    format_gpu += '{memory.used_percent:.1f}%]'
 }
 
 spotify {
@@ -41,11 +46,6 @@ spotify {
 }
 
 volume master {
-    format = "   %volume"
-    format_muted = "   (muted) %volume"
-    device = "default"
-    mixer = "Master"
-    mixer_idx = 0
     on_click 1 =  "exec --no-startup-id pavucontrol"
 }
 
