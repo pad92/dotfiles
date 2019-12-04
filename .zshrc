@@ -30,6 +30,11 @@ plugins=(
     rsync
 )
 
+if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
+    plugins=(${plugins}
+        brew)
+fi
+
 export ZSH_CACHE_DIR=${HOME}/.zcache
 source ${ZSH}/init.zsh
 
@@ -69,13 +74,15 @@ then
   source ${HOME}/.zshaliases
 fi
 
-if [ -f /usr/bin/neofetch ]; then /usr/bin/neofetch; fi
 if [ -f "${HOME}/.dir_colors" ]; then eval $(dircolors ${HOME}/.dir_colors); fi
 
-test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-
-STARTX_BIN=$(command -v startx )
-
-if [ ! -z "${STARTX_BIN}" ] ; then
-    [[ $(tty) == '/dev/tty1' ]] && startx
+if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
+    test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+else
+    STARTX_BIN=$(command -v startx )
+    if [ ! -z "${STARTX_BIN}" ] ; then
+        [[ $(tty) == '/dev/tty1' ]] && startx
+    fi
 fi
+
+if [ -f /usr/bin/neofetch ]; then /usr/bin/neofetch; fi
