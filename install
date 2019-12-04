@@ -8,16 +8,14 @@ DOTBOT_DIR="dotbot"
 DOTBOT_BIN="bin/dotbot"
 BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-
 cd "${BASEDIR}"
 git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
 git submodule update --init --recursive "${DOTBOT_DIR}"
 
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
 
-echo "Install Atom Packages from ${BASEDIR}/.atom/packages.list"
 for ATOM_PKG in $(<"${BASEDIR}/.atom/packages.list"); do
-    if [ ! -d "~/.atom/packages/${ATOM_PKG}" ]; then
+    if [ ! -d "${HOME}/.atom/packages/${ATOM_PKG}" ]; then
         apm install "${ATOM_PKG}"
     fi
 done
@@ -27,10 +25,75 @@ if test -f "$(command -v awesome )"; then
 fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # OSX specific installation
+    # OSX specific installation
 
-  echo 'Install brew'
-  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-  cd "${BASEDIR}" brew bundle
-
+    if ! command -v brew &> /dev/null ; then 
+        echo 'Install brew'
+        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+        cd "${BASEDIR}" brew bundle
+        brew cask install 1clipboard \
+            atom \
+            authy \
+            brave-browser \
+            dashlane \
+            docker \
+            dropbox \
+            firefox \
+            flash-npapi \
+            flash-player \
+            font-anonymice-powerline \
+            font-anonymous-pro \
+            font-camingocode \
+            font-fira-code \
+            font-inconsolata \
+            gas-mask \
+            google-chrome \
+            gpg-suite \
+            iterm2 \
+            macpass \
+            microsoft-teams \
+            onedrive \
+            pgadmin4 \
+            slack \
+            spotify \
+            virtualbox \
+            virtualbox-extension-pack \
+            vlc
+        brew install ansible \
+            awscli \
+            curl \
+            docker \
+            docker-completion \
+            docker-compose \
+            docker-compose-completion \
+            findutils \
+            gawk \
+            git \
+            gitmoji \
+            gnu-sed \
+            gnu-tar \
+            gnutls \
+            grep \
+            htop \
+            hugo \
+            hunspell \
+            jpeg \
+            ncftp \
+            neofetch \
+            nmap \
+            openjpeg \
+            openssh \
+            openssl \
+            python \
+            screen \
+            terraform \
+            tmux \
+            tree \
+            vim \
+            wget \
+            xz \
+            youtube-dl \
+            zsh \
+            zsh-completions
+    fi
 fi
