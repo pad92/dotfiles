@@ -33,7 +33,9 @@ gnu-free-fonts
 hugo
 hunspell-en_US
 hunspell-fr
+i3-gaps
 i3ipc-python-git
+i3lock-fancy
 jpegoptim
 jq
 keepass
@@ -64,6 +66,7 @@ powerline
 powertop
 procps-ng
 psmisc
+py3status 
 qemu
 qemu-arch-extra
 redshift-wlr-gamma-control
@@ -101,4 +104,3 @@ xfsprogs
 youtube-dl-git
 zip
 zsh
-i3lock-fancy
