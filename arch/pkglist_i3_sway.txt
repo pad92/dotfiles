@@ -19,6 +19,7 @@ cryptsetup
 docker
 docker-compose
 epiphany
+escrotum
 evolution
 evolution-ews
 exfat-utils
@@ -58,6 +59,7 @@ nmap
 nodejs-gitmoji-cli
 numix-gtk-theme-git
 numix-icon-theme-git
+numlockx
 onedrive-abraunegg-git
 optipng
 otf-font-awesome
@@ -72,6 +74,10 @@ psmisc
 py3status 
 qemu
 qemu-arch-extra
+redshift
+rofi-calc
+rofi-dmenu
+rofimoji
 rsync
 seahorse
 sushi
@@ -107,8 +113,3 @@ xfsprogs
 youtube-dl-git
 zip
 zsh
-redshift
-rofi-dmenu
-rofi-calc
-rofimoji
-numlockx
