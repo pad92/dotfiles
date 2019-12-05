@@ -14,27 +14,48 @@ general {
 }
 
 order += "arch_updates"
-order += "sysdata"
+order += "sysdata cpu"
+order += "sysdata mem"
 order += "nvidia_smi"
 order += "spotify"
 order += "volume master"
 order += "battery_level"
+order += "weather_owm"
 order += "tztime local"
+
+weather_owm {
+    api_key = '47293b5c58f52adab1711cbdee19ec1c'
+#    api_key = env(PY3S_W_API)
+    city = 'Paris'
+    lang = 'fr'
+    cache_timeout = 7200
+    country = "France"
+    forecast_include_today = True
+    forecast_days = 2
+    format = "{temperature} {forecast}"
+    unit_temperature = "C"
+    format_temperature = "[\?color=all {current:.0f}°{unit}]"
+    on_click 1 = "exec brave https://darksky.net/forecast/48.8684,2.1765/ca12/fr" 
+    request_timeout = 60
+}
 
 arch_updates {
     color = '#7cafc2'
     format = ' {pacman}/{aur}'
     hide_if_zero = True
+    on_click 1 = 'termite -e \'yay -Syyu --devel\''
 }
 
-sysdata {
+sysdata cpu {
+    format = "CPU [\?color=cpu_used_percent {cpu_usage}%] [\?color=cpu_temp {cpu_temp}]°C"
+}
+sysdata mem {
     format = "Mem [\?color=mem_used_percent {mem_used_percent}%] "
-    format += "CPU [\?color=cpu_used_percent {cpu_usage}%] [\?color=cpu_temp {cpu_temp}]°C"
 }
 
 nvidia_smi {
-    format_gpu = 'GPU [\?color=format_gpu {temperature.gpu}°C '
-    format_gpu += '{memory.used_percent:.1f}%]'
+    format_gpu = 'GPU [\?color=temperature.gpu {temperature.gpu}°C] '
+    format_gpu += '[\?color=memory.used_percent {memory.used_percent:.1f}%]'
 }
 
 spotify {

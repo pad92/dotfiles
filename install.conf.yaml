@@ -12,6 +12,7 @@
     ~/.vimrc: .vimrc
     ~/.zshenv: .zshenv
     ~/.zshrc: .zshrc
+    ~/.xinitrc: .xinitrc
     ~/.config/:
       glob: true
       path: .config/*
