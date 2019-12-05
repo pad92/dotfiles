@@ -39,7 +39,7 @@ bindsym $mod+Shift+q kill
 # installed.
 #bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
 bindsym $mod+Shift+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
-bindsym $mod+Tab exec --no-startup-id "rofi -i -modi drun,run,window -show window"
+bindsym $mod+Tab     exec --no-startup-id "rofi -i -modi drun,run,window -show window"
 
 # change focus
 bindsym $mod+j focus left
@@ -132,8 +132,6 @@ bindsym $mod+Shift+0 move container to workspace $ws10
 bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
 bindsym $mod+Shift+r restart
-# exit i3 (logs you out of your X session)
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
 
 # resize window (you can also use the mouse for that)
 mode "resize" {
@@ -194,12 +192,13 @@ set $base0F #a16946
 # Basic bar configuration using the Base16 variables.
 bar {
     position top
+    i3bar_command i3bar -t
     status_command py3status
 
     colors {
-        background $base00
+        background #181818cc
         separator  $base01
-        statusline $base04
+        statusline #b8b8b8cc
 
         # State             Border  BG      Text
         focused_workspace   $base05 $base0D $base00
@@ -234,14 +233,14 @@ for_window [window_role="task_dialog"] floating enable
 bindsym $mod+q exec ~/.bin/SystemControl.sh
 bindsym $mod+Control+Up exec ~/.bin/ManageSound.sh "inc"
 bindsym $mod+Control+Down exec ~/.bin/ManageSound.sh "dec"
-bindsym  XF86AudioLowerVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  -5%
-bindsym  XF86AudioMute          exec  pactl       set-sink-mute    @DEFAULT_SINK@  toggle
-bindsym  XF86AudioNext          exec  playerctl   next
-bindsym  XF86AudioPlay          exec  playerctl   play-pause
-bindsym  XF86AudioPrev          exec  playerctl   previous
-bindsym  XF86AudioRaiseVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  +5%
-bindsym  XF86MonBrightnessDown  exec  xbacklight -dec 10
-bindsym  XF86MonBrightnessUp    exec  xbacklight -inc 10
+bindsym XF86AudioLowerVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  -5%
+bindsym XF86AudioMute          exec  pactl       set-sink-mute    @DEFAULT_SINK@  toggle
+bindsym XF86AudioNext          exec  playerctl   next
+bindsym XF86AudioPlay          exec  playerctl   play-pause
+bindsym XF86AudioPrev          exec  playerctl   previous
+bindsym XF86AudioRaiseVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  +5%
+bindsym XF86MonBrightnessDown  exec  xbacklight -dec 10
+bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 bindsym --release Print exec scrot ~/%Y-%m-%d-%T-screenshot.png
 bindsym --release Shift+Print exec scrot -s ~/%Y-%m-%d-%T-screenshot.png
 
@@ -264,11 +263,10 @@ bindsym $mod+Escape mode "$mode_system"
 
 ### Start-up programs ###
 # exec --no-startup-id xrandr --output $MONITOR1 --auto --output $MONITOR2 --primary --preferred --right-of $MONITOR1
-exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
+# exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
 exec_always --no-startup-id setxkbmap -model pc105 -layout us -variant intl -option altwin:swap_lalt_lwin
-exec_always --no-startup-id ~/.bin/Dropdown-run.sh
-exec_always --no-startup-id ~/.fehbg
-exec --no-startup-id nm-applet
-exec --no-startup-id dunst
-exec --no-startup-id blueman-applet
+exec --no-startup-id nm-applet      # NetworkManager
+exec --no-startup-id dunst          # notif
+exec --no-startup-id blueman-applet # bluetooth
+exec --no-startup-id picom -b -d :0 # transparency
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg

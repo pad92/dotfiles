@@ -1,3 +1,9 @@
+Xft.antialias: true
+Xft.hinting: true
+Xft.hintstyle: hintslight
+Xft.lcdfilter: lcddefault
+Xft.rgba: rgb
+
 ! Base16 Default Dark
 ! Scheme: Chris Kempson (http://chriskempson.com)
 
