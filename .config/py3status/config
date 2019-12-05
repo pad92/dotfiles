@@ -16,11 +16,13 @@ general {
 order += "arch_updates"
 order += "sysdata cpu"
 order += "sysdata mem"
+order += 'net_rate'
 order += "nvidia_smi"
 order += "spotify"
 order += "volume master"
 order += "battery_level"
 order += "weather_owm"
+order += 'xrandr'
 order += "tztime local"
 
 weather_owm {
@@ -44,6 +46,13 @@ arch_updates {
     format = ' {pacman}/{aur}'
     hide_if_zero = True
     on_click 1 = 'termite -e \'yay -Syyu --devel\''
+}
+
+net_rate {
+  format = '\?color=total {total}'
+  format_value = '{value:.0f} {unit}'
+  thresholds = {'total': [(0, 'hidden'), (1499500, 'degraded'), (14995000, 'bad')]} # 8 mbit, 80 mbit
+  unit = 'MB/s'
 }
 
 sysdata cpu {
@@ -78,6 +87,10 @@ battery_level {
 	format = '{icon} {percent}%'
 }
 
+xrandr {
+  fixed_width = false
+  hide_if_single_combination = true
+}
 tztime local {
     format = " %Y/%m/%d %H:%M"
     on_click 1 =  "exec --no-startup-id zenity --calendar"
