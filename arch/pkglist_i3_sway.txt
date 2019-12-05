@@ -7,6 +7,7 @@ apg
 archlinux-wallpaper
 artwiz-fonts
 atom
+auracle
 awesome-terminal-fonts
 aws-cli
 bash
@@ -61,6 +62,7 @@ onedrive-abraunegg-git
 optipng
 otf-font-awesome
 packer
+pacman-contrib
 playerctl
 powerline
 powertop
@@ -78,6 +80,7 @@ swayidle-git
 swaylock-git
 terraform
 tmux
+trizen
 ttf-dejavu
 ttf-droid
 ttf-font-awesome
