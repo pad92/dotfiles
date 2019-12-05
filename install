@@ -21,7 +21,9 @@ for ATOM_PKG in $(<"${BASEDIR}/.atom/packages.list"); do
 done
 
 if test -f "$(command -v awesome )"; then
-    git clone --recursive https://github.com/lcpz/awesome-copycats.git ~/.config/awesome
+    if [ ! -d "${HOME}/.config/awesome" ]; then
+        git clone --recursive https://github.com/lcpz/awesome-copycats.git "${HOME}/.config/awesome"
+    fi
 fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
