@@ -18,7 +18,7 @@ Plugin 'tpope/vim-fugitive'
 call vundle#end()            " required
 filetype plugin indent on    " required
 
-let g:airline_theme='base16_default'
+let g:airline_theme='base16_monokai'
 
 " Vim5 and later versions support syntax highlighting. Uncommenting the next
 " line enables syntax highlighting by default.
