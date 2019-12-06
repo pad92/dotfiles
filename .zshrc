@@ -85,4 +85,4 @@ else
     fi
 fi
 
-if [ -f /usr/bin/neofetch ]; then /usr/bin/neofetch; fi
+if [ -x $(command -v neofetch) ]; then neofetch; fi
