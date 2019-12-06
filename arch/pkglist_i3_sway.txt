@@ -41,6 +41,7 @@ i3lock-fancy
 jpegoptim
 jq
 keepass
+kitty
 languagetool
 libreoffice-extension-languagetool
 libreoffice-still
