@@ -4,6 +4,7 @@ android-tools
 android-udev
 ansible
 apg
+arc-gtk-theme
 archlinux-wallpaper
 artwiz-fonts
 atom
@@ -18,11 +19,13 @@ bzip2
 cryptsetup
 docker
 docker-compose
+dunst
 epiphany
 escrotum
 evolution
 evolution-ews
 exfat-utils
+feh
 ffmpegthumbnailer
 firefox
 firefox-i18n-fr
@@ -54,6 +57,7 @@ mythes-en
 mythes-fr
 nautilus
 neofetch
+network-manager-applet
 nmap
 nodejs-gitmoji-cli
 numix-gtk-theme-git
@@ -64,6 +68,7 @@ optipng
 otf-font-awesome
 packer
 pacman-contrib
+paper-icon-theme
 picom
 playerctl
 powerline
@@ -78,6 +83,7 @@ rofi-calc
 rofi-dmenu
 rofimoji
 rsync
+scrot
 seahorse
 sushi
 sway-git
@@ -109,13 +115,8 @@ xdg-user-dirs
 xdg-user-dirs-gtk
 xdg-utils
 xfsprogs
+xorg-xinit
+xorg-xrandr
 youtube-dl-git
 zip
 zsh
-network-manager-applet
-xorg-xinit
-dunst
-xorg-xrandr
-escrotum
-scrot
-feh
