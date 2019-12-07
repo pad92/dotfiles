@@ -11,9 +11,13 @@ WINDOW_ICONS = {
     "kitty": "",
     "chromium": "",
     "brave-browser": "",
+    "evolution": "",
+    "wine": "",
+    "spotify": "",
+
 }
 
-DEFAULT_ICON = "󰀏"
+DEFAULT_ICON = ""
 
 
 def xprop(win_id, property):
