@@ -16,6 +16,7 @@ WINDOW_ICONS = {
     "spotify": "",
     "vlc": "",
     "wine": "",
+    "firefox": "",
 }
 
 DEFAULT_ICON = ""
