@@ -69,12 +69,16 @@ otf-font-awesome
 packer
 pacman-contrib
 paper-icon-theme
+pavucontrol
 picom
 playerctl
 powerline
 powertop
 procps-ng
 psmisc
+pulseaudio-bluetooth
+pulseaudio-equalizer
+pulseaudio-jack
 py3status 
 qemu
 qemu-arch-extra
