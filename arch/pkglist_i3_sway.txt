@@ -46,7 +46,6 @@ libreoffice-extension-languagetool
 libreoffice-still
 libreoffice-still-bg
 libreoffice-still-fr
-linux-lts-headers
 mako-git
 mplayer
 mpv
@@ -113,3 +112,10 @@ xfsprogs
 youtube-dl-git
 zip
 zsh
+network-manager-applet
+xorg-xinit
+dunst
+xorg-xrandr
+escrotum
+scrot
+feh
