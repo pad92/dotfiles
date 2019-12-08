@@ -27,9 +27,8 @@ fi
 ZSH_THEME="pad"
 
 plugins=(
-    zsh-syntax-highlighting
-    ssh-agent
     ansible
+    archlinux
     command-not-found
     docker
     docker-compose
@@ -37,6 +36,8 @@ plugins=(
     github
     httpie
     rsync
+    ssh-agent
+    zsh-syntax-highlighting
 )
 
 if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
