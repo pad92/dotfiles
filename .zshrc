@@ -28,7 +28,7 @@ ZSH_THEME="pad"
 
 plugins=(
     ansible
-    archlinux
+    archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
     command-not-found
     docker
     docker-compose
