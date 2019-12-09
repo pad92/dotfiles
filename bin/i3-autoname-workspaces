@@ -17,6 +17,7 @@ WINDOW_ICONS = {
     "telegram-desktop": "",
     "vlc": "",
     "wine": "",
+    "firefox": "",
 }
 
 DEFAULT_ICON = ""
