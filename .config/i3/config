@@ -285,5 +285,7 @@ exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
 exec --no-startup-id picom -b -d :0 # transparency
+exec --no-startup-id exec /home/pascal/.dropbox-dist/dropboxd start 
+exec --no-startup-id exec /opt/OpenDrive/odrive 
 exec ~/.dotfiles/bin/i3-autoname-workspaces &
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
