@@ -1,6 +1,14 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM=xterm-color
 
+autoload -Uz colors && colors
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+zmodload zsh/complist
+compinit
+_comp_options+=(globdots) # incude dotfiles
+
+#
 
 if [ -d ${HOME}/.bin ]; then
     export PATH="${PATH}:${HOME}/.bin"
@@ -19,8 +27,8 @@ fi
 ZSH_THEME="pad"
 
 plugins=(
-    ssh-agent
     ansible
+    archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
     command-not-found
     docker
     docker-compose
@@ -28,6 +36,8 @@ plugins=(
     github
     httpie
     rsync
+    ssh-agent
+    zsh-syntax-highlighting
 )
 
 if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
