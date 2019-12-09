@@ -288,5 +288,4 @@ exec --no-startup-id picom -b -d :0 # transparency
 exec --no-startup-id /home/pascal/.dropbox-dist/dropboxd start 
 exec --no-startup-id /opt/OpenDrive/odrive 
 exec --no-startup-id ~/.dotfiles/bin/i3-autoname-workspaces &
-exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
