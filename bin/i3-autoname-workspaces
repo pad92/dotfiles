@@ -14,6 +14,7 @@ WINDOW_ICONS = {
     "kitty": "",
     "lutris": "",
     "spotify": "",
+    "telegram-desktop": "",
     "vlc": "",
     "wine": "",
 }
