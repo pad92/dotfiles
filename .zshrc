@@ -1,12 +1,6 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM=xterm-color
 
-autoload -Uz colors && colors
-autoload -Uz compinit && compinit
-zstyle ':completion:*' menu select
-zmodload zsh/complist
-compinit
-_comp_options+=(globdots) # incude dotfiles
 
 #
 
@@ -37,8 +31,16 @@ plugins=(
     httpie
     rsync
     ssh-agent
+    zsh-autosuggestions
+    zsh-completions
     zsh-syntax-highlighting
 )
+autoload -Uz colors && colors
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+zmodload zsh/complist
+compinit
+_comp_options+=(globdots) # incude dotfiles
 
 if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
     plugins=(${plugins}
@@ -62,6 +64,7 @@ export EDITOR='vim'
 export GUI_EDITOR='atom'
 
 # History
+export HIST_STAMPS="mm/dd/yyyy"
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignorespace
 export HISTFILE=${HOME}/.zsh_history
