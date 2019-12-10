@@ -13,17 +13,13 @@ brave-bin
 brightnessctl
 bzip2
 cryptsetup
-docker
-docker-compose
 dunst
 epiphany
 escrotum
-evolution
-evolution-ews
-exfat-utils
 feh
 ffmpegthumbnailer
 firefox
+firefox-i18n-en-us
 firefox-i18n-fr
 fish
 flashplugin
@@ -64,6 +60,7 @@ powertop
 procps-ng
 psmisc
 pulseaudio-bluetooth
+pulseaudio-ctl
 pulseaudio-equalizer
 pulseaudio-jack
 py3status 

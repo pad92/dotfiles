@@ -228,7 +228,21 @@ smart_gaps on
 hide_edge_borders smart
 workspace_auto_back_and_forth yes
 new_window none
+
 for_window [class="^.*"] border pixel 1
+# Enable float for some windows
+for_window [class="^Arandr$"] floating enable
+for_window [class="^Pavucontrol$"] floating enable
+for_window [class="^Steam$" title=".* - Chat"] floating enable
+for_window [class="^Steam$" title=".* - event started"] floating enable
+for_window [class="^Steam$" title=".* CD key"] floating enable
+for_window [class="^Steam$" title="Steam - News"] floating enable
+for_window [class="^Steam$" title="^Friends List$"] floating enable
+for_window [class="^Steam$" title="^Screenshot Uploader$"] floating enable
+for_window [class="^Steam$" title="^Settings$"] floating enable
+for_window [class="^Steam$" title="^Steam - Self Updater$"] floating enable
+for_window [class="^Steam$" title="^Steam Guard - Computer Authorization Required$"] floating enable
+for_window [title="^Steam Keyboard$"] floating enable
 for_window [window_role="pop-up"] floating enable
 for_window [window_role="task_dialog"] floating enable
 
@@ -236,12 +250,12 @@ for_window [window_role="task_dialog"] floating enable
 bindsym $mod+q exec ~/.bin/SystemControl.sh
 bindsym $mod+Control+Up exec ~/.bin/ManageSound.sh "inc"
 bindsym $mod+Control+Down exec ~/.bin/ManageSound.sh "dec"
-bindsym XF86AudioLowerVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  -5%
-bindsym XF86AudioMute          exec  pactl       set-sink-mute    @DEFAULT_SINK@  toggle
-bindsym XF86AudioNext          exec  playerctl   next
-bindsym XF86AudioPlay          exec  playerctl   play-pause
-bindsym XF86AudioPrev          exec  playerctl   previous
-bindsym XF86AudioRaiseVolume   exec  pactl       set-sink-volume  @DEFAULT_SINK@  +5%
+bindsym XF86AudioLowerVolume   exec  pulseaudio-ctl down
+bindsym XF86AudioMute          exec  pulseaudio-ctl mute
+bindsym XF86AudioNext          exec  playerctl next
+bindsym XF86AudioPlay          exec  playerctl play-pause
+bindsym XF86AudioPrev          exec  playerctl previous
+bindsym XF86AudioRaiseVolume   exec  pulseaudio-ctl up
 bindsym XF86MonBrightnessDown  exec  xbacklight -dec 10
 bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 
@@ -285,7 +299,7 @@ exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
 exec --no-startup-id picom -b -d :0 # transparency
-exec --no-startup-id /home/pascal/.dropbox-dist/dropboxd start 
-exec --no-startup-id /opt/OpenDrive/odrive 
+#exec --no-startup-id /home/pascal/.dropbox-dist/dropboxd start 
+#exec --no-startup-id /opt/OpenDrive/odrive 
 exec --no-startup-id ~/.dotfiles/bin/i3-autoname-workspaces &
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
