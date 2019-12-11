@@ -1,7 +1,6 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM=xterm-256color
 
-
 #
 
 if [ -d ${HOME}/.bin ]; then
@@ -30,7 +29,7 @@ plugins=(
     github
     httpie
     rsync
-    ssh-agent
+  #  ssh-agent
     zsh-autosuggestions
     zsh-completions
     zsh-syntax-highlighting
