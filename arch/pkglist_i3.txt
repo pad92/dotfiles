@@ -1,5 +1,6 @@
 adobe-source-code-pro-fonts
 aic94xx-firmware
+alacritty
 apg
 arc-gtk-theme
 artwiz-fonts
