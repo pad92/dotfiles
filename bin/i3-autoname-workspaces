@@ -12,6 +12,7 @@ WINDOW_ICONS = {
     "chromium": "",
     "evolution": "",
     "kitty": "",
+    "Alacritty": "",
     "lutris": "",
     "spotify": "",
     "telegram-desktop": "",
