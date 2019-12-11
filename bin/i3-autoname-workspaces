@@ -8,17 +8,17 @@ import sys
 import i3ipc
 
 WINDOW_ICONS = {
+    "alacritty": "",
     "brave-browser": "",
     "chromium": "",
     "evolution": "",
+    "firefox": "",
     "kitty": "",
-    "alacritty": "",
     "lutris": "",
     "spotify": "",
     "telegram-desktop": "",
     "vlc": "",
     "wine": "",
-    "firefox": "",
 }
 
 DEFAULT_ICON = ""
