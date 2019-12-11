@@ -298,7 +298,6 @@ exec_always --no-startup-id setxkbmap -model pc105 -layout us -variant intl -opt
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
-exec --no-startup-id picom -b -d :0 # transparency
 #exec --no-startup-id /home/pascal/.dropbox-dist/dropboxd start 
 #exec --no-startup-id /opt/OpenDrive/odrive 
 exec --no-startup-id ~/.dotfiles/bin/i3-autoname-workspaces &

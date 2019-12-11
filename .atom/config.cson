@@ -34,9 +34,10 @@
     ]
     lower_case_primitives: true
   editor:
-    fontFamily: "Fira Code"
+    fontFamily: "Inconsolata"
     showIndentGuide: true
     showInvisibles: true
+    softTabs: false
     tabLength: 4
     tabType: "soft"
   "exception-reporting":

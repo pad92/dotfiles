@@ -39,7 +39,7 @@ font:
   italic:
     style: Italic
 
-  size: 10.0
+  size: 8
 
   offset:
     x: 0
