@@ -54,7 +54,6 @@ packer
 pacman-contrib
 paper-icon-theme
 pavucontrol
-picom
 playerctl
 powerline
 powertop
@@ -90,6 +89,7 @@ vim
 virt-viewer
 wget
 which
+xcompmgr
 xdg-user-dirs
 xdg-user-dirs-gtk
 xdg-utils
