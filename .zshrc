@@ -97,8 +97,4 @@ else
     fi
 fi
 
-if [ -x $(command -v kitty) ]; then
-    alias icat="kitty +kitten icat"
-fi
-
 if [ -x $(command -v neofetch) ]; then neofetch; fi
