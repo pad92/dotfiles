@@ -32,7 +32,7 @@ font pango: Taskbar, Cantarell 9
 floating_modifier $mod
 
 # start a terminal
-bindsym $mod+Return exec alacritty
+bindsym $mod+Return exec i3-sensible-terminal
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -295,10 +295,10 @@ bindsym $mod+Escape mode "$mode_system"
 # exec --no-startup-id xrandr --output $MONITOR1 --auto --output $MONITOR2 --primary --preferred --right-of $MONITOR1
 # exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
 exec_always --no-startup-id setxkbmap -model pc105 -layout us -variant intl -option altwin:swap_lalt_lwin
+exec --no-startup-id xcompmgr &     # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
-#exec --no-startup-id /home/pascal/.dropbox-dist/dropboxd start 
-#exec --no-startup-id /opt/OpenDrive/odrive 
+exec --no-startup-id redshift
 exec --no-startup-id ~/.dotfiles/bin/i3-autoname-workspaces &
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
