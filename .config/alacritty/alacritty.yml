@@ -9,6 +9,7 @@
 
 env:
   TERM: xterm-256color
+  WINIT_HIDPI_FACTOR: "1"
 
 # Window configurations
 window:
@@ -23,7 +24,7 @@ window:
   decorations: full
 
 scrolling:
-  multiplier: 1
+  multiplier: 3
   auto_scroll: false
 
 tabspaces: 2
