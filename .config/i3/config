@@ -294,7 +294,6 @@ bindsym $mod+Escape mode "$mode_system"
 ### Start-up programs ###
 # exec --no-startup-id xrandr --output $MONITOR1 --auto --output $MONITOR2 --primary --preferred --right-of $MONITOR1
 # exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
-exec_always --no-startup-id setxkbmap -model pc105 -layout us -variant intl -option altwin:swap_lalt_lwin
 exec --no-startup-id xcompmgr &     # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
