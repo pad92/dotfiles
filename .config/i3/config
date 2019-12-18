@@ -247,9 +247,9 @@ for_window [window_role="pop-up"] floating enable
 for_window [window_role="task_dialog"] floating enable
 
 ### Own shortcuts ###
-bindsym $mod+q exec ~/.bin/SystemControl.sh
-bindsym $mod+Control+Up exec ~/.bin/ManageSound.sh "inc"
-bindsym $mod+Control+Down exec ~/.bin/ManageSound.sh "dec"
+bindsym $mod+Escape            exec ~/.dotfiles/bin/SystemControl.sh
+bindsym $mod+Control+Up        exec ~/.dotfiles/bin/ManageSound.sh "inc"
+bindsym $mod+Control+Down      exec ~/.dotfiles/bin/ManageSound.sh "dec"
 bindsym XF86AudioLowerVolume   exec  pulseaudio-ctl down
 bindsym XF86AudioMute          exec  pulseaudio-ctl mute
 bindsym XF86AudioNext          exec  playerctl next
@@ -274,26 +274,7 @@ mode "$mode_capture" {
 }
 bindsym $mod+p mode "$mode_capture"
 
-# system power management
-set $mode_system [l]ock, [e]xit, [s]uspend, [h]ibernate, [R]eboot, [S]hutdown
-mode "$mode_system" {
-    bindsym l mode "default", exec i3lock-fancy -t ''
-    bindsym e mode "default", exec loginctl terminate-session $(cat /proc/self/sessionid)
-    bindsym s mode "default", exec systemctl suspend
-    bindsym h mode "default", exec systemctl hibernate
-    bindsym Shift+r mode "default", exec systemctl reboot
-    bindsym Shift+s mode "default", exec systemctl poweroff
-
-    # back to normal: Enter or Escape
-    bindsym Return mode "default"
-    bindsym Escape mode "default" 
-}
-bindsym $mod+Escape mode "$mode_system"
-
-
 ### Start-up programs ###
-# exec --no-startup-id xrandr --output $MONITOR1 --auto --output $MONITOR2 --primary --preferred --right-of $MONITOR1
-# exec --no-startup-id xrandr --output $MONITOR1 --off --output $MONITOR2 --auto --primary --preferred
 exec --no-startup-id xcompmgr &     # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
