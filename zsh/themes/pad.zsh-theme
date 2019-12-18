@@ -11,18 +11,18 @@ function collapse_pwd {
 
 # The prompt
 PROMPT='
-%! %{$fg[cyan]%}%n%{$reset_color%} at %{$fg[yellow]%}%m%{$reset_color%} in %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
+%! %(?..%{$fg[red]%}%?%{$reset_color%} )%{$fg[cyan]%}%n%{$reset_color%}@%{$fg[yellow]%}%m%{$reset_color%} %{$fg_bold[green]%}$(collapse_pwd)%{$reset_color%}$(git_prompt_info)
 '
 
 # The right-hand prompt
-RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )'
+#RPROMPT='%(?..%{$fg[red]%}%?↵%{$reset_color%} )'
 
 # local time, color coded by last return code
 time_enabled="%(?.%{$fg[green]%}.%{$fg[red]%})%T%{$reset_color%}"
 time_disabled="%{$fg[green]%}%*%{$reset_color%}"
 time=$time_enabled
 
-ZSH_THEME_GIT_PROMPT_PREFIX=" on [%{$fg[cyan]%}"
+ZSH_THEME_GIT_PROMPT_PREFIX=" [%{$fg[cyan]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%} ]"
 ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%} ✔"
 ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[yellow]%} ♻"
