@@ -27,8 +27,8 @@ case "$INPUT" in
     "Logout")       loginctl terminate-session $(cat /proc/self/sessionid) ;;
 	"Shutdown")     sudo shutdown -P now ;;
 	"Reboot")       sudo shutdown -r now ;;
-	"Suspend")      lock && systemctl suspend ;;
-	"Screen off")   lock && xset dpms force off ;;
+	"Suspend")      i3lock-fancy -t '' && systemctl suspend ;;
+	"Screen off")   i3lock-fancy -t '' && xset dpms force off ;;
 	"DPMS: on")     xset -dpms s off ;;
 	"DPMS: off")    xset +dpms s on ;;
 	"Network: on")  nmcli networking off ;;
