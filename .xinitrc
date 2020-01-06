@@ -35,3 +35,4 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 
 exec i3
+#exec awesome
