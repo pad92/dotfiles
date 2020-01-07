@@ -275,7 +275,8 @@ mode "$mode_capture" {
 bindsym $mod+p mode "$mode_capture"
 
 ### Start-up programs ###
-exec --no-startup-id xcompmgr &     # transparancy
+#exec --no-startup-id xcompmgr &     # transparancy
+exec --no-startup-id compton     # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
