@@ -35,4 +35,5 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 
 exec i3
-#exec awesome
+#exec /usr/bin/awesome >> ~/.cache/awesome.log 2>> ~/.cache/awesome.err
+
