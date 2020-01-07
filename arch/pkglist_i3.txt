@@ -13,7 +13,6 @@ bluez-utils
 brave-bin
 brightnessctl
 bzip2
-compton-tryone-git
 cryptsetup
 dunst
 epiphany
@@ -55,6 +54,7 @@ packer
 pacman-contrib
 paper-icon-theme
 pavucontrol
+picom
 playerctl
 powerline
 powertop
