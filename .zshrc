@@ -29,11 +29,12 @@ plugins=(
     github
     httpie
     rsync
-  #  ssh-agent
+    notify
     zsh-autosuggestions
     zsh-completions
     zsh-syntax-highlighting
 )
+
 autoload -Uz colors && colors
 autoload -Uz compinit && compinit
 zstyle ':completion:*' menu select
@@ -61,6 +62,13 @@ export LC_ALL="en_US.UTF-8"
 
 export EDITOR='vim'
 export GUI_EDITOR='atom'
+
+# notify plugin
+zstyle ':notify:*' command-complete-timeout 15
+zstyle ':notify:*' error-title 'Error'
+zstyle ':notify:*' success-title 'Success'
+zstyle ':notify:*' error-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-error.png'
+zstyle ':notify:*' success-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-information.png'
 
 # History
 export HIST_STAMPS="mm/dd/yyyy"
