@@ -90,6 +90,7 @@ vim
 virt-viewer
 wget
 which
+wmctrl
 xdg-user-dirs
 xdg-user-dirs-gtk
 xdg-utils
