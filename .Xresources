@@ -1,5 +1,6 @@
-Xcursor.size: 16
+#*dpi: 210
 
+#Xft.dpi: 210
 Xft.antialias: true
 Xft.hinting: true
 Xft.hintstyle: hintslight
