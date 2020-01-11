@@ -174,52 +174,42 @@ bindsym $mod+x [instance="dropdown"] scratchpad show; [instance="dropdown"] move
 #
 # You can use these variables anywhere in the i3 configuration file.
 
-set $base00 #181818
-set $base01 #282828
-set $base02 #383838
-set $base03 #585858
-set $base04 #b8b8b8
-set $base05 #d8d8d8
-set $base06 #e8e8e8
-set $base07 #f8f8f8
-set $base08 #ab4642
-set $base09 #dc9656
-set $base0A #f7ca88
-set $base0B #a1b56c
-set $base0C #86c1b9
-set $base0D #7cafc2
-set $base0E #ba8baf
-set $base0F #a16946
+# Color scheme (Gruvbox dark)
+set $color_normal_white  #a89984
+set $color_bright_white  #ebdbb2
+set $color_normal_gray   #222222
+set $color_bright_gray   #3c3836
+set $color_bright_yellow #d79921
+set $color_normal_black  #282828
+set $color_unused        #ff0000
+
+# Colors                  border                 background             text                   indicator             child_border
+client.focused            $color_bright_gray     $color_bright_gray     $color_bright_white    $color_bright_white   $color_normal_white
+client.focused_inactive   $color_bright_gray     $color_bright_gray     $color_bright_white    $color_normal_black   $color_normal_black
+client.unfocused          $color_normal_gray     $color_normal_gray     $color_normal_white    $color_unused         $color_normal_black
+client.urgent             $color_bright_yellow   $color_bright_yellow   $color_normal_black    $color_unused         $color_bright_white
+client.placeholder        $color_bright_gray     $color_normal_black    $color_unused          $color_bright_white
 
 # Basic bar configuration using the Base16 variables.
 bar {
     font pango:DejaVu Sans Mono, FontAwesome 8
     position top
-    i3bar_command i3bar -t
-    status_command py3status
+	tray_output none
+	status_command py3status --dbus-notify
 
     colors {
-        background #181818cc
-        separator  $base01
-        statusline #b8b8b8cc
+	# Whole color settings
+    background $color_normal_gray
+    separator  $color_bright_gray
+    statusline $color_bright_white
 
-        # State             Border  BG      Text
-        focused_workspace   $base05 $base0D $base00
-        active_workspace    $base05 $base03 $base00
-        inactive_workspace  $base03 $base01 $base05
-        urgent_workspace    $base08 $base08 $base00
-        binding_mode        $base00 $base0A $base00
+    # Type             border                 background              font
+    focused_workspace  $color_bright_gray     $color_bright_gray      $color_bright_white
+    active_workspace   $color_normal_gray     $color_normal_gray      $color_normal_white
+    inactive_workspace $color_normal_gray     $color_normal_gray      $color_normal_white
+    urgent_workspace   $color_bright_yellow   $color_bright_yellow    $color_normal_black
     }
 }
-
-# Basic color configuration using the Base16 variables for windows and borders.
-# Property Name         Border  BG      Text    Indicator Child Border
-client.focused          $base05 $base0D $base00 $base0D $base0C
-client.focused_inactive $base01 $base01 $base05 $base03 $base01
-client.unfocused        $base01 $base00 $base05 $base01 $base01
-client.urgent           $base08 $base08 $base00 $base08 $base08
-client.placeholder      $base00 $base00 $base05 $base00 $base00
-client.background       $base07
 
 ### i3-gaps config ###
 gaps outer 1
@@ -270,7 +260,7 @@ mode "$mode_capture" {
 
     # back to normal: Enter or Escape
     bindsym Return mode "default"
-    bindsym Escape mode "default" 
+    bindsym Escape mode "default"
 }
 bindsym $mod+p mode "$mode_capture"
 
@@ -281,4 +271,5 @@ exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
 exec --no-startup-id redshift
 exec --no-startup-id ~/.dotfiles/bin/i3-autoname-workspaces &
+exec --no-startup-id xrandr --output eDP-1 --scale 2x2 --primary --output HDMI-1 --auto --above eDP-1 --output HDMI-2 --auto --left-of HDMI-1
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg

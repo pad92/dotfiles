@@ -8,9 +8,10 @@
 
 general {
     colors = true
-    color_good = '#b5bd68'
-    color_bad = '#cc6666'
-    color_degraded = '#f0c674'
+    color_good = '#ebdbb2'
+    color_degraded = '#fabd2f'
+    color_bad = '#fb4934'
+    interval = 1
 }
 
 order += "arch_updates"
@@ -37,12 +38,12 @@ weather_owm {
     format = "{temperature} {forecast}"
     unit_temperature = "C"
     format_temperature = "[\?color=all {current:.0f}°{unit}]"
-    on_click 1 = "exec brave https://darksky.net/forecast/48.8684,2.1765/ca12/fr" 
+    on_click 1 = "exec brave https://darksky.net/forecast/48.8684,2.1765/ca12/fr"
     request_timeout = 60
 }
 
 arch_updates {
-    color = '#7cafc2'
+    cache_timeout = 60
     format = ' {pacman}/{aur}'
     hide_if_zero = True
     on_click 1 = 'termite -e \'yay -Syyu --devel\''
@@ -81,8 +82,12 @@ volume master {
 
 battery_level {
     battery_id = 'all'
-    color_charging = '#f0c674'
+    color_charging = '#fabd2f'
 	format = '{icon} {percent}%'
+    notify_low_level = true
+    measurement_mode = 'sys'
+    on_udev_power_supply = 'refresh'
+    cache_timeout = 60
 }
 
 xrandr {
