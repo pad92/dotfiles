@@ -194,7 +194,6 @@ client.placeholder        $color_bright_gray     $color_normal_black    $color_u
 bar {
     font pango:DejaVu Sans Mono, FontAwesome 8
     position top
-	tray_output none
 	status_command py3status --dbus-notify
 
     colors {
