@@ -8,17 +8,28 @@ call vundle#begin()
 
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
-Plugin 'vim-airline/vim-airline'
-Plugin 'vim-airline/vim-airline-themes'
+"Plugin 'vim-airline/vim-airline'
+"Plugin 'vim-airline/vim-airline-themes'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
+Plugin 'morhetz/gruvbox'
 "Plugin 'bling/vim-bufferline'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
 filetype plugin indent on    " required
 
-let g:airline_theme='base16_monokai'
+"let g:airline_theme='base16_monokai'
+
+" Gruvbox options
+" see https://github.com/morhetz/gruvbox
+set background=dark    " Setting dark mode
+let g:gruvbox_contrast_dark='hard'
+let g:gruvbox_number_column='blue'
+let g:gruvbox_imporeved_strings=1
+colorscheme gruvbox
+
+
 
 " Vim5 and later versions support syntax highlighting. Uncommenting the next
 " line enables syntax highlighting by default.
@@ -117,9 +128,9 @@ endif
 :highlight LineNr term=bold cterm=NONE ctermfg=DarkGrey ctermbg=Black gui=NONE guifg=DarkGrey guibg=Black
 
 " air-line
-set t_Co=256
-set laststatus=2
-let g:airline_powerline_fonts = 1
-let g:airline#extensions#tabline#enabled = 1
+"set t_Co=256
+"set laststatus=2
+"let g:airline_powerline_fonts = 1
+"let g:airline#extensions#tabline#enabled = 1
 
 set tabpagemax=300
