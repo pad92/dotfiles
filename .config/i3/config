@@ -233,6 +233,7 @@ for_window [class="^Steam$" title="^Settings$"] floating enable
 for_window [class="^Steam$" title="^Steam - Self Updater$"] floating enable
 for_window [class="^Steam$" title="^Steam Guard - Computer Authorization Required$"] floating enable
 for_window [title="^Steam Keyboard$"] floating enable
+for_window [title="Microsoft Teams Notification" class="microsoft teams - preview"] floating enable
 for_window [window_role="pop-up"] floating enable
 for_window [window_role="task_dialog"] floating enable
 
@@ -270,7 +271,6 @@ exec --no-startup-id picom          # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
-exec --no-startup-id xrandr --output eDP-1 --scale 2x2 --primary --output HDMI-1 --auto --above eDP-1 --output HDMI-2 --auto --left-of HDMI-1
 exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
 
 # systemctl enable --user redshift
