@@ -1,10 +1,4 @@
-# i3status configuration file.
-# see "man i3status" for documentation.
-
-# It is important that this file is edited as UTF-8.
-# The following line should contain a sharp s:
-# ß
-# If the above line is not correctly displayed, fix your editor first!
+# vi: ft=sh
 
 general {
     colors = true
@@ -18,6 +12,7 @@ order += "arch_updates"
 order += "sysdata cpu"
 order += "sysdata mem"
 order += 'net_rate'
+order += 'group wifi'
 order += "nvidia_smi"
 order += "spotify"
 order += "volume master"
@@ -56,16 +51,31 @@ net_rate {
   unit = 'MB/s'
 }
 
+group wifi {
+  button_next = 1
+  button_prev = 0
+
+  wifi brief {
+    cache_timeout = -1
+    signal_bad = 0
+    bitrate_bad = 0
+    bitrate_degraded = 0
+  }
+
+  wifi detailed {
+    cache_timeout = -1
+    signal_bad = 0
+    bitrate_bad = 0
+    bitrate_degraded = 0
+    format = '{ssid} ({signal_percent}%)'
+  }
+}
+
 sysdata cpu {
     format = "CPU [\?color=cpu_used_percent {cpu_usage}%] [\?color=cpu_temp {cpu_temp}]°C"
 }
 sysdata mem {
     format = "Mem [\?color=mem_used_percent {mem_used_percent}%] "
-}
-
-nvidia_smi {
-    format_gpu = 'GPU [\?color=temperature.gpu {temperature.gpu}°C] '
-    format_gpu += '[\?color=memory.used_percent {memory.used_percent:.1f}%]'
 }
 
 spotify {
