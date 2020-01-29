@@ -38,7 +38,7 @@ weather_owm {
 }
 
 arch_updates {
-    cache_timeout = 60
+    cache_timeout = 600
     format = ' {pacman}/{aur}'
     hide_if_zero = True
     on_click 1 = 'termite -e \'yay -Syyu --devel\''
