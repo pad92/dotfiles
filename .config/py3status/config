@@ -13,7 +13,6 @@ order += "sysdata cpu"
 order += "sysdata mem"
 order += 'net_rate'
 order += 'group wifi'
-order += "nvidia_smi"
 order += "spotify"
 order += "volume master"
 order += "battery_level"
