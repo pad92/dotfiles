@@ -23,12 +23,12 @@ NETWORK="$(toggleNetwork)"
 INPUT=`echo -e "Lock\nLogout\nShutdown\nReboot\nSuspend\nScreen off\n$DPMS\n$NETWORK\nSwitch audio\nMute" | dmenu -i -nb '#C31616' -sb '#404040' -nf white`
 
 case "$INPUT" in
-	"Lock")         sleep 1; i3lock-fancy -t '' ;;
+	"Lock")         sleep 1; i3lock-fancy -p  -t '' ;;
     "Logout")       loginctl terminate-session $(cat /proc/self/sessionid) ;;
 	"Shutdown")     sudo shutdown -P now ;;
 	"Reboot")       sudo shutdown -r now ;;
-	"Suspend")      sleep 1; i3lock-fancy -t '' && systemctl suspend ;;
-	"Screen off")   sleep 1; i3lock-fancy -t '' && xset dpms force off ;;
+	"Suspend")      sleep 1; i3lock-fancy -p  -t '' && systemctl suspend ;;
+	"Screen off")   sleep 1; i3lock-fancy -p  -t '' && xset dpms force off ;;
 	"DPMS: on")     xset -dpms s off ;;
 	"DPMS: off")    xset +dpms s on ;;
 	"Network: on")  nmcli networking off ;;
