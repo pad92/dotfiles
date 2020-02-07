@@ -254,8 +254,8 @@ bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 # Cature all screen
 bindsym --release Print   exec scrot    $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
 
-bindsym $mod+p     exec gnome-screenshot -i
-bindsym $mod+Print exec gnome-screenshot -i
+bindsym $mod+p     exec xfce4-screenshooter
+bindsym $mod+Print exec xfce4-screenshooter
 
 ### Start-up programs ###
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
