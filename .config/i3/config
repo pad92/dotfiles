@@ -274,17 +274,8 @@ bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 # Cature all screen
 bindsym --release Print   exec scrot    $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
 
-set $mode_capture [a]ll, [w]indows, [s]elect
-mode "$mode_capture" {
-    bindsym a mode "default", exec escrotum    $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
-    bindsym w mode "default", exec scrot    -u $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
-    bindsym s mode "default", exec escrotum -s $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
-
-    # back to normal: Enter or Escape
-    bindsym Return mode "default"
-    bindsym Escape mode "default"
-}
-bindsym $mod+p mode "$mode_capture"
+bindsym $mod+p     exec xfce4-screenshooter
+bindsym $mod+Print exec xfce4-screenshooter
 
 ### Start-up programs ###
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
