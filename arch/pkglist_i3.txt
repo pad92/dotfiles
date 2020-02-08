@@ -16,7 +16,6 @@ bzip2
 cryptsetup
 dunst
 epiphany
-escrotum
 feh
 ffmpegthumbnailer
 firefox
@@ -71,7 +70,6 @@ rofi-calc
 rofi-dmenu
 rofimoji
 rsync
-scrot
 seahorse
 sushi
 terraform
@@ -95,6 +93,7 @@ wmctrl
 xdg-user-dirs
 xdg-user-dirs-gtk
 xdg-utils
+xfce4-screenshooter
 xfsprogs
 xorg-xinit
 xorg-xrandr
