@@ -272,8 +272,6 @@ bindsym XF86MonBrightnessDown  exec  xbacklight -dec 10
 bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 
 # Cature all screen
-bindsym --release Print   exec scrot    $(xdg-user-dir PICTURES)/$(date +'screenshot_%Y-%m-%d-%H%M%S.png')
-
 bindsym $mod+p     exec xfce4-screenshooter
 bindsym $mod+Print exec xfce4-screenshooter
 
