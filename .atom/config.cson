@@ -27,6 +27,7 @@
       "chester-atom-syntax"
     ]
     titleBar: "custom-inset"
+    uriHandlerRegistration: "always"
   docblockr:
     align_tags: "no"
     extra_tags: [
