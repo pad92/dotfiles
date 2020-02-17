@@ -7,14 +7,16 @@ import sys
 
 import i3ipc
 
+# use xprop
 WINDOW_ICONS = {
     "alacritty": "",
-    "brave-browser": "",
     "atom": "",
+    "brave-browser": "",
     "chromium": "",
-    "forticlientsslvpn": "",
     "evolution": "",
     "firefox": "",
+    "forticlientsslvpn": "",
+    "google-chrome": "",
     "kitty": "",
     "lutris": "",
     "spotify": "",
