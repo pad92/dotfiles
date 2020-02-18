@@ -281,6 +281,6 @@ exec --no-startup-id picom          # transparancy
 exec --no-startup-id nm-applet      # NetworkManager
 exec --no-startup-id dunst          # notif
 exec --no-startup-id blueman-applet # bluetooth
-exec --no-startup-id feh --randomize --bg-scale ~/Pictures/Wallpapers/*.jpg
+exec --no-startup-id feh --bg-scale $(ls -1ht ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
 
 # systemctl enable --user redshift
