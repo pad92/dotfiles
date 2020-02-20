@@ -8,6 +8,7 @@ import sys
 import i3ipc
 
 # use xprop
+# http://fontawesome.io/cheatsheet/
 WINDOW_ICONS = {
     "alacritty": "",
     "atom": "",
