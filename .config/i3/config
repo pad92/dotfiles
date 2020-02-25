@@ -42,6 +42,7 @@ bindsym $mod+Shift+q kill
 #bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
 bindsym $mod+Shift+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
 bindsym $mod+Tab     exec --no-startup-id "rofi -i -modi drun,run,window -show window"
+bindsym $mod+Shift+v exec rofi -modi 'clipboard:greenclip print' -show clipboard -run-command '{cmd}' 
 
 # change focus
 bindsym $mod+j focus left
@@ -277,10 +278,11 @@ bindsym $mod+Print exec xfce4-screenshooter
 
 ### Start-up programs ###
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
-exec --no-startup-id picom          # transparancy
-exec --no-startup-id nm-applet      # NetworkManager
-exec --no-startup-id dunst          # notif
-exec --no-startup-id blueman-applet # bluetooth
+exec --no-startup-id picom            # transparancy
+exec --no-startup-id greenclip daemon # clipboard
+exec --no-startup-id nm-applet        # NetworkManager
+exec --no-startup-id dunst            # notif
+exec --no-startup-id blueman-applet   # bluetooth
 exec --no-startup-id feh --bg-scale $(ls -1hrt ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
 
 # systemctl enable --user redshift

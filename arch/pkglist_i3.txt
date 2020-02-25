@@ -68,6 +68,7 @@ py3status
 redshift
 rofi-calc
 rofi-dmenu
+rofi-greenclip
 rofimoji
 rsync
 seahorse
