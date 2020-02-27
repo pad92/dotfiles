@@ -42,7 +42,7 @@ bindsym $mod+Shift+q kill
 #bindsym $mod+Shift+d exec --no-startup-id i3-dmenu-desktop
 bindsym $mod+Shift+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
 bindsym $mod+Tab     exec --no-startup-id "rofi -i -modi drun,run,window -show window"
-bindsym $mod+Shift+v exec rofi -modi 'clipboard:greenclip print' -show clipboard -run-command '{cmd}' 
+bindsym $mod+Shift+v exec rofi -modi 'clipboard:greenclip print' -show clipboard -run-command '{cmd}'
 
 # change focus
 bindsym $mod+j focus left
@@ -215,7 +215,7 @@ client.placeholder        $color_bright_gray     $color_normal_black    $color_u
 bar {
     font pango:DejaVu Sans Mono, FontAwesome 8
     position top
-    i3bar_command i3bar -t
+    tray_output primary
 	status_command py3status --dbus-notify
 
     colors {
@@ -279,7 +279,7 @@ bindsym $mod+Print exec xfce4-screenshooter
 ### Start-up programs ###
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
 exec --no-startup-id picom            # transparancy
-exec --no-startup-id udiskie --no-automount --tray 
+exec --no-startup-id udiskie --no-automount --tray
 exec --no-startup-id greenclip daemon # clipboard
 exec --no-startup-id nm-applet        # NetworkManager
 exec --no-startup-id blueman-applet   # bluetooth
