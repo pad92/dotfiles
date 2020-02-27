@@ -14,7 +14,6 @@ brave-bin
 brightnessctl
 bzip2
 cryptsetup
-dunst
 epiphany
 feh
 ffmpegthumbnailer
@@ -84,6 +83,7 @@ ttf-joypixels
 ttf-liberation
 ttf-ms-fonts
 ttf-ubuntu-font-family
+twmn-git
 unrar
 usbutils
 vim
