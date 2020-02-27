@@ -32,7 +32,7 @@ weather_owm {
     format = "{temperature} {forecast}"
     unit_temperature = "C"
     format_temperature = "[\?color=all {current:.0f}°{unit}]"
-    on_click 1 = "exec brave https://darksky.net/forecast/48.8684,2.1765/ca12/fr"
+    on_click 1 = "exec xdg-open https://darksky.net/forecast/48.8684,2.1765/ca12/fr"
     request_timeout = 60
 }
 
@@ -40,7 +40,7 @@ arch_updates {
     cache_timeout = 600
     format = ' {pacman}/{aur}'
     hide_if_zero = True
-    on_click 1 = 'termite -e \'yay -Syyu --devel\''
+    on_click 1 = 'alacritty -e \'yay -Syyu --devel\''
 }
 
 net_rate {
