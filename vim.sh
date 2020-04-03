@@ -10,3 +10,4 @@ git clone --recursive https://github.com/pad92/dotfiles.git "${TMP_VIM}"
 mv "${TMP_VIM}/.vim" ~/
 mv "${TMP_VIM}/.vimrc" ~/
 rm -fr "${TMP_VIM}/"
+vim +BundleInstall! +BundleClean +q
