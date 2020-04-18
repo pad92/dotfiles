@@ -216,10 +216,10 @@ bar {
     font pango:DejaVu Sans Mono, FontAwesome 5
     position top
     tray_output primary
-	status_command py3status --dbus-notify
+    status_command py3status --dbus-notify
 
     colors {
-	# Whole color settings
+    # Whole color settings
     background $color_normal_gray
     separator  $color_bright_gray
     statusline $color_bright_white
