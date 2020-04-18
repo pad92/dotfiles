@@ -100,7 +100,7 @@ battery_level {
 }
 
 xrandr {
-  fixed_width = false
+  on_udev_drm = "refresh_and_freeze"
   hide_if_single_combination = true
 }
 tztime local {
