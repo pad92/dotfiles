@@ -23,12 +23,6 @@ window:
 
   decorations: full
 
-scrolling:
-  multiplier: 3
-  auto_scroll: false
-
-tabspaces: 2
-
 # Font configurations
 font:
   normal:
@@ -129,10 +123,6 @@ key_bindings:
   - { key: W,        mods: Alt,     action: Copy                         }
   - { key: Insert,   mods: Shift,         action: PasteSelection   }
   - { key: Key0,     mods: Control,       action: ResetFontSize    }
-  - { key: Equals,   mods: Control,       action: IncreaseFontSize }
-  - { key: Add,      mods: Control,       action: IncreaseFontSize }
-  - { key: Subtract, mods: Control,       action: DecreaseFontSize }
-  - { key: Minus,    mods: Control,       action: DecreaseFontSize }
   - { key: Return,   mods: Alt,           action: ToggleFullscreen }
   - { key: Paste,                    action: Paste                            }
   - { key: Copy,                     action: Copy                             }
