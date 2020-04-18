@@ -213,7 +213,7 @@ client.placeholder        $color_bright_gray     $color_normal_black    $color_u
 
 # Basic bar configuration using the Base16 variables.
 bar {
-    font pango:DejaVu Sans Mono, FontAwesome 8
+    font pango:DejaVu Sans Mono, FontAwesome 5
     position top
     tray_output primary
 	status_command py3status --dbus-notify
