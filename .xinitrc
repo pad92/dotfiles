@@ -34,6 +34,7 @@ fi
 
 [ -f ~/.xprofile ] && . ~/.xprofile
 
-exec i3 --force-xinerama
+#exec i3 --force-xinerama
+exec i3
 #exec /usr/bin/awesome >> ~/.cache/awesome.log 2>> ~/.cache/awesome.err
 
