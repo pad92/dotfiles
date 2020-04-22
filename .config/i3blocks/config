@@ -7,41 +7,42 @@
 # |_|____/|_.__/|_|\___/ \___|_|\_\___/
 
 command=~/.config/i3blocks/blocks/$BLOCK_NAME/$BLOCK_NAME
-align=center
-separator=false
-color=#ffffff
-separator_block_width=15
 markup=pango
 
 [mediaplayer]
 command=playerctl metadata --format "{{ artist }} - {{ title }}"
 interval=2
-label=<span color="#a9e185"> </span>
+label=<span color="#a9e185"> </span>
 
 [arch-update]
-command=checkupdates | wc -l
-interval=once
-label=<span color="#1793D1"> </span>
+interval= 3600
+quiet=true
+base_color=#5fff5f
+update_color=#ffff85
+aur=false
+label= 
+
+[aur-update]
+interval=43200
+update_color=#ffff85
+quiet=1
+label= 
 
 [wifi]
 command=iwgetid -r | tr '\n' ' ' && grep $(iwgetid -m | awk '{ printf "%s", $1 }') /proc/net/wireless | awk '{ printf "%i%\n", int($3 * 100 / 70) }'
-instance=wlp11s0f3u1
 interval=5
 label=<span color="#ffb86c"> </span>
 
 [gpu-load]
-command=~/.config/i3blocks/blocks/gpu-load/gpu-load | awk 'FNR==1{ printf "%s %s\n", $1, $2 }'
 label=<span color="#ffb86c"> </span>
-interval=2
+interval=10
 
 [gpu-temperature]
-command=~/.config/i3blocks/blocks/temperature/temperature
-interval=2
-SENSOR_CHIP="k10temp-pci-00c3"
+command=nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader
+interval=10
 label=<span color="#ffb86c"> </span>
 
 [cpu_usage]
-command=~/.config/i3blocks/blocks/cpu_usage/cpu_usage
 interval=2
 label=<span color="#8be9fd"> </span>
 
@@ -62,11 +63,5 @@ interval=2
 label=<span color="#ff79c6"> </span>
 
 [time]
-command=date '+%H:%M'
-interval=1
-label=<span color="#ffb86c"> </span>
-
-[date]
-command=LC_ALL=fr_FR.UTF-8 date '+%A %e'
+command=LC_ALL=fr_FR.UTF-8 date '+%A %e/%m/%y %H:%M'
 interval=60
-label=<span color="#8be9fd"> </span>
