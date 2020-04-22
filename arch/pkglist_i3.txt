@@ -28,6 +28,7 @@ gnu-free-fonts
 hunspell-en_US
 hunspell-fr
 i3-gaps
+i3blocks
 i3ipc-python-git
 i3lock-fancy
 i3status
@@ -63,7 +64,6 @@ pulseaudio-bluetooth
 pulseaudio-ctl
 pulseaudio-equalizer
 pulseaudio-jack
-py3status 
 redshift
 rofi-calc
 rofi-dmenu
