@@ -213,10 +213,11 @@ client.placeholder        $color_bright_gray     $color_normal_black    $color_u
 
 # Basic bar configuration using the Base16 variables.
 bar {
-    font pango:DejaVu Sans Mono, FontAwesome 5
+    font pango:RobotoMono Nerd Font Regular 8
     position top
     tray_output primary
-    status_command py3status --dbus-notify
+    status_command i3blocks
+    i3bar_command i3bar -t
 
     colors {
     # Whole color settings
@@ -283,6 +284,7 @@ exec --no-startup-id udiskie --no-automount --tray
 exec --no-startup-id greenclip daemon # clipboard
 exec --no-startup-id nm-applet        # NetworkManager
 exec --no-startup-id blueman-applet   # bluetooth
-exec --no-startup-id feh --bg-scale $(ls -1hrt ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
+#exec --no-startup-id feh --bg-scale $(ls -1hrt ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
+exec --no-startup-id feh --bg-scale ~/Pictures/Wallpapers/rarealignment11440p.jpg
 
 # systemctl enable --user redshift
