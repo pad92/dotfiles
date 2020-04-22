@@ -1,0 +1,72 @@
+# For the benefit of emacs users: -*- shell-script -*-
+#
+#  _ _____ _     _            _
+# (_)___ /| |__ | | ___   ___| | _____
+# | | |_ \| '_ \| |/ _ \ / __| |/ / __|
+# | |___) | |_) | | (_) | (__|   <\__ \
+# |_|____/|_.__/|_|\___/ \___|_|\_\___/
+
+command=~/.config/i3blocks/blocks/$BLOCK_NAME/$BLOCK_NAME
+align=center
+separator=false
+color=#ffffff
+separator_block_width=15
+markup=pango
+
+[mediaplayer]
+command=playerctl metadata --format "{{ artist }} - {{ title }}"
+interval=2
+label=<span color="#a9e185"> </span>
+
+[arch-update]
+command=checkupdates | wc -l
+interval=once
+label=<span color="#1793D1"> </span>
+
+[wifi]
+command=iwgetid -r | tr '\n' ' ' && grep $(iwgetid -m | awk '{ printf "%s", $1 }') /proc/net/wireless | awk '{ printf "%i%\n", int($3 * 100 / 70) }'
+instance=wlp11s0f3u1
+interval=5
+label=<span color="#ffb86c"> </span>
+
+[gpu-load]
+command=~/.config/i3blocks/blocks/gpu-load/gpu-load | awk 'FNR==1{ printf "%s %s\n", $1, $2 }'
+label=<span color="#ffb86c"> </span>
+interval=2
+
+[gpu-temperature]
+command=~/.config/i3blocks/blocks/temperature/temperature
+interval=2
+SENSOR_CHIP="k10temp-pci-00c3"
+label=<span color="#ffb86c"> </span>
+
+[cpu_usage]
+command=~/.config/i3blocks/blocks/cpu_usage/cpu_usage
+interval=2
+label=<span color="#8be9fd"> </span>
+
+[cpu-temperature]
+command=~/.config/i3blocks/blocks/temperature/temperature
+interval=2
+SENSOR_CHIP="acpitz-acpi-0"
+label=<span color="#8be9fd"> </span>
+
+[memory]
+command=free -h --si | awk 'FNR==2{ print $0 }' | awk '{ print $7 }'
+interval=2
+label=<span color="#a9e185"> </span>
+
+[volume]
+command=pulseaudio-ctl full-status | awk '{ printf "%i%\n", $1 }'
+interval=2
+label=<span color="#ff79c6"> </span>
+
+[time]
+command=date '+%H:%M'
+interval=1
+label=<span color="#ffb86c"> </span>
+
+[date]
+command=LC_ALL=fr_FR.UTF-8 date '+%A %e'
+interval=60
+label=<span color="#8be9fd"> </span>
