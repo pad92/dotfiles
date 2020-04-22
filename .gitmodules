@@ -20,3 +20,6 @@
 [submodule "zsh/plugins/notify"]
 	path = zsh/plugins/notify
 	url = https://github.com/marzocchi/zsh-notify.git
+[submodule ".config/i3blocks/i3blocks-contrib"]
+	path = .config/i3blocks/i3blocks-contrib
+	url = https://github.com/vivien/i3blocks-contrib.git
