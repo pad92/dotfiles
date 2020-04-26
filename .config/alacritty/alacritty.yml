@@ -18,8 +18,8 @@ window:
     lines: 0
 
   padding:
-    x: 0
-    y: 0
+    x: 5
+    y: 5
 
   decorations: full
 
@@ -46,7 +46,7 @@ font:
 
   scale_with_dpi: true
 
-  use_thin_strokes: false
+#  use_thin_strokes: false
 
 # Colors (Gruvbox dark)
 colors:
