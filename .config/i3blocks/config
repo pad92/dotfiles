@@ -57,6 +57,10 @@ command=free -h --si | awk 'FNR==2{ print $0 }' | awk '{ print $7 }'
 interval=2
 label=<span color="#a9e185"> </span>
 
+[battery]
+interval=30
+label=⚡
+
 [volume]
 command=pulseaudio-ctl full-status | awk '{ printf "%i%\n", $1 }'
 interval=2
