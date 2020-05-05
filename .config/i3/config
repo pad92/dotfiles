@@ -19,7 +19,7 @@ set $mod Mod4
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
 
 #font pango:Inconsolata 12
-font pango: Taskbar, Cantarell 9
+font pango: Font Awesome 5 Free, Taskbar, Cantarell 9
 
 # Before i3 v4.8, we used to recommend this one as the default:
 # font -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1
