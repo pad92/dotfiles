@@ -34,6 +34,7 @@ interval=5
 label=<span color="#ffb86c"> </span>
 
 [gpu-load]
+command=nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader
 label=<span color="#ffb86c"> </span>
 interval=10
 
@@ -56,6 +57,9 @@ label=<span color="#8be9fd"> </span>
 command=free -h --si | awk 'FNR==2{ print $0 }' | awk '{ print $7 }'
 interval=2
 label=<span color="#a9e185"> </span>
+
+[bandwidth]
+interval=5
 
 [battery]
 interval=30
