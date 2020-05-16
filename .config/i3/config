@@ -264,12 +264,12 @@ for_window [window_role="task_dialog"] floating enable
 bindsym $mod+Escape            exec ~/.dotfiles/bin/SystemControl.sh
 bindsym $mod+Control+Up        exec ~/.dotfiles/bin/ManageSound.sh "inc"
 bindsym $mod+Control+Down      exec ~/.dotfiles/bin/ManageSound.sh "dec"
-bindsym XF86AudioLowerVolume   exec  pulseaudio-ctl down
-bindsym XF86AudioMute          exec  pulseaudio-ctl mute
+bindsym XF86AudioLowerVolume   exec  pulseaudio-ctl down && pkill -RTMIN+1 i3blocks
+bindsym XF86AudioMute          exec  pulseaudio-ctl mute && pkill -RTMIN+1 i3blocks
 bindsym XF86AudioNext          exec  playerctl next
 bindsym XF86AudioPlay          exec  playerctl play-pause
 bindsym XF86AudioPrev          exec  playerctl previous
-bindsym XF86AudioRaiseVolume   exec  pulseaudio-ctl up
+bindsym XF86AudioRaiseVolume   exec  pulseaudio-ctl up && pkill -RTMIN+1 i3blocks
 bindsym XF86MonBrightnessDown  exec  xbacklight -dec 10
 bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 
