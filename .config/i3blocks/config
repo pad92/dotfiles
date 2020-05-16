@@ -14,6 +14,10 @@ command=playerctl metadata --format "{{ artist }} - {{ title }}"
 interval=2
 label=<span color="#a9e185"> </span>
 
+[bandwidth3]
+interval=persist
+LABEL=<span font='FontAwesome' color='#ffb86c' >  </span>
+
 [arch-update]
 interval= 3600
 quiet=true
@@ -27,6 +31,7 @@ interval=43200
 update_color=#ffff85
 quiet=1
 label= 
+signal=2
 
 [wifi]
 command=iwgetid -r | tr '\n' ' ' && grep $(iwgetid -m | awk '{ printf "%s", $1 }') /proc/net/wireless | awk '{ printf "%i%\n", int($3 * 100 / 70) }'
@@ -58,17 +63,17 @@ command=free -h --si | awk 'FNR==2{ print $0 }' | awk '{ print $7 }'
 interval=2
 label=<span color="#a9e185"> </span>
 
-[bandwidth]
-interval=5
-
 [battery]
 interval=30
 label=⚡
 
-[volume]
-command=pulseaudio-ctl full-status | awk '{ printf "%i%\n", $1 }'
-interval=2
-label=<span color="#ff79c6"> </span>
+[volume-pulseaudio]
+interval=once
+signal=1
+label=<span color="#ff79c6">♪ </span>
+USE_DESCRIPTION=1
+LONG_FORMAT=${VOL}% [${NAME}]
+SHORT_FORMAT=${VOL}% [${INDEX}]
 
 [time]
 command=LC_ALL=fr_FR.UTF-8 date '+%A %e/%m/%y %H:%M'
