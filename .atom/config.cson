@@ -9,6 +9,8 @@
     closeDeletedFileTabs: true
     disabledPackages: [
       "background-tips"
+      "linter-php"
+      "hyperlink-hyperclick"
     ]
     ignoredNames: [
       ".git"
@@ -36,7 +38,7 @@
     lower_case_primitives: true
   editor:
     fontFamily: "Inconsolata"
-    fontSize: 12
+    fontSize: 13
     showIndentGuide: true
     showInvisibles: true
     softTabs: false
