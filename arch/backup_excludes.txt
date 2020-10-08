@@ -322,3 +322,7 @@ nohup.out
 
 # ZeroNet
 ZeroBundle/ZeroNet/data
+
+Documents/docker/plex/config/Library/
+Download/
+Cache/
