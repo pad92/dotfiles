@@ -24,9 +24,9 @@ INPUT=`echo -e "Lock\nLogout\nShutdown\nReboot\nSuspend\nScreen off\n$DPMS\n$NET
 
 case "$INPUT" in
 	"Lock")         sleep 1; i3lock-fancy -p  -t '' ;;
-    "Logout")       loginctl terminate-session $(cat /proc/self/sessionid) ;;
-	"Shutdown")     sudo shutdown -P now ;;
-	"Reboot")       sudo shutdown -r now ;;
+    "Logout")       i3exit logout ;;
+	"Shutdown")     i3exit shutdown ;;
+	"Reboot")       i3exit reboot ;;
 	"Suspend")      sleep 1; i3lock-fancy -p  -t '' && systemctl suspend ;;
 	"Screen off")   sleep 1; i3lock-fancy -p  -t '' && xset dpms force off ;;
 	"DPMS: on")     xset -dpms s off ;;
