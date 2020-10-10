@@ -257,8 +257,8 @@ for_window [class="^Steam$" title="^Screenshot Uploader$"] floating enable
 for_window [class="^Steam$" title="^Settings$"] floating enable
 for_window [class="^Steam$" title="^Steam - Self Updater$"] floating enable
 for_window [class="^Steam$" title="^Steam Guard - Computer Authorization Required$"] floating enable
-for_window [title="Microsoft Teams Notification" class="Microsoft Teams - Preview"] floating enable
-for_window [title="Microsoft Teams Notification" class="microsoft teams - preview"] floating enable
+for_window [class="Microsoft Teams - Preview" title="Notification" ] floating enable
+for_window [class="microsoft teams - preview" title="Notification" ] floating enable
 for_window [title="^Steam Keyboard$"] floating enable
 for_window [window_role="pop-up"] floating enable
 for_window [window_role="task_dialog"] floating enable
@@ -287,6 +287,7 @@ exec --no-startup-id udiskie --no-automount --tray
 exec --no-startup-id greenclip daemon # clipboard
 exec --no-startup-id nm-applet        # NetworkManager
 exec --no-startup-id blueman-applet   # bluetooth
+exec --no-startup-id twmnd            # notif
 #exec --no-startup-id feh --bg-scale $(ls -1hrt ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
 exec --no-startup-id feh --bg-scale ~/Pictures/Wallpapers/rarealignment*.jpg
 
