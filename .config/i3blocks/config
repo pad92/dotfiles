@@ -75,6 +75,10 @@ USE_DESCRIPTION=1
 LONG_FORMAT=${VOL}% [${NAME}]
 SHORT_FORMAT=${VOL}% [${INDEX}]
 
+[battery2]
+markup=pango
+interval=30
+
 [time]
 command=LC_ALL=fr_FR.UTF-8 date '+%A %e/%m/%y %H:%M'
 interval=60
