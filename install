@@ -14,6 +14,8 @@ git submodule update --init --recursive "${DOTBOT_DIR}"
 
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
 
+vim +PluginInstall +PluginUpdate +qall
+
 for ATOM_PKG in $(<"${BASEDIR}/.atom/packages.list"); do
     if [ ! -d "${HOME}/.atom/packages/${ATOM_PKG}" ]; then
         apm install "${ATOM_PKG}"
