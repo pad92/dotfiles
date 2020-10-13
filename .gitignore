@@ -5,4 +5,5 @@
 .vim/bundle/gruvbox/
 .vim/bundle/vim-fugitive/
 .vim/bundle/vim-gitgutter/
+.tmux/plugins/*
 !.tmux/plugins/tpm/*
