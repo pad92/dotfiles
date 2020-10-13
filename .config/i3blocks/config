@@ -23,15 +23,8 @@ interval= 3600
 quiet=true
 base_color=#5fff5f
 update_color=#ffff85
-aur=false
+aur=true
 label= 
-
-[aur-update]
-interval=43200
-update_color=#ffff85
-quiet=1
-label= 
-signal=2
 
 [wifi]
 command=iwgetid -r | tr '\n' ' ' && grep $(iwgetid -m | awk '{ printf "%s", $1 }') /proc/net/wireless | awk '{ printf "%i%\n", int($3 * 100 / 70) }'
