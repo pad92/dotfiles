@@ -2,8 +2,7 @@
 .vim/backup
 .vim/swap
 .fonts/.uuid
-.vim/bundle/gruvbox/
-.vim/bundle/vim-fugitive/
-.vim/bundle/vim-gitgutter/
+.vim/bundle/*
+!.vim/bundle/Vundle.vim/*
 .tmux/plugins/*
 !.tmux/plugins/tpm/*
