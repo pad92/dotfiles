@@ -3,6 +3,7 @@
 .vim/swap
 .fonts/.uuid
 .vim/bundle/*
+.vim/bundle/.vundle
 !.vim/bundle/Vundle.vim/*
 .tmux/plugins/*
 !.tmux/plugins/tpm/*
