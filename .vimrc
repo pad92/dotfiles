@@ -14,6 +14,7 @@ Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
 Plugin 'morhetz/gruvbox'
 "Plugin 'bling/vim-bufferline'
+Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
