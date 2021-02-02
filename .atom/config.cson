@@ -28,7 +28,6 @@
       "one-dark-ui"
       "chester-atom-syntax"
     ]
-    titleBar: "custom-inset"
     uriHandlerRegistration: "always"
   docblockr:
     align_tags: "no"
