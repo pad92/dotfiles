@@ -243,6 +243,7 @@ new_window none
 
 for_window [class="^.*"] border pixel 1
 # Enable float for some windows
+for_window [class="Microsoft Teams - Preview" title="Notification" ] floating enable
 for_window [class="Steam" title="Liste de contacts"] floating enable
 for_window [class="Steam" title="Liste d’ami·e·s"] floating enable
 for_window [class="Steam" title="Steam - Actualités"] floating enable
@@ -257,7 +258,9 @@ for_window [class="^Steam$" title="^Screenshot Uploader$"] floating enable
 for_window [class="^Steam$" title="^Settings$"] floating enable
 for_window [class="^Steam$" title="^Steam - Self Updater$"] floating enable
 for_window [class="^Steam$" title="^Steam Guard - Computer Authorization Required$"] floating enable
-for_window [class="Microsoft Teams - Preview" title="Notification" ] floating enable
+for_window [class="^gnome-calculator$"] floating enable
+for_window [title="^Wargaming.net Game Center$"] floating enable
+for_window [class="^battle.net.exe$"] floating enable
 for_window [class="microsoft teams - preview" title="Notification" ] floating enable
 for_window [title="^Steam Keyboard$"] floating enable
 for_window [window_role="pop-up"] floating enable
@@ -277,8 +280,8 @@ bindsym XF86MonBrightnessDown  exec  xbacklight -dec 10
 bindsym XF86MonBrightnessUp    exec  xbacklight -inc 10
 
 # Cature all screen
-bindsym $mod+p     exec /usr/bin/gnome-screenshot -i
-bindsym $mod+Print exec /usr/bin/gnome-screenshot -i
+bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
+bindsym $mod+shift+p exec scrot -u '%Y%m%d-%H%M%S.png' -e 'mv $f ~/Pictures/Screenshots/'
 
 ### Start-up programs ###
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
@@ -289,6 +292,7 @@ exec --no-startup-id nm-applet        # NetworkManager
 exec --no-startup-id blueman-applet   # bluetooth
 exec --no-startup-id twmnd            # notif
 #exec --no-startup-id feh --bg-scale $(ls -1hrt ~/Pictures/Wallpapers/*.jpg | tail -1 ) # cd ~/Pictures/Wallpapers/ ; wget --user $USER --ask-password https://secure.digitalblasphemy.com/content/zips/1920x1080.zip && unzip -n 1920x1080.zip && rm 1920x1080.zip
-exec --no-startup-id feh --bg-scale ~/Pictures/Wallpapers/rarealignment*.jpg
+#exec --no-startup-id feh --bg-scale ~/Pictures/Wallpapers/rarealignment*.jpg
+exec --no-startup-id feh --bg-scale ~/Pictures/Wallpapers/valeofselene*.jpg
 
 # systemctl enable --user redshift
