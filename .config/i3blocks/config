@@ -9,26 +9,20 @@
 command=~/.config/i3blocks/blocks/$BLOCK_NAME/$BLOCK_NAME
 markup=pango
 
-[mediaplayer]
-command=playerctl metadata --format "{{ artist }} - {{ title }}"
-interval=2
-label=<span color="#a9e185"> </span>
-
 [bandwidth3]
 interval=persist
 LABEL=<span font='FontAwesome' color='#ffb86c' >  </span>
 
 [arch-update]
+command=arch-update -q -a
 interval= 3600
 quiet=true
-base_color=#5fff5f
-update_color=#ffff85
 aur=true
 label= 
 
 [wifi]
 command=iwgetid -r | tr '\n' ' ' && grep $(iwgetid -m | awk '{ printf "%s", $1 }') /proc/net/wireless | awk '{ printf "%i%\n", int($3 * 100 / 70) }'
-interval=5
+interval=10
 label=<span color="#ffb86c"> </span>
 
 [gpu-load]
@@ -42,18 +36,18 @@ interval=10
 label=<span color="#ffb86c"> </span>
 
 [cpu_usage]
-interval=2
+interval=10
 label=<span color="#8be9fd"> </span>
 
 [cpu-temperature]
 command=~/.config/i3blocks/blocks/temperature/temperature
-interval=2
-SENSOR_CHIP="acpitz-acpi-0"
+interval=10
+SENSOR_CHIP="coretemp-isa-0000"
 label=<span color="#8be9fd"> </span>
 
 [memory]
 command=free -h --si | awk 'FNR==2{ print $0 }' | awk '{ print $7 }'
-interval=2
+interval=10
 label=<span color="#a9e185"> </span>
 
 [battery]
@@ -68,10 +62,6 @@ USE_DESCRIPTION=1
 LONG_FORMAT=${VOL}% [${NAME}]
 SHORT_FORMAT=${VOL}% [${INDEX}]
 
-[battery2]
-markup=pango
-interval=30
-
 [time]
-command=LC_ALL=fr_FR.UTF-8 date '+%A %e/%m/%y %H:%M'
-interval=60
+interval=1
+STRFTIME_FORMAT=%Y-%m-%d %H:%M
