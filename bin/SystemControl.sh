@@ -20,7 +20,7 @@ function toggleNetwork() {
 
 DPMS="$(toggleDPMS)"
 NETWORK="$(toggleNetwork)"
-INPUT=`echo -e "Lock\nLogout\nShutdown\nReboot\nSuspend\nScreen off\n$DPMS\n$NETWORK\nSwitch audio\nMute" | dmenu -i -nb '#C31616' -sb '#404040' -nf white`
+INPUT=`echo -e "Lock\nLogout\nShutdown\nReboot\nReboot Windows\nSuspend\nScreen off\n$DPMS\n$NETWORK\nSwitch audio\nMute" | dmenu -i -nb '#C31616' -sb '#404040' -nf white`
 
 case "$INPUT" in
 	"Lock")             sleep 1; i3lock-fancy -p  -t '' ;;
