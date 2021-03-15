@@ -37,7 +37,7 @@
     lower_case_primitives: true
   editor:
     fontFamily: "Inconsolata"
-    fontSize: 13
+    fontSize: 12
     showIndentGuide: true
     showInvisibles: true
     softTabs: false
@@ -85,6 +85,7 @@
   "tree-view":
     alwaysOpenExisting: true
     autoReveal: true
+    hideVcsIgnoredFiles: true
     squashDirectoryNames: true
   welcome:
     showOnStartup: false
