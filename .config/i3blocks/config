@@ -14,8 +14,7 @@ interval=persist
 LABEL=<span font='FontAwesome' color='#ffb86c' >  </span>
 
 [arch-update]
-command=arch-update -q -a
-interval= 3600
+interval=3600
 quiet=true
 aur=true
 label= 
@@ -64,4 +63,4 @@ SHORT_FORMAT=${VOL}% [${INDEX}]
 
 [time]
 interval=1
-STRFTIME_FORMAT=%Y-%m-%d %H:%M
+STRFTIME_FORMAT=%A %e/%m/%y %H:%M
