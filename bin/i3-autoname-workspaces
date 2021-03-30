@@ -11,6 +11,7 @@ import i3ipc
 # http://fontawesome.io/cheatsheet/
 WINDOW_ICONS = {
     "alacritty": "",
+    "urxvt": "",
     "atom": "",
     "brave-browser": "",
     "chromium": "",
