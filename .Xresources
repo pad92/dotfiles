@@ -16,7 +16,7 @@ XTerm*selectToClipboard: true
 
 *background:                      #222D31
 *foreground:                      #d8d8d8
-*fading:                          8
+*fading:                          9
 *fadeColor:                       black
 *cursorColor:                     #1ABB9B
 *pointerColorBackground:          #2B2C2B
@@ -57,7 +57,7 @@ XTerm*selectToClipboard: true
 Xcursor.theme: xcursor-breeze
 Xcursor.size:                     0
 
-URxvt.font:                 xft:TerminessTTFNerdFontMono, \
+URxvt.font:                 xft:TerminessTTFNerdFontMono:size=10, \
                             xft:Noto Mono:size=10:antialias=true:hinting=true,\
                             xft:Noto Color Emoji, \
                             xft:Unifont, \
