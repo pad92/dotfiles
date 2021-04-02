@@ -67,7 +67,9 @@ bindsym $mod+Ctrl+t exec --no-startup-id picom -b
 bindsym $mod+Shift+d --release exec "killall dunst; exec notify-send 'restart dunst'"
 bindsym Print exec --no-startup-id i3-scrot
 #bindsym $mod+Print --release exec --no-startup-id i3-scrot -w
-bindsym $mod+p --release exec --no-startup-id i3-scrot -w
+#bindsym $mod+p --release exec --no-startup-id i3-scrot -w
+bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
+bindsym $mod+shift+p exec scrot -u '%Y%m%d-%H%M%S.png' -e 'mv $f ~/Pictures/Screenshots/'
 #bindsym $mod+Shift+Print --release exec --no-startup-id i3-scrot -s
 bindsym $mod+Shift+p --release exec --no-startup-id i3-scrot -s
 bindsym $mod+Shift+h exec xdg-open /usr/share/doc/manjaro/i3_help.pdf
@@ -192,7 +194,7 @@ for_window [class="GParted"] floating enable border normal
 for_window [title="i3_help"] floating enable sticky enable border normal
 for_window [class="Lightdm-settings"] floating enable
 for_window [class="Lxappearance"] floating enable sticky enable border normal
-for_window [title="OpenFortiGUI"] floating enable sticky enable border normal
+for_window [class="openfortiGUI"] floating enable
 for_window [class="Manjaro-hello"] floating enable
 for_window [class="Manjaro Settings Manager"] floating enable border normal
 for_window [title="MuseScore: Play Panel"] floating enable
@@ -278,7 +280,7 @@ exec --no-startup-id pamac-tray
 exec --no-startup-id clipit
 exec --no-startup-id blueman-applet
 # exec_always --no-startup-id sbxkb
-exec --no-startup-id conky -c /usr/share/conky/conky_maia &&
+exec --no-startup-id start_conky_maia
 # exec --no-startup-id start_conky_green
 exec --no-startup-id xautolock -time 10 -locker blurlock
 exec_always --no-startup-id ff-theme-util
