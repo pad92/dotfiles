@@ -11,19 +11,21 @@ import i3ipc
 # http://fontawesome.io/cheatsheet/
 WINDOW_ICONS = {
     "alacritty": "",
-    "urxvt": "",
     "atom": "",
     "brave-browser": "",
     "chromium": "",
+    "discord": "",
     "evolution": "",
     "firefox": "",
     "forticlientsslvpn": "",
     "google-chrome": "",
     "kitty": "",
     "lutris": "",
+    "microsoft teams - preview": "",
     "spotify": "",
     "steam": "",
     "telegram-desktop": "",
+    "urxvt": "",
     "vlc": "",
     "wine": "",
 }
