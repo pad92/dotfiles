@@ -23,3 +23,6 @@
 [submodule ".config/i3blocks/i3blocks-contrib"]
 	path = .config/i3blocks/i3blocks-contrib
 	url = https://github.com/vivien/i3blocks-contrib.git
+[submodule ".config/rofi/themes/gruvbox"]
+	path = .config/rofi/themes/gruvbox
+	url = https://github.com/bardisty/gruvbox-rofi
