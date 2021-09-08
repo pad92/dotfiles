@@ -37,7 +37,6 @@
     lower_case_primitives: true
   editor:
     fontFamily: "Inconsolata"
-    fontSize: 12
     showIndentGuide: true
     showInvisibles: true
     softTabs: false
