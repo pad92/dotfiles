@@ -1,5 +1,3 @@
-/* vim:ft=css */
-
 configuration {
 	modi: "drun,window,calc:rofi-calc";
 /*	font: "mono 12";*/
@@ -138,12 +136,4 @@ configuration {
 /*	me-select-entry: "MousePrimary";*/
 /*	me-accept-entry: "MouseDPrimary";*/
 /*	me-accept-custom: "Control+MouseDPrimary";*/
-  timeout {
-      action: "kb-cancel";
-      delay:  0;
-  }
-  filebrowser {
-      directories-first: true;
-      sorting-method:    "name";
-  }
 }

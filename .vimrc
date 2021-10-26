@@ -8,13 +8,12 @@ call vundle#begin()
 
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
-"Plugin 'vim-airline/vim-airline'
-"Plugin 'vim-airline/vim-airline-themes'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
 Plugin 'morhetz/gruvbox'
-"Plugin 'bling/vim-bufferline'
 Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
+Plugin 'chrisbra/colorizer'
+
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
@@ -66,7 +65,7 @@ set smartcase		" Do smart case matching
 set incsearch		" Incremental search
 set autowrite		" Automatically save before commands like :next and :make
 "set hidden		" Hide buffers when they are abandoned
-"set mouse=a		" Enable mouse usage (all modes)
+set mouse=		" Disable mouse usage
 set laststatus=2 " Always show status bar
 "set showtabline=2 " Always show tabs
 

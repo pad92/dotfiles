@@ -7,3 +7,5 @@
 !.vim/bundle/Vundle.vim/*
 .tmux/plugins/*
 !.tmux/plugins/tpm/*
+
+.config/nitrogen/bg-saved.cfg
