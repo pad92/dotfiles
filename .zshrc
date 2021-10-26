@@ -62,6 +62,9 @@ zstyle ':notify:*' success-title 'Success'
 zstyle ':notify:*' error-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-error.png'
 zstyle ':notify:*' success-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-information.png'
 
+if [[ -e /usr/share/zsh/manjaro-zsh-config ]]; then
+    source /usr/share/zsh/manjaro-zsh-config
+fi
 # History
 export HIST_STAMPS="mm/dd/yyyy"
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
@@ -101,9 +104,6 @@ if [ -x $(command -v neofetch) ]; then neofetch; fi
 
 USE_POWERLINE="true"
 
-if [[ -e /usr/share/zsh/manjaro-zsh-config ]]; then
-    source /usr/share/zsh/manjaro-zsh-config
-fi
 if [[ -e /usr/share/zsh/manjaro-zsh-prompt ]]; then
     source /usr/share/zsh/manjaro-zsh-prompt
 fi
