@@ -1,5 +1,5 @@
 # Your preferred terminal emulator
-set $term termite
+set $term urxvt
 
 # Your preferred application launcher
 set $menu "rofi -i -modi drun,run,window -show drun"
@@ -17,8 +17,8 @@ set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
 set $gnome-schema org.gnome.desktop.interface
 
 exec_always {
-    gsettings set $gnome-schema gtk-theme 'Numix'
-    gsettings set $gnome-schema icon-theme 'Numix'
+    gsettings set $gnome-schema gtk-theme 'Yaru-dark'
+    gsettings set $gnome-schema icon-theme 'Yaru'
 }
 
 # This will lock your screen after 300 seconds of inactivity, then turn off
@@ -36,5 +36,10 @@ include config.d/*
 exec xrdb $HOME/.Xresources
 exec redshift
 exec mako
-exec greenclip daemon
-exec networkd-notify
+exec nm-applet
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec ~/.dotfiles/bin/i3-autoname-workspaces
+
+set $greenclip ~/.dotfiles/bin/greenclip-v4.2
+bindsym $mod+Shift+v exec rofi -modi "clipboard:$greenclip print" -show clipboard
+exec --no-startup-id $greenclip daemon

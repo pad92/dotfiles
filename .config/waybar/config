@@ -29,7 +29,7 @@
         "format": "{usage}% "
     },
     "memory": {
-        "format": "{}% "
+        "format": "{}% Mem"
     },
     "battery": {
         "states": {
@@ -43,9 +43,8 @@
     "network": {
         "format": "{ifname}",
         "format-wifi": "{signalStrength}% ",
-        "format-ethernet": "",
-        "format-disconnected": "",
-        "on-click": "termite -e 'sudo wifi-menu'"
+        "format-ethernet": "Online",
+        "format-disconnected": "Offline"
     },
     "pulseaudio": {
         "format": "{volume}% {icon}",
