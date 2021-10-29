@@ -1,4 +1,3 @@
-Xft.dpi:       96
 Xft.antialias: true
 Xft.hinting:   true
 Xft.rgba:      rgb
@@ -57,17 +56,20 @@ XTerm*selectToClipboard: true
 Xcursor.theme: xcursor-breeze
 Xcursor.size:                     0
 
-URxvt.font:                 xft:TerminessTTFNerdFontMono:size=10, \
-                            xft:Noto Mono:size=10:antialias=true:hinting=true,\
-                            xft:Noto Color Emoji, \
-                            xft:Unifont, \
-                            9x15
+URxvt.font: xft:Terminus (TTF):style=Medium:size=10
+!URxvt.font:                 xft:TerminessTTFNerdFontMono:size=10, \
+!                            xft:Noto Mono:size=10:antialias=true:hinting=true,\
+!                            xft:Noto Color Emoji, \
+!                            xft:Unifont, \
+!                            9x15
+
+
 !URxvt.letterSpace:          -1
 
 
 ! alternative font settings with 'terminus':
-! URxvt.font:      -xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso10646-1
-! URxvt.bold.font: -xos4-terminus-bold-r-normal--16-160-72-72-c-80-iso10646-1
+!URxvt.font:      -xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso10646-1
+!URxvt.bold.font: -xos4-terminus-bold-r-normal--16-160-72-72-c-80-iso10646-1
 !! terminus names see end of file!
 
 URxvt.depth:                      32
