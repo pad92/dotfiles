@@ -1,9 +1,0 @@
-program_options:
-  udisks_version: 2 # May break, GRRR
-  tray: auto # Hide tray if not necessary
-  notify: true
-  file_manager: xdg-open
-
-mount_options:
-- id_type: ntfs
-  options: umask=0033
