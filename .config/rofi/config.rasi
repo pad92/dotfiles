@@ -1,5 +1,3 @@
-/* vim:ft=css */
-
 configuration {
 	modi: "drun,window,calc:rofi-calc";
 /*	font: "mono 12";*/

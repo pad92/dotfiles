@@ -29,7 +29,6 @@ plugins=(
     github
     httpie
     rsync
-    notify
     zsh-autosuggestions
     zsh-completions
     zsh-syntax-highlighting
@@ -53,14 +52,6 @@ source ${ZSH}/init.zsh
 # User configuration
 export LANG="en_US.UTF-8"
 export EDITOR='vim'
-export GUI_EDITOR='atom'
-
-# notify plugin
-zstyle ':notify:*' command-complete-timeout 15
-zstyle ':notify:*' error-title 'Error'
-zstyle ':notify:*' success-title 'Success'
-zstyle ':notify:*' error-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-error.png'
-zstyle ':notify:*' success-icon '/usr/share/icons/Adwaita/256x256/legacy/dialog-information.png'
 
 if [[ -e /usr/share/zsh/manjaro-zsh-config ]]; then
     source /usr/share/zsh/manjaro-zsh-config
