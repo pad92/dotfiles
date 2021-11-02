@@ -1,7 +1,6 @@
 # My dotfiles
 
-Configuration used on my Arch with sway / waybar
-I totally dropped my gnome :)
+Configuration used on my Manjaro with i3 / i3status
 
 # Install
 
@@ -12,15 +11,10 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 
 # Lists of packages
 
-## Archlinux
+## Manjaro
 
-![Screenshot](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/screenshot.png)
+[pkglist.txt](https://raw.githubusercontent.com/pad92/dotfiles/master/manjaro/pkglist.txt)
 
 ### yay
 
 [Install](https://github.com/Jguer/yay#installation)
-
-### My installed packages Lists :
-
-* [from official repo](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/pkglist.txt)
-* [from AUR](https://raw.githubusercontent.com/pad92/dotfiles/master/arch/pkglist_aur.txt)

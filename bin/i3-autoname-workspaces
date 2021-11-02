@@ -11,7 +11,7 @@ import i3ipc
 # http://fontawesome.io/cheatsheet/
 WINDOW_ICONS = {
     "alacritty": "",
-    "atom": "",
+    "atom": "",
     "brave-browser": "",
     "chromium": "",
     "discord": "",
@@ -21,12 +21,13 @@ WINDOW_ICONS = {
     "google-chrome": "",
     "kitty": "",
     "lutris": "",
-    "microsoft teams - preview": "",
+    "microsoft teams - preview": "",
     "spotify": "",
     "steam": "",
-    "telegram-desktop": "",
+    "telegram-desktop": "",
     "urxvt": "",
     "vlc": "",
+    "vscodium": "",
     "wine": "",
 }
 
