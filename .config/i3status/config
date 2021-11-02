@@ -6,7 +6,7 @@
 # ß
 # If the above line is not correctly displayed, fix your editor first!
 #
-# ttf-font-awesome-4
+# ttf-font-awesome
 
 general {
 	colors         = true
@@ -20,6 +20,7 @@ order += "disk /"
 order += "wireless _first_"
 order += "ethernet _first_"
 order += "battery all"
+order += "cpu_temperature 0"
 order += "cpu_usage"
 order += "volume master"
 order += "tztime date"
@@ -38,29 +39,36 @@ battery all {
 
 ethernet _first_ {
 	# if you use %speed, i3status requires root privileges
-	format_up   = "🔗 %speed"
+	format_up   = " %speed"
 	format_down = ""
 }
 
 tztime date {
-    format = "%a %d.%m.%Y %H:%M"
+    format = "%a %d.%m.%Y %H:%M"
 	separator_block_width = 5
 }
 
 wireless _first_ {
-        format_up = "%quality, %essid, %ip"
-        format_down = "down"
+        format_up = " %quality, %essid, %ip"
+        format_down = ""
+}
+
+cpu_temperature 0 {
+	format                 = " %degrees °C"
+	path                   = "/sys/class/hwmon/hwmon3/temp1_input"
+	max_threshold          = 75
+	format_above_threshold = " %degrees ⁰C"
 }
 
 cpu_usage {
-    format = " %usage"
+    format = " %usage"
 	max_threshold = 95
 	degraded_threshold = 80
 }
 
 volume master {
 	format = " %volume"
-        format_muted = " (muted) %volume"
+        format_muted = ""
         device = "default"
         mixer = "Master"
         mixer_idx = 0
