@@ -17,10 +17,5 @@
       glob: true
       path: .config/*
       force: true
-    ~/.atom/:
-      glob: true
-      path: .atom/*.cson
-      force: true
-    ~/.atom/styles.less: .atom/styles.less
 - shell:
   - [git submodule update --init --recursive, Installing submodules]
