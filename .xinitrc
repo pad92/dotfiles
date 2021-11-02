@@ -1,30 +1,28 @@
 #!/bin/sh
 
 userresources=$HOME/.Xresources
-usermodmap=$HOME/.Xmodmap
-sysresources=/etc/X11/xinit/.Xresources
-sysmodmap=/etc/X11/xinit/.Xmodmap
+XMODMAP_USER=$HOME/.Xmodmap
+XRESOURCES_ETC=/etc/X11/xinit/.Xresources
+XMODPAM_ETC=/etc/X11/xinit/.Xmodmap
 
 # merge in defaults and keymaps
-
-if [ -f $sysresources ]; then
-    xrdb -merge $sysresources
+if [ -f $XRESOURCES_ETC ]; then
+    xrdb -merge $XRESOURCES_ETC
 fi
 
-if [ -f $sysmodmap ]; then
-    xmodmap $sysmodmap
+if [ -f $XMODPAM_ETC ]; then
+    xmodmap $XMODPAM_ETC
 fi
 
 if [ -f "$userresources" ]; then
     xrdb -merge "$userresources"
 fi
 
-if [ -f "$usermodmap" ]; then
-    xmodmap "$usermodmap"
+if [ -f "$XMODMAP_USER" ]; then
+    xmodmap "$XMODMAP_USER"
 fi
 
 # start some nice programs
-
 if [ -d /etc/X11/xinit/xinitrc.d ] ; then
  for f in /etc/X11/xinit/xinitrc.d/?*.sh ; do
   [ -x "$f" ] && . "$f"
@@ -34,7 +32,4 @@ fi
 
 [ -f ~/.xprofile ] && . ~/.xprofile
 
-#exec i3 --force-xinerama
 exec i3 >> ~/.cache/i3.log 2>> ~/.cache/i3.err
-#exec /usr/bin/awesome >> ~/.cache/awesome.log 2>> ~/.cache/awesome.err
-
