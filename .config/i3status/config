@@ -44,7 +44,7 @@ ethernet _first_ {
 }
 
 tztime date {
-    format = "%a %d.%m.%Y %H:%M"
+    format = " %a %d.%m.%Y  %H:%M"
 	separator_block_width = 5
 }
 
