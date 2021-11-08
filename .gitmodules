@@ -26,3 +26,6 @@
 [submodule ".config/rofi/themes/gruvbox"]
 	path = .config/rofi/themes/gruvbox
 	url = https://github.com/bardisty/gruvbox-rofi
+[submodule ".config/i3status/i3spotifystatus"]
+	path = .config/i3status/i3spotifystatus
+	url = https://github.com/rpieja/i3spotifystatus.git
