@@ -66,7 +66,7 @@ set smartcase		" Do smart case matching
 set incsearch		" Incremental search
 set autowrite		" Automatically save before commands like :next and :make
 "set hidden		" Hide buffers when they are abandoned
-"set mouse=a		" Enable mouse usage (all modes)
+set mouse=		" Disable mouse usage
 set laststatus=2 " Always show status bar
 "set showtabline=2 " Always show tabs
 
