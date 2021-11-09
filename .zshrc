@@ -32,6 +32,7 @@ plugins=(
     zsh-autosuggestions
     zsh-completions
     zsh-syntax-highlighting
+    thefuck
 )
 
 autoload -Uz colors && colors
