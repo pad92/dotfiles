@@ -8,7 +8,6 @@ general {
     interval = 1
 }
 
-order += "arch_updates"
 order += "sysdata cpu"
 order += "sysdata mem"
 order += 'net_rate'
@@ -17,7 +16,6 @@ order += "spotify"
 order += "volume master"
 order += "battery_level"
 order += "weather_owm"
-order += 'xrandr'
 order += "tztime local"
 
 weather_owm {
@@ -34,13 +32,6 @@ weather_owm {
     format_temperature = "[\?color=all {current:.0f}°{unit}]"
     on_click 1 = "exec xdg-open https://darksky.net/forecast/48.8684,2.1765/ca12/fr"
     request_timeout = 60
-}
-
-arch_updates {
-    cache_timeout = 600
-    format = ' {pacman}/{aur}'
-    hide_if_zero = True
-    on_click 1 = 'alacritty -e \'yay -Syyu --devel\''
 }
 
 net_rate {
@@ -99,10 +90,6 @@ battery_level {
     cache_timeout = 60
 }
 
-xrandr {
-  on_udev_drm = "refresh_and_freeze"
-  hide_if_single_combination = true
-}
 tztime local {
     format = " %Y/%m/%d %H:%M"
     on_click 1 =  "exec --no-startup-id zenity --calendar"

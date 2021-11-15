@@ -4,15 +4,14 @@
 
 - link:
     ~/.Xresources: .Xresources
-    ~/.fonts: .fonts
     ~/.screenrc: .screenrc
     ~/.tmux.conf: .tmux.conf
     ~/.tmux: .tmux
     ~/.vim: .vim
     ~/.vimrc: .vimrc
+    ~/.xinitrc: .xinitrc
     ~/.zshenv: .zshenv
     ~/.zshrc: .zshrc
-    ~/.xinitrc: .xinitrc
     ~/.config/:
       glob: true
       path: .config/*
