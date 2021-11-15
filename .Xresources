@@ -54,13 +54,13 @@ XTerm*selectToClipboard: true
 *color15:                         #f8f8f8
 
 Xcursor.theme: xcursor-breeze
-Xcursor.size:                     24
+Xcursor.size:  24
 
 ! ------------------------------------------------------------
 ! URxvt
 ! ------------------------------------------------------------
 
-URxvt*termName       : screen-256color
+URxvt*termName: screen-256color
 
 URxvt.font: xft:TerminessTTFNerdFontMono : size=10
 
