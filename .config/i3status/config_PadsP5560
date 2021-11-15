@@ -27,7 +27,7 @@ order += "tztime date"
 battery all {
 	format                        = "%status %percentage %remaining"
     format_down                   = ""
-	status_bat                    = ""
+	status_bat                    = ""
 	status_chr                    = ""
 	status_full                   = ""
 	low_threshold                 = 15
