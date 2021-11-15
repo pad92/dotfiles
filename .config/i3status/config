@@ -26,7 +26,7 @@ order += "volume master"
 order += "tztime date"
 
 battery all {
-	format                        = "%status %percentage %remaining"
+    format = "%status %percentage %remaining %emptytime"
     format_down                   = ""
 	status_bat                    = ""
 	status_chr                    = ""
