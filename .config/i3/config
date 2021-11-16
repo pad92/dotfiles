@@ -207,6 +207,7 @@ for_window [class="Timeset-gui"] floating enable border normal
 for_window [class="Xfburn"] floating enable
 for_window [class="calamares"] floating enable border normal
 for_window [class="fpakman"] floating enable
+for_window [class="google-chrome" window_role="pop-up"] floating enable
 for_window [class="octopi"] floating enable
 for_window [class="openfortiGUI"] floating enable
 for_window [class="qt5ct"] floating enable sticky enable border normal
