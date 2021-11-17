@@ -37,7 +37,7 @@ font:
     x: 0
     y: 0
 
-draw_bold_text_with_bright_colors: true
+draw_bold_text_with_bright_colors: false
 
 schemes:
   doom-one: &doom-one
@@ -362,39 +362,65 @@ schemes:
       white:   '#282a2e'
 
   Base16MaterialDarker256: &Base16MaterialDarker256
-      primary:
-        background: '0x212121'
-        foreground: '0xeeffff'
-      cursor:
-        text:    '0x212121'
-        cursor:  '0xeeffff'
-      normal:
-        black:   '0x212121'
-        red:     '0xf07178'
-        green:   '0xc3e88d'
-        yellow:  '0xffcb6b'
-        blue:    '0x82aaff'
-        magenta: '0xc792ea'
-        cyan:    '0x89ddff'
-        white:   '0xeeffff'
-      bright:
-        black:   '0x4a4a4a'
-        red:     '0xf07178'
-        green:   '0xc3e88d'
-        yellow:  '0xffcb6b'
-        blue:    '0x82aaff'
-        magenta: '0xc792ea'
-        cyan:    '0x89ddff'
-        white:   '0xffffff'
-      indexed_colors:
-        - { index: 16, color: '0xf78c6c' }
-        - { index: 17, color: '0xff5370' }
-        - { index: 18, color: '0x303030' }
-        - { index: 19, color: '0x353535' }
-        - { index: 20, color: '0xb2ccd6' }
-        - { index: 21, color: '0xeeffff' }
+    primary:
+      background: '0x212121'
+      foreground: '0xeeffff'
+    cursor:
+      text:    '0x212121'
+      cursor:  '0xeeffff'
+    normal:
+      black:   '0x212121'
+      red:     '0xf07178'
+      green:   '0xc3e88d'
+      yellow:  '0xffcb6b'
+      blue:    '0x82aaff'
+      magenta: '0xc792ea'
+      cyan:    '0x89ddff'
+      white:   '0xeeffff'
+    bright:
+      black:   '0x4a4a4a'
+      red:     '0xf07178'
+      green:   '0xc3e88d'
+      yellow:  '0xffcb6b'
+      blue:    '0x82aaff'
+      magenta: '0xc792ea'
+      cyan:    '0x89ddff'
+      white:   '0xffffff'
+    indexed_colors:
+      - { index: 16, color: '0xf78c6c' }
+      - { index: 17, color: '0xff5370' }
+      - { index: 18, color: '0x303030' }
+      - { index: 19, color: '0x353535' }
+      - { index: 20, color: '0xb2ccd6' }
+      - { index: 21, color: '0xeeffff' }
 
-colors: *Base16MaterialDarker256
+  Base16Material: &Base16Material
+    primary:
+      background: '0x263238'
+      foreground: '0xeeffff'
+    cursor:
+      text: '0x263238'
+      cursor: '0xeeffff'
+    normal:
+      black:   '0x263238'
+      red:     '0xf07178'
+      green:   '0xc3e88d'
+      yellow:  '0xffcb6b'
+      blue:    '0x82aaff'
+      magenta: '0xc792ea'
+      cyan:    '0x89ddff'
+      white:   '0xeeffff'
+    bright:
+      black:   '0x546e7a'
+      red:     '0xf78c6c'
+      green:   '0x2e3c43'
+      yellow:  '0x314549'
+      blue:    '0xb2ccd6'
+      magenta: '0xeeffff'
+      cyan:    '0xff5370'
+      white:   '0xffffff'
+
+colors: *Base16Material
 
 background_opacity: 0.80
 key_bindings:
