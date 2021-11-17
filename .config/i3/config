@@ -286,21 +286,21 @@ exec --no-startup-id xautolock -time 10 -locker blurlock
 
 # Color palette used for the terminal ( ~/.Xresources file )
 set_from_resource $base00    color0
-set_from_resource $base01    color18
-set_from_resource $base02    color19
-set_from_resource $base03    color8
-set_from_resource $base04    color20
-set_from_resource $base05    color7
-set_from_resource $base06    color21
+set_from_resource $base01    color10
+set_from_resource $base02    color11
+set_from_resource $base03    color3
+set_from_resource $base04    color12
+set_from_resource $base05    foreground
+set_from_resource $base06    color13
 set_from_resource $base07    color15
-set_from_resource $base08    color9
-set_from_resource $base09    color16
-set_from_resource $base0A    color11
-set_from_resource $base0B    color10
-set_from_resource $base0C    color14
-set_from_resource $base0D    color12
-set_from_resource $base0E    color13
-set_from_resource $base0F    color17
+set_from_resource $base08    color1
+set_from_resource $base09    color9
+set_from_resource $base0A    color3
+set_from_resource $base0B    color2
+set_from_resource $base0C    color6
+set_from_resource $base0D    color4
+set_from_resource $base0E    color5
+set_from_resource $base0F    color14
 
 # Start i3bar to display a workspace bar (plus the system information i3status if available)
 bar {
