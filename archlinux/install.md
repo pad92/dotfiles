@@ -58,7 +58,9 @@ sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 ```
 arch-chroot /mnt
 
-ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtime
+timedatectl set-timezone "$(curl --fail https://ipapi.co/timezone)"
+timedatectl set-ntp true
+timedatectl
 hwclock --systohc
 
 sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
@@ -107,6 +109,7 @@ echo 'initrd /initramfs-linux.img'                                      >> /boot
 echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch.conf
 
 systemctl enable NetworkManager
+systemctl enable systemd-timesyncd.service
 systemctl enable sshd
 
 vim /etc/pacman.conf
