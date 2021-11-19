@@ -48,8 +48,8 @@ pacstrap /mnt base linux linux-firmware lvm2 intel-ucode vim base-devel terminus
 
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
 
-genfstab -U /mnt >> /mnt/etc/fstab
-echo 'tmpfs /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
+genfstab -U /mnt                                           >> /mnt/etc/fstab
+echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
 sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 ```
 
