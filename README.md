@@ -9,12 +9,10 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 ./.dotfiles/install
 ```
 
-# Lists of packages
+# ArchLinux
 
-## Manjaro
+## My Setup
 
-[pkglist.txt](https://raw.githubusercontent.com/pad92/dotfiles/master/manjaro/pkglist.txt)
+[install.md](https://github.com/pad92/dotfiles/blob/master/archlinux/install.md)
+[pkglist.txt](https://raw.githubusercontent.com/pad92/dotfiles/master/archlinux/pkglist.txt)
 
-### yay
-
-[Install](https://github.com/Jguer/yay#installation)
