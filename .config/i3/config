@@ -38,6 +38,7 @@ bindsym $mod+Shift+q kill
 # start program launcher
 #bindsym $mod+d exec --no-startup-id dmenu_recency
 bindsym $mod+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
+bindsym $mod+Shift+v exec --no-startup-id rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' 
 
 # launch categorized menu
 bindsym $mod+z exec --no-startup-id morc_menu
@@ -193,8 +194,6 @@ for_window [class="GParted"] floating enable border normal
 for_window [class="Galculator"] floating enable border pixel 1
 for_window [class="Lightdm-settings"] floating enable
 for_window [class="Lxappearance"] floating enable sticky enable border normal
-for_window [class="Manjaro Settings Manager"] floating enable border normal
-for_window [class="Manjaro-hello"] floating enable
 for_window [class="Nitrogen"] floating enable sticky enable border normal
 for_window [class="Oblogout"] fullscreen enable
 for_window [class="Pamac-manager"] floating enable
@@ -281,31 +280,36 @@ exec --no-startup-id nm-applet
 exec --no-startup-id xfce4-power-manager
 exec --no-startup-id pamac-tray
 exec --no-startup-id clipit
-exec --no-startup-id blueman-applet
 exec --no-startup-id xautolock -time 10 -locker blurlock
+exec --no-startup-id greenclip daemon
 
-# Color palette used for the terminal ( ~/.Xresources file )
-set_from_resource $base00    color0
-set_from_resource $base01    color10
-set_from_resource $base02    color11
-set_from_resource $base03    color3
-set_from_resource $base04    color12
-set_from_resource $base05    foreground
-set_from_resource $base06    color13
-set_from_resource $base07    color15
-set_from_resource $base08    color1
-set_from_resource $base09    color9
-set_from_resource $base0A    color3
-set_from_resource $base0B    color2
-set_from_resource $base0C    color6
-set_from_resource $base0D    color4
-set_from_resource $base0E    color5
-set_from_resource $base0F    color14
+## Base16 Material
+# Author: Nate Peterson
+#
+# You can use these variables anywhere in the i3 configuration file.
+
+set $base00 #263238
+set $base01 #2E3C43
+set $base02 #314549
+set $base03 #546E7A
+set $base04 #B2CCD6
+set $base05 #EEFFFF
+set $base06 #EEFFFF
+set $base07 #FFFFFF
+set $base08 #F07178
+set $base09 #F78C6C
+set $base0A #FFCB6B
+set $base0B #C3E88D
+set $base0C #89DDFF
+set $base0D #82AAFF
+set $base0E #C792EA
+set $base0F #FF5370
+
 
 # Start i3bar to display a workspace bar (plus the system information i3status if available)
 bar {
 	i3bar_command i3bar
-	status_command i3status -c ~/.dotfiles/.config/i3status/config_$(hostname -s) | ~/.dotfiles/.config/i3status/i3spotifystatus/pystatus.py
+	status_command i3status -c ~/.dotfiles/.config/i3status/config_$(hostnamectl hostname) | ~/.dotfiles/.config/i3status/i3spotifystatus/pystatus.py
 	position top
 
 ## please set your primary output first. Example: 'xrandr --output eDP1 --primary'
@@ -314,7 +318,7 @@ bar {
 
 	bindsym button4 nop
 	bindsym button5 nop
-   font xft:URWGothic-Book 8
+    font xft:URWGothic-Book 8
 	#strip_workspace_numbers yes
 
     colors {
