@@ -1,8 +1,8 @@
 # My dotfiles
 
-Configuration used on my Manjaro with i3 / i3status
+Configuration used on my [Arch Linux](https://archlinux.org/) with i3 / i3status
 
-# Install
+# Install Dotfile
 
 ```sh
 git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
