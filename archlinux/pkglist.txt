@@ -67,7 +67,9 @@ man-pages
 mlocate
 nerd-fonts-inconsolata
 nitrogen
+ntfs-3g
 orchis-theme-git
+os-prober
 otf-font-awesome
 pa-applet-git
 packer
@@ -81,6 +83,7 @@ python-i3ipc
 redshift
 rofi
 rofi-greenclip
+seahorse
 semver
 tela-icon-theme
 telegram-desktop
@@ -105,11 +108,14 @@ vim-spell-fr
 vmware-workstation
 vscodium-bin
 xarchiver
+xautolock
 xclip
 xf86-video-intel
 xfce4-power-manager
 xorg-server
+xorg-xinit
 xorg-xrandr
 xorg-xrdb
+xorg-xwininfo
 yaru-gtk-theme
 zsh
