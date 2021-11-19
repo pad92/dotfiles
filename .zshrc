@@ -1,20 +1,14 @@
 export ZSH=${HOME}/.dotfiles/zsh/
 export TERM=xterm-256color
 
-#
-
 if [ -d ${HOME}/.bin ]; then
     export PATH="${PATH}:${HOME}/.bin"
-#    for MYBIN in $(ls -d ${HOME}/.bin/*/ 2>/dev/null); do
-#        if [ -d "${MYBIN}" ]; then
-#            export PATH="${PATH}:${MYBIN}"
-#        fi
-#    done
     rehash
 fi
 
 if [ -d ${HOME}/.local/bin ]; then
     export PATH="${PATH}:${HOME}/.local/bin"
+    rehash
 fi
 
 ZSH_THEME="pad"
@@ -41,11 +35,6 @@ zstyle ':completion:*' menu select
 zmodload zsh/complist
 compinit
 _comp_options+=(globdots) # incude dotfiles
-
-if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
-    plugins=(${plugins}
-        brew)
-fi
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
 source ${ZSH}/init.zsh
@@ -75,27 +64,15 @@ setopt share_history
 setopt SHARE_HISTORY
 setopt APPEND_HISTORY
 
-
-if [ -f ${HOME}/.zshaliases ]
-then
+if [ -f ${HOME}/.zshaliases ]; then
   source ${HOME}/.zshaliases
 fi
 
 if [ -f "${HOME}/.dir_colors" ]; then eval $(dircolors ${HOME}/.dir_colors); fi
 
-if [[ "${OSTYPE}" =~ ^darwin.*$ ]]; then
-    test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-else
-    STARTX_BIN=$(command -v startx )
-    if [ ! -z "${STARTX_BIN}" ] ; then
-        [[ $(tty) == '/dev/tty1' ]] && startx
-    fi
+STARTX_BIN=$(command -v startx )
+if [ ! -z "${STARTX_BIN}" ] ; then
+    [[ $(tty) == '/dev/tty1' ]] && startx
 fi
 
 if [ -x $(command -v neofetch) ]; then neofetch; fi
-
-USE_POWERLINE="true"
-
-if [[ -e /usr/share/zsh/manjaro-zsh-prompt ]]; then
-    source /usr/share/zsh/manjaro-zsh-prompt
-fi
