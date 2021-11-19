@@ -43,6 +43,9 @@ source ${ZSH}/init.zsh
 export LANG="en_US.UTF-8"
 export EDITOR='vim'
 
+if [[ -e /usr/share/zsh/manjaro-zsh-config ]]; then
+    source /usr/share/zsh/manjaro-zsh-config
+fi
 # History
 export HIST_STAMPS="mm/dd/yyyy"
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
