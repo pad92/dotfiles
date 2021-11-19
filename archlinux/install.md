@@ -1,3 +1,12 @@
+# Create USB stick
+
+- Download ISO From [https://archlinux.org/download/](https://mirrors.eric.ovh/arch/iso/latest/)
+```
+sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
+```
+
+where /dev/sda is your usb key
+
 # From live
 ```
 gdisk /dev/nvme0n1
