@@ -1,3 +1,19 @@
+# Games
+## New World
+function nw_ss {
+    SERVER=$1
+    SERVER_STATUS=$(curl -s https://www.newworld.com/fr-fr/support/server-status | grep -B5 ${SERVER} | head -1 | cut -d'"' -f2)
+    if [ $? -eq 0 ]; then
+        if [ -z "${SERVER_STATUS}" ]; then
+            echo "${SERVER}: not found"
+        else
+            echo "${SERVER}: ${SERVER_STATUS}"
+        fi
+    else
+        echo "ERROR CURL : ${SERVER_STATUS}"
+    fi
+}
+
 # Docker
 ## Ansible
 alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
