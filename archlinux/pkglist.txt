@@ -78,6 +78,7 @@ papirus-icon-theme
 pavucontrol
 picom
 pkgconf
+polkit-gnome
 powertop
 python-i3ipc
 redshift
