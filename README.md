@@ -13,6 +13,6 @@ git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
 
 ## My Setup
 
-[install.md](https://github.com/pad92/dotfiles/blob/master/archlinux/install.md)
-[pkglist.txt](https://raw.githubusercontent.com/pad92/dotfiles/master/archlinux/pkglist.txt)
+- [install.md](https://github.com/pad92/dotfiles/blob/master/archlinux/install.md)
+- [pkglist.txt](https://raw.githubusercontent.com/pad92/dotfiles/master/archlinux/pkglist.txt)
 
