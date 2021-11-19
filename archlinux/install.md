@@ -69,6 +69,17 @@ echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
 echo 'FONT=ter-116n'    >> /etc/vconsole.conf
 
+cat <<EOF>/etc/X11/xorg.conf.d/00-keyboard.conf
+# Read and parsed by systemd-localed. It's probably wise not to edit this file
+# manually too freely.
+Section "InputClass"
+        Identifier "system-keyboard"
+        MatchIsKeyboard "on"
+        Option "XkbLayout" "us"
+        Option "XkbVariant" "intl"
+EndSection
+EOF
+
 myhostname='MyArch'
 echo "$myhostname" > /etc/hostname
 cat <<EOF>> /etc/hosts
