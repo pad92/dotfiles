@@ -223,7 +223,7 @@ for_window [urgent=latest] focus
 bindsym $mod+Shift+c reload
 
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
-bindsym $mod+Shift+r restart
+bindsym $mod+Shift+r exec ~/.dotfiles/bin/xrandr.sh restart
 
 # exit i3 (logs you out of your X session)
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
@@ -274,6 +274,7 @@ bindsym $mod+9 exec --no-startup-id blurlock
 
 # Autostart applications
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
+exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id nitrogen --restore; sleep 1; picom -b
 exec --no-startup-id nm-applet
