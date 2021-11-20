@@ -12,6 +12,8 @@ case "${LISTMONITORS}" in
             xrandr --dpi 96 \
                    --output HDMI-0 --mode ${RES_HDMI0} --pos 0x0 --rotate right \
                    --output DP-0 --primary --mode ${RES_DP0} --pos 1080x0 --rotate normal
+            i3-msg "workspace 1, move workspace to output DP-0"
+            i3-msg "workspace 2, move workspace to output HDMI-0"
         fi
         ;;
     'DP1 DP3-1')
@@ -24,6 +26,8 @@ case "${LISTMONITORS}" in
                    --output eDP1 --off \
                    --output DP1 --mode ${RES_DP1} --pos 0x0 --rotate right \
                    --output DP3-1 --primary --mode ${RES_DP31} --pos 1080x0 --rotate normal
+            i3-msg "workspace 1, move workspace to output DP3-1"
+            i3-msg "workspace 2, move workspace to output DP1"
         fi
         ;;
 
