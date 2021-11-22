@@ -16,42 +16,52 @@ function nw_ss {
 
 # Docker
 ## Ansible
-alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
-alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 ansible-playbook'
+if [ command -v docker &>/dev/null ]; then
+    alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
+    alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 ansible-playbook'
+fi
+
 
 # Arch
-
 ## remove orphans
-function clean_arch {
-    ORPHAN=$(pacman -Qtdq)
+if [ command -v pacman &>/dev/null ] && [ command -v yay &>/dev/null ]; then
+    function clean_arch {
+        ORPHAN=$(pacman -Qtdq)
 
-    if [ -n "${ORPHAN}" ]; then
-        echo "Remove orphans"
-        yay -Rs $(pacman -Qtdq)
-    fi
-    yay -Scc --noconfirm
-}
+        if [ -n "${ORPHAN}" ]; then
+            echo "Remove orphans"
+            yay -Rs $(pacman -Qtdq)
+        fi
+        yay -Scc --noconfirm
+    }
+fi
 
 ## get fastest mirrors
-alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
-alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
-alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
-alias mirrora="sudo reflector --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
+if [ command -v reflector &>/dev/null ]; then
+    alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
+    alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
+    alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
+    alias mirrora="sudo reflector --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
+fi
 
 # youtube-dl
-alias yta-aac="youtube-dl --extract-audio --audio-format aac "
-alias yta-best="youtube-dl --extract-audio --audio-format best "
-alias yta-flac="youtube-dl --extract-audio --audio-format flac "
-alias yta-m4a="youtube-dl --extract-audio --audio-format m4a "
-alias yta-mp3="youtube-dl --extract-audio --audio-format mp3 "
-alias yta-opus="youtube-dl --extract-audio --audio-format opus "
-alias yta-vorbis="youtube-dl --extract-audio --audio-format vorbis "
-alias yta-wav="youtube-dl --extract-audio --audio-format wav "
-alias ytv-best="youtube-dl -f bestvideo+bestaudio "
+if [ command -v youtube-dl &>/dev/null ]; then
+    alias yta-aac="youtube-dl --extract-audio --audio-format aac "
+    alias yta-best="youtube-dl --extract-audio --audio-format best "
+    alias yta-flac="youtube-dl --extract-audio --audio-format flac "
+    alias yta-m4a="youtube-dl --extract-audio --audio-format m4a "
+    alias yta-mp3="youtube-dl --extract-audio --audio-format mp3 "
+    alias yta-opus="youtube-dl --extract-audio --audio-format opus "
+    alias yta-vorbis="youtube-dl --extract-audio --audio-format vorbis "
+    alias yta-wav="youtube-dl --extract-audio --audio-format wav "
+    alias ytv-best="youtube-dl -f bestvideo+bestaudio "
+fi
 
+# Backup
 [ -f "${HOME}/.dotfiles/bin/backup.sh" ] && \
     alias backup_arch="${HOME}/.dotfiles/bin/backup.sh"
 
+# Archive
 function extract {
     if [ -z "$1" ]; then
         # display usage if no parameters given
