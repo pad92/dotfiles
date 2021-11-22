@@ -170,7 +170,6 @@ sudo systemctl enable gdm
 
 ```
 flatpak install com.microsoft.Teams \
-                com.spotify.Client \
                 org.signal.Signal
 ```
 
