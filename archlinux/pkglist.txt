@@ -120,3 +120,5 @@ xorg-xrdb
 xorg-xwininfo
 yaru-gtk-theme
 zsh
+ffmpeg-compat-57
+spotify
