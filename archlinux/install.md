@@ -1,7 +1,13 @@
 # Create USB stick
 
 - Download ISO From [https://archlinux.org/download/](https://mirrors.eric.ovh/arch/iso/latest/)
+
 ```
+wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso'     https://mirrors.eric.ovh/arch/iso/latest/
+wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso.sig' https://mirrors.eric.ovh/arch/iso/latest/
+
+gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archlinux-*-x86_64.iso.sig
+
 sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
 ```
 
@@ -83,10 +89,10 @@ EndSection
 EOF
 
 myhostname='MyArch'
-echo "$myhostname" > /etc/hostname
+echo "${myhostname}" > /etc/hostname
 cat <<EOF>> /etc/hosts
 127.0.0.1  localhost
-127.0.1.1  $myhostname
+127.0.1.1  ${myhostname} ${myhostname}.localdomain
 ::1        localhost ip6-localhost ip6-loopback
 ff02::1    ip6-allnodes
 ff02::2    ip6-allrouters
@@ -96,17 +102,17 @@ sed -i '/^MODULES/c\MODULES="intel_agp i915"' /etc/mkinitcpio.conf
 sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt filesystems fsck"' /etc/mkinitcpio.conf
 mkinitcpio -P
 
-bootctl --path=/boot install
-echo 'default arch'    > /boot/loader/loader.conf
-echo 'console-mode 1' >> /boot/loader/loader.conf
-echo 'timeout 3'      >> /boot/loader/loader.conf
-
 UUID=$(blkid /dev/nvme0n1p2 -s UUID -o value)
+bootctl --path=/boot install
+echo 'default arch     '  > /boot/loader/loader.conf
+echo 'console-mode 1'    >> /boot/loader/loader.conf
+echo 'timeout 3'         >> /boot/loader/loader.conf
 echo 'title Arch Linux'                                                  > /boot/loader/entries/arch.conf
 echo 'linux /vmlinuz-linux'                                             >> /boot/loader/entries/arch.conf
 echo 'initrd /intel-ucode.img'                                          >> /boot/loader/entries/arch.conf
 echo 'initrd /initramfs-linux.img'                                      >> /boot/loader/entries/arch.conf
-echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch.conf
+echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw" >> /boot/loader/entries/arch.conf
+sudo bootctl set-default 'arch.conf'
 
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
@@ -155,11 +161,24 @@ EOF
 
 yay -S $(cat ~/.dotfiles/archlinux/pkglist.txt)
 
+sudo systemctl enable gdm
+```
+
+# Optional
+
+## Flatpak Apps
+
+```
 flatpak install com.microsoft.Teams \
                 com.spotify.Client \
                 org.signal.Signal
+```
 
-sudo systemctl enable gdm
+## Docker
+
+```
+yay -S docker docker-compose
+usermod -a -G docker MyUser
 ```
 
 ## Plymouth
@@ -168,4 +187,23 @@ sudo systemctl enable gdm
 sudo sed -i '/^HOOKS/c\HOOKS="base udev plymouth autodetect modconf block keyboard keymap consolefont plymouth-encrypt filesystems fsck"' /etc/mkinitcpio.conf
 yay -S plymouth gdm-plymouth plymouth-theme-dark-arch
 sudo plymouth-set-default-theme -R dark-arch
+
+UUID=$(blkid /dev/nvme0n1p2 -s UUID -o value)
+echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch.conf
+echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch-lts.conf
+```
+
+## Nvidia
+
+```
+sed -i '/^MODULES/c\MODULES="nvidia"' /etc/mkinitcpio.conf
+yay -S linux-headers nvidia nvidia-utils
+sudo mkinitcpio -P
+
+```
+
+## Nvidia Prime
+
+```
+yay -S linux-headers nvidia nvidia-utils nvidia-prime
 ```
