@@ -1,4 +1,3 @@
-adapta-maia-theme
 alacritty
 alacritty-themes
 ansible
@@ -18,6 +17,7 @@ docker-compose
 dunst
 exo
 feh
+ffmpeg-compat-57
 firefox-i18n-en-us
 firefox-i18n-fr
 flatpak
@@ -64,11 +64,11 @@ lxappearance
 lzip
 lzop
 man-pages
+materia-gtk-theme
 mlocate
 nerd-fonts-inconsolata
 nitrogen
 ntfs-3g
-orchis-theme-git
 os-prober
 otf-font-awesome
 pa-applet-git
@@ -86,7 +86,7 @@ rofi
 rofi-greenclip
 seahorse
 semver
-tela-icon-theme
+spotify
 telegram-desktop
 terminus-font
 terraform
@@ -118,7 +118,4 @@ xorg-xinit
 xorg-xrandr
 xorg-xrdb
 xorg-xwininfo
-yaru-gtk-theme
 zsh
-ffmpeg-compat-57
-spotify
