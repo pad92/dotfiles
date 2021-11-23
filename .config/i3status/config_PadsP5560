@@ -47,7 +47,7 @@ tztime date {
 
 cpu_temperature 0 {
 	format                 = " %degrees °C"
-	path                   = "/sys/class/hwmon/hwmon4/temp1_input"
+	path                   = "/sys/class/hwmon/hwmon5/temp1_input"
 	max_threshold          = 75
 	format_above_threshold = " %degrees ⁰C"
 }
