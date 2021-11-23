@@ -166,6 +166,15 @@ sudo systemctl enable gdm
 
 # Optional
 
+## USBGuard
+
+```
+yay -S usbguard usbguard-applet-qt
+sudo usbguard generate-policy | sudo tee /etc/usbguard/rules.conf
+sudo systemctl start usbguard.service
+sudo systemctl enable usbguard.service
+```
+
 ## Flatpak Apps
 
 ```
