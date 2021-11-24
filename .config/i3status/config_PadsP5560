@@ -18,6 +18,7 @@ order += "ethernet _first_"
 order += "battery all"
 order += "cpu_temperature 0"
 order += "cpu_usage"
+order += "memory"
 order += "volume master"
 order += "tztime date"
 
@@ -56,6 +57,12 @@ cpu_usage {
     format = " %usage"
 	max_threshold = 95
 	degraded_threshold = 80
+}
+
+memory {
+    format = " %used"
+    threshold_degraded = "10%"
+    format_degraded = "MEMORY: %free"
 }
 
 volume master {
