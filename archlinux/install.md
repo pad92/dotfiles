@@ -118,6 +118,8 @@ systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
 systemctl enable sshd
 
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+
 vim /etc/pacman.conf
 # Color
 # ILoveCandy
@@ -162,6 +164,7 @@ EOF
 yay -S $(cat ~/.dotfiles/archlinux/pkglist.txt)
 
 sudo systemctl enable gdm
+systemctl disable sshd
 ```
 
 # Optional
