@@ -16,21 +16,25 @@ case "${LISTMONITORS}" in
             i3-msg "workspace 2, move workspace to output HDMI-0"
         fi
         ;;
-    'DP1 DP3-1')
+    'DP1 DP2-1')
         RES_DP1=$(xrandr --current | grep -A1 DP1 | tail -1 | awk '{print $1}')
-        RES_DP31=$(xrandr --current | grep -A1 DP3-1 | tail -1 | awk '{print $1}')
+        RES_DP31=$(xrandr --current | grep -A1 DP2-1 | tail -1 | awk '{print $1}')
 
         # Home AOC +Benq / laptop docked on dell
         if [ "x${RES_DP31}" = "x2560x1440" ] && [ "x${RES_DP1}" = "x1920x1080" ] && [ "x${LID_STATE}" = "xclosed" ] ; then
             xrandr --dpi 96\
                    --output eDP1 --off \
                    --output DP1 --mode ${RES_DP1} --pos 0x0 --rotate right \
-                   --output DP3-1 --primary --mode ${RES_DP31} --pos 1080x0 --rotate normal
-            #i3-msg "workspace 1, move workspace to output DP3-1"
+                   --output DP2-1 --primary --mode ${RES_DP31} --pos 1080x0 --rotate normal
+            #i3-msg "workspace 1, move workspace to output DP2-1"
             #i3-msg "workspace 2, move workspace to output DP1"
         fi
         ;;
-
+    'eDP1')
+        DPI=144
+        echo "Xft.dpi: ${DPI}" | xrdb -merge
+        xrandr --dpi ${DPI}
+        ;;
     *)
         echo ${LISTMONITORS}
         ;;
