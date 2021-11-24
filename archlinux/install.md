@@ -215,3 +215,10 @@ sudo mkinitcpio -P
 ```
 yay -S linux-headers nvidia nvidia-utils nvidia-prime
 ```
+
+## Spotify
+
+Remove notification
+```
+echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
+```
