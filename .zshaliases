@@ -16,7 +16,7 @@ function nw_ss {
 
 # Docker
 ## Ansible
-if [ command -v docker &>/dev/null ]; then
+if [ $(command -v docker) ]; then
     alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
     alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 ansible-playbook'
 fi
@@ -24,7 +24,7 @@ fi
 
 # Arch
 ## remove orphans
-if [ command -v pacman &>/dev/null ] && [ command -v yay &>/dev/null ]; then
+if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
     function clean_arch {
         ORPHAN=$(pacman -Qtdq)
 
@@ -37,7 +37,7 @@ if [ command -v pacman &>/dev/null ] && [ command -v yay &>/dev/null ]; then
 fi
 
 ## get fastest mirrors
-if [ command -v reflector &>/dev/null ]; then
+if [ $(command -v reflector) ]; then
     alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
     alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
     alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
@@ -45,7 +45,7 @@ if [ command -v reflector &>/dev/null ]; then
 fi
 
 # youtube-dl
-if [ command -v youtube-dl &>/dev/null ]; then
+if [ $(command -v youtube-dl) ]; then
     alias yta-aac="youtube-dl --extract-audio --audio-format aac "
     alias yta-best="youtube-dl --extract-audio --audio-format best "
     alias yta-flac="youtube-dl --extract-audio --audio-format flac "
