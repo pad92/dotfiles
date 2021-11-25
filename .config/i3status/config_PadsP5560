@@ -9,8 +9,8 @@
 # ttf-font-awesome
 
 general {
-	colors         = true
-	interval       = 5
+	colors   = false
+	interval = 5
 }
 
 order += "disk /"
