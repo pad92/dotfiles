@@ -78,6 +78,7 @@ papirus-icon-theme
 pavucontrol
 picom
 pkgconf
+playerctl
 polkit-gnome
 powertop
 python-i3ipc
@@ -114,6 +115,7 @@ xclip
 xf86-video-intel
 xfce4-power-manager
 xorg-server
+xorg-xbacklight
 xorg-xinit
 xorg-xrandr
 xorg-xrdb

@@ -43,9 +43,6 @@ source ${ZSH}/init.zsh
 export LANG="en_US.UTF-8"
 export EDITOR='vim'
 
-if [[ -e /usr/share/zsh/manjaro-zsh-config ]]; then
-    source /usr/share/zsh/manjaro-zsh-config
-fi
 # History
 export HIST_STAMPS="mm/dd/yyyy"
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
@@ -64,15 +61,7 @@ setopt share_history
 setopt SHARE_HISTORY
 setopt APPEND_HISTORY
 
-if [ -f ${HOME}/.zshaliases ]; then
-  source ${HOME}/.zshaliases
-fi
-
-if [ -f "${HOME}/.dir_colors" ]; then eval $(dircolors ${HOME}/.dir_colors); fi
-
-STARTX_BIN=$(command -v startx )
-if [ ! -z "${STARTX_BIN}" ] ; then
-    [[ $(tty) == '/dev/tty1' ]] && startx
-fi
-
-if [ -x $(command -v neofetch) ]; then neofetch; fi
+[ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs 
+[ -f "${HOME}/.zshaliases" ]            && source ${HOME}/.zshaliases
+[ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
+[ -x $(command -v neofetch) ]           && neofetch
