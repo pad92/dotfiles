@@ -30,9 +30,10 @@ if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
 
         if [ -n "${ORPHAN}" ]; then
             echo "Remove orphans"
-            yay -Rs $(pacman -Qtdq)
+            sudo pacman -Rns $(pacman -Qtdq)
         fi
         yay -Scc --noconfirm
+        sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null
     }
 fi
 
