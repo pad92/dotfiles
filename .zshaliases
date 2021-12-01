@@ -1,123 +1,123 @@
 # Games
 ## New World
 function nw_ss {
-    SERVER=$1
-    SERVER_STATUS=$(curl -s https://www.newworld.com/fr-fr/support/server-status | grep -B5 ${SERVER} | head -1 | cut -d'"' -f2)
-    if [ $? -eq 0 ]; then
-        if [ -z "${SERVER_STATUS}" ]; then
-            echo "${SERVER}: not found"
-        else
-            echo "${SERVER}: ${SERVER_STATUS}"
-        fi
+  SERVER=$1
+  SERVER_STATUS=$(curl -s https://www.newworld.com/fr-fr/support/server-status | grep -B5 ${SERVER} | head -1 | cut -d'"' -f2)
+  if [ $? -eq 0 ]; then
+    if [ -z "${SERVER_STATUS}" ]; then
+      echo "${SERVER}: not found"
     else
-        echo "ERROR CURL : ${SERVER_STATUS}"
+      echo "${SERVER}: ${SERVER_STATUS}"
     fi
+  else
+    echo "ERROR CURL : ${SERVER_STATUS}"
+  fi
 }
 
 # Docker
 ## Ansible
 if [ $(command -v docker) ]; then
-    alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
-    alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 ansible-playbook'
+  alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 sh'
+  alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7 ansible-playbook'
 fi
 
 
 # Arch
 ## remove orphans
 if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
-    function clean_arch {
-        ORPHAN=$(pacman -Qtdq)
+  function clean_arch {
+    ORPHAN=$(pacman -Qtdq)
 
-        if [ -n "${ORPHAN}" ]; then
-            echo "Remove orphans"
-            sudo pacman -Rns $(pacman -Qtdq)
-        fi
-        yay -Scc --noconfirm
-        sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null
-    }
+    if [ -n "${ORPHAN}" ]; then
+      echo "Remove orphans"
+      sudo pacman -Rns $(pacman -Qtdq)
+    fi
+    yay -Scc --noconfirm
+    sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null
+  }
 fi
 
 ## get fastest mirrors
 if [ $(command -v reflector) ]; then
-    alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
-    alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
-    alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
-    alias mirrora="sudo reflector --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
+  alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
+  alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
+  alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
+  alias mirrora="sudo reflector --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
 fi
 
 # youtube-dl
 if [ $(command -v youtube-dl) ]; then
-    alias yta-aac="youtube-dl --extract-audio --audio-format aac "
-    alias yta-best="youtube-dl --extract-audio --audio-format best "
-    alias yta-flac="youtube-dl --extract-audio --audio-format flac "
-    alias yta-m4a="youtube-dl --extract-audio --audio-format m4a "
-    alias yta-mp3="youtube-dl --extract-audio --audio-format mp3 "
-    alias yta-opus="youtube-dl --extract-audio --audio-format opus "
-    alias yta-vorbis="youtube-dl --extract-audio --audio-format vorbis "
-    alias yta-wav="youtube-dl --extract-audio --audio-format wav "
-    alias ytv-best="youtube-dl -f bestvideo+bestaudio "
+  alias yta-aac="youtube-dl --extract-audio --audio-format aac "
+  alias yta-best="youtube-dl --extract-audio --audio-format best "
+  alias yta-flac="youtube-dl --extract-audio --audio-format flac "
+  alias yta-m4a="youtube-dl --extract-audio --audio-format m4a "
+  alias yta-mp3="youtube-dl --extract-audio --audio-format mp3 "
+  alias yta-opus="youtube-dl --extract-audio --audio-format opus "
+  alias yta-vorbis="youtube-dl --extract-audio --audio-format vorbis "
+  alias yta-wav="youtube-dl --extract-audio --audio-format wav "
+  alias ytv-best="youtube-dl -f bestvideo+bestaudio "
 fi
 
 # Backup
 [ -f "${HOME}/.dotfiles/bin/backup.sh" ] && \
-    alias backup_arch="${HOME}/.dotfiles/bin/backup.sh"
+  alias backup_arch="${HOME}/.dotfiles/bin/backup.sh"
 
 # Archive
 function extract {
-    if [ -z "$1" ]; then
-        # display usage if no parameters given
-        echo "Usage: extract <path/file_name>.<zip|rar|bz2|gz|tar|tbz2|tgz|Z|7z|xz|ex|tar.bz2|tar.gz|tar.xz>"
-        echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
-    else
-        for n in "$@"
-        do
-            if [ -f "$n" ] ; then
-                case "${n%,}" in
-                    *.cbt|*.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
-                        tar xvf "$n"
-                        ;;
-                    *.lzma)
-                        unlzma ./"$n"
-                        ;;
-                    *.bz2)
-                        bunzip2 ./"$n"
-                        ;;
-                    *.cbr|*.rar)
-                        unrar x -ad ./"$n"
-                        ;;
-                    *.gz)
-                        gunzip ./"$n"
-                        ;;
-                    *.cbz|*.epub|*.zip)
-                        unzip ./"$n"
-                        ;;
-                    *.z)
-                        uncompress ./"$n"
-                        ;;
-                    *.7z|*.arj|*.cab|*.cb7|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.pkg|*.rpm|*.udf|*.wim|*.xar)
-                        7z x ./"$n"
-                        ;;
-                    *.xz)
-                        unxz ./"$n"
-                        ;;
-                    *.exe)
-                        cabextract ./"$n"
-                        ;;
-                    *.cpio)
-                        cpio -id < ./"$n"
-                        ;;
-                    *.cba|*.ace)
-                        unace x ./"$n"
-                        ;;
-                    *)
-                        echo "extract: '$n' - unknown archive method"
-                        return 1
-                        ;;
-                esac
-            else
-                echo "'$n' - file does not exist"
-                return 1
-            fi
-        done
-    fi
+  if [ -z "$1" ]; then
+    # display usage if no parameters given
+    echo "Usage: extract <path/file_name>.<zip|rar|bz2|gz|tar|tbz2|tgz|Z|7z|xz|ex|tar.bz2|tar.gz|tar.xz>"
+    echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
+  else
+    for n in "$@"
+    do
+      if [ -f "$n" ] ; then
+        case "${n%,}" in
+          *.cbt|*.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
+            tar xvf "$n"
+            ;;
+          *.lzma)
+            unlzma ./"$n"
+            ;;
+          *.bz2)
+            bunzip2 ./"$n"
+            ;;
+          *.cbr|*.rar)
+            unrar x -ad ./"$n"
+            ;;
+          *.gz)
+            gunzip ./"$n"
+            ;;
+          *.cbz|*.epub|*.zip)
+            unzip ./"$n"
+            ;;
+          *.z)
+            uncompress ./"$n"
+            ;;
+          *.7z|*.arj|*.cab|*.cb7|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.pkg|*.rpm|*.udf|*.wim|*.xar)
+            7z x ./"$n"
+            ;;
+          *.xz)
+            unxz ./"$n"
+            ;;
+          *.exe)
+            cabextract ./"$n"
+            ;;
+          *.cpio)
+            cpio -id < ./"$n"
+            ;;
+          *.cba|*.ace)
+            unace x ./"$n"
+            ;;
+          *)
+            echo "extract: '$n' - unknown archive method"
+            return 1
+            ;;
+        esac
+      else
+        echo "'$n' - file does not exist"
+        return 1
+      fi
+    done
+  fi
 }

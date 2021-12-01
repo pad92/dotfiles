@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 if [ "z$3" = "z" ]; then
   echo "3 arguments expected." >&2
