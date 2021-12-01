@@ -13,7 +13,7 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'morhetz/gruvbox'
 Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
 Plugin 'chrisbra/colorizer'
-
+Plugin 'editorconfig/editorconfig-vim'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
@@ -28,8 +28,6 @@ let g:gruvbox_contrast_dark='hard'
 let g:gruvbox_number_column='blue'
 let g:gruvbox_imporeved_strings=1
 colorscheme gruvbox
-
-
 
 " Vim5 and later versions support syntax highlighting. Uncommenting the next
 " line enables syntax highlighting by default.
@@ -116,7 +114,6 @@ set statusline=%<\ %n:%f\ %m%r%y%=%-35.(line:\ %l\ of\ %L,\ col:\ %c%V\ (%P)%)
 set foldmethod=indent
 set foldenable
 highlight Folded ctermfg=DarkGreen ctermbg=Black
-
 
 " Source a global configuration file if available
 if filereadable("/etc/vim/vimrc.local")
