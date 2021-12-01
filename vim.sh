@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/master/vim.sh | sh
-
 [ -e ~/.vim ] && echo '~/.vim exist' && exit 1
 [ -e ~/.vimrc ] && echo '~/.vimrc exist' && exit 1
 
