@@ -66,7 +66,8 @@ def rename_workspaces(i3):
         )
 
         new_name = construct_workspace_name(name_parts)
-        i3.command('rename workspace "%s" to "%s"' % (workspace.name, new_name))
+        i3.command('rename workspace "%s" to "%s"' %
+                   (workspace.name, new_name))
 
 
 def undo_window_renaming(i3):
@@ -74,7 +75,8 @@ def undo_window_renaming(i3):
         name_parts = parse_workspace_name(workspace.name)
         name_parts["icons"] = None
         new_name = construct_workspace_name(name_parts)
-        i3.command('rename workspace "%s" to "%s"' % (workspace.name, new_name))
+        i3.command('rename workspace "%s" to "%s"' %
+                   (workspace.name, new_name))
     i3.main_quit()
     sys.exit(0)
 
