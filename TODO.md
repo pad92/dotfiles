@@ -1,3 +1,3 @@
 # README.md
 - [ ] update screenshot
-- [ ] update packages
+- [x] update packages
