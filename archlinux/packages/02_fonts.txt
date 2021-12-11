@@ -1,0 +1,8 @@
+nerd-fonts-inconsolata
+otf-font-awesome
+ttf-bitstream-vera
+ttf-font-awesome
+ttf-font-awesome-4
+ttf-joypixels
+ttf-meslo-nerd-font-powerlevel10k
+ttf-opensans
