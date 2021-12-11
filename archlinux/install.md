@@ -13,7 +13,7 @@ Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671
 
 *Note:* The system was installed on an NVMe SSD, substitute ```/dev/nvme0nX``` with ```/dev/sdX``` or your device as needed.
 
-
+## Table of contents
 [[_TOC_]]
 
 # Create USB stick
