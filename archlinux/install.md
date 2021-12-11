@@ -262,7 +262,7 @@ sudo vim /etc/pacman.conf
 
 ### aur
 ```
-pacman -Sy
+sudo pacman -Sy
 
 git clone https://aur.archlinux.org/yay.git
 cd yay
