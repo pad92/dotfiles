@@ -12,7 +12,7 @@ if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
   sudo mkdir -p "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
 fi
 PKGLIST_OLD="$(sudo ls -1 ${BACKUP_DIR}/${HOSTNAME}/pkglist-*.txt 2>/dev/null | tail -1)"
-PKGLIST_NEW="${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}-${ID}.txt"
+PKGLIST_CURRENT="${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}-${ID}.txt"
 
 [ -z "${ID_LIKE}" ] && ID_LIKE="${ID}"
 
@@ -27,12 +27,12 @@ arch)
 
   yay -Scc --noconfirm
 
-  pacman -Qqe | awk '{print $1}' | sudo tee -a ${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}-${ID}.txt 1>/dev/null
+  pacman -Qqe | awk '{print $1}' | sudo tee -a ${PKGLIST_CURRENT} 1>/dev/null
 
   ;;
 debian)
   sudo apt au toremove --purge
-  dpkg --get-selections '*' | sudo tee -a ${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}-${ID}.txt 1>/dev/null
+  dpkg --get-selections '*' | sudo tee -a ${PKGLIST_CURRENT} 1>/dev/null
 
   ;;
 
@@ -43,9 +43,7 @@ debian)
 esac
 
 if [ -s "${PKGLIST_OLD}" ]; then
-  diff -U 0 "${PKGLIST_OLD}" \
-    "${PKGLIST_NEW}" \
-    >"${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}.diff"
+  diff -U 0 "${PKGLIST_OLD}" "${PKGLIST_CURRENT}" > "${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}.diff"
   if [ -s "${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}.diff" ]; then
     cat "${BACKUP_DIR}/${HOSTNAME}/pkglist-${TIMESTAMP}.diff"
   else
