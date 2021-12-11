@@ -1,5 +1,4 @@
 alacritty
-alacritty-themes
 dunst
 i3-gaps
 i3exit
