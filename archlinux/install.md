@@ -37,6 +37,8 @@ Number | Start (sector) | End (sector) |    Size    | Code |        Name        
    2   |   4096         |   1130495    | 550.0 MiB  | EF00 | EFI System          |
    3   |   1130496      |   976773134  | 465.2 GiB  | 8309 | Linux LUKS          |
 
+## Partitions
+### Create
 ```
 gdisk /dev/nvme0n1
 o
@@ -58,38 +60,60 @@ n
 w
 ```
 
+
+### luks
 ```
-mkfs.fat -F32 /dev/nvme0n1p2 -n EFI
 cryptsetup luksFormat --type luks1 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
+```
+
+### lvm
+```
+RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
 
 pvcreate /dev/mapper/cryptlvm
 vgcreate archlvm /dev/mapper/cryptlvm
-
-RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
 
 lvcreate -L 32G archlvm -n slash
 lvcreate -L 30G archlvm -n opt
 lvcreate -L 10G archlvm -n var_lib_docker
 lvcreate -L "${RAM_SIZE}M" archlvm -n swap
 lvcreate -l 100%FREE archlvm -n home
+```
 
-mkfs.ext4 /dev/mapper/archlvm-slash -L slash
-mkfs.ext4 /dev/mapper/archlvm-home  -L home
-mkswap    /dev/mapper/archlvm-swap  -L swap
-swapon    /dev/mapper/archlvm-swap
+### Format
+```
+mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
+mkfs.ext4     /dev/mapper/archlvm-slash          -L slash
+mkfs.ext4     /dev/mapper/archlvm-home           -L home
+mkfs.ext4     /dev/mapper/archlvm-opt            -L opt
+mkfs.ext4     /dev/mapper/archlvm-var_lib_docker -L var_lib_docker
+mkswap        /dev/mapper/archlvm-swap           -L swap
+swapon        /dev/mapper/archlvm-swap
+```
 
+### Mount
+```
 mount /dev/mapper/archlvm-slash /mnt
 mkdir /mnt/efi /mnt/home /var/lib/docker /opt -p
 mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
 mount /dev/mapper/archlvm-var_lib_docker /var/lib/docker
 mount /dev/mapper/archlvm-opt            /opt
+```
 
+## System
+### Install base
+```
 pacstrap /mnt base linux linux-headers linux-firmware lvm2 intel-ucode grub efibootmgr os-prober vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
+```
 
+### Configure wifi region
+```
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
-
+```
+### Create fstab
+```
 genfstab -U /mnt                                           >> /mnt/etc/fstab
 echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
 sed -i 's/relatime/noatime/g' /mnt/etc/fstab
@@ -126,7 +150,7 @@ use all core for builds
 sed -i "/MAKEFLAGS=/cMAKEFLAGS=\"-j $((`nproc`+1))\"" /etc/makepkg.conf
 ```
 
-## tz
+## Time zone
 ```
 timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
 timedatectl set-ntp true
@@ -174,6 +198,7 @@ EOF
 ```
 
 ## boot
+### Grub
 ```
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
@@ -181,11 +206,12 @@ sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cry
 
 sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
 
-
-
 grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
 grub-mkconfig -o /boot/grub/grub.cfg
+```
 
+### initramfs
+```
 mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
 head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
 cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
@@ -235,7 +261,6 @@ sudo vim /etc/pacman.conf
 ```
 
 ### aur
-
 ```
 pacman -Sy
 
@@ -262,7 +287,6 @@ reboot
 # Optional
 
 ## USBGuard
-
 ```
 yay -S usbguard usbguard-applet-qt
 sudo usbguard generate-policy | sudo tee /etc/usbguard/rules.conf
@@ -271,21 +295,18 @@ sudo systemctl enable usbguard.service
 ```
 
 ## Flatpak Apps
-
 ```
 flatpak install com.microsoft.Teams \
                 org.signal.Signal
 ```
 
 ## Docker
-
 ```
 yay -S docker docker-compose
 usermod -a -G docker MyUser
 ```
 
 ## Nvidia
-
 ```
 sed -i '/^MODULES/c\MODULES="nvidia"' /etc/mkinitcpio.conf
 yay -S nvidia nvidia-utils
@@ -294,13 +315,11 @@ sudo mkinitcpio -P
 ```
 
 ## Nvidia Prime
-
 ```
 yay -S nvidia nvidia-utils nvidia-prime
 ```
 
 ## Spotify
-
 Remove notification
 ```
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
