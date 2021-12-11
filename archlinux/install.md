@@ -3,8 +3,6 @@ This guide provides instructions for an Arch Linux installation featuring full-d
 
 Following the main installation are further instructions to harden against Evil Maid attacks via UEFI Secure Boot custom key enrollment and self-signed kernel and bootloader.
 
-## Table of content
-
 ## Preface
 You will find most of this information pulled from the [Arch Wiki](https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)) and other resources linked thereof.
 
