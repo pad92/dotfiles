@@ -1,4 +1,18 @@
-Table of content
+# Arch Linux Full-Disk Encryption Installation Guide
+This guide provides instructions for an Arch Linux installation featuring full-disk encryption via LVM on LUKS and an encrypted boot partition (GRUB) for UEFI systems.
+
+Following the main installation are further instructions to harden against Evil Maid attacks via UEFI Secure Boot custom key enrollment and self-signed kernel and bootloader.
+
+## Table of content
+
+## Preface
+You will find most of this information pulled from the [Arch Wiki](https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)) and other resources linked thereof.
+
+Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268#file-full-disk-encryption-arch-uefi-md) installation guide.
+
+
+*Note:* The system was installed on an NVMe SSD, substitute ```/dev/nvme0nX``` with ```/dev/sdX``` or your device as needed.
+
 
 [[_TOC_]]
 
@@ -88,6 +102,24 @@ sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 ```
 arch-chroot /mnt
 ```
+
+At this point you should have the following partitions and logical volumes:
+```lsblk```
+
+NAME                          | MAJ:MIN | RM  |  SIZE  | RO  | TYPE  | MOUNTPOINT      |
+------------------------------|---------|-----|--------|-----|-------|-----------------|
+nvme0n1                       |  259:0  |  0  | 953.9G |  0  | disk  |                 |
+├─nvme0n1p1                   |  259:1  |  0  |     1M |  0  | part  |                 |
+├─nvme0n1p2                   |  259:2  |  0  |   550M |  0  | part  | /efi            |
+├─nvme0n1p3                   |  259:3  |  0  | 953.3G |  0  | part  |                 |
+..└─cryptlvm                  |  254:0  |  0  | 953.3G |  0  | crypt |                 |
+....├─archlvm-swap            |  254:1  |  0  |  31.1G |  0  | lvm   | [SWAP]          |
+....├─archlvm-root            |  254:2  |  0  |    32G |  0  | lvm   | /               |
+....└─archlvm-home            |  254:3  |  0  |   100G |  0  | lvm   | /home           |
+....└─archlvm-opt             |  254:4  |  0  |    30G |  0  | lvm   | /opt            |
+....└─archlvm-var_lib_docker  |  254:5  |  0  |     1G |  0  | lvm   | /var/lib/docker |
+
+
 ## makeflags
 
 use all core for builds
@@ -275,8 +307,3 @@ Remove notification
 ```
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
-
-# Source
-
-- https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system
-- https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268#file-full-disk-encryption-arch-uefi-md
