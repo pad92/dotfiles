@@ -1,3 +1,7 @@
+Table of content
+
+[[_TOC_]]
+
 # Create USB stick
 
 - Download ISO From [https://archlinux.org/download/](https://mirrors.eric.ovh/arch/iso/latest/)
@@ -14,43 +18,63 @@ sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
 where /dev/sda is your usb key
 
 # From live
+
+Number | Start (sector) | End (sector) |    Size    | Code |        Name         |
+-------|----------------|--------------|------------|------|---------------------|
+   1   |   2048         |   4095       | 1024.0 KiB | EF02 | BIOS boot partition |
+   2   |   4096         |   1130495    | 550.0 MiB  | EF00 | EFI System          |
+   3   |   1130496      |   976773134  | 465.2 GiB  | 8309 | Linux LUKS          |
+
 ```
 gdisk /dev/nvme0n1
 o
-Y
-
 n
-[enter]
-[enter]
+[Enter]
+0
++1M
+ef02
+n
+[Enter]
+[Enter]
 +550M
 ef00
-
 n
-[enter]
-[enter]
-[enter]
+[Enter]
+[Enter]
+[Enter]
 8309
-
 w
-Y
 ```
 
-|#|size |type|
-|-|-----|----|
-|1|+550M|ef00|
-|2|     |8309|
-
 ```
-mkfs.vfat -F32 -n EFI /dev/nvme0n1p1
-cryptsetup luksFormat /dev/nvme0n1p2
-cryptsetup luksOpen /dev/nvme0n1p2 slash
-mkfs.ext4 -L slash /dev/mapper/slash
+mkfs.fat -F32 /dev/nvme0n1p2 -n EFI
+cryptsetup luksFormat --type luks1 /dev/nvme0n1p3
+cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 
-mount /dev/mapper/slash /mnt
-mkdir /mnt/boot
-mount /dev/nvme0n1p1 /mnt/boot
+pvcreate /dev/mapper/cryptlvm
+vgcreate archlvm /dev/mapper/cryptlvm
 
-pacstrap /mnt base linux linux-firmware lvm2 intel-ucode vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
+RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
+
+lvcreate -L 32G archlvm -n slash
+lvcreate -L 30G archlvm -n opt
+lvcreate -L 10G archlvm -n var_lib_docker
+lvcreate -L "${RAM_SIZE}M" archlvm -n swap
+lvcreate -l 100%FREE archlvm -n home
+
+mkfs.ext4 /dev/mapper/archlvm-slash -L slash
+mkfs.ext4 /dev/mapper/archlvm-home  -L home
+mkswap    /dev/mapper/archlvm-swap  -L swap
+swapon    /dev/mapper/archlvm-swap
+
+mount /dev/mapper/archlvm-slash /mnt
+mkdir /mnt/efi /mnt/home /var/lib/docker /opt -p
+mount /dev/nvme0n1p2                     /mnt/efi
+mount /dev/mapper/archlvm-home           /mnt/home
+mount /dev/mapper/archlvm-var_lib_docker /var/lib/docker
+mount /dev/mapper/archlvm-opt            /opt
+
+pacstrap /mnt base linux linux-headers linux-firmware lvm2 intel-ucode grub efibootmgr os-prober vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
 
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
 
@@ -63,20 +87,37 @@ sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 
 ```
 arch-chroot /mnt
+```
+## makeflags
 
-timedatectl set-timezone "$(curl --fail https://ipapi.co/timezone)"
+use all core for builds
+
+```
+sed -i "/MAKEFLAGS=/cMAKEFLAGS=\"-j $((`nproc`+1))\"" /etc/makepkg.conf
+```
+
+## tz
+```
+timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
 timedatectl set-ntp true
 timedatectl
 hwclock --systohc
+```
 
+## locales
+```
 sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
 sed -i 's/^#en_US/en_US/g' /etc/locale.gen
 locale-gen
-
 echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
+```
+
+## keymap
+```
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
 echo 'FONT=ter-116n'    >> /etc/vconsole.conf
 
+mkdir -p /etc/X11/xorg.conf.d
 cat <<EOF>/etc/X11/xorg.conf.d/00-keyboard.conf
 # Read and parsed by systemd-localed. It's probably wise not to edit this file
 # manually too freely.
@@ -87,7 +128,10 @@ Section "InputClass"
         Option "XkbVariant" "intl"
 EndSection
 EOF
+```
 
+## hostname
+```
 myhostname='MyArch'
 echo "${myhostname}" > /etc/hostname
 cat <<EOF>> /etc/hosts
@@ -97,62 +141,50 @@ cat <<EOF>> /etc/hosts
 ff02::1    ip6-allnodes
 ff02::2    ip6-allrouters
 EOF
+```
+
+## boot
+```
+UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
+
+sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin\""  /etc/default/grub
+
+sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
+
+
+
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
+grub-mkconfig -o /boot/grub/grub.cfg
+
+mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
+head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
+cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
 
 sed -i '/^MODULES/c\MODULES="intel_agp i915"' /etc/mkinitcpio.conf
-sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt filesystems fsck"' /etc/mkinitcpio.conf
+sed -i '/^FILES/c\FILES=(/root/.cryptlvm/archluks.bin)' /etc/mkinitcpio.conf
+sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 filesystems fsck"' /etc/mkinitcpio.conf
 mkinitcpio -P
+```
 
-UUID=$(blkid /dev/nvme0n1p2 -s UUID -o value)
-bootctl --path=/boot install
-echo 'default arch     '  > /boot/loader/loader.conf
-echo 'console-mode 1'    >> /boot/loader/loader.conf
-echo 'timeout 3'         >> /boot/loader/loader.conf
-echo 'title Arch Linux'                                                  > /boot/loader/entries/arch.conf
-echo 'linux /vmlinuz-linux'                                             >> /boot/loader/entries/arch.conf
-echo 'initrd /intel-ucode.img'                                          >> /boot/loader/entries/arch.conf
-echo 'initrd /initramfs-linux.img'                                      >> /boot/loader/entries/arch.conf
-echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw" >> /boot/loader/entries/arch.conf
-sudo bootctl set-default 'arch.conf'
-
+## services
+```
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
-systemctl enable sshd
+```
 
-systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-
-vim /etc/pacman.conf
-# Color
-# ILoveCandy
-# [multilib]
-# SigLevel = PackageRequired
-# Include = /etc/pacman.d/mirrorlist
-
-
-passwd
-
-useradd -m -s /bin/zsh -G network,users,storage,lp,input,audio,wheel MyUser
+## user
+```
+MYUSER='MyUser'
+useradd -m -s /bin/zsh -G network,users,storage,lp,input,audio,wheel ${MYUSER}
 echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
-passwd MyUser
-
-sync
-exit
-umount -R /mnt
-reboot
+passwd ${MYUSER}
 ```
-
+### dotfiles
 ```
-sudo pacman -Syy
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si
-cd
-rm -fr yay
-
-git clone https://github.com/pad92/dotfiles.git ~/.dotfiles
+su - ${MYUSER}
+git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 mkdir ~/.config
 ~/.dotfiles/install
-
-echo
 
 cat <<EOF> ~/.config/nitrogen/bg-saved.cfg
 [xin_-1]
@@ -160,13 +192,43 @@ file=/usr/share/backgrounds/archlinux/geolanes.png
 mode=4
 bgcolor=#000000
 EOF
-
-yay -S $(cat ~/.dotfiles/archlinux/pkglist.txt)
-
-sudo systemctl enable gdm
-systemctl disable sshd
 ```
 
+### Packages manager
+```
+sudo vim /etc/pacman.conf
+# Color
+# ILoveCandy
+# [multilib]
+# SigLevel = PackageRequired
+# Include = /etc/pacman.d/mirrorlist
+```
+
+### aur
+
+```
+pacman -Sy
+
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+cd
+rm -fr yay
+```
+
+### WM and softs
+```
+yay -S $(cat ~/.dotfiles/archlinux/packages/*.txt)
+
+exit
+```
+
+```
+sync
+exit
+umount -R /mnt
+reboot
+```
 # Optional
 
 ## USBGuard
@@ -192,23 +254,11 @@ yay -S docker docker-compose
 usermod -a -G docker MyUser
 ```
 
-## Plymouth
-
-```
-sudo sed -i '/^HOOKS/c\HOOKS="base udev plymouth autodetect modconf block keyboard keymap consolefont plymouth-encrypt filesystems fsck"' /etc/mkinitcpio.conf
-yay -S plymouth gdm-plymouth plymouth-theme-dark-arch
-sudo plymouth-set-default-theme -R dark-arch
-
-UUID=$(blkid /dev/nvme0n1p2 -s UUID -o value)
-echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch.conf
-echo "options cryptdevice=UUID=${UUID}:slash root=/dev/mapper/slash rw quiet splash vt.global_cursor_default=0" >> /boot/loader/entries/arch-lts.conf
-```
-
 ## Nvidia
 
 ```
 sed -i '/^MODULES/c\MODULES="nvidia"' /etc/mkinitcpio.conf
-yay -S linux-headers nvidia nvidia-utils
+yay -S nvidia nvidia-utils
 sudo mkinitcpio -P
 
 ```
@@ -216,7 +266,7 @@ sudo mkinitcpio -P
 ## Nvidia Prime
 
 ```
-yay -S linux-headers nvidia nvidia-utils nvidia-prime
+yay -S nvidia nvidia-utils nvidia-prime
 ```
 
 ## Spotify
@@ -225,3 +275,8 @@ Remove notification
 ```
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
+
+# Source
+
+- https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system
+- https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268#file-full-disk-encryption-arch-uefi-md
