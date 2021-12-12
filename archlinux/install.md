@@ -95,11 +95,11 @@ swapon        /dev/mapper/archlvm-swap
 ### Mount
 ```
 mount /dev/mapper/archlvm-slash /mnt
-mkdir /mnt/efi /mnt/home /var/lib/docker /opt -p
+mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
 mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
-mount /dev/mapper/archlvm-var_lib_docker /var/lib/docker
-mount /dev/mapper/archlvm-opt            /opt
+mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
+mount /dev/mapper/archlvm-opt            /mnt/opt
 ```
 
 ## System
