@@ -16,11 +16,11 @@ Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671
 
 # Create USB stick
 
-- Download ISO From [https://archlinux.org/download/](https://mirrors.eric.ovh/arch/iso/latest/)
+- Download ISO From [https://archlinux.org/download/](http://archlinux.mirrors.ovh.net/archlinux/iso/latest/)
 
 ```
-wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso'     https://mirrors.eric.ovh/arch/iso/latest/
-wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso.sig' https://mirrors.eric.ovh/arch/iso/latest/
+wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso'     http://archlinux.mirrors.ovh.net/archlinux/iso/latest/
+wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso.sig' http://archlinux.mirrors.ovh.net/archlinux/iso/latest/
 
 gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archlinux-*-x86_64.iso.sig
 
