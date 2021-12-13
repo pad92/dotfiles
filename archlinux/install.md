@@ -316,14 +316,14 @@ usermod -a -G docker MyUser
 ## Nvidia
 ```
 sed -i '/^MODULES/c\MODULES="nvidia"' /etc/mkinitcpio.conf
-yay -S nvidia nvidia-utils
+yay -S nvidia-dkms nvidia-utils
 sudo mkinitcpio -P
 
 ```
 
 ## Nvidia Prime
 ```
-yay -S nvidia nvidia-utils nvidia-prime
+yay -S nvidia-dkms nvidia-utils nvidia-prime
 ```
 
 ## Spotify
