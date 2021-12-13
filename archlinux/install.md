@@ -95,11 +95,11 @@ swapon        /dev/mapper/archlvm-swap
 ### Mount
 ```
 mount /dev/mapper/archlvm-slash /mnt
-mkdir /mnt/efi /mnt/home /var/lib/docker /opt -p
+mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
 mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
-mount /dev/mapper/archlvm-var_lib_docker /var/lib/docker
-mount /dev/mapper/archlvm-opt            /opt
+mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
+mount /dev/mapper/archlvm-opt            /mnt/opt
 ```
 
 ## System
@@ -139,7 +139,7 @@ nvme0n1                       |  259:0  |  0  | 953.9G |  0  | disk  |          
 ....├─archlvm-root            |  254:2  |  0  |    32G |  0  | lvm   | /               |
 ....└─archlvm-home            |  254:3  |  0  |   100G |  0  | lvm   | /home           |
 ....└─archlvm-opt             |  254:4  |  0  |    30G |  0  | lvm   | /opt            |
-....└─archlvm-var_lib_docker  |  254:5  |  0  |     1G |  0  | lvm   | /var/lib/docker |
+....└─archlvm-var_lib_docker  |  254:5  |  0  |    10G |  0  | lvm   | /var/lib/docker |
 
 
 ## makeflags
@@ -262,7 +262,7 @@ sudo vim /etc/pacman.conf
 
 ### aur
 ```
-pacman -Sy
+sudo pacman -Sy
 
 git clone https://aur.archlinux.org/yay.git
 cd yay
