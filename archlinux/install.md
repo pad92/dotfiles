@@ -286,6 +286,13 @@ reboot
 ```
 # Optional
 
+## SSD Trim
+
+```
+sudo pacman -S util-linux
+sudo systemctl enable fstrim.timer
+```
+
 ## USBGuard
 ```
 yay -S usbguard usbguard-applet-qt
