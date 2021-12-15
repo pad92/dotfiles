@@ -23,6 +23,8 @@ plugins=(
   github
   httpie
   rsync
+  docker
+  docker-compose
   zsh-autosuggestions
   zsh-completions
   zsh-syntax-highlighting
