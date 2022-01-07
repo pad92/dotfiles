@@ -13,6 +13,7 @@
     ~/.zshaliases: .zshaliases
     ~/.zshenv: .zshenv
     ~/.zshrc: .zshrc
+    ~/.gitconfig: .gitconfig
     ~/.gtkrc-2.0: .gtkrc-2.0
     ~/.config/:
       glob: true
