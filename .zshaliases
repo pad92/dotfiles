@@ -40,9 +40,9 @@ fi
 ## get fastest mirrors
 if [ $(command -v reflector) ]; then
   alias mirror="sudo reflector -c FR -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist"
-  alias mirrord="sudo reflector --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
-  alias mirrors="sudo reflector --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
-  alias mirrora="sudo reflector --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
+  alias mirrord="sudo reflector -c FR --latest 50 --number 20 --sort delay --save /etc/pacman.d/mirrorlist"
+  alias mirrors="sudo reflector -c FR --latest 50 --number 20 --sort score --save /etc/pacman.d/mirrorlist"
+  alias mirrora="sudo reflector -c FR --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
 fi
 
 # youtube-dl
