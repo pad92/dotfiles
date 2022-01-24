@@ -2,6 +2,7 @@ env:
   TERM: xterm-256color
 
 window:
+  opacity: 0.80
   padding:
     x: 2
     y: 2
@@ -422,7 +423,6 @@ schemes:
 
 colors: *Base16Material
 
-background_opacity: 0.80
 key_bindings:
   - { key: V, mods: Control|Shift, action: Paste }
   - { key: C, mods: Control|Shift, action: Copy }
