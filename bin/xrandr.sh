@@ -25,7 +25,7 @@ case "${LISTMONITORS}" in
     xrandr --dpi 96 --output eDP1 --off \
       --output DP1 --mode ${RES_DP1} --pos  0x0 --rotate right \
       --output DP3-1 --primary --mode ${RES_DP31} --pos 1080x0 --rotate normal
-    i3-msg "workspace 1, move workspace to output DP2-1"
+    i3-msg "workspace 1, move workspace to output DP3-1"
     i3-msg "workspace 2, move workspace to output DP1"
   fi
   ;;
