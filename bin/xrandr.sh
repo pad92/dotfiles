@@ -27,6 +27,8 @@ case "${LISTMONITORS}" in
       --output DP3-1 --primary --mode ${RES_DP31} --pos 1080x0 --rotate normal
     i3-msg "workspace 1, move workspace to output DP3-1"
     i3-msg "workspace 2, move workspace to output DP1"
+    pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
+    nmcli radio wifi off
   fi
   ;;
 'eDP1')
