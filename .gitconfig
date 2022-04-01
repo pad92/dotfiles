@@ -63,3 +63,5 @@
 	prune = true
 [gui]
 	pruneDuringFetch = true
+[init]
+	defaultBranch = main
