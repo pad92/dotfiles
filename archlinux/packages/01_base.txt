@@ -42,6 +42,7 @@ mkpasswd
 mlocate
 nfs-utils
 ntfs-3g
+openssh-askpass
 powertop
 reflector
 rkhunter
