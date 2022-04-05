@@ -34,6 +34,8 @@ if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
     fi
     yay -Scc --noconfirm
     sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null
+    paccache -ruk0
+    paccache -rk1
   }
 fi
 
