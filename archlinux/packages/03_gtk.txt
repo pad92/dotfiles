@@ -1,3 +1,11 @@
 gtk-engine-murrine
 materia-gtk-theme
 papirus-icon-theme
+gstreamer
+gst-libav
+gst-plugins-bad
+gst-plugins-base
+gst-plugins-good
+gst-plugins-ugly
+gst-plugin-libde265
+gstreamer-vaapi
