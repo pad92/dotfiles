@@ -1,0 +1,6 @@
+brightnessctl
+sway
+swaybg
+swayidle
+swaylock
+waybar
