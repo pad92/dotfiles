@@ -70,9 +70,9 @@ bindsym Print exec --no-startup-id i3-scrot
 #bindsym $mod+Print --release exec --no-startup-id i3-scrot -w
 #bindsym $mod+p --release exec --no-startup-id i3-scrot -w
 bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
-bindsym $mod+shift+p exec scrot -u '%Y%m%d-%H%M%S.png' -e 'mv $f ~/Pictures/Screenshots/'
+#bindsym $mod+shift+p exec scrot -u '%Y%m%d-%H%M%S.png' -e 'mv $f ~/Pictures/Screenshots/'
 #bindsym $mod+Shift+Print --release exec --no-startup-id i3-scrot -s
-bindsym $mod+Shift+p --release exec --no-startup-id i3-scrot -s
+#bindsym $mod+Shift+p --release exec --no-startup-id i3-scrot -s
 bindsym $mod+Ctrl+x --release exec --no-startup-id xkill
 
 # focus_follows_mouse no
@@ -285,7 +285,6 @@ exec --no-startup-id xautolock -time 10 -locker blurlock
 exec --no-startup-id greenclip daemon
 exec --no-startup-id start-pulseaudio-x11
 exec --no-startup-id pa-applet
-exec --no-startup-id usbguard-applet-qt
 
 ## Base16 Material
 # Author: Nate Peterson
@@ -312,7 +311,7 @@ set $base0F #FF5370
 
 # Start i3bar to display a workspace bar (plus the system information i3status if available)
 bar {
-	i3bar_command i3bar
+	#i3bar_command i3bar
 	status_command i3status -c ~/.dotfiles/.config/i3status/config_$(hostnamectl hostname) | ~/.dotfiles/.config/i3status/i3spotifystatus/pystatus.py
 	position top
 
