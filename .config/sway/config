@@ -1,5 +1,5 @@
 # Your preferred terminal emulator
-set $term urxvt
+set $term alacritty
 
 # Your preferred application launcher
 set $menu "rofi -i -modi drun,run,window -show drun"
@@ -10,7 +10,6 @@ set $wallpaper_1366x768  ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1366
 set $wallpaper           $wallpaper_1920x1080
 
 # Your lockscreen
-
 set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
 
 # Setting values in gsettings
