@@ -55,8 +55,6 @@
 	auto = 1
 [gpg]
 	program = gpg2
-[credential]
-	helper = !git-credential-1password
 [pull]
 	rebase = false
 [fetch]
