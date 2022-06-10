@@ -15,10 +15,28 @@ import signal
 import sys
 
 WINDOW_ICONS = {
+    "alacritty": "",
+    "atom": "",
+    "brave-browser": "",
+    "chromium": "",
+    "discord": "",
+    "evolution": "",
     "firefox": "",
+    "forticlientsslvpn": "",
+    "google-chrome": "",
+    "kitty": "",
+    "lutris": "",
+    "microsoft teams - preview": "",
+    "spotify": "",
+    "steam": "",
+    "telegram-desktop": "",
+    "urxvt": "",
+    "vlc": "",
+    "vscodium": "",
+    "wine": "",
 }
 
-DEFAULT_ICON = "󰀏"
+DEFAULT_ICON = ""
 
 
 def icon_for_window(window):
