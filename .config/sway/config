@@ -33,13 +33,14 @@ include config.d/*
 
 ## On login
 exec xrdb $HOME/.Xresources
+exec kanshi
 exec redshift
 exec mako
 exec nm-applet
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec kanshi
-exec ~/.dotfiles/bin/i3-autoname-workspaces
+exec ~/.config/sway/scripts/autoname-workspaces.py
 
 set $greenclip ~/.dotfiles/bin/greenclip-v4.2
 bindsym $mod+Shift+v exec rofi -modi "clipboard:$greenclip print" -show clipboard
-exec --no-startup-id $greenclip daemon
+exec --no-startup-id $
