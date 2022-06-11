@@ -42,4 +42,4 @@ exec ~/.config/sway/scripts/autoname-workspaces.py
 
 set $greenclip ~/.dotfiles/bin/greenclip-v4.2
 bindsym $mod+Shift+v exec rofi -modi "clipboard:$greenclip print" -show clipboard
-exec --no-startup-id $
+exec $greenclip daemon
