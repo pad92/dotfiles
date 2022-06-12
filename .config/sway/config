@@ -6,7 +6,7 @@ set $menu "rofi -i -modi drun,run,window -show drun"
 
 # Default wallpaper
 set $wallpaper_1920x1080 ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1920x1080.jpg
-set $wallpaper_1366x768  ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1366x768.jpg 
+set $wallpaper_1366x768  ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1366x768.jpg
 set $wallpaper           $wallpaper_1920x1080
 
 # Your lockscreen
@@ -38,6 +38,7 @@ exec redshift
 exec mako
 exec nm-applet
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec kanshi
 exec ~/.dotfiles/bin/i3-autoname-workspaces
 
 set $greenclip ~/.dotfiles/bin/greenclip-v4.2
