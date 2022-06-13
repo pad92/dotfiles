@@ -1,7 +1,7 @@
 // -*- mode: json -*-
 {
-    "layer": "top",   // Waybar at top layer
-    "height": 24, // Waybar height
+    "layer": "top",
+    "height": 24,
     "modules-left": ["custom/weather", "sway/workspaces"],
     "modules-center": ["sway/mode"],
     "modules-right": ["pulseaudio", "backlight", "network", "custom/zombie" ,"cpu", "memory", "battery", "clock", "tray"],
