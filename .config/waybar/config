@@ -1,8 +1,8 @@
 // -*- mode: json -*-
 {
-    "layer": "top",   // Waybar at top layer
-    "height": 24, // Waybar height
-    "modules-left": ["custom/weather", "sway/workspaces", "custom/spotify"],
+    "layer": "top",
+    "height": 24,
+    "modules-left": ["custom/weather", "sway/workspaces"],
     "modules-center": ["sway/mode"],
     "modules-right": ["pulseaudio", "backlight", "network", "custom/zombie" ,"cpu", "memory", "battery", "clock", "tray"],
     "sway/mode": {
@@ -61,17 +61,15 @@
         },
         "on-click": "pavucontrol"
     },
-    "custom/spotify": {
-        "format": " {}",
-        "max-length": 40,
-        "exec": "$HOME/.config/waybar/modules/mediaplayer.py 2> /dev/null",
-        "exec-if": "pgrep spotify"
-    },
     "custom/weather": {
         "format": "{}",
+        "format-alt": "{alt}: {}",
+        "format-alt-click": "click-right",
         "interval": 1800,
-        "exec": "curl -s 'https://fr.wttr.in/Paris?format=1'",
-        "exec-if": "ping wttr.in -c1"
+        "return-type": "json",
+        "exec": "~/.config/waybar/modules/weather.py",
+        "exec-if": "ping wttr.in -c1",
+        "on-click": "gnome-weather"
     },
     "custom/zombie": {
         "format": " {}",
