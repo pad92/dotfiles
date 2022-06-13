@@ -52,28 +52,16 @@ bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute 0 toggle # mute s
 bindsym XF86MonBrightnessUp exec xbacklight -inc 20 # increase screen brightness
 bindsym XF86MonBrightnessDown exec xbacklight -dec 20 # decrease screen brightness
 # Media player controls
-bindsym XF86AudioPlay exec playerctl play
+bindsym XF86AudioPlay exec playerctl play-pause
 bindsym XF86AudioPause exec playerctl pause
 bindsym XF86AudioNext exec playerctl next
 bindsym XF86AudioPrev exec playerctl previous
-# Start Applications
-bindsym $mod+Ctrl+b exec terminal -e 'bmenu'
-bindsym $mod+F2 exec /usr/bin/google-chrome-stable
-bindsym $mod+F3 exec pcmanfm
-# bindsym $mod+F3 exec ranger
-bindsym $mod+Shift+F3 exec pcmanfm_pkexec
-bindsym $mod+F5 exec terminal -e 'mocp'
+
 bindsym $mod+t exec --no-startup-id pkill picom
 bindsym $mod+Ctrl+t exec --no-startup-id picom -b
 bindsym $mod+Shift+d --release exec "killall dunst; exec notify-send 'restart dunst'"
 bindsym Print exec --no-startup-id i3-scrot
-#bindsym $mod+Print --release exec --no-startup-id i3-scrot -w
-#bindsym $mod+p --release exec --no-startup-id i3-scrot -w
 bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
-bindsym $mod+shift+p exec scrot -u '%Y%m%d-%H%M%S.png' -e 'mv $f ~/Pictures/Screenshots/'
-#bindsym $mod+Shift+Print --release exec --no-startup-id i3-scrot -s
-bindsym $mod+Shift+p --release exec --no-startup-id i3-scrot -s
-bindsym $mod+Ctrl+x --release exec --no-startup-id xkill
 
 # focus_follows_mouse no
 
@@ -285,7 +273,6 @@ exec --no-startup-id xautolock -time 10 -locker blurlock
 exec --no-startup-id greenclip daemon
 exec --no-startup-id start-pulseaudio-x11
 exec --no-startup-id pa-applet
-exec --no-startup-id usbguard-applet-qt
 
 ## Base16 Material
 # Author: Nate Peterson
@@ -312,7 +299,6 @@ set $base0F #FF5370
 
 # Start i3bar to display a workspace bar (plus the system information i3status if available)
 bar {
-	i3bar_command i3bar
 	status_command i3status -c ~/.dotfiles/.config/i3status/config_$(hostname) | ~/.dotfiles/.config/i3status/i3spotifystatus/pystatus.py
 	position top
 
