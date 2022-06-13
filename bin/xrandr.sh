@@ -17,19 +17,14 @@ case "${LISTMONITORS}" in
   fi
   ;;
 'DP1-1 DP3 eDP1')
-  RES_DP11=$(xrandr --current | grep -A1 DP1-1 | tail -1 | awk '{print $1}')
-  RES_DP3=$(xrandr --current | grep -A1 DP3 | tail -1 | awk '{print $1}')
-
-  # Home AOC +Benq / laptop docked on dell
-  #if [ "x${RES_DP3}" = "x2560x1440" ] && [ "x${RES_DP11}" = "x1920x1080" ] && [ "x${LID_STATE}" = "xclosed" ]; then
-    xrandr --dpi 96 --output eDP1 --off \
-      --output DP1-1 --mode ${RES_DP11} --pos  0x0 --rotate right \
-      --output DP3 --primary --mode ${RES_DP3} --pos 1080x0 --rotate normal
-    i3-msg "workspace 1, move workspace to output DP3"
-    i3-msg "workspace 2, move workspace to output DP1-1"
-    pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
-    #nmcli radio wifi off
-  #fi
+  xrandr --dpi 96 \
+    --output eDP1 --auto --scale .5x.5 \
+    --output DP3 --primary --auto --left-of eDP1 \
+    --output DP1-1 --auto --left-of DP3 --rotate right
+  i3-msg "workspace 1, move workspace to output DP3"
+  i3-msg "workspace 2, move workspace to output DP1-1"
+  i3-msg "workspace 3, move workspace to output eDP1"
+  pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 'eDP1')
   DPI=144
