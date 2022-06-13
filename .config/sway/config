@@ -33,7 +33,7 @@ include config.d/*
 
 ## On login
 exec xrdb $HOME/.Xresources
-exec kanshi
+exec_always pkill kanshi; exec kanshi
 exec redshift
 exec mako
 exec nm-applet
