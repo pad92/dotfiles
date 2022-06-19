@@ -26,6 +26,16 @@ case "${LISTMONITORS}" in
   i3-msg "workspace 3, move workspace to output eDP1"
   pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
+'DP-1-1 DP-3 eDP-1')
+  xrandr --dpi 96 \
+    --output eDP-1 --auto --scale .5x.5 \
+    --output DP-3 --primary --auto --left-of eDP-1 \
+    --output DP-1-1 --auto --left-of DP-3 --rotate right
+  i3-msg "workspace 1, move workspace to output DP-3"
+  i3-msg "workspace 2, move workspace to output DP-1-1"
+  i3-msg "workspace 3, move workspace to output eDP-1"
+  pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
+  ;;
 'eDP1')
   DPI=144
   echo "Xft.dpi: ${DPI}" | xrdb -merge
