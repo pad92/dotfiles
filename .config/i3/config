@@ -172,37 +172,37 @@ bindsym $mod+Shift+8 move container to workspace number 8; workspace number 8
 # assign [class="Skype"] number 5
 
 # Open specific applications in floating mode
-for_window [class="(?i)System-config-printer.py"] floating enable border normal
-for_window [class="(?i)virtualbox"] floating enable border normal
-for_window [class="1Password"] floating enable, border normal, resize set 640 480, move to scratchpad
+for_window [class="(?i)System-config-printer.py"] floating enable
+for_window [class="(?i)virtualbox"] floating enable
+for_window [class="1Password"] floating enable, border normal, resize set 640 480, move to scratchpad; scratchpad show
 for_window [class="Clipgrab"] floating enable
-for_window [class="Evolution-alarm-notify"] floating enable sticky enable
-for_window [class="GParted"] floating enable border normal
-for_window [class="Galculator"] floating enable border pixel 1 resize set 640 480
-for_window [class="Gnome-screenshot"] floating enable sticky enable
+for_window [class="Evolution-alarm-notify"] floating enable
+for_window [class="GParted"] floating enable
+for_window [class="Galculator"] floating enable resize set 640 480
+for_window [class="Gnome-screenshot"] floating enable
 for_window [class="Lightdm-settings"] floating enable
-for_window [class="Lxappearance"] floating enable sticky enable border normal
-for_window [class="Nitrogen"] floating enable sticky enable border normal
+for_window [class="Lxappearance"] floating enable
+for_window [class="Nitrogen"] floating enable
 for_window [class="Oblogout"] fullscreen enable
-for_window [class="openfortiGUI"] floating enable sticky enable
+for_window [class="openfortiGUI"] floating enable
 for_window [class="Pamac-manager"] floating enable
 for_window [class="Pavucontrol"] floating enable
-for_window [class="Qtconfig-qt4"] floating enable sticky enable border normal
-for_window [class="Simple-scan"] floating enable border normal
-for_window [class="Skype"] floating enable border normal
+for_window [class="Qtconfig-qt4"] floating enable
+for_window [class="Simple-scan"] floating enable
+for_window [class="Skype"] floating enable
 for_window [class="Steam"] floating enable
-for_window [class="Timeset-gui"] floating enable border normal
+for_window [class="Timeset-gui"] floating enable
 for_window [class="Xfburn"] floating enable
-for_window [class="calamares"] floating enable border normal
+for_window [class="calamares"] floating enable
 for_window [class="fpakman"] floating enable
 for_window [class="octopi"] floating enable
-for_window [class="qt5ct"] floating enable sticky enable border normal
+for_window [class="qt5ct"] floating enable
 for_window [title="About Pale Moon"] floating enable
 for_window [title="File Transfer*"] floating enable
 for_window [title="MuseScore: Play Panel"] floating enable
-for_window [title="alsamixer"] floating enable border pixel 1
-for_window [title="i3_help"] floating enable sticky enable border normal
-for_window [window_role="PictureInPicture"] floating enable sticky enable
+for_window [title="alsamixer"] floating enable
+for_window [title="i3_help"] floating enable
+for_window [window_role="PictureInPicture"] floating enable
 for_window [window_role="pop-up"] floating enable
 
 # switch to workspace with urgent window automatically
@@ -221,13 +221,13 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 bindsym $mod+0 mode "$mode_system"
 set $mode_system (l)ock, (e)xit, switch_(u)ser, (s)uspend, (h)ibernate, (r)eboot, (Shift+s)hutdown
 mode "$mode_system" {
-    bindsym l exec --no-startup-id i3exit lock, mode "default"
+    bindsym l exec --no-startup-id i3lock-fancy, mode "default"
     bindsym s exec --no-startup-id i3exit suspend, mode "default"
     bindsym u exec --no-startup-id i3exit switch_user, mode "default"
-    bindsym e exec --no-startup-id i3exit logout, mode "default"
+    bindsym e exec --no-startup-id loginctl terminate-user $USER, mode "default"
     bindsym h exec --no-startup-id i3exit hibernate, mode "default"
-    bindsym r exec --no-startup-id i3exit reboot, mode "default"
-    bindsym Shift+s exec --no-startup-id i3exit shutdown, mode "default"
+    bindsym r exec --no-startup-id systemctl reboot, mode "default"
+    bindsym Shift+s exec --no-startup-id systemctl poweroff, mode "default"
 
     # exit system mode: "Enter" or "Escape"
     bindsym Return mode "default"
@@ -267,13 +267,14 @@ exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id nitrogen --restore; sleep 1; picom -b
 exec --no-startup-id nm-applet
-exec --no-startup-id xfce4-power-manager
-exec --no-startup-id pamac-tray
+#exec --no-startup-id xfce4-power-manager
+#exec --no-startup-id pamac-tray
 exec --no-startup-id xautolock -time 10 -locker blurlock
 exec --no-startup-id greenclip daemon
 exec --no-startup-id start-pulseaudio-x11
-exec --no-startup-id pa-applet
-
+#exec --no-startup-id pa-applet
+exec --no-startup-id pasystray
+exec --no-startup-id /usr/libexec/gsd-xsettings
 ## Base16 Material
 # Author: Nate Peterson
 #

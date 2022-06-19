@@ -1,6 +1,7 @@
 #!/bin/sh
 sudo apt update
 sudo apt-get upgrade -y
+sudo apt install curl wget git pavucontrol python3-i3ipc -y
 wget -qO - https://regolith-desktop.io/regolith.key | sudo apt-key add -
 wget -qO - https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg \
     | gpg --dearmor \
@@ -31,6 +32,7 @@ fi
 
 sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo add-apt-repository ppa:aslatter/ppa
+sudo add-apt-repository ppa:snwh/ppa
 
 sudo apt update
 sudo apt install -y \
@@ -77,3 +79,6 @@ git clone \
    'https://github.com/adobe-fonts/source-code-pro.git' \
    "$FONT_HOME/adobe-fonts/source-code-pro" && \
 fc-cache -f -v "$FONT_HOME/adobe-fonts/source-code-pro"
+
+wget -qO /tmp/1password.deb https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb && sudo dpkg -i /tmp/1password.deb && rm /tmp/1password.deb
+
