@@ -14,7 +14,6 @@ polkit-gnome
 python-i3ipc
 redshift
 rofi
-rofi-greenclip
 thunar
 thunar-archive-plugin
 thunar-media-tags-plugin
