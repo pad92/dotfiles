@@ -37,7 +37,7 @@ bindsym $mod+Shift+q kill
 
 # start program launcher
 bindsym $mod+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
-bindsym $mod+Shift+v exec --no-startup-id rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}'
+bindsym $mod+Shift+v exec --no-startup-id rofi -modi "clipboard:~/.dotfiles/bin/greenclip-v4.2 print" -show clipboard -run-command '{cmd}'
 
 bindsym $mod+z exec --no-startup-id morc_menu
 bindsym $mod+Ctrl+m exec pavucontrol
@@ -270,7 +270,7 @@ exec --no-startup-id nm-applet
 #exec --no-startup-id xfce4-power-manager
 #exec --no-startup-id pamac-tray
 exec --no-startup-id xautolock -time 10 -locker blurlock
-exec --no-startup-id greenclip daemon
+exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 exec --no-startup-id start-pulseaudio-x11
 #exec --no-startup-id pa-applet
 exec --no-startup-id pasystray
