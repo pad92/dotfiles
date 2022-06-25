@@ -4,17 +4,12 @@ LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{pri
 [ -f /proc/acpi/button/lid/LID0/state ] && LID_STATE=$(grep -oE '[^ ]+$' /proc/acpi/button/lid/LID0/state)
 
 case "${LISTMONITORS}" in
-'DP-0 HDMI-0')
-  RES_DP0=$(xrandr --current | grep -A1 DP-0 | tail -1 | awk '{print $1}')
-  RES_HDMI0=$(xrandr --current | grep -A1 HDMI-0 | tail -1 | awk '{print $1}')
-  # Home AOC +Benq
-  if [ "x${RES_DP0}" = "x2560x1440" ] && [ "x${RES_HDMI0}" = "x1920x1080" ]; then
-    xrandr --dpi 96 \
-      --output HDMI-0 --mode ${RES_HDMI0} --pos 0x0 --rotate right \
-      --output DP-0 --primary --mode ${RES_DP0} --pos 1080x0 --rotate normal
-    i3-msg "workspace 1, move workspace to output DP-0"
-    i3-msg "workspace 2, move workspace to output HDMI-0"
-  fi
+'DP-3 HDMI-1')
+  xrandr --dpi 96 \
+    --output HDMI-1 --auto --pos 0x0 --rotate right \
+    --output DP-3 --primary --auto --pos 1080x0 --rotate normal
+  i3-msg "workspace 1, move workspace to output DP-3"
+  i3-msg "workspace 2, move workspace to output HDMI-3"
   ;;
 'DP1-1 DP3 eDP1')
   xrandr --dpi 96 \
