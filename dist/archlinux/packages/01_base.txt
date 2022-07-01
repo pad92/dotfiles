@@ -44,6 +44,7 @@ mlocate
 nfs-utils
 ntfs-3g
 openssh-askpass
+pacman-contrib
 powertop
 reflector
 rkhunter
