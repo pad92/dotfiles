@@ -273,7 +273,7 @@ rm -fr yay
 
 ### WM and softs
 ```
-yay -S --needed $(cat ~/.dotfiles/archlinux/packages/*.txt)
+yay -S --needed $(cat ~/.dotfiles/dist/archlinux/packages/*.txt)
 
 exit
 ```
