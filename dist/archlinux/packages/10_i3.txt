@@ -1,5 +1,6 @@
 alacritty
 dunst
+gnome-screenshot
 i3-gaps
 i3exit
 i3status
