@@ -7,7 +7,6 @@ i3status
 lxappearance
 nitrogen
 pa-applet-git
-pamac-all
 pavucontrol
 picom
 playerctl
