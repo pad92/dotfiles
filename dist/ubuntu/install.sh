@@ -81,4 +81,3 @@ git clone \
 fc-cache -f -v "$FONT_HOME/adobe-fonts/source-code-pro"
 
 wget -qO /tmp/1password.deb https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb && sudo dpkg -i /tmp/1password.deb && rm /tmp/1password.deb
-
