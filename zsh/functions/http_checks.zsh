@@ -8,7 +8,7 @@ http_check_d3() {
 }
 
 http_check_android () {
-    curl -s https://developers.google.com/android/nexus/images | sed -e 's/<[^>]*>//g' | grep -B2 \"Android \" | sed -e 's/^[ \t]*//' | sed '/^$/d' 
+    curl -s https://developers.google.com/android/nexus/images | sed -e 's/<[^>]*>//g' | grep -B2 \"Android \" | sed -e 's/^[ \t]*//' | sed '/^$/d'
 }
 
 http_check () {
