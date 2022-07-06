@@ -1,1 +1,3 @@
 gnome
+gnome-firmware
+gnome-screenshot
