@@ -63,7 +63,7 @@ w
 
 ### luks
 ```
-cryptsetup luksFormat --type luks1 /dev/nvme0n1p3
+cryptsetup luksFormat --type luks1 -s 512 -h sha512 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
@@ -105,7 +105,7 @@ mount /dev/mapper/archlvm-opt            /mnt/opt
 ## System
 ### Install base
 ```
-pacstrap /mnt base linux linux-headers linux-firmware lvm2 intel-ucode grub efibootmgr os-prober vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
+pacstrap /mnt base linux-lts linux-lts-headers linux-firmware lvm2 intel-ucode grub efibootmgr os-prober vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
 ```
 
 ### Configure wifi region
@@ -202,11 +202,11 @@ EOF
 ```
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
-sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin\""  /etc/default/grub
+sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin random.trust_cpu=on\""  /etc/default/grub
 
 sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
 
-grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux --modules="tpm" --disable-shim-lock
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
@@ -273,7 +273,7 @@ rm -fr yay
 
 ### WM and softs
 ```
-yay -S --needed $(cat ~/.dotfiles/archlinux/packages/*.txt)
+yay -S --needed $(cat ~/.dotfiles/dist/archlinux/packages/*.txt)
 
 exit
 ```
