@@ -35,7 +35,7 @@ def lock(blur_radius=15, scale=1, lock_img="", swaylock_args=""):
     swaylock = ["swaylock"]
     for i,(o, (w,h), (x,y)) in enumerate(get_outputs()):
         screenshot_path = "/tmp/swaylock-python%d.png" % i
-        
+
         im = make_screenshot(screenshot_path, (x,y), (w,h), scale)
         im = im.filter(ImageFilter.GaussianBlur(blur_radius))
 
@@ -47,7 +47,7 @@ def lock(blur_radius=15, scale=1, lock_img="", swaylock_args=""):
             lock_im = lock_im.resize((lw, lh))
             lock_box = (int(w * scale) - lw) // 2, (int(h * scale) - lh) // 2
             im.paste(lock_im, box=lock_box, mask=lock_im)
-        
+
         im.save(screenshot_path)
 
         swaylock.extend(["-i", "%s:%s" % (o, screenshot_path)])
@@ -60,17 +60,17 @@ def lock(blur_radius=15, scale=1, lock_img="", swaylock_args=""):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Fancy screen locking for sway.')
-    parser.add_argument('-r', '--radius', type=int, default=15, 
+    parser.add_argument('-r', '--radius', type=int, default=15,
         help='Blur radius of the Gaussian filter in px.')
     parser.add_argument('-s', '--scale', type=float, default=1,
         help='Screenshot scale.'),
-    parser.add_argument('-l', '--lock-image', type=str, 
+    parser.add_argument('-l', '--lock-image', type=str,
         help='Image to be displayed in the center of each output.')
-    parser.add_argument('--swaylock-args', type=str, 
+    parser.add_argument('--swaylock-args', type=str,
         help='Additional arguments that are passed to swaylock.')
     args = parser.parse_args()
 
-    lock(lock_img=args.lock_image, 
-         blur_radius=args.radius, 
+    lock(lock_img=args.lock_image,
+         blur_radius=args.radius,
          scale=args.scale,
          swaylock_args=args.swaylock_args)
