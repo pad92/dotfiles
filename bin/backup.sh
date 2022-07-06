@@ -57,4 +57,4 @@ echo 'rsync /etc'
 sudo rsync -apxHAWS --info=progress2 --delete /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/
 echo "rsync ${HOME}"
 
-sudo rsync -axHAWS --info=progress2 --delete --delete-excluded --exclude='Download/' --exclude='Cache/' --exclude-from=${HOME}/.dotfiles/archlinux/backup_excludes.txt ${HOME}/ "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
+sudo rsync -axHAWS --info=progress2 --delete --delete-excluded --exclude='Download/' --exclude='Cache/' --exclude-from=${HOME}/.dotfiles/dist/backup_excludes.txt ${HOME}/ "${BACKUP_DIR}/${HOSTNAME}${HOME}/"

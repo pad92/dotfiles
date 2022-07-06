@@ -16,6 +16,7 @@ hunspell-en_us
 hunspell-fr
 hyphen-en
 hyphen-fr
+inetutils
 intel-gmmlib
 intel-media-driver
 jq
@@ -43,6 +44,7 @@ mlocate
 nfs-utils
 ntfs-3g
 openssh-askpass
+pacman-contrib
 powertop
 reflector
 rkhunter
