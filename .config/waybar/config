@@ -1,0 +1,84 @@
+// -*- mode: json -*-
+{
+    "layer": "top",
+    "height": 24,
+    "modules-left": ["custom/weather", "sway/workspaces"],
+    "modules-center": ["sway/mode"],
+    "modules-right": ["pulseaudio", "backlight", "network", "custom/zombie" ,"cpu", "memory", "battery", "clock", "tray"],
+    "sway/mode": {
+        "format": "{}"
+    },
+    "sway/workspaces": {
+        "format": "{icon}",
+        "format-icons": {
+            "urgent": ""
+        }
+    },
+    "sway/window": {
+        "format": "{}",
+        "max-length": 40
+    },
+    "tray": {
+        "spacing": 10
+    },
+    "clock": {
+        "interval": 60,
+        "format": "{:%Y-%m-%d %H:%M} "
+    },
+    "cpu": {
+        "format": "{usage}% "
+    },
+    "memory": {
+        "format": "{}% Mem"
+    },
+    "battery": {
+        "states": {
+            "good": 95,
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{capacity}% {icon}",
+        "format-icons": ["", "", "", "", ""]
+    },
+    "network": {
+        "format": "{ifname}",
+        "format-wifi": "{signalStrength}% ",
+        "format-ethernet": "Online",
+        "format-disconnected": "Offline"
+    },
+    "pulseaudio": {
+        "format": "{volume}% {icon}",
+        "format-bluetooth": "{volume}% {icon}",
+        "format-muted": "",
+        "format-icons": {
+            "headphones": "",
+            "handsfree": "",
+            "headset": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
+            "default": ["", ""]
+        },
+        "on-click": "pavucontrol"
+    },
+    "custom/weather": {
+        "format": "{}",
+        "format-alt": "{alt}: {}",
+        "format-alt-click": "click-right",
+        "interval": 1800,
+        "return-type": "json",
+        "exec": "~/.config/waybar/modules/weather.py",
+        "exec-if": "ping wttr.in -c1",
+        "on-click": "gnome-weather"
+    },
+    "custom/zombie": {
+        "format": " {}",
+        "exec": "ps axo stat= | grep Z | count",
+        "exec-if": "ps axo stat= | grep Z"
+    },
+    "backlight": {
+        "device": "intel_backlight",
+        "format": "{percent}% {icon}",
+        "format-icons": ["", ""]
+    }
+}

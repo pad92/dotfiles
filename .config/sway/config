@@ -1,0 +1,45 @@
+# Your preferred terminal emulator
+set $term alacritty
+
+# Your preferred application launcher
+set $menu "rofi -i -modi drun,run,window -show drun"
+
+# Default wallpaper
+set $wallpaper_1920x1080 ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1920x1080.jpg
+set $wallpaper_1366x768  ${HOME}/.dotfiles/wallpapers/nebuleuse-de-papillon_1366x768.jpg
+set $wallpaper           $wallpaper_1920x1080
+
+# Your lockscreen
+set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
+
+# Setting values in gsettings
+set $gnome-schema org.gnome.desktop.interface
+
+exec {
+    gsettings set $gnome-schema gtk-theme 'Yaru-dark'
+    gsettings set $gnome-schema icon-theme 'Yaru'
+}
+
+# This will lock your screen after 300 seconds of inactivity, then turn off
+# your displays after another 300 seconds, and turn your screens back on when
+# resumed. It will also lock your screen before your computer goes to sleep.
+exec swayidle -w \
+        timeout 300 $lockscreen \
+        timeout 600 'swaymsg "output * dpms off"' \
+             resume 'swaymsg "output * dpms on"' \
+        before-sleep $lockscreen
+
+include config.d/*
+
+## On login
+exec xrdb $HOME/.Xresources
+exec_always pkill kanshi; exec kanshi
+exec redshift
+exec mako
+exec nm-applet
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec ~/.config/sway/scripts/autoname-workspaces.py
+
+set $greenclip ~/.dotfiles/bin/greenclip-v4.2
+bindsym $mod+Shift+v exec rofi -modi "clipboard:$greenclip print" -show clipboard
+exec $greenclip daemon
