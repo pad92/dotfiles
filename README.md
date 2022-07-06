@@ -21,7 +21,7 @@ curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/master/vim.sh | sh
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/master/dist/archlinux/install.md
+- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/master/dist/archlinux/install.md)
 - [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/tree/master/dist/archlinux/packages/)
 
 # Ubuntu
