@@ -36,7 +36,7 @@ exec xrdb $HOME/.Xresources
 exec_always pkill kanshi; exec kanshi
 exec redshift
 exec mako
-exec nm-applet
+exec nm-applet --indicator
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec ~/.config/sway/scripts/autoname-workspaces.py
 
