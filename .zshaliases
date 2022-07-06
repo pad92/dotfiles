@@ -1,8 +1,8 @@
 # Docker
 ## Ansible
 if [ $(command -v docker) ]; then
-  alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7-1 sh'
-  alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10.7-1 ansible-playbook'
+  alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10 sh'
+  alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent -v ${PWD}:/ansible -e SSH_AUTH_SOCK=/ssh-agent pad92/ansible-alpine:2.10 ansible-playbook'
 fi
 
 
