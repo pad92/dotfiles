@@ -67,7 +67,7 @@ function set-title-by-command() {
       cmd="${cmd[1,15]}..."
     fi
 
-    
+
     for kind in window tab screen; do
       set-${kind}-title "${USER}@${HOST}: $cmd"
     done
