@@ -6,6 +6,9 @@ repos:
     - id: check-json
     - id: check-xml
     - id: check-toml
+    - id: check-symlinks
+    - id: detect-private-key
+    - id: check-added-large-files
     - id: end-of-file-fixer
     - id: trailing-whitespace
     - id: check-executables-have-shebangs
