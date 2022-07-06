@@ -2,7 +2,7 @@
 
 Configuration used on my [Arch Linux](https://archlinux.org/) with i3 / i3status
 
-![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/archlinux/screenshot.png)
+![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/archlinux/screenshot.png)
 
 
 # Install Dotfile
@@ -21,12 +21,11 @@ curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/master/vim.sh | sh
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfilesblob/master/dist/archlinux/install.md)
-- [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/archlinux/pkglist.txt)
+- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/master/dist/archlinux/install.md
+- [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/tree/master/dist/archlinux/packages/)
 
 # Ubuntu
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfilesblob/master/dist/ubuntu/install.md)
-- [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/ubuntu/pkglist.txt)
+- [install.md](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/ubuntu/install.sh)
