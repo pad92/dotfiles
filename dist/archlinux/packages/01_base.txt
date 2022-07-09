@@ -5,6 +5,7 @@ arj
 bind
 c-ares
 cifs-utils
+downgrade
 exo
 ffmpeg-compat-57
 flatpak
