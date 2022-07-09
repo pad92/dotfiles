@@ -1,0 +1,8 @@
+cups
+foomatic-db
+foomatic-db-gutenprint-ppds
+foomatic-db-nonfree
+foomatic-db-nonfree-ppds
+foomatic-db-ppds
+gutenprint
+system-config-printer
