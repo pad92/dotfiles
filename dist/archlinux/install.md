@@ -105,7 +105,33 @@ mount /dev/mapper/archlvm-opt            /mnt/opt
 ## System
 ### Install base
 ```
-pacstrap /mnt base linux-lts linux-lts-headers linux-firmware lvm2 intel-ucode grub efibootmgr os-prober vim base-devel terminus-font network-manager-applet networkmanager wpa_supplicant openssh git python zsh neofetch rsync crda
+KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applied.
+KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
+KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
+
+pacstrap /mnt \
+  base \
+  ${KERNEL} \
+  ${KERNEL}-headers \
+  base-devel \
+  crda
+  efibootmgr \
+  git \
+  grub \
+  intel-ucode \
+  linux-firmware \
+  lvm2 \
+  neofetch \
+  network-manager-applet \
+  networkmanager \
+  openssh \
+  os-prober \
+  python \
+  rsync \
+  terminus-font \
+  vim \
+  wpa_supplicant \
+  zsh \
 ```
 
 ### Configure wifi region
@@ -218,7 +244,7 @@ cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
 
 sed -i '/^MODULES/c\MODULES="intel_agp i915"' /etc/mkinitcpio.conf
 sed -i '/^FILES/c\FILES=(/root/.cryptlvm/archluks.bin)' /etc/mkinitcpio.conf
-sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 filesystems fsck"' /etc/mkinitcpio.conf
+sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 fsck filesystems"' /etc/mkinitcpio.conf
 mkinitcpio -P
 ```
 
