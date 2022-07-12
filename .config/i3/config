@@ -265,9 +265,9 @@ bindsym $mod+9 exec --no-startup-id blurlock
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
 exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
-exec --no-startup-id nitrogen --restore; sleep 1; picom -b
+exec --no-startup-id nitrogen --restore; sleep 1; picom -b --unredir-if-possible --backend xr_glx_hybrid --vsync --use-damage --glx-no-stencil
 exec --no-startup-id nm-applet
-#exec --no-startup-id xfce4-power-manager
+exec --no-startup-id polychromatic-tray-applet
 #exec --no-startup-id pamac-tray
 exec --no-startup-id xautolock -time 10 -locker blurlock
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
