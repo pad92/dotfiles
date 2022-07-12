@@ -83,7 +83,7 @@ lvcreate -l 100%FREE archlvm -n home
 
 ### Format
 ```
-mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
+mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI # or BOOT
 mkfs.ext4     /dev/mapper/archlvm-slash          -L slash
 mkfs.ext4     /dev/mapper/archlvm-home           -L home
 mkfs.ext4     /dev/mapper/archlvm-opt            -L opt
@@ -93,6 +93,7 @@ swapon        /dev/mapper/archlvm-swap
 ```
 
 ### Mount
+#### With luks kernel
 ```
 mount /dev/mapper/archlvm-slash /mnt
 mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
@@ -102,6 +103,19 @@ mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
 mount /dev/mapper/archlvm-opt            /mnt/opt
 ```
 
+#### Without luks kernel
+```
+mount /dev/mapper/archlvm-slash /mnt
+mkdir /mnt/boot /mnt/home /mnt/var/lib/docker /mnt/opt -p
+mount /dev/nvme0n1p2                     /mnt/boot
+mount /dev/mapper/archlvm-home           /mnt/home
+mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
+mount /dev/mapper/archlvm-opt            /mnt/opt
+```
+
+- do not load /root/.cryptlvm/archluks.bin into initramfs (mkinitcpio)
+- change /efi by /boot
+
 ## System
 ### Install base
 ```
@@ -109,16 +123,19 @@ KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applie
 KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
 KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
 
+UCODE='intel-ucode' # for Intel processors.
+UCODE='amd-ucode'   # for AMD processors
+
 pacstrap /mnt \
   base \
   ${KERNEL} \
   ${KERNEL}-headers \
+  ${UCODE} \
   base-devel \
-  crda
+  crda \
   efibootmgr \
   git \
   grub \
-  intel-ucode \
   linux-firmware \
   lvm2 \
   neofetch \
@@ -131,7 +148,7 @@ pacstrap /mnt \
   terminus-font \
   vim \
   wpa_supplicant \
-  zsh \
+  zsh
 ```
 
 ### Configure wifi region
@@ -232,7 +249,7 @@ sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cry
 
 sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
 
-grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux --modules="tpm" --disable-shim-lock
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
