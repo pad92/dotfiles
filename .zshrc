@@ -46,7 +46,7 @@ export LANG="en_US.UTF-8"
 export EDITOR='vim'
 
 # History
-export HIST_STAMPS="mm/dd/yyyy"
+export HIST_STAMPS="%d/%m/%y %T"
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
 export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignorespace
 export HISTFILE=${HOME}/.zsh_history
