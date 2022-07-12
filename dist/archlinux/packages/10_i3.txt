@@ -19,4 +19,3 @@ thunar-archive-plugin
 thunar-media-tags-plugin
 thunar-volman
 xautolock
-xfce4-power-manager
