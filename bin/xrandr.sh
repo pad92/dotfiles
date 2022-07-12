@@ -1,6 +1,8 @@
 #!/bin/sh
 
+#LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{print $2}' | sed 's/+//' | sed 's/*//' | sort)
 LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{print $NF}' | sort | tr '\n' ' ' | sed 's/ $//g')
+
 [ -f /proc/acpi/button/lid/LID0/state ] && LID_STATE=$(grep -oE '[^ ]+$' /proc/acpi/button/lid/LID0/state)
 
 case "${LISTMONITORS}" in
