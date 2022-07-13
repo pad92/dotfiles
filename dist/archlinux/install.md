@@ -63,7 +63,7 @@ w
 
 ### luks
 ```
-cryptsetup luksFormat --type luks1 -s 512 -h sha512 /dev/nvme0n1p3
+cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
@@ -83,7 +83,7 @@ lvcreate -l 100%FREE archlvm -n home
 
 ### Format
 ```
-mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI # or BOOT
+mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
 mkfs.ext4     /dev/mapper/archlvm-slash          -L slash
 mkfs.ext4     /dev/mapper/archlvm-home           -L home
 mkfs.ext4     /dev/mapper/archlvm-opt            -L opt
@@ -93,7 +93,7 @@ swapon        /dev/mapper/archlvm-swap
 ```
 
 ### Mount
-#### With luks kernel
+
 ```
 mount /dev/mapper/archlvm-slash /mnt
 mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
@@ -101,20 +101,8 @@ mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
 mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
 mount /dev/mapper/archlvm-opt            /mnt/opt
+chmod 700 /boot
 ```
-
-#### Without luks kernel
-```
-mount /dev/mapper/archlvm-slash /mnt
-mkdir /mnt/boot /mnt/home /mnt/var/lib/docker /mnt/opt -p
-mount /dev/nvme0n1p2                     /mnt/boot
-mount /dev/mapper/archlvm-home           /mnt/home
-mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
-mount /dev/mapper/archlvm-opt            /mnt/opt
-```
-
-- do not load /root/.cryptlvm/archluks.bin into initramfs (mkinitcpio)
-- change /efi by /boot
 
 ## System
 ### Install base
