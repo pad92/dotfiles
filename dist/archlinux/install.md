@@ -63,7 +63,7 @@ w
 
 ### luks
 ```
-cryptsetup luksFormat --type luks1 -s 512 -h sha512 /dev/nvme0n1p3
+cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
@@ -93,6 +93,7 @@ swapon        /dev/mapper/archlvm-swap
 ```
 
 ### Mount
+
 ```
 mount /dev/mapper/archlvm-slash /mnt
 mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
@@ -100,6 +101,7 @@ mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
 mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
 mount /dev/mapper/archlvm-opt            /mnt/opt
+chmod 700 /boot
 ```
 
 ## System
@@ -109,16 +111,19 @@ KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applie
 KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
 KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
 
+UCODE='intel-ucode' # for Intel processors.
+UCODE='amd-ucode'   # for AMD processors
+
 pacstrap /mnt \
   base \
   ${KERNEL} \
   ${KERNEL}-headers \
+  ${UCODE} \
   base-devel \
-  crda
+  crda \
   efibootmgr \
   git \
   grub \
-  intel-ucode \
   linux-firmware \
   lvm2 \
   neofetch \
@@ -131,7 +136,7 @@ pacstrap /mnt \
   terminus-font \
   vim \
   wpa_supplicant \
-  zsh \
+  zsh
 ```
 
 ### Configure wifi region
@@ -228,11 +233,11 @@ EOF
 ```
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
-sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin random.trust_cpu=on\""  /etc/default/grub
+sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin\""  /etc/default/grub
 
 sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
 
-grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux --modules="tpm" --disable-shim-lock
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
@@ -242,9 +247,9 @@ mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
 head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
 cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
 
-sed -i '/^MODULES/c\MODULES="intel_agp i915"' /etc/mkinitcpio.conf
+sed -i '/^MODULES/c\MODULES=(intel_agp i915)' /etc/mkinitcpio.conf
 sed -i '/^FILES/c\FILES=(/root/.cryptlvm/archluks.bin)' /etc/mkinitcpio.conf
-sed -i '/^HOOKS/c\HOOKS="base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 fsck filesystems"' /etc/mkinitcpio.conf
+sed -i '/^HOOKS/c\HOOKS=(base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 filesystems fsck)' /etc/mkinitcpio.conf
 mkinitcpio -P
 ```
 
@@ -341,7 +346,7 @@ usermod -a -G docker MyUser
 
 ## Nvidia
 ```
-sed -i '/^MODULES/c\MODULES="nvidia"' /etc/mkinitcpio.conf
+sed -i '/^MODULES/c\MODULES=(nvidia)' /etc/mkinitcpio.conf
 yay -S nvidia-dkms nvidia-utils
 sudo mkinitcpio -P
 
