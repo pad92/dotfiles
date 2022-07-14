@@ -1,6 +1,5 @@
 #!/bin/sh
 
-#LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{print $2}' | sed 's/+//' | sed 's/*//' | sort)
 LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{print $NF}' | sort | tr '\n' ' ' | sed 's/ $//g')
 
 [ -f /proc/acpi/button/lid/LID0/state ] && LID_STATE=$(grep -oE '[^ ]+$' /proc/acpi/button/lid/LID0/state)
@@ -14,13 +13,18 @@ case "${LISTMONITORS}" in
   i3-msg "workspace 2, move workspace to output HDMI-3"
   ;;
 'DP1-1 DP3 eDP1')
+  #xrandr --setprovideroutputsource modesetting NVIDIA-0
+ # xrandr --dpi 96 \
+ #   --output eDP1 --auto --scale .5x.5 \
+ #   --output DP3 --primary --auto --left-of eDP1 \
+ #   --output DP1-1 --auto --left-of DP3 --rotate right
   xrandr --dpi 96 \
-    --output eDP1 --auto --scale .5x.5 \
-    --output DP3 --primary --auto --left-of eDP1 \
+    --output eDP1 --off \
+    --output DP3 --primary --auto  \
     --output DP1-1 --auto --left-of DP3 --rotate right
   i3-msg "workspace 1, move workspace to output DP3"
   i3-msg "workspace 2, move workspace to output DP1-1"
-  i3-msg "workspace 3, move workspace to output eDP1"
+  #i3-msg "workspace 3, move workspace to output eDP1"
   pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 'DP-1-1 DP-3 eDP-1')
