@@ -11,11 +11,9 @@ firefox-i18n-en-us
 firefox-i18n-fr
 fwupd
 gimp-extras
-gimp-help-en
+gimp-help-fr
 gimp-plugin-instagram-effects
-glances
 google-chrome
-headsetcontrol-git
 keepassxc
 networkmanager-openvpn
 obs-studio
@@ -27,6 +25,5 @@ spotify
 telegram-desktop
 terraform
 vlc
-vmware-workstation
 vscodium-bin
 wget
