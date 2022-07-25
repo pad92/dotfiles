@@ -32,4 +32,8 @@ fi
 
 [ -f ~/.xprofile ] && . ~/.xprofile
 
+xrandr --setprovideroutputsource modesetting NVIDIA-0
+xrandr --auto
+exec ~/.screenlayout/modseting-nvidia.sh
+exec nitrogen --restore
 exec i3 >> ~/.cache/i3.log 2>> ~/.cache/i3.err

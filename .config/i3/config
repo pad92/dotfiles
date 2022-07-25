@@ -66,28 +66,28 @@ bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
 # focus_follows_mouse no
 
 # change focus
-bindsym $mod+j focus left
-bindsym $mod+k focus down
-bindsym $mod+l focus up
-bindsym $mod+semicolon focus right
+bindsym  $mod+j          focus  left
+bindsym  $mod+k          focus  down
+bindsym  $mod+l          focus  up
+bindsym  $mod+semicolon  focus  right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+bindsym  $mod+Left   focus  left
+bindsym  $mod+Down   focus  down
+bindsym  $mod+Up     focus  up
+bindsym  $mod+Right  focus  right
 
 # move focused window
-bindsym $mod+Shift+j move left
-bindsym $mod+Shift+k move down
-bindsym $mod+Shift+l move up
-bindsym $mod+Shift+semicolon move right
+bindsym  $mod+Shift+j          move  left
+bindsym  $mod+Shift+k          move  down
+bindsym  $mod+Shift+l          move  up
+bindsym  $mod+Shift+semicolon  move  right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+bindsym  $mod+Shift+Left   move  left
+bindsym  $mod+Shift+Down   move  down
+bindsym  $mod+Shift+Up     move  up
+bindsym  $mod+Shift+Right  move  right
 
 # workspace back and forth (with/without active container)
 workspace_auto_back_and_forth yes
@@ -127,8 +127,8 @@ bindsym $mod+Shift+minus move scratchpad
 bindsym $mod+minus scratchpad show
 
 #navigate workspaces next / previous
-bindsym $mod+Ctrl+Right workspace next
-bindsym $mod+Ctrl+Left workspace prev
+bindsym  $mod+Ctrl+Right  workspace  next
+bindsym  $mod+Ctrl+Left   workspace  prev
 
 # Workspace names
 # to display names or symbols instead of plain workspace numbers you can use
@@ -166,44 +166,43 @@ bindsym $mod+Shift+7 move container to workspace number 7; workspace number 7
 bindsym $mod+Shift+8 move container to workspace number 8; workspace number 8
 
 # Open applications on specific workspaces
-# assign [class="Thunderbird"] number 1
-# assign [class="Pale moon"] number 2
-# assign [class="Pcmanfm"] number 3
-# assign [class="Skype"] number 5
+assign  [class="google-chrome"]  number  1
+assign  [class="Teams"]          number  2
+assign  [class="Spotify"]        number  2
 
 # Open specific applications in floating mode
-for_window [class="(?i)System-config-printer.py"] floating enable
-for_window [class="(?i)virtualbox"] floating enable
-for_window [class="1Password"] floating enable, border normal, resize set 640 480, move to scratchpad; scratchpad show
-for_window [class="Clipgrab"] floating enable
-for_window [class="Evolution-alarm-notify"] floating enable
-for_window [class="GParted"] floating enable
-for_window [class="Galculator"] floating enable resize set 640 480
-for_window [class="Gnome-screenshot"] floating enable
-for_window [class="Lightdm-settings"] floating enable
-for_window [class="Lxappearance"] floating enable
-for_window [class="Nitrogen"] floating enable
-for_window [class="Oblogout"] fullscreen enable
-for_window [class="openfortiGUI"] floating enable
-for_window [class="Pamac-manager"] floating enable
-for_window [class="Pavucontrol"] floating enable
-for_window [class="Qtconfig-qt4"] floating enable
-for_window [class="Simple-scan"] floating enable
-for_window [class="Skype"] floating enable
-for_window [class="Steam"] floating enable
-for_window [class="Timeset-gui"] floating enable
-for_window [class="Xfburn"] floating enable
-for_window [class="calamares"] floating enable
-for_window [class="fpakman"] floating enable
-for_window [class="octopi"] floating enable
-for_window [class="qt5ct"] floating enable
-for_window [title="About Pale Moon"] floating enable
-for_window [title="File Transfer*"] floating enable
-for_window [title="MuseScore: Play Panel"] floating enable
-for_window [title="alsamixer"] floating enable
-for_window [title="i3_help"] floating enable
-for_window [window_role="PictureInPicture"] floating enable
-for_window [window_role="pop-up"] floating enable
+for_window  [class="(?i)System-config-printer.py"]  floating     enable
+for_window  [class="(?i)virtualbox"]                floating     enable
+for_window  [class="1Password"]                     floating     enable, resize set 640 480, move to scratchpad; scratchpad show
+for_window  [class="Clipgrab"]                      floating     enable
+for_window  [class="Evolution-alarm-notify"]        floating     enable
+for_window  [class="GParted"]                       floating     enable
+for_window  [class="Galculator"]                    floating     enable, resize set 640 480
+for_window  [class="Gnome-screenshot"]              floating     enable
+for_window  [class="Lightdm-settings"]              floating     enable
+for_window  [class="Lxappearance"]                  floating     enable
+for_window  [class="Nitrogen"]                      floating     enable
+for_window  [class="Oblogout"]                      fullscreen   enable
+for_window  [class="openfortiGUI"]                  floating     enable
+for_window  [class="Pamac-manager"]                 floating     enable
+for_window  [class="Pavucontrol"]                   floating     enable
+for_window  [class="Qtconfig-qt4"]                  floating     enable
+for_window  [class="Simple-scan"]                   floating     enable
+for_window  [class="Skype"]                         floating     enable
+for_window  [class="Steam"]                         floating     enable
+for_window  [class="Timeset-gui"]                   floating     enable
+for_window  [class="Xfburn"]                        floating     enable
+for_window  [class="calamares"]                     floating     enable
+for_window  [class="fpakman"]                       floating     enable
+for_window  [class="octopi"]                        floating     enable
+for_window  [class="qt5ct"]                         floating     enable
+for_window  [title="About Pale Moon"]               floating     enable
+for_window  [title="File Transfer*"]                floating     enable
+for_window  [title="MuseScore: Play Panel"]         floating     enable
+for_window  [title="alsamixer"]                     floating     enable
+for_window  [title="i3_help"]                       floating     enable
+for_window  [window_role="PictureInPicture"]        floating     enable
+for_window  [window_role="pop-up"]                  floating     enable
 
 # switch to workspace with urgent window automatically
 for_window [urgent=latest] focus
@@ -274,6 +273,7 @@ exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 exec --no-startup-id start-pulseaudio-x11
 exec --no-startup-id pa-applet
 exec --no-startup-id /usr/libexec/gsd-xsettings
+
 ## Base16 Material
 # Author: Nate Peterson
 #
@@ -328,13 +328,13 @@ bar {
 # hide/unhide i3status bar
 bindsym $mod+m bar mode toggle
 
-# Property Name         Border  BG      Text    Indicator Child Border
-client.focused          $base05 $base0D $base00 $base0D $base0C
-client.focused_inactive $base01 $base01 $base05 $base03 $base01
-client.unfocused        $base01 $base00 $base05 $base01 $base01
-client.urgent           $base08 $base08 $base00 $base08 $base08
-client.placeholder      $base00 $base00 $base05 $base00 $base00
-client.background       $base07
+#PropertyName            Border   BG       Text     Indicator  ChildBorder
+client.focused           $base05  $base0D  $base00  $base0D    $base0C
+client.focused_inactive  $base01  $base01  $base05  $base03    $base01
+client.unfocused         $base01  $base00  $base05  $base01    $base01
+client.urgent            $base08  $base08  $base00  $base08    $base08
+client.placeholder       $base00  $base00  $base05  $base00    $base00
+client.background        $base07
 
 #############################
 ### settings for i3-gaps: ###
