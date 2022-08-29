@@ -58,7 +58,7 @@ bindsym XF86AudioNext exec playerctl next
 bindsym XF86AudioPrev exec playerctl previous
 
 bindsym $mod+t exec --no-startup-id pkill picom
-bindsym $mod+Ctrl+t exec --no-startup-id picom -b
+bindsym $mod+Ctrl+t exec --no-startup-id picom -cb
 bindsym $mod+Shift+d --release exec "killall dunst; exec notify-send 'restart dunst'"
 bindsym Print exec --no-startup-id i3-scrot
 bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
@@ -168,7 +168,7 @@ bindsym $mod+Shift+8 move container to workspace number 8; workspace number 8
 # Open applications on specific workspaces
 assign  [class="google-chrome"]  number  1
 assign  [class="Teams"]          number  2
-assign  [class="Spotify"]        number  2
+assign  [class="(?i)Spotify"]    number  2
 
 # Open specific applications in floating mode
 for_window  [class="(?i)System-config-printer.py"]  floating     enable
