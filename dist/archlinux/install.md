@@ -116,10 +116,10 @@ UCODE='amd-ucode'   # for AMD processors
 
 pacstrap /mnt \
   base \
+  base-devel \
   ${KERNEL} \
   ${KERNEL}-headers \
   ${UCODE} \
-  base-devel \
   crda \
   efibootmgr \
   git \
@@ -132,11 +132,18 @@ pacstrap /mnt \
   openssh \
   os-prober \
   python \
+  resolvconf \
   rsync \
   terminus-font \
   vim \
   wpa_supplicant \
   zsh
+```
+
+### Configure resolv.conf
+```
+echo '[main]
+rc-manager=resolvconf' > /etc/NetworkManager/conf.d/rc-manager.conf
 ```
 
 ### Configure wifi region
