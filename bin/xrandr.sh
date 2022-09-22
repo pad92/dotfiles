@@ -34,8 +34,8 @@ case "${LISTMONITORS}" in
     --output eDP-1 --off \
     --output DP-1 --primary --auto \
     --output DP-3-1 --auto --left-of DP-1 --rotate right
-  i3-msg "workspace 1, move workspace to output DP-3"
-  i3-msg "workspace 2, move workspace to output DP-1-1"
+  i3-msg "workspace 1, move workspace to output DP-1"
+  i3-msg "workspace 2, move workspace to output DP-3-1"
   pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 'eDP1')
