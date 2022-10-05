@@ -3,6 +3,9 @@ arch-audit
 archlinux-wallpaper
 arj
 bind
+blueman
+bluez
+bluez-utils
 c-ares
 cifs-utils
 downgrade
