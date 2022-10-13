@@ -12,7 +12,7 @@ case "${LISTMONITORS}" in
     --output HDMI-1 --auto --pos 0x0 --rotate right \
     --output DP-3 --primary --auto --pos 1080x0 --rotate normal
   i3-msg "workspace 1, move workspace to output DP-3"
-  i3-msg "workspace 2, move workspace to output HDMI-3"
+  i3-msg "workspace 2, move workspace to output HDMI-1"
   ;;
 'DP1-1 DP3 eDP1')
   #xrandr --setprovideroutputsource modesetting NVIDIA-0
@@ -23,7 +23,7 @@ case "${LISTMONITORS}" in
   xrandr --dpi 96 \
     --output eDP1 --off \
     --output DP3 --primary --auto  \
-    --output DP1-1 --auto --left-of DP3 --rotate right
+    --output DP1-1 - -auto --left-of DP3 --rotate right
   i3-msg "workspace 1, move workspace to output DP3"
   i3-msg "workspace 2, move workspace to output DP1-1"
   #i3-msg "workspace 3, move workspace to output eDP1"
