@@ -13,6 +13,7 @@ case "${LISTMONITORS}" in
     --output DP-3 --primary --auto --pos 1080x0 --rotate normal
   i3-msg "workspace 1, move workspace to output DP-3"
   i3-msg "workspace 2, move workspace to output HDMI-1"
+  pkill xautolock
   ;;
 'DP1-1 DP3 eDP1')
   #xrandr --setprovideroutputsource modesetting NVIDIA-0
