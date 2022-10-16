@@ -1,0 +1,4 @@
+[Unit]
+Description=i3 window manager session
+Requires=default.target
+After=default.target
