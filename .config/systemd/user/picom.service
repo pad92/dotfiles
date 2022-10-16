@@ -1,0 +1,10 @@
+[Unit]
+Description=picom compositor
+PartOf=i3.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/picom -b
+
+[Install]
+WantedBy=i3.target
