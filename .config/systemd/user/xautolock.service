@@ -1,0 +1,13 @@
+[Unit]
+Description=xautolock to auto lock/suspend device
+PartOf=i3.target
+
+[Service]
+Type=simple
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/xautolock -detectsleep
+Restart=on-failure
+RestartSec=1m
+
+[Install]
+WantedBy=i3.target
