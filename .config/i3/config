@@ -29,6 +29,9 @@ font xft:URWGothic-Book 11
 # Use Mouse+$mod to drag floating windows
 floating_modifier $mod
 
+# Only initiate a tiling drag when the modifier is held:
+tiling_drag modifier
+
 # start a terminal
 bindsym $mod+Return exec alacritty
 
