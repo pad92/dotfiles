@@ -1,11 +1,12 @@
 #!/bin/sh
 . /etc/os-release
 
-MNT_PTS='/mnt/syno-homes'
+MNT_PTS='/mnt/pads918/home'
 BACKUP_DIR="${MNT_PTS}/${USERNAME}/backup"
 HOSTNAME="$(hostnamectl hostname)"
 
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
+RSYNC_OPTS='--archive --perms --xattrs --no-links --info=progress2 --delete'
 
 if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
   echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
@@ -51,10 +52,11 @@ if [ -s "${PKGLIST_OLD}" ]; then
   fi
 fi
 
+
 echo 'rsync /boot'
-sudo rsync -apxHAWS --info=progress2 --delete /boot/ ${BACKUP_DIR}/${HOSTNAME}/boot/
+sudo rsync ${RSYNC_OPTS} /boot/ ${BACKUP_DIR}/${HOSTNAME}/boot/
 echo 'rsync /etc'
-sudo rsync -apxHAWS --info=progress2 --delete /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/
+sudo rsync ${RSYNC_OPTS} /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/
 echo "rsync ${HOME}"
 
-sudo rsync -axHAWS --info=progress2 --delete --delete-excluded --exclude='Download/' --exclude='Cache/' --exclude-from=${HOME}/.dotfiles/dist/backup_excludes.txt ${HOME}/ "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
+sudo rsync ${RSYNC_OPTS} --delete-excluded --exclude='Download/' --exclude='Cache/' --exclude-from=${HOME}/.dotfiles/dist/backup_excludes.txt ${HOME}/ "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
