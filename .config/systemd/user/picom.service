@@ -1,6 +1,8 @@
 [Unit]
 Description=picom compositor
 PartOf=i3.target
+Requires=graphical-session.target
+After=dbus.service graphical-session.target xorg.target
 
 [Service]
 Type=forking
