@@ -9,13 +9,16 @@
 # ttf-font-awesome
 
 general {
-	colors   = false
-	interval = 5
+  colors   = true
+    interval = 5
+    color_good = "#B2CCD6"
+    color_degraded = "#efb993"
+    color_bad = "#F07178"
 }
 
 order += "disk /home"
 order += "disk /"
-order += "path_exists VPN_ppp"
+order += "wireless _first_"
 order += "ethernet _first_"
 order += "battery all"
 order += "cpu_temperature 0"
@@ -24,67 +27,75 @@ order += "memory"
 order += "volume master"
 order += "tztime date"
 
-path_exists VPN_ppp {
-    format_down=""
-    format=""
-    path = "/dev/ppp"
-}
-
 battery all {
-    format = "%status %percentage %remaining %emptytime"
+  format = "%status %percentage %remaining %emptytime"
     format_down                   = ""
-	status_bat                    = ""
-	status_chr                    = ""
-	status_full                   = ""
-	low_threshold                 = 15
-	threshold_type                = percentage
-	hide_seconds                  = true
-	# Show percentage as interger
-	integer_battery_capacity      = true
+    status_bat                    = ""
+    status_chr                    = ""
+    status_full                   = ""
+    low_threshold                 = 15
+    threshold_type                = percentage
+    hide_seconds                  = true
+# Show percentage as interger
+    integer_battery_capacity      = true
+    path                          = /sys/class/power_supply/BAT%d/uevent
 }
 
+wireless _first_ {
+  format_up   = "📡 %essid (%quality) %ip"
+    format_down = " "
+}
 ethernet _first_ {
-	# if you use %speed, i3status requires root privileges
-	format_up   = " %speed"
-	format_down = ""
+# if you use %speed, i3status requires root privileges
+  format_up   = " %ip (%speed)"
+    format_down = ""
 }
 
 tztime date {
-    format = " %a %d.%m.%Y  %H:%M"
-	separator_block_width = 5
+  format = " %a %d.%m.%Y   %H:%M"
+    separator_block_width = 5
+    separator             = false
 }
 
 cpu_temperature 0 {
-	format                 = " %degrees °C"
-	path                   = "/sys/class/thermal/thermal_zone1/temp"
-	max_threshold          = 75
-	format_above_threshold = " %degrees ⁰C"
+  format                 = " %degrees °C"
+    path                   = "/sys/class/thermal/thermal_zone1/temp"
+    max_threshold          = 75
+    format_above_threshold = " %degrees ⁰C"
 }
 
 cpu_usage {
-    format = " %usage"
-	max_threshold = 95
-	degraded_threshold = 80
+  format = " %usage"
+    max_threshold = 95
+    degraded_threshold = 80
 }
 
 memory {
-    format = " %used"
-    threshold_degraded = "10%"
-    format_degraded = "MEMORY: %free"
+  format             = " %used (%total)"
+    memory_used_method = "memavailable"
+    threshold_degraded = "15%"
+    threshold_critical = "5%"
+    threshold_degraded = "%used (%total)"
 }
 
 volume master {
-	format = " %volume"
-        format_muted = ""
-        device = "default"
-        mixer = "Master"
-        mixer_idx = 0
+  format = " %volume"
+    format_muted = ""
+    device = "default"
+    mixer = "Master"
+    mixer_idx = 0
 }
 
 disk "/" {
-        format = " %avail"
+  format = "  %avail"
+    min_width = 100
+    separator = false
+    separator_block_width = 1
 }
 
 disk "/home" {
-        format = " %avail"
+  format = " %avail"
+    min_width = 100
+    separator = false
+    separator_block_width = 1
 }
