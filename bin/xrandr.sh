@@ -7,15 +7,27 @@ LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{pri
 # 	xrandr --setprovideroutputsource modesetting NVIDIA-0
 
 case "${LISTMONITORS}" in
-'DP-1-1 DP-1-2 eDP-1')  # anker @ home
+'DP-1-1 DP-1-2')  # anker @ home
   xrandr --dpi 96 \
-    --output eDP-1 --off \
-    --output DP-1-1 --auto --pos 0x0 --rotate right \
-    --output DP-1-2 --primary --auto --pos 1080x0 --rotate normal
-  i3-msg "workspace 1, move workspace to output DP-1-2"
-  i3-msg "workspace 2, move workspace to output DP-1-1"
-  pkill xautolock
+    --output eDP-1  --off \
+    --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
+    --output DP-2-2 --primary --auto                   --rotate normal
+  i3-msg "workspace 1, move workspace to output DP-2-2"
+  i3-msg "workspace 2, move workspace to output DP-2-1"
+  #pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
+
+'DP-2-1 DP-2-2 eDP-1')  # anker @ home
+  xrandr --dpi 96 \
+    --output eDP-1            --auto --right-of DP-2-2 --rotate normal --scale 0.5x0.5 \
+    --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
+    --output DP-2-2 --primary --auto                   --rotate normal
+  i3-msg "workspace 0, move workspace to output eDP-1"
+  i3-msg "workspace 1, move workspace to output DP-2-2"
+  i3-msg "workspace 2, move workspace to output DP-2-1"
+  #pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
+  ;;
+
 'eDP1')                 # alone
   DPI=144
   echo "Xft.dpi: ${DPI}" | xrdb -merge
