@@ -1,14 +1,13 @@
 alacritty
 dunst
 gnome-screenshot
-i3-gaps-next-git
 i3exit
 i3status
+i3-wm
 lxappearance
 nitrogen
 pa-applet-git
 pavucontrol
-picom
 playerctl
 polkit-gnome
 python-i3ipc
@@ -19,3 +18,4 @@ thunar-archive-plugin
 thunar-media-tags-plugin
 thunar-volman
 xautolock
+xcompmgr
