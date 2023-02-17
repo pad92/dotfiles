@@ -281,6 +281,7 @@ exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 exec --no-startup-id pa-applet
 exec --no-startup-id /usr/bin/blueman-applet
 exec --no-startup-id /usr/libexec/gsd-xsettings
+exec --no-startup-id xcompmgr &
 
 ## Base16 Material
 # Author: Nate Peterson
@@ -316,7 +317,7 @@ bar {
 
 	bindsym button4 nop
 	bindsym button5 nop
-    font xft:URWGothic-Book 8
+  font xft:URWGothic-Book 8
 	#strip_workspace_numbers yes
 
     colors {
