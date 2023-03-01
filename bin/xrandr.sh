@@ -8,7 +8,9 @@ LISTMONITORS=$(xrandr --current --listmonitors | grep -v '^Monitors' | awk '{pri
 
 case "${LISTMONITORS}" in
 'DP-1-1 DP-1-2')  # anker @ home
-  xrandr --dpi 96 \
+  DPI=96
+  echo "Xft.dpi: ${DPI}" | xrdb -merge
+  xrandr --dpi ${DPI} \
     --output eDP-1  --off \
     --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
     --output DP-2-2 --primary --auto                   --rotate normal
@@ -18,7 +20,9 @@ case "${LISTMONITORS}" in
   ;;
 
 'DP-2-1 DP-2-2 eDP-1')  # anker @ home
-  xrandr --dpi 96 \
+  DPI=96
+  echo "Xft.dpi: ${DPI}" | xrdb -merge
+  xrandr --dpi ${DPI} \
     --output eDP-1            --auto --right-of DP-2-2 --rotate normal --scale 0.5x0.5 \
     --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
     --output DP-2-2 --primary --auto                   --rotate normal
@@ -29,7 +33,7 @@ case "${LISTMONITORS}" in
   ;;
 
 'eDP1')                 # alone
-  DPI=144
+  DPI=220
   echo "Xft.dpi: ${DPI}" | xrdb -merge
   xrandr --dpi ${DPI}
   ;;
