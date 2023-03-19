@@ -12,23 +12,23 @@ case "${LISTMONITORS}" in
   echo "Xft.dpi: ${DPI}" | xrdb -merge
   xrandr --dpi ${DPI} \
     --output eDP-1  --off \
-    --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
-    --output DP-2-2 --primary --auto                   --rotate normal
+    --output DP-2-1           --auto --left-of  DP-2-2 \
+    --output DP-2-2 --primary --auto
   i3-msg "workspace 1, move workspace to output DP-2-2"
   i3-msg "workspace 2, move workspace to output DP-2-1"
   #pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 
-'DP-2-1 DP-2-2 eDP-1')  # anker @ home
+'DP-3-1 DP-3-8 eDP-1')  # anker @ home
   DPI=96
   echo "Xft.dpi: ${DPI}" | xrdb -merge
   xrandr --dpi ${DPI} \
-    --output eDP-1            --auto --right-of DP-2-2 --rotate normal --scale 0.5x0.5 \
-    --output DP-2-1           --auto --left-of  DP-2-2 --rotate right \
-    --output DP-2-2 --primary --auto                   --rotate normal
-  i3-msg "workspace 0, move workspace to output eDP-1"
-  i3-msg "workspace 1, move workspace to output DP-2-2"
-  i3-msg "workspace 2, move workspace to output DP-2-1"
+    --output eDP-1            --auto --below DP-3-8 --scale 0.5x0.5 \
+    --output DP-3-8           --auto --left-of  DP-3-1 \
+    --output DP-3-1 --primary --auto
+  i3-msg "workspace 8, move workspace to output eDP-1"
+  i3-msg "workspace 1, move workspace to output DP-3-1"
+  i3-msg "workspace 2, move workspace to output DP-3-8"
   #pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 
