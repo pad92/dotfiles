@@ -42,6 +42,8 @@ bindsym $mod+Shift+q kill
 bindsym $mod+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
 bindsym $mod+Shift+v exec --no-startup-id rofi -modi "clipboard:~/.dotfiles/bin/greenclip-v4.2 print" -show clipboard -run-command '{cmd}'
 
+bindsym $mod+x exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
+
 bindsym $mod+z exec --no-startup-id morc_menu
 bindsym $mod+Ctrl+m exec pavucontrol
 
@@ -279,7 +281,7 @@ exec --no-startup-id nm-applet
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 #exec --no-startup-id start-pulseaudio-x11
 exec --no-startup-id pa-applet
-exec --no-startup-id /usr/bin/blueman-applet
+exec --no-startup-id blueberry-tray
 exec --no-startup-id /usr/libexec/gsd-xsettings
 exec --no-startup-id xcompmgr &
 
