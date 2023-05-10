@@ -70,6 +70,15 @@ setopt SHARE_HISTORY             # Share history between all sessions.
 
 setopt auto_cd
 
+if [ -d /etc/profile.d ]; then
+  for PROFILE_FILE in /etc/profile.d/*.sh; do
+    if [ -r $PROFILE_FILE ]; then
+      . $PROFILE_FILE
+    fi
+  done
+  unset PROFILE_FILE
+fi
+
 [ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs
 [ -f "${HOME}/.zshaliases" ]            && source ${HOME}/.zshaliases
 [ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
