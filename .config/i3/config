@@ -42,8 +42,6 @@ bindsym $mod+Shift+q kill
 bindsym $mod+d exec --no-startup-id "rofi -i -modi drun,run,window -show drun"
 bindsym $mod+Shift+v exec --no-startup-id rofi -modi "clipboard:~/.dotfiles/bin/greenclip-v4.2 print" -show clipboard -run-command '{cmd}'
 
-bindsym $mod+x exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
-
 bindsym $mod+z exec --no-startup-id morc_menu
 bindsym $mod+Ctrl+m exec pavucontrol
 
@@ -221,7 +219,7 @@ for_window [urgent=latest] focus
 bindsym $mod+Shift+c reload
 
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
-bindsym $mod+Shift+r exec ~/.dotfiles/bin/xrandr.sh restart
+bindsym $mod+Shift+r exec ~/.dotfiles/bin/xrandr.sh
 
 # exit i3 (logs you out of your X session)
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
@@ -272,7 +270,7 @@ bindsym $mod+9 exec --no-startup-id blurlock
 
 # Autostart applications
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
-exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
+#exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id nitrogen --restore
 exec --no-startup-id nm-applet
