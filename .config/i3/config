@@ -178,7 +178,7 @@ assign  [class="(?i)Rhythmbox"]    number  2
 assign  [class="(?i)Spotify"]      number  2
 
 # Open specific applications in floating mode
-for_window [all] border pixel 1
+for_window [all]                                   border pixel 1
 for_window [class="(?i)System-config-printer.py"]  floating     enable
 for_window [class="(?i)virtualbox"]                floating     enable
 for_window [class="1Password"]                     floating     enable, resize set 640 480, move to scratchpad; scratchpad show
@@ -209,6 +209,7 @@ for_window [title="File Transfer*"]                floating     enable
 for_window [title="MuseScore: Play Panel"]         floating     enable
 for_window [title="alsamixer"]                     floating     enable
 for_window [title="i3_help"]                       floating     enable
+for_window [class="plexamp"]                       floating     enable
 for_window [window_role="PictureInPicture"]        floating     enable
 for_window [window_role="pop-up"]                  floating     enable
 
@@ -270,14 +271,10 @@ bindsym $mod+9 exec --no-startup-id blurlock
 
 # Autostart applications
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
-#exec --no-startup-id ~/.dotfiles/bin/xrandr.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id nitrogen --restore
 exec --no-startup-id nm-applet
-#exec --no-startup-id polychromatic-tray-applet
-#exec --no-startup-id pamac-tray
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
-#exec --no-startup-id start-pulseaudio-x11
 exec --no-startup-id pa-applet
 exec --no-startup-id blueberry-tray
 exec --no-startup-id /usr/libexec/gsd-xsettings
