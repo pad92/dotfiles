@@ -13,3 +13,4 @@
 .config/gtk-3.0/servers
 
 dist/*/pkglist-*-*.txt
+dist/*/pkglist-*-*.diff
