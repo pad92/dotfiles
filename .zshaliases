@@ -46,7 +46,16 @@ fi
 
 # Backup
 [ -f "${HOME}/.dotfiles/bin/backup.sh" ] && \
-  alias backup_arch="${HOME}/.dotfiles/bin/backup.sh"
+  alias backup="${HOME}/.dotfiles/bin/backup.sh"
+
+# Update
+function arch_update {
+    yay -Syu --devel --timeupdate
+    if [ $(command -v flatpak) ]; then
+        flatpak update -y
+        flatpak uninstall --unused -y
+    fi
+}
 
 # Archive
 function extract {
