@@ -15,9 +15,6 @@ SUDO_OPTS='-E -s'
 PKGLIST_OLD="$(ls -1 ${BASEDIR}/../dist/${ID}/pkglist-*.txt 2>/dev/null | tail -1)"
 PKGLIST_CURRENT="${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}-${ID}.txt"
 
-echo "PKGLIST_OLD : ${PKGLIST_OLD}"
-echo "PKGLIST_CURRENT : ${PKGLIST_CURRENT}"
-
 [ -z "${ID_LIKE}" ] && ID_LIKE="${ID}"
 
 case $ID_LIKE in
