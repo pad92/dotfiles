@@ -54,7 +54,7 @@
 [gc]
 	auto = 1
 [gpg]
-	program = gpg2
+	format = ssh
 [pull]
 	rebase = false
 [fetch]
