@@ -1,4 +1,4 @@
-git_prune_r() {
+function git_prune_r() {
   for REPO in $(find $(pwd) -type d -name .git | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git remote prune origin 2>&1 )
@@ -13,7 +13,7 @@ git_prune_r() {
   done
 }
 
-git_pull_r() {
+function git_pull_r() {
   for REPO in $(find $(pwd) -type d -name .git | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git pull 2>&1 )
@@ -34,4 +34,8 @@ git_pull_r() {
       echo -ne "\tOK\n"
     fi
   done
+}
+
+function gi() {
+  curl -sLw \"\\\n\" https://www.toptal.com/developers/gitignore/api/$@
 }
