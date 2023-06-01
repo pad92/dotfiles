@@ -52,6 +52,6 @@ if [ -s "${PKGLIST_OLD}" ]; then
   fi
 fi
 
-sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --exclude-from=- <<- EOF
-$(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/backup_excludes.txt)
+sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --delete-excluded --exclude-from=- <<- EOF
+$(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
 EOF
