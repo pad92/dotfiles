@@ -4,10 +4,8 @@ LISTMONITORS=$(xrandr| grep -E '^DP.* connected' | awk '{ print $1 }' | xargs)
 
 [ -f /proc/acpi/button/lid/LID0/state ] && LID_STATE=$(grep -oE '[^ ]+$' /proc/acpi/button/lid/LID0/state)
 
-# 	xrandr --setprovideroutputsource modesetting NVIDIA-0
-
 case "${LISTMONITORS}" in
-'DP-2-8 DP-2-1')  # home
+'DP-2-8 DP-2-1')
   DPI=96
   echo "Xft.dpi: ${DPI}" | xrdb -merge
   xrandr --dpi ${DPI} \
@@ -17,7 +15,6 @@ case "${LISTMONITORS}" in
   i3-msg "workspace 8, move workspace to output eDP-1"
   i3-msg "workspace 1, move workspace to output DP-2-1"
   i3-msg "workspace 2, move workspace to output DP-2-8"
-  #pkill xautolock ; xset s off ; xset -dpms ; xset s noblank
   ;;
 *)
   echo ${LISTMONITORS}
@@ -30,5 +27,3 @@ esac
 if [ $# -eq 1 ]; then
   i3-msg $1
 fi
-
-nitrogen --restore
