@@ -7,7 +7,7 @@ HOSTNAME="$(hostnamectl hostname)"
 BASEDIR=$(dirname "$0")
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --info=progress2 --delete --delete-excluded'
-SUDO_OPTS='-E -s'
+SUDO_OPTS='-s'
 #if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
 #  echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
 #  sudo mkdir -p "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
