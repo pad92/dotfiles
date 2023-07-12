@@ -1,9 +1,10 @@
 alacritty
+dex
 dunst
 gnome-screenshot
+i3-wm
 i3exit
 i3status
-i3-wm
 lxappearance
 nitrogen
 pa-applet-git
