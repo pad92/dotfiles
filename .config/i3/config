@@ -279,6 +279,7 @@ exec --no-startup-id pa-applet
 exec --no-startup-id blueberry-tray
 exec --no-startup-id /usr/libexec/gsd-xsettings
 exec --no-startup-id xcompmgr &
+exec --no-startup-id ~/.dotfiles/bin/autostart.sh
 
 ## Base16 Material
 # Author: Nate Peterson
