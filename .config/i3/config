@@ -270,19 +270,14 @@ bindsym $mod+9 exec --no-startup-id blurlock
 
 # Autostart applications
 exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
-#exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
-#exec --no-startup-id nitrogen --restore
-exec --no-startup-id feh --randomize --bg-fill /home/pascal/Pictures/2023/*/*.jpg
+exec --no-startup-id dex --autostart --environment i3
 exec --no-startup-id nm-applet
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 exec --no-startup-id pa-applet
-exec --no-startup-id blueberry-tray
 exec --no-startup-id /usr/libexec/gsd-xsettings
 exec --no-startup-id xcompmgr &
+exec --no-startup-id feh --randomize --bg-fill /home/pascal/Pictures/2023/*/*.jpg
 
-# Start XDG autostart .desktop files using dex. See also
-# https://wiki.archlinux.org/index.php/XDG_Autostart
-exec --no-startup-id dex --autostart --environment i3
 
 ## Base16 Material
 # Author: Nate Peterson
