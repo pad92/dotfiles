@@ -4,7 +4,7 @@ userresources=$HOME/.Xresources
 XMODMAP_USER=$HOME/.Xmodmap
 XRESOURCES_ETC=/etc/X11/xinit/.Xresources
 XMODPAM_ETC=/etc/X11/xinit/.Xmodmap
-XRANDR_CMD=~/.dotfiles/bin/xrandr.sh
+#XRANDR_CMD=~/.dotfiles/bin/xrandr.sh
 
 # merge in defaults and keymaps
 if [ -f $XRESOURCES_ETC ]; then
