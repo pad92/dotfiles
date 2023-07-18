@@ -6,7 +6,7 @@ HOSTNAME="$(hostnamectl hostname)"
 
 BASEDIR=$(dirname "$0")
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
-RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --info=progress2 --delete --delete-excluded'
+RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --delete --delete-excluded --info=progress2,name0,stats2'
 SUDO_OPTS='-s'
 #if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
 #  echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
@@ -50,8 +50,20 @@ if [ -s "${PKGLIST_OLD}" ]; then
   else
     rm -f "${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}.diff"
   fi
+  rm -f "${PKGLIST_OLD}"
 fi
 
+START=$(date +%s)
+
+echo "Syncing ~/ to ${BACKUP_DIR}/${HOSTNAME}${HOME}"
 sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --delete-excluded --exclude-from=- <<- EOF
 $(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
 EOF
+
+echo "Syncing /etc to ${BACKUP_DIR}/${HOSTNAME}/etc"
+sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/ --delete-excluded --exclude-from=- <<- EOF
+$(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
+EOF
+
+FINISH=$(date +%s)
+echo "rsync total time: $(( ($FINISH-$START) / 60 )) minutes, $(( ($FINISH-$START) % 60 )) seconds"
