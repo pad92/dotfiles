@@ -15,6 +15,10 @@ SUDO_OPTS='-s'
 PKGLIST_OLD="$(ls -1 ${BASEDIR}/../dist/${ID}/pkglist-*.txt 2>/dev/null | tail -1)"
 PKGLIST_CURRENT="${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}-${ID}.txt"
 
+C_ORANGE='\033[0;33m'
+C_GREEN='\033[0;32m'
+C_NC='\033[0m' # No Color
+
 [ -z "${ID_LIKE}" ] && ID_LIKE="${ID}"
 
 case $ID_LIKE in
@@ -55,15 +59,15 @@ fi
 
 START=$(date +%s)
 
-echo "Syncing ~/ to ${BACKUP_DIR}/${HOSTNAME}${HOME}"
+printf "${C_ORANGE}Syncing ~/ to ${BACKUP_DIR}/${HOSTNAME}${HOME}${C_NC}\n"
 sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --delete-excluded --exclude-from=- <<- EOF
 $(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
 EOF
 
-echo "Syncing /etc to ${BACKUP_DIR}/${HOSTNAME}/etc"
+printf "${C_ORANGE}Syncing /etc to ${BACKUP_DIR}/${HOSTNAME}/etc${C_NC}\n"
 sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/ --delete-excluded --exclude-from=- <<- EOF
 $(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
 EOF
 
 FINISH=$(date +%s)
-echo "rsync total time: $(( ($FINISH-$START) / 60 )) minutes, $(( ($FINISH-$START) % 60 )) seconds"
+printf "${C_GREEN}rsync total time: $(( ($FINISH-$START) / 60 )) minutes, $(( ($FINISH-$START) % 60 )) seconds${C_NC}\n"
