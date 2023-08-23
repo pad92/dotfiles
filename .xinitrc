@@ -4,7 +4,7 @@ userresources=$HOME/.Xresources
 XMODMAP_USER=$HOME/.Xmodmap
 XRESOURCES_ETC=/etc/X11/xinit/.Xresources
 XMODPAM_ETC=/etc/X11/xinit/.Xmodmap
-#XRANDR_CMD=~/.dotfiles/bin/xrandr.sh
+XRANDR_CMD=/usr/bin/autorandr
 
 # merge in defaults and keymaps
 if [ -f $XRESOURCES_ETC ]; then
@@ -39,5 +39,7 @@ else
     xrandr --auto
 fi
 
-exec nitrogen --restore
-exec i3 >> ~/.cache/i3.log 2>> ~/.cache/i3.err
+numlockx &
+eval "$(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)"
+export SSH_AUTH_SOCK
+exec dbus-launch --exit-with-session i3
