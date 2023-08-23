@@ -4,13 +4,13 @@ Configuration used on my [Arch Linux](https://archlinux.org/) with i3 / i3status
 
 ![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot.png)
 
-
 # Install Dotfile
 
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 ./.dotfiles/install
 ```
+
 ## Install only VIM
 
 ```sh

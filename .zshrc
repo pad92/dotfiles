@@ -36,7 +36,7 @@ autoload -Uz compinit && compinit
 zstyle ':completion:*' menu select
 zmodload zsh/complist
 compinit
-_comp_options+=(globdots) # incude dotfiles
+_comp_options+=(globdots) # include dotfiles
 
 export ZSH_CACHE_DIR=${HOME}/.zcache
 source ${ZSH}/init.zsh
