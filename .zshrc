@@ -12,6 +12,7 @@ if [ -d ${HOME}/.local/bin ]; then
 fi
 
 ZSH_THEME="pad"
+VSCODE=vscodium
 
 plugins=(
   1password           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/1password/README.md
@@ -24,12 +25,11 @@ plugins=(
   github
   httpie
   rsync
-  docker
-  docker-compose
+  thefuck
+  vscode
   zsh-autosuggestions
   zsh-completions
   zsh-syntax-highlighting
-  thefuck
 )
 
 autoload -Uz colors && colors
