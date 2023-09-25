@@ -14,6 +14,7 @@ fi
 ZSH_THEME="pad"
 
 plugins=(
+  1password           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/1password/README.md
   ansible
   archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
   command-not-found
@@ -82,4 +83,5 @@ fi
 [ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs
 [ -f "${HOME}/.zshaliases" ]            && source ${HOME}/.zshaliases
 [ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
+[ -S "${HOME}/.1password/agent.sock" ]  && export SSH_AUTH_SOCK=~/.1password/agent.sock
 [ -x $(command -v neofetch) ]           && neofetch
