@@ -40,7 +40,14 @@ else
 fi
 
 numlockx &
-#xcompmgr &
-eval "$(/usr/bin/gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh)"
-#export GNOME_KEYRING_CONTROL GNOME_KEYRING_PID GPG_AGENT_INFO SSH_AUTH_SOCK
-#exec dbus-launch --exit-with-session i3
+xcompmgr &
+
+if [ -S "${HOME}/.1password/agent.sock" ]; then
+  eval "$(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets)"
+  export SSH_AUTH_SOCK=~/.1password/agent.sock
+  export GNOME_KEYRING_CONTROL GNOME_KEYRING_PID
+else
+  eval "$(/usr/bin/gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh)"
+  export GNOME_KEYRING_CONTROL GNOME_KEYRING_PID GPG_AGENT_INFO SSH_AUTH_SOCK
+fi
+exec dbus-launch --exit-with-session i3
