@@ -226,7 +226,7 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 
 # Set shut down, restart and locking features
 bindsym $mod+0 mode "$mode_system"
-set $mode_system (l)ock, (e)xit, switch_(u)ser, (s)uspend, (h)ibernate, (r)eboot, (Shift+s)hutdown
+set $mode_system (l)ock, (e)xit, switch_(u)set, (s)uspend, (h)ibernate, (r)eboot, (Shift+s)hutdown
 mode "$mode_system" {
     bindsym l exec --no-startup-id i3exit lock, mode "default"
     bindsym s exec --no-startup-id i3exit suspend, mode "default"
@@ -274,9 +274,8 @@ exec --no-startup-id dex --autostart --environment i3
 exec --no-startup-id nm-applet
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon
 exec --no-startup-id pa-applet
-exec --no-startup-id /usr/libexec/gsd-xsettings
-exec --no-startup-id xcompmgr &
 exec --no-startup-id feh --randomize --bg-fill /home/pascal/Pictures/2023/*/*.jpg
+exec --no-startup-id xcompmgr
 
 
 ## Base16 Material
