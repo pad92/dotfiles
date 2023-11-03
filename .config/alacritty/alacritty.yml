@@ -1,20 +1,24 @@
-env:
-  TERM: xterm-256color
-  WINIT_X11_SCALE_FACTOR: '1.0'
+#env:
+#  TERM: xterm-256color
+#  WINIT_X11_SCALE_FACTOR: '1.0'
 
 window:
   opacity: 0.80
   padding:
-    x: 2
-    y: 2
-  dynamic_padding: false
+    x: 0
+    y: 0
+  dynamic_padding: true
+  decorations: full
   title: Alacritty
   class:
     instance: Alacritty
     general: Alacritty
 
+live_config_reload: true
+
 scrolling:
   history: 5000
+  multiplier: 3
 
 font:
   normal:
