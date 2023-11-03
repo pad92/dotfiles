@@ -9,6 +9,7 @@ bluez-utils
 c-ares
 cifs-utils
 downgrade
+easyeffects
 exo
 ffmpeg-compat-57
 flatpak
@@ -46,6 +47,7 @@ man-pages
 mkpasswd
 mlocate
 nfs-utils
+noise-suppression-for-voice
 ntfs-3g
 pacman-contrib
 powertop
@@ -72,3 +74,4 @@ xorg-xinit
 xorg-xrandr
 xorg-xrdb
 xorg-xwininfo
+tlp
