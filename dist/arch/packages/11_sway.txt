@@ -1,7 +1,13 @@
+blueman
 brightnessctl
+clipman
+dex
+grimshot
 kanshi
+swappy
 sway
 swaybg
 swayidle
 swaylock
 waybar
+wl-clipboard

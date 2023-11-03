@@ -8,19 +8,19 @@ XRANDR_CMD=/usr/bin/autorandr
 
 # merge in defaults and keymaps
 if [ -f $XRESOURCES_ETC ]; then
-    xrdb -merge $XRESOURCES_ETC
+  xrdb -merge $XRESOURCES_ETC
 fi
 
 if [ -f $XMODPAM_ETC ]; then
-    xmodmap $XMODPAM_ETC
+  xmodmap $XMODPAM_ETC
 fi
 
 if [ -f "$userresources" ]; then
-    xrdb -merge "$userresources"
+  xrdb -merge "$userresources"
 fi
 
 if [ -f "$XMODMAP_USER" ]; then
-    xmodmap "$XMODMAP_USER"
+  xmodmap "$XMODMAP_USER"
 fi
 
 # start some nice programs
@@ -34,9 +34,9 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 
 if [ -x "$XRANDR_CMD" ]; then
-    "${XRANDR_CMD}"
+  "${XRANDR_CMD}"
 else
-    xrandr --auto
+  xrandr --auto
 fi
 
 numlockx &
@@ -50,4 +50,4 @@ else
   eval "$(/usr/bin/gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh)"
   export GNOME_KEYRING_CONTROL GNOME_KEYRING_PID GPG_AGENT_INFO SSH_AUTH_SOCK
 fi
-exec dbus-launch --exit-with-session i3
+exec dbus-launch --exit-with-session sway
