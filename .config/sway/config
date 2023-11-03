@@ -16,8 +16,9 @@ set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
 set $gnome-schema org.gnome.desktop.interface
 
 exec {
-    gsettings set $gnome-schema gtk-theme 'Yaru-dark'
-    gsettings set $gnome-schema icon-theme 'Yaru'
+    gsettings set $gnome-schema gtk-theme 'Materia-dark'
+    gsettings set $gnome-schema icon-theme 'Papirus-Dark'
+    gsettings set $gnome-schema color-scheme 'prefer-dark'
 }
 
 # This will lock your screen after 300 seconds of inactivity, then turn off
@@ -29,17 +30,16 @@ exec swayidle -w \
              resume 'swaymsg "output * dpms on"' \
         before-sleep $lockscreen
 
+include /etc/sway/config.d/50-systemd-user.conf
 include config.d/*
 
 ## On login
 exec xrdb $HOME/.Xresources
-exec_always pkill kanshi; exec kanshi
-exec redshift
-exec mako
+exec_always systemctl --user start sway-session.target
+exec dex --autostart --environment sway
 exec nm-applet --indicator
-exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec /usr/bin/blueman-applet
 exec ~/.config/sway/scripts/autoname-workspaces.py
-
-set $greenclip ~/.dotfiles/bin/greenclip-v4.2
-bindsym $mod+Shift+v exec rofi -modi "clipboard:$greenclip print" -show clipboard
-exec $greenclip daemon
+exec swayfloatingswitcher
+exec swayosd-server
+exec wl-paste -n -t text --watch clipman store --notify --max-items=100 --histpath="~/.cache/clipman.json"
