@@ -11,6 +11,7 @@
 .config/nitrogen/bg-saved.cfg
 .config/gtk-3.0/bookmarks
 .config/gtk-3.0/servers
+.config/sway/config.d/outputs/*.conf
 
 dist/*/pkglist-*-*.txt
 dist/*/pkglist-*-*.diff
