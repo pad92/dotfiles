@@ -27,6 +27,6 @@ profile tower{
   exec swaymsg workspace 1, move workspace to output '"AOC Q32G1WG4 0x00001C1B"'
   exec swaymsg workspace 2, move workspace to output '"Dell Inc. DELL P2423DE BHCVNR3"'
 
-  exec swaymsg output '"AOC Q32G1WG4 0x00001C1B"' bg "~/Pictures/2023/08/20230818-cannes-3432-Avec accentuation-Bruit-Panorama.jpg" fill
-  exec swaymsg output '"Dell Inc. DELL P2423DE BHCVNR3"' bg "~/Pictures/2023/08/20230816-cannes-3418.jpg" fill
+  exec swaymsg output "'AOC Q32G1WG4 0x00001C1B'"  bg "~/Pictures/2023/06/20230618-sans titre-3065.jpg" fill
+  exec swaymsg output "'Dell Inc. DELL P2423DE BHCVNR3'"  bg "~/Pictures/2023/06/20230618-sans titre-3064.jpg" fill
 }
