@@ -9,12 +9,12 @@
     "clock"
   ],
   "modules-right": [
-    "backlight",
     "pulseaudio",
     "bluetooth",
     "network",
     "cpu",
     "memory",
+    "backlight",
     "battery",
     "tray"
   ],
