@@ -24,22 +24,24 @@
 
 * {
   border: none;
-  border-radius: 0;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
   font-family: Roboto, Helvetica, Arial, sans-serif, "Font Awesome 6 Free";
   font-size: 12px;
   min-height: 0;
+  color: @base04;
 }
 
 window#waybar {
   background: transparent;
-  color: @base04;
   opacity: 1;
 }
 
 #workspaces button {
   padding: 0 5px;
   margin: 0 0px;
-  color: @base06;
   border-bottom: 3px solid;
   background-color: @base00;
   border-bottom-left-radius: 5px;
@@ -47,40 +49,36 @@ window#waybar {
 }
 
 #workspaces button.active {
-  color: @base06;
   border-bottom: 3px solid @base0A;
 }
 
 #workspaces button.focused {
-  color: @base06;
-  border-bottom: 3px solid @base0B;
+  border-bottom: 3px solid @base0C;
 }
 
 #workspaces button.hover {
-  color: @base06;
-  border-bottom: 3px solid @base0D;
+  border-bottom: 3px solid @base0E;
 }
 
 #workspaces button.urgent {
-  color: @base0F;
   border-bottom: 3px solid @base0F;
 }
 
 #clock {
-  border-radius: 5px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
 #pulseaudio,
 #backlight,
 #tray {
   border-bottom-left-radius: 5px;
-  border-top-left-radius: 5px;
 }
+
 #memory,
 #battery,
 #tray {
   border-bottom-right-radius: 5px;
-  border-top-right-radius: 5px;
 }
 
 #clock,
@@ -99,25 +97,11 @@ window#waybar {
 #idle_inhibitor {
   padding: 0 10px;
   margin: 0 0px;
-  color: @base04;
   background-color: @base00;
 }
 
-@keyframes blink {
-  to {
-    background-color: @base09;
-    color: @base02;
-  }
-}
-
 #battery.warning:not(.charging) {
-  background: @base0F;
-  color: @base00;
-  animation-name: blink;
-  animation-duration: 0.5s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
+  border-bottom: 3px solid @base0F;
 }
 
 #pulseaudio.muted {
