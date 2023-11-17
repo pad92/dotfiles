@@ -63,8 +63,7 @@ bindsym XF86AudioPrev exec playerctl previous
 bindsym $mod+t exec --no-startup-id pkill picom
 bindsym $mod+Ctrl+t exec --no-startup-id picom -cb
 bindsym $mod+Shift+d --release exec "killall dunst; exec notify-send 'restart dunst'"
-bindsym Print exec --no-startup-id i3-scrot
-bindsym $mod+p       exec /usr/bin/gnome-screenshot -i
+bindsym Print       exec /usr/bin/gnome-screenshot -i
 
 focus_follows_mouse yes
 
@@ -216,10 +215,7 @@ for_window [window_role="pop-up"]                  floating     enable
 for_window [urgent=latest] focus
 
 # reload the configuration file
-bindsym $mod+Shift+c reload
-
-# restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
-bindsym $mod+Shift+r exec ~/.dotfiles/bin/xrandr.sh
+bindsym $mod+Shift+r reload
 
 # exit i3 (logs you out of your X session)
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
