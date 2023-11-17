@@ -8,7 +8,7 @@ Configuration used on my [Arch Linux](https://archlinux.org/) with i3 / i3status
 
 ## sway
 
-![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot-i3.png)
+![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot-sway.png)
 
 # Install Dotfile
 
