@@ -265,7 +265,7 @@ mode "resize" {
 bindsym $mod+9 exec --no-startup-id blurlock
 
 # Autostart applications
-exec_always ~/.dotfiles/bin/i3-autoname-workspaces &
+exec ~/.config/sway/scripts/autoname-workspaces
 exec --no-startup-id dex --autostart --environment i3
 exec --no-startup-id nm-applet
 exec --no-startup-id ~/.dotfiles/bin/greenclip-v4.2 daemon

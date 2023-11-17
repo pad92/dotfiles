@@ -24,10 +24,7 @@
 
 * {
   border: none;
-  border-top-left-radius: 0px;
-  border-top-right-radius: 0px;
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
+  border-radius: 0px;
   font-family: Roboto, Helvetica, Arial, sans-serif, "Font Awesome 6 Free";
   font-size: 12px;
   min-height: 0;

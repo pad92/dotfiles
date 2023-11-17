@@ -71,7 +71,7 @@ exec_always systemctl --user start sway-session.target
 exec dex --autostart --environment sway
 exec nm-applet --indicator
 exec /usr/bin/blueman-applet
-exec ~/.config/sway/scripts/autoname-workspaces.py
+exec ~/.config/sway/scripts/autoname-workspaces
 exec swayfloatingswitcher
 exec swayosd-server
 exec wl-paste -n -t text --watch clipman store --notify --max-items=100 --histpath="~/.cache/clipman.json"
