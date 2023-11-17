@@ -103,10 +103,6 @@ window#waybar {
   background-color: @base00;
 }
 
-#battery.charging {
-  background-color: @base0B;
-}
-
 @keyframes blink {
   to {
     background-color: @base09;
