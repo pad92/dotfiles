@@ -1,122 +1,121 @@
+/*
+*
+* Base16 Material
+* Author: Nate Peterson
+*
+*/
+
+@define-color base00 #263238;
+@define-color base01 #2e3c43;
+@define-color base02 #314549;
+@define-color base03 #546e7a;
+@define-color base04 #b2ccd6;
+@define-color base05 #eeffff;
+@define-color base06 #eeffff;
+@define-color base07 #ffffff;
+@define-color base08 #f07178;
+@define-color base09 #f78c6c;
+@define-color base0A #ffcb6b;
+@define-color base0B #c3e88d;
+@define-color base0C #89ddff;
+@define-color base0D #82aaff;
+@define-color base0E #c792ea;
+@define-color base0F #ff5370;
+
 * {
-    border: none;
-    border-radius: 0;
-    font-family: Roboto, Helvetica, Arial, sans-serif;
-    font-size: 12px;
-    min-height: 0;
+  border: none;
+  border-radius: 0;
+  font-family: Roboto, Helvetica, Arial, sans-serif, "Font Awesome 6 Free";
+  font-size: 12px;
+  min-height: 0;
 }
 
 window#waybar {
-    background: rgba(0, 43, 54, 0.5);
-    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
-    color: #fdf6e3;
-    text-shadow: 2px 2px #000000;
+  background: transparent;
+  color: @base04;
+  opacity: 1;
 }
 
 #workspaces button {
-    padding: 0 5px;
-    background: transparent;
-    color: #fdf6e3;
-    border-bottom: 3px solid transparent;
+  padding: 0 5px;
+  margin: 0 0px;
+  color: @base06;
+  border-bottom: 3px solid;
+  background-color: @base00;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+#workspaces button.active {
+  color: @base06;
+  border-bottom: 3px solid @base0A;
 }
 
 #workspaces button.focused {
-    border-bottom: 3px solid #d5d9dd;
+  color: @base06;
+  border-bottom: 3px solid @base0B;
 }
 
-#mode {
-    background: #64727D;
-    border-bottom: 3px solid white;
+#workspaces button.hover {
+  color: @base06;
+  border-bottom: 3px solid @base0D;
 }
 
-#clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-spotify, #custom-weather, #tray, #mode, #idle_inhibitor {
-    padding: 0 10px;
-    margin: 0 0px;
+#workspaces button.urgent {
+  color: @base0F;
+  border-bottom: 3px solid @base0F;
 }
 
 #clock {
-    background-color: rgba(100, 114, 125, 0.3);
-}
-
-#battery {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-#battery.charging {
-    background-color: rgba(38, 166, 91, 0.3);
-}
-
-@keyframes blink {
-    to {
-        background-color: rgba(255, 255, 255, 0.3);
-        color: #000000;
-    }
-}
-
-#battery.warning:not(.charging) {
-    background: #f53c3c;
-    color: #ffffff;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
-
-#cpu {
-    background: rgba(46, 204, 113, 0.3);
-}
-
-#memory {
-    background: rgba(155, 89, 182, 0.3);
+  border-radius: 5px;
 }
 
 #backlight {
-    background: rgba(181, 137, 0, 0.3);
+  border-bottom-left-radius: 5px;
+  border-top-left-radius: 5px;
 }
 
-#network {
-    background: rgba(41, 128, 185, 0.3);
+#clock,
+#battery,
+#cpu,
+#memory,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#custom-spotify,
+#custom-weather,
+#tray,
+#mode,
+#bluetooth,
+#idle_inhibitor {
+  padding: 0 10px;
+  margin: 0 0px;
+  color: @base04;
+  background-color: @base00;
 }
 
-#network.disconnected {
-    background: rgba(245, 60, 60, 0.3);
+#battery.charging {
+  background-color: @base0B;
 }
 
-#pulseaudio {
-    background: rgba(241, 196, 15, 0.3);
+@keyframes blink {
+  to {
+    background-color: @base09;
+    color: @base02;
+  }
+}
+
+#battery.warning:not(.charging) {
+  background: @base0F;
+  color: @base00;
+  animation-name: blink;
+  animation-duration: 0.5s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
 }
 
 #pulseaudio.muted {
-    background: rgba(144, 177, 177, 0.3);
-}
-
-#custom-spotify {
-    background: rgba(29, 185, 84, 0.2);
-}
-
-#custom-zombie {
-      background: #f53c3c;
-      color: #000000;
-}
-
-#temperature {
-    background: rgba(240, 147, 43, 0.3);
-}
-
-#temperature.critical {
-    background: rgba(235, 77, 75, 0.3);
-}
-
-#tray {
-    background-color: rgba(41, 128, 185, 0.3);
-}
-
-#idle_inhibitor {
-    background-color: rgba(45, 52, 54, 0.3);
-}
-
-#idle_inhibitor.activated {
-    background-color: rgba(236, 240, 241, 0.3);
-    color: #2d3436;
+  background: @base0A;
 }
