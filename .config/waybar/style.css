@@ -70,9 +70,17 @@ window#waybar {
   border-radius: 5px;
 }
 
-#backlight {
+#pulseaudio,
+#backlight,
+#tray {
   border-bottom-left-radius: 5px;
   border-top-left-radius: 5px;
+}
+#memory,
+#battery,
+#tray {
+  border-bottom-right-radius: 5px;
+  border-top-right-radius: 5px;
 }
 
 #clock,
