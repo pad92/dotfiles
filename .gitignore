@@ -15,3 +15,5 @@
 
 dist/*/pkglist-*-*.txt
 dist/*/pkglist-*-*.diff
+
+99-nvidia.conf
