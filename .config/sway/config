@@ -74,4 +74,4 @@ exec /usr/bin/blueman-applet
 exec ~/.config/sway/scripts/autoname-workspaces
 exec swayfloatingswitcher
 exec swayosd-server
-exec wl-paste -n -t text --watch clipman store --notify --max-items=100 --histpath="~/.cache/clipman.json"
+exec wl-paste --watch cliphist store
