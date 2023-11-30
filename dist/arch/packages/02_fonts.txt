@@ -1,3 +1,4 @@
+nerd-fonts
 noto-fonts
 noto-fonts-extra
 otf-font-awesome
@@ -9,5 +10,4 @@ ttf-inconsolata
 ttf-indic-otf
 ttf-joypixels
 ttf-meslo-nerd-font-powerlevel10k
-ttf-opensans
 ttf-opensans
