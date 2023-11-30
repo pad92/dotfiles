@@ -2,25 +2,6 @@ include config.d/*
 
 bar {
   swaybar_command waybar
-	position top
-	tray_output primary
-
-	bindsym button4 nop
-	bindsym button5 nop
-  font xft:URWGothic-Book 8
-
-    colors {
-        background $base00
-        separator  $base01
-        statusline $base04
-
-        # State             Border  BG      Text
-        focused_workspace   $base05 $base0D $base00
-        active_workspace    $base05 $base03 $base00
-        inactive_workspace  $base03 $base01 $base05
-        urgent_workspace    $base08 $base08 $base00
-        binding_mode        $base00 $base0A $base00
-    }
 }
 
 # Capslock (If you don't want to use the backend)
@@ -52,7 +33,7 @@ bindsym Alt+Shift+Tab exec swayfloatingswitcher --previous
 set $lockscreen ~/.dotfiles/.config/sway/scripts/lock.py
 
 # Setting values in gsettings
-set $gnome-schema org.gnome.desktop.interface
+set $gnome_schema org.gnome.desktop.interface
 
 # This will lock your screen after 300 seconds of inactivity, then turn off
 # your displays after another 300 seconds, and turn your screens back on when
@@ -75,3 +56,4 @@ exec ~/.config/sway/scripts/autoname-workspaces
 exec swayfloatingswitcher
 exec swayosd-server
 exec wl-paste --watch cliphist store
+exec tracker3 daemon -s
