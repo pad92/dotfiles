@@ -1,12 +1,15 @@
-font=Noto Sans 10
+anchor=top-right
+layer=overlay
+font=monospace 10
 background-color=#002b36
 border-size=3
-border-color=#073642
+border-radius=10
+border-color=#2D353B
 text-color=#839496
 margin=10,0
 padding=10
-default-timeout=5000
-max-visible=9
-format=<span font='7'>%a</span>\n<b>%s</b>\n%b
-layer=overlay
+default-timeout=10000
 group-by=summary
+
+[grouped]
+format=<b>%s</b>\n%b
