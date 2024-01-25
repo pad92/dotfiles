@@ -8,6 +8,6 @@ swappy
 sway
 swaybg
 swayidle
-swaylock
+swaylock-effects
 waybar
 wl-clipboard
