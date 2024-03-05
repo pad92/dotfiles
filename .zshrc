@@ -34,6 +34,8 @@ plugins=(
 
 autoload -Uz colors && colors
 autoload -Uz compinit && compinit
+autoload -Uz bashcompinit && bashcompinit
+
 zstyle ':completion:*' menu select
 zmodload zsh/complist
 compinit
