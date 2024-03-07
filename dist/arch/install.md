@@ -1,17 +1,19 @@
 # Arch Linux Full-Disk Encryption Installation Guide
+
 This guide provides instructions for an Arch Linux installation featuring full-disk encryption via LVM on LUKS and an encrypted boot partition (GRUB) for UEFI systems.
 
 Following the main installation are further instructions to harden against Evil Maid attacks via UEFI Secure Boot custom key enrollment and self-signed kernel and bootloader.
 
 ## Preface
-You will find most of this information pulled from the [Arch Wiki](https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)) and other resources linked thereof.
+
+You will find most of this information pulled from the [Arch Wiki](<https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)>) and other resources linked thereof.
 
 Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268#file-full-disk-encryption-arch-uefi-md) installation guide.
 
-
-*Note:* The system was installed on an NVMe SSD, substitute ```/dev/nvme0nX``` with ```/dev/sdX``` or your device as needed.
+_Note:_ The system was installed on an NVMe SSD, substitute `/dev/nvme0nX` with `/dev/sdX` or your device as needed.
 
 ## Table of contents
+
 [[_TOC_]]
 
 # Create USB stick
@@ -19,10 +21,10 @@ Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671
 - Download ISO From [https://archlinux.org/download/](http://archlinux.mirrors.ovh.net/archlinux/iso/latest/)
 
 ```
-wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso'     http://archlinux.mirrors.ovh.net/archlinux/iso/latest/
-wget -r -nd --no-parent -A 'archlinux-*-x86_64.iso.sig' http://archlinux.mirrors.ovh.net/archlinux/iso/latest/
+wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso
+wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso.sig
 
-gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archlinux-*-x86_64.iso.sig
+gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archlinux-x86_64.iso.sig
 
 sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
 ```
@@ -31,14 +33,16 @@ where /dev/sda is your usb key
 
 # From live
 
-Number | Start (sector) | End (sector) |    Size    | Code |        Name         |
--------|----------------|--------------|------------|------|---------------------|
-   1   |   2048         |   4095       | 1024.0 KiB | EF02 | BIOS boot partition |
-   2   |   4096         |   1130495    | 550.0 MiB  | EF00 | EFI System          |
-   3   |   1130496      |   976773134  | 465.2 GiB  | 8309 | Linux LUKS          |
+| Number | Start (sector) | End (sector) | Size       | Code | Name                |
+| ------ | -------------- | ------------ | ---------- | ---- | ------------------- |
+| 1      | 2048           | 4095         | 1024.0 KiB | EF02 | BIOS boot partition |
+| 2      | 4096           | 1130495      | 550.0 MiB  | EF00 | EFI System          |
+| 3      | 1130496        | 976773134    | 465.2 GiB  | 8309 | Linux LUKS          |
 
 ## Partitions
+
 ### Create
+
 ```
 gdisk /dev/nvme0n1
 o
@@ -60,14 +64,15 @@ n
 w
 ```
 
-
 ### luks
+
 ```
 cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
 ### lvm
+
 ```
 RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
 
@@ -82,6 +87,7 @@ lvcreate -l 100%FREE archlvm -n home
 ```
 
 ### Format
+
 ```
 mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
 mkfs.ext4     /dev/mapper/archlvm-slash          -L slash
@@ -105,7 +111,9 @@ chmod 700 /boot
 ```
 
 ## System
+
 ### Install base
+
 ```
 KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applied.
 KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
@@ -124,6 +132,7 @@ pacstrap /mnt \
   efibootmgr \
   git \
   grub \
+  irqbalance \
   linux-firmware \
   lvm2 \
   neofetch \
@@ -141,16 +150,35 @@ pacstrap /mnt \
 ```
 
 ### Configure resolv.conf
+
 ```
 echo '[main]
-rc-manager=resolvconf' > /etc/NetworkManager/conf.d/rc-manager.conf
+rc-manager=resolvconf' > /mnt/etc/NetworkManager/conf.d/rc-manager.conf
 ```
 
-### Configure wifi region
+### Configure wifi
+
 ```
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
+echo "options iwlwifi power_save=1"     > /mnt/etc/modprobe.d/iwlwifi.conf
+echo "options iwlwifi uapsd_disable=0" >> /mnt/etc/modprobe.d/iwlwifi.conf
+if grep -wq '^iwlmvm' /proc/modules; then
+  echo "options iwlmvm power_scheme=3" >> /mnt/etc/modprobe.d/iwlwifi.conf
+elif grep -wq '^iwldvm' /proc/modules; then
+  echo "options iwldvm force_cam=0"    >> /mnt/etc/modprobe.d/iwlwifi.conf
+fi
 ```
+
+### Sound
+
+if grep -wq '^snd_had_intel' /proc/modules; then
+echo "options snd_had_intel power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
+elif grep -wq '^snd_ac97_codec' /proc/modules; then
+echo "options snd_ac97_codec power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
+fi
+
 ### Create fstab
+
 ```
 genfstab -U /mnt                                           >> /mnt/etc/fstab
 echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
@@ -164,31 +192,43 @@ arch-chroot /mnt
 ```
 
 At this point you should have the following partitions and logical volumes:
-```lsblk```
+`lsblk`
 
-NAME                          | MAJ:MIN | RM  |  SIZE  | RO  | TYPE  | MOUNTPOINT      |
-------------------------------|---------|-----|--------|-----|-------|-----------------|
-nvme0n1                       |  259:0  |  0  | 953.9G |  0  | disk  |                 |
-├─nvme0n1p1                   |  259:1  |  0  |     1M |  0  | part  |                 |
-├─nvme0n1p2                   |  259:2  |  0  |   550M |  0  | part  | /efi            |
-├─nvme0n1p3                   |  259:3  |  0  | 953.3G |  0  | part  |                 |
-..└─cryptlvm                  |  254:0  |  0  | 953.3G |  0  | crypt |                 |
-....├─archlvm-swap            |  254:1  |  0  |  31.1G |  0  | lvm   | [SWAP]          |
-....├─archlvm-root            |  254:2  |  0  |    32G |  0  | lvm   | /               |
-....└─archlvm-home            |  254:3  |  0  |   100G |  0  | lvm   | /home           |
-....└─archlvm-opt             |  254:4  |  0  |    30G |  0  | lvm   | /opt            |
-....└─archlvm-var_lib_docker  |  254:5  |  0  |    10G |  0  | lvm   | /var/lib/docker |
-
+| NAME                         | MAJ:MIN | RM  | SIZE   | RO  | TYPE  | MOUNTPOINT      |
+| ---------------------------- | ------- | --- | ------ | --- | ----- | --------------- |
+| nvme0n1                      | 259:0   | 0   | 953.9G | 0   | disk  |                 |
+| ├─nvme0n1p1                  | 259:1   | 0   | 1M     | 0   | part  |                 |
+| ├─nvme0n1p2                  | 259:2   | 0   | 550M   | 0   | part  | /efi            |
+| ├─nvme0n1p3                  | 259:3   | 0   | 953.3G | 0   | part  |                 |
+| ..└─cryptlvm                 | 254:0   | 0   | 953.3G | 0   | crypt |                 |
+| ....├─archlvm-swap           | 254:1   | 0   | 31.1G  | 0   | lvm   | [SWAP]          |
+| ....├─archlvm-root           | 254:2   | 0   | 32G    | 0   | lvm   | /               |
+| ....└─archlvm-home           | 254:3   | 0   | 100G   | 0   | lvm   | /home           |
+| ....└─archlvm-opt            | 254:4   | 0   | 30G    | 0   | lvm   | /opt            |
+| ....└─archlvm-var_lib_docker | 254:5   | 0   | 10G    | 0   | lvm   | /var/lib/docker |
 
 ## makeflags
 
 use all core for builds
 
 ```
-sed -i "/MAKEFLAGS=/cMAKEFLAGS=\"-j $((`nproc`+1))\"" /etc/makepkg.conf
+sed -i 's/^CXXFLAGS.*/CXXFLAGS="-march=native -mtune=native -O2 -pipe -fstack-protector-strong --param=ssp-buffer-size=4 -fno-plt"/' /etc/makepkg.conf && \
+sed -i 's/^#RUSTFLAGS.*/RUSTFLAGS="-C opt-level=2 -C target-cpu=native"/' /etc/makepkg.conf && \
+sed -i 's/^#BUILDDIR.*/BUILDDIR=\/tmp\/makepkg/' /etc/makepkg.conf && \
+sed -i 's/^#MAKEFLAGS.*/MAKEFLAGS="-j$(getconf _NPROCESSORS_ONLN) --quiet"/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSGZ.*/COMPRESSGZ=(pigz -c -f -n)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSBZ2.*/COMPRESSBZ2=(pbzip2 -c -f)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSXZ.*/COMPRESSXZ=(xz -T "$(getconf _NPROCESSORS_ONLN)" -c -z --best -)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSZST.*/COMPRESSZST=(zstd -c -z -q --ultra -T0 -22 -)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSLZ.*/COMPRESSLZ=(lzip -c -f)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSLRZ.*/COMPRESSLRZ=(lrzip -9 -q)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSLZO.*/COMPRESSLZO=(lzop -q --best)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSZ.*/COMPRESSZ=(compress -c -f)/' /etc/makepkg.conf && \
+sed -i 's/^COMPRESSLZ4.*/COMPRESSLZ4=(lz4 -q --best)/' /etc/makepkg.conf
 ```
 
 ## Time zone
+
 ```
 timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
 timedatectl set-ntp true
@@ -197,6 +237,7 @@ hwclock --systohc
 ```
 
 ## locales
+
 ```
 sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
 sed -i 's/^#en_US/en_US/g' /etc/locale.gen
@@ -205,13 +246,14 @@ echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 ```
 
 ## keymap
+
 ```
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
 echo 'FONT=ter-116n'    >> /etc/vconsole.conf
 
 mkdir -p /etc/X11/xorg.conf.d
 cat <<EOF>/etc/X11/xorg.conf.d/00-keyboard.conf
-# Read and parsed by systemd-localed. It's probably wise not to edit this file
+# Read and parsed by systemd-located. It's probably wise not to edit this file
 # manually too freely.
 Section "InputClass"
         Identifier "system-keyboard"
@@ -223,6 +265,7 @@ EOF
 ```
 
 ## hostname
+
 ```
 myhostname='MyArch'
 echo "${myhostname}" > /etc/hostname
@@ -236,7 +279,9 @@ EOF
 ```
 
 ## boot
+
 ### Grub
+
 ```
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
@@ -249,6 +294,7 @@ grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
 ### initramfs
+
 ```
 mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
 head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
@@ -261,19 +307,23 @@ mkinitcpio -P
 ```
 
 ## services
+
 ```
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
 ```
 
 ## user
+
 ```
 MYUSER='MyUser'
 useradd -m -s /bin/zsh -G network,users,storage,lp,input,audio,wheel ${MYUSER}
 echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
 passwd ${MYUSER}
 ```
+
 ### dotfiles
+
 ```
 su - ${MYUSER}
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
@@ -289,16 +339,21 @@ EOF
 ```
 
 ### Packages manager
+
 ```
+sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf && \
+sed -i 's/#Color/Color\\\nILoveCandy/' /etc/pacman.conf && \
+sed -i 's/Color\\/Color/' /etc/pacman.conf && \
+sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf
+
 sudo vim /etc/pacman.conf
-# Color
-# ILoveCandy
-# [multilib]
-# SigLevel = PackageRequired
-# Include = /etc/pacman.d/mirrorlist
+[multilib]
+SigLevel = PackageRequired
+Include = /etc/pacman.d/mirrorlist
 ```
 
 ### aur
+
 ```
 sudo pacman -Sy
 
@@ -310,6 +365,7 @@ rm -fr yay
 ```
 
 ### WM and softs
+
 ```
 yay -S --needed $(cat ~/.dotfiles/dist/archlinux/packages/*.txt)
 
@@ -322,7 +378,14 @@ exit
 umount -R /mnt
 reboot
 ```
+
 # Optional
+
+## Auto CPUfreq
+
+```
+sudo systemctl enable --now auto-cpufreq
+```
 
 ## SSD Trim
 
@@ -332,6 +395,7 @@ sudo systemctl enable fstrim.timer
 ```
 
 ## USBGuard
+
 ```
 yay -S usbguard usbguard-applet-qt
 sudo usbguard generate-policy | sudo tee /etc/usbguard/rules.conf
@@ -340,18 +404,21 @@ sudo systemctl enable usbguard.service
 ```
 
 ## Flatpak Apps
+
 ```
 flatpak install com.microsoft.Teams \
                 org.signal.Signal
 ```
 
 ## Docker
+
 ```
 yay -S docker docker-compose
 usermod -a -G docker MyUser
 ```
 
 ## Nvidia
+
 ```
 sed -i '/^MODULES/c\MODULES=(nvidia)' /etc/mkinitcpio.conf
 yay -S nvidia-dkms nvidia-utils
@@ -360,12 +427,21 @@ sudo mkinitcpio -P
 ```
 
 ## Nvidia Prime
+
 ```
 yay -S nvidia-dkms nvidia-utils nvidia-prime
 ```
 
 ## Spotify
+
 Remove notification
+
 ```
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
+```
+
+## Signal
+
+```
+Exec=signal-desktop --use-tray-icon --enable-features=UseOzonePlatform --ozone-platform=wayland -- %u
 ```
