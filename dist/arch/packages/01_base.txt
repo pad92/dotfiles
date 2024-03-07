@@ -2,6 +2,7 @@ apg
 arch-audit
 archlinux-wallpaper
 arj
+auto-cpufreq
 bind
 blueman
 bluez
