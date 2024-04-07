@@ -12,7 +12,7 @@ if [ -d ${HOME}/.local/bin ]; then
 fi
 
 ZSH_THEME="pad"
-VSCODE=vscodium
+#VSCODE=vscodium
 
 plugins=(
   1password           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/1password/README.md
