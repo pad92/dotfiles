@@ -1,5 +1,8 @@
 import = ["~/.config/alacritty/base16/colors/base16-material-darker-256.toml"]
+
 live_config_reload = true
+
+shell = { program = "/bin/zsh", args = ["-l"] }
 
 [colors]
 draw_bold_text_with_bright_colors = false
@@ -120,11 +123,12 @@ decorations = "full"
 dynamic_padding = true
 opacity = 0.8
 title = "Alacritty"
+padding = { x = 0, y = 0 }
 
 [window.class]
 general = "Alacritty"
 instance = "Alacritty"
 
-[window.padding]
-x = 0
-y = 0
+[cursor]
+style = { shape = "Block", blinking = "On" }
+thickness = 0.25
