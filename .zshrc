@@ -74,11 +74,13 @@ setopt SHARE_HISTORY             # Share history between all sessions.
 setopt auto_cd
 
 if [ -d /etc/profile.d ]; then
-  for PROFILE_FILE in /etc/profile.d/*.sh; do
-    if [ -r $PROFILE_FILE ]; then
-      . $PROFILE_FILE
-    fi
-  done
+  if  [ "$(ls -A /etc/profile.d)" ]; then
+    for PROFILE_FILE in /etc/profile.d/*.sh; do
+      if [ -r $PROFILE_FILE ]; then
+        . $PROFILE_FILE
+      fi
+    done
+  fi
   unset PROFILE_FILE
 fi
 
