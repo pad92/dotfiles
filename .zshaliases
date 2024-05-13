@@ -1,14 +1,16 @@
 # Docker
 ## Ansible
 if [ $(command -v docker) ]; then
-  alias ansible-sh='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
-                                        -v ${PWD}:/ansible \
-                                        -e SSH_AUTH_SOCK=/ssh-agent \
-                                        pad92/ansible-alpine:2.10.7-3 sh'
-  alias ansible-playbook='docker run -it --rm -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
-                                              -v ${PWD}:/ansible \
-                                              -e SSH_AUTH_SOCK=/ssh-agent \
-                                              pad92/ansible-alpine:2.10.7-3 ansible-playbook'
+  alias ansible-sh='docker run -it --rm \
+          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+          -v ${PWD}:/ansible \
+          -e SSH_AUTH_SOCK=/ssh-agent \
+          pad92/ansible-alpine:2.10.7-3 sh'
+  alias ansible-playbook='docker run -it --rm \
+          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+          -v ${PWD}:/ansible \
+          -e SSH_AUTH_SOCK=/ssh-agent \
+          pad92/ansible-alpine:2.10.7-3 ansible-playbook'
 fi
 
 # Arch
@@ -36,7 +38,18 @@ if [ $(command -v reflector) ]; then
   alias mirrora="sudo reflector -c FR --latest 50 --number 20 --sort age --save /etc/pacman.d/mirrorlist"
 fi
 
-# youtube-dl
+## Update
+function arch_update {
+    yay -Syu --devel
+    clean_arch
+    if [ $(command -v flatpak) ]; then
+        flatpak update -y
+        flatpak uninstall --unused -y
+    fi
+}
+
+# Tools
+## youtube-dl
 if [ $(command -v youtube-dl) ]; then
   alias yta-aac="youtube-dl --extract-audio --audio-format aac "
   alias yta-best="youtube-dl --extract-audio --audio-format best "
@@ -49,19 +62,9 @@ if [ $(command -v youtube-dl) ]; then
   alias ytv-best="youtube-dl -f bestvideo+bestaudio "
 fi
 
-# Backup
+## Backup
 [ -f "${HOME}/.dotfiles/bin/backup.sh" ] && \
   alias backup="${HOME}/.dotfiles/bin/backup.sh"
-
-# Update
-function arch_update {
-    yay -Syu --devel
-    clean_arch
-    if [ $(command -v flatpak) ]; then
-        flatpak update -y
-        flatpak uninstall --unused -y
-    fi
-}
 
 # Archive
 function extract {
@@ -123,6 +126,7 @@ function extract {
   fi
 }
 
+# Lsmod all with pararms
 function lsmodp {
     cat /proc/modules | cut -f 1 -d " " | while read module; do
         echo "Module: $module"
@@ -135,3 +139,29 @@ function lsmodp {
         echo
     done
 }
+
+# WSL with 1Password
+if [ $(command -v npiperelay.exe) ] && [ ! -z ${WSL_DISTRO_NAME+x} ]; then
+  # Code extracted from https://stuartleeks.com/posts/wsl-ssh-key-forward-to-windows/
+
+  if [ ! -d "${HOME}/.1password" ]; then
+    mkdir "${HOME}/.1password"
+  fi
+
+  # Configure ssh forwarding
+  export SSH_AUTH_SOCK=$HOME/.1password/agent.sock
+  # need `ps -ww` to get non-truncated command for matching
+  # use square brackets to generate a regex match for the process we want but that doesn't match the grep command running it!
+  ALREADY_RUNNING=$(ps -auxww | grep -q "[n]piperelay.exe -ei -s //./pipe/openssh-ssh-agent"; echo $?)
+  if [[ $ALREADY_RUNNING != "0" ]]; then
+      if [[ -S $SSH_AUTH_SOCK ]]; then
+          # not expecting the socket to exist as the forwarding command isn't running (http://www.tldp.org/LDP/abs/html/fto.html)
+          echo "removing previous socket..."
+          rm $SSH_AUTH_SOCK
+      fi
+      echo "Starting SSH-Agent relay..."
+      # setsid to force new session to keep running
+      # set socat to listen on $SSH_AUTH_SOCK and forward to npiperelay which then forwards to openssh-ssh-agent on windows
+      (setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork &) >/dev/null 2>&1
+  fi
+fi
