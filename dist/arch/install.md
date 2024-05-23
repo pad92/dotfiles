@@ -29,7 +29,7 @@ gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archl
 sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
 ```
 
-where /dev/sda is your usb key
+where `/dev/sda` is your usb key
 
 # From live
 
