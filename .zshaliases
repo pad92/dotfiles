@@ -5,12 +5,12 @@ if [ $(command -v docker) ]; then
           -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
           -v ${PWD}:/ansible \
           -e SSH_AUTH_SOCK=/ssh-agent \
-          pad92/ansible-alpine:2.10.7-3 sh'
+          pad92/ansible-alpine:latest sh'
   alias ansible-playbook='docker run -it --rm \
           -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
           -v ${PWD}:/ansible \
           -e SSH_AUTH_SOCK=/ssh-agent \
-          pad92/ansible-alpine:2.10.7-3 ansible-playbook'
+          pad92/ansible-alpine:latest ansible-playbook'
 fi
 
 # Arch
