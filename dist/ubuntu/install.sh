@@ -65,10 +65,6 @@ sudo usermod -a -G docker $USER
 sudo apt-get autoremove -y
 sudo apt-get autoclean
 
-sudo snap install teams
-sudo snap remove chromium
-
-
 FONT_HOME=~/.local/share/fonts
 
 mkdir -p "$FONT_HOME/adobe-fonts"

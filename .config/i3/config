@@ -172,7 +172,6 @@ workspace 1 output primary
 # Open applications on specific workspaces
 assign  [class="(?i)Navigator"]    number  1
 assign  [class="(?i)openfortiGUI"] number  1
-assign  [class="(?i)Teams"]        number  2
 assign  [class="(?i)Rhythmbox"]    number  2
 assign  [class="(?i)Spotify"]      number  2
 
