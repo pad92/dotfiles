@@ -1,5 +1,5 @@
 function git_prune_r() {
-  for REPO in $(find $(pwd) -type d -name .git | sed 's@/.git@@g'); do
+  for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git remote prune origin 2>&1 )
     if [ $? -ne 0 ]; then
