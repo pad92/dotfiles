@@ -15,8 +15,8 @@ profile docked {
 profile p5560 {
   output "Sharp Corporation 0x1516 Unknown" position 0,0 mode 3840x2400@60 scale 2
 
+  exec swaymsg input "dell-touch" map_to_output "Sharp Corporation 0x1516 Unknown"
   exec swaymsg workspace 1, move workspace to output eDP-1
-
   exec swaymsg output eDP-1 bg "~/Pictures/2023/08/20230816-cannes-3413.jpg" fill
 }
 
