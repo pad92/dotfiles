@@ -6,6 +6,12 @@ if [ $(command -v docker) ]; then
           -v ${PWD}:/ansible \
           -e SSH_AUTH_SOCK=/ssh-agent \
           pad92/ansible-alpine:latest sh'
+  alias ansible-sh-2.10.7-2='docker run -it --rm \
+          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+          -v ${PWD}:/ansible \
+          -v /etc/ca-certificates/trust-source/anchors:/usr/local/share/ca-certificates:ro \
+          -e SSH_AUTH_SOCK=/ssh-agent \
+          pad92/ansible-alpine:2.10.7-2 sh'
   alias ansible-playbook='docker run -it --rm \
           -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
           -v ${PWD}:/ansible \
