@@ -14,12 +14,12 @@ function git_prune_r() {
 }
 
 function git_pull_r() {
-  for REPO in $(find $(pwd) -type d -name .git | sed 's@/.git@@g'); do
+  for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git pull 2>&1 )
     GIT_BRANCH_CURRENT=$(git --git-dir=${REPO}/.git rev-parse --abbrev-ref HEAD)
     if [ $? -ne 0 ]; then
-      GIT_BRANCH_DEFAULT=$(git --git-dir=${REPO}/.git remote show origin | awk '/HEAD branch/ {print $NF}')
+      GIT_BRANCH_DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
       RET=$(git --git-dir=${REPO}/.git checkout ${GIT_BRANCH_DEFAULT} 2>&1)
       RET=$(git --git-dir=${REPO}/.git pull 2>&1)
       if [ $? -ne 0 ]; then
