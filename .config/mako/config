@@ -8,7 +8,8 @@ border-color=#2D353B
 text-color=#839496
 margin=10,0
 padding=10
-default-timeout=10000
+default-timeout=60
+ignore-timeout=1
 group-by=summary
 
 [grouped]
