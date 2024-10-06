@@ -1,0 +1,17 @@
+cliphist
+fastfetch
+grim
+hypridle-git
+hyprland-git
+hyprlock-git
+hyprpaper-git
+hyprshot-git
+hyprutils-git
+kitty
+nwg-displays
+qt5-wayland
+qt6-wayland
+swappy
+swayosd-git
+wofi
+xdg-desktop-portal-hyprland-git
