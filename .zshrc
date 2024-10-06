@@ -87,5 +87,4 @@ fi
 [ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs
 [ -f "${HOME}/.zshaliases" ]            && source ${HOME}/.zshaliases
 [ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
-[ -S "${HOME}/.1password/agent.sock" ]  && export SSH_AUTH_SOCK=~/.1password/agent.sock
-[ -x $(command -v neofetch) ]           && neofetch
+[ -x $(command -v fastfetch) ]          && fastfetch
