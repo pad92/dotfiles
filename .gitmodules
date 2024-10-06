@@ -23,12 +23,12 @@
 [submodule ".config/i3blocks/i3blocks-contrib"]
 	path = .config/i3blocks/i3blocks-contrib
 	url = https://github.com/vivien/i3blocks-contrib.git
-[submodule ".config/rofi/themes/gruvbox"]
-	path = .config/rofi/themes/gruvbox
-	url = https://github.com/bardisty/gruvbox-rofi
 [submodule ".config/i3status/i3spotifystatus"]
 	path = .config/i3status/i3spotifystatus
 	url = https://github.com/rpieja/i3spotifystatus.git
 [submodule ".config/alacritty/base16"]
 	path = .config/alacritty/base16
 	url = https://github.com/aarowill/base16-alacritty.git
+[submodule ".config/rofi/themes/gruvbox"]
+	path = .config/rofi/themes/gruvbox
+	url = https://github.com/bardisty/gruvbox-rofi.git

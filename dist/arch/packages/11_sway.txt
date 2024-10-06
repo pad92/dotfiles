@@ -2,10 +2,10 @@ blueman
 brightnessctl
 cliphist
 dex
-grimshot
 kanshi
 swappy
 sway
+sway-contrib
 swaybg
 swayidle
 swaylock-effects

@@ -1,3 +1,7 @@
+#OpenSSL
+
+alias openssl_s_client_date='f() { openssl s_client -connect $1:443 </dev/null | openssl x509 -noout -dates };f'
+
 # Docker
 ## Ansible
 if [ $(command -v docker) ]; then
@@ -5,7 +9,7 @@ if [ $(command -v docker) ]; then
           -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
           -v ${PWD}:/ansible \
           -e SSH_AUTH_SOCK=/ssh-agent \
-          pad92/ansible-alpine:latest sh'
+          cloudtempleinfra/ansible-alpine:latest sh'
   alias ansible-sh-2.10.7-2='docker run -it --rm \
           -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
           -v ${PWD}:/ansible \
@@ -146,6 +150,13 @@ function lsmodp {
     done
 }
 
+
+if [ -S "${HOME}/.1password/agent.sock" ]; then
+  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK=$HOME/.1password/agent.sock
+else
+  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+fi
+
 # WSL with 1Password
 if [ $(command -v npiperelay.exe) ] && [ ! -z ${WSL_DISTRO_NAME+x} ]; then
   # Code extracted from https://stuartleeks.com/posts/wsl-ssh-key-forward-to-windows/
@@ -155,7 +166,6 @@ if [ $(command -v npiperelay.exe) ] && [ ! -z ${WSL_DISTRO_NAME+x} ]; then
   fi
 
   # Configure ssh forwarding
-  export SSH_AUTH_SOCK=$HOME/.1password/agent.sock
   # need `ps -ww` to get non-truncated command for matching
   # use square brackets to generate a regex match for the process we want but that doesn't match the grep command running it!
   ALREADY_RUNNING=$(ps -auxww | grep -q "[n]piperelay.exe -ei -s //./pipe/openssh-ssh-agent"; echo $?)

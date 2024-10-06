@@ -36,6 +36,7 @@ window#waybar {
   opacity: 1;
 }
 
+#taskbar,
 #workspaces button {
   padding: 0 5px;
   margin: 0 0px;
