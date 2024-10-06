@@ -59,6 +59,8 @@ fi
 
 START=$(date +%s)
 
+[ ! -f "${HOME}/.no_backup.txt" ] && touch "${HOME}/.no_backup.txt"
+
 printf "${C_ORANGE}Syncing ~/ to ${BACKUP_DIR}/${HOSTNAME}${HOME}${C_NC}\n"
 sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --delete-excluded --exclude-from=- <<- EOF
 $(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
