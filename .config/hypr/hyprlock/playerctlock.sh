@@ -44,6 +44,9 @@ case "$1" in
 	else
 		if [[ "$url" == file://* ]]; then
 			url=${url#file://}
+    elif [[ "$url" == https://* ]]; then
+      curl -s "${url}" -o -o /tmp/mpris_artUrl
+      url=/tmp/mpris_artUrl
 		fi
 		echo "$url"
 	fi
