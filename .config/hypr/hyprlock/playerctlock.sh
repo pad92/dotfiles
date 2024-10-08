@@ -17,7 +17,7 @@ get_metadata() {
 get_source_info() {
   trackid=$(get_metadata "mpris:trackid")
   if [[ "$trackid" == *"firefox"* ]]; then
-    echo -e "Firefox 󰈹"
+    echo -e "Firefox "
   elif [[ "$trackid" == *"spotify"* ]]; then
     echo -e "Spotify "
   elif [[ "$trackid" == *"chromium"* ]]; then
@@ -26,8 +26,6 @@ get_source_info() {
     echo ""
   fi
 }
-
-rm -f /tmp/mpris_artUrl
 
 # Parse the argument
 case "$1" in
@@ -43,6 +41,7 @@ case "$1" in
   url=$(get_metadata "mpris:artUrl")
   if [ -z "$url" ]; then
     echo ""
+    [ -f "/tmp/mpris_artUrl" ] && rm -f /tmp/mpris_artUrl
   else
     if [[ "$url" == file://* ]]; then
       url=${url#file://}
@@ -73,9 +72,9 @@ case "$1" in
 --status)
   status=$(playerctl status 2>/dev/null)
   if [[ $status == "Playing" ]]; then
-    echo "󰎆"
+    echo ""
   elif [[ $status == "Paused" ]]; then
-    echo "󱑽"
+    echo ""
   else
     echo ""
   fi
