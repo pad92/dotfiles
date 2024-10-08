@@ -57,7 +57,7 @@ case "$1" in
   if [ -z "$artist" ]; then
     echo ""
   else
-    echo "${artist}"
+    echo " ${artist}"
   fi
   ;;
 --length)
@@ -66,7 +66,7 @@ case "$1" in
     echo ""
   else
     # Convert length from microseconds to a more readable format (seconds)
-    echo "$(echo "scale=2; $length / 1000000 / 60" | bc) m"
+    echo " $(echo "scale=2; $length / 1000000 / 60" | bc) m"
   fi
   ;;
 --status)
