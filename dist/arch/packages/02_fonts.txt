@@ -1,13 +1,1 @@
-nerd-fonts
-noto-fonts
-noto-fonts-extra
-otf-font-awesome
-ttf-bitstream-vera
-ttf-dejavu
-ttf-droid
 ttf-font-awesome
-ttf-inconsolata
-ttf-indic-otf
-ttf-joypixels
-ttf-meslo-nerd-font-powerlevel10k
-ttf-opensans
