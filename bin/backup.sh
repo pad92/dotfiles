@@ -1,12 +1,12 @@
 #!/bin/sh
 . /etc/os-release
 
-BACKUP_DIR="pascal@192.168.0.100:backup"
+BACKUP_DIR="/mnt/pads918/home/backup"
 HOSTNAME="$(hostnamectl hostname)"
 
 BASEDIR=$(dirname "$0")
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
-RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --delete --delete-excluded --info=progress2,name0,stats2'
+RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --no-links --delete --delete-excluded --info=progress2,name0,stats2'
 SUDO_OPTS='-s'
 #if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
 #  echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
