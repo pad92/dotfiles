@@ -1,1 +1,2 @@
 ttf-font-awesome
+ttf-meslo-nerd
