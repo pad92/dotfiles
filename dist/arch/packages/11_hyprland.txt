@@ -13,5 +13,6 @@ qt5-wayland
 qt6-wayland
 swappy
 swayosd-git
+tela-circle-icon-theme-dracula
 wofi
 xdg-desktop-portal-hyprland-git
