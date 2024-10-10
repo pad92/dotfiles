@@ -1,29 +1,35 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-############ Variables ############
-enable_battery=false
-battery_charging=false
-
-####### Check availability ########
-for battery in /sys/class/power_supply/*BAT*; do
-  if [[ -f "$battery/uevent" ]]; then
-    enable_battery=true
-    if [[ $(cat /sys/class/power_supply/*/status | head -1) == "Charging" ]]; then
-      battery_charging=true
-    fi
-    break
-  fi
-done
-
-############# Output #############
-if [[ $enable_battery == true ]]; then
-  if [[ $battery_charging == true ]]; then
-    echo -n "(+) "
-  fi
-  echo -n "   $(cat /sys/class/power_supply/*/capacity | head -1)"%
-  if [[ $battery_charging == false ]]; then
-    echo -n " remaining"
-  fi
+# Vérifier si le répertoire /sys/class/power_supply existe
+if [ ! -d /sys/class/power_supply ]; then
+  exit 0
 fi
 
-echo ''
+# Parcourir toutes les sources d'alimentation
+for power_supply in /sys/class/power_supply/*; do
+  # Extraire le nom de la source
+  power_supply_name=$(basename "$power_supply")
+
+  # Vérifier si la source est de type "Mains"
+  if grep -q "Mains" "$power_supply/type"; then
+    # Vérifier l'état du secteur en utilisant le fichier "online"
+    if [ -f "$power_supply/online" ]; then
+      status=$(cat "$power_supply/online")
+      if [ "$status" = "1" ]; then
+        OUTPUT="${OUTPUT}  "
+      fi
+    fi
+  fi
+
+  # Vérifier si la source est de type "Battery"
+  if grep -q "Battery" "$power_supply/type"; then
+    # Vérifier si le fichier "capacity" existe pour la batterie
+    if [ -f "$power_supply/capacity" ]; then
+      capacity=$(cat "$power_supply/capacity")
+      OUTPUT="${OUTPUT} "
+    fi
+  fi
+
+done
+
+echo "${OUTPUT}  ${capacity}%"
