@@ -1,4 +1,5 @@
 ttf-font-awesome
+ttf-google-fonts-git
 ttf-inconsolata
 ttf-inconsolata-nerd
 ttf-jetbrains-mono
