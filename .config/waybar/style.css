@@ -25,9 +25,7 @@
 * {
   border: none;
   border-radius: 0px;
-  font-family:
-    JetBrainsMono Nerd Font,
-    Font Awesome 6 Free;
+  font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free";
   font-size: 12px;
   min-height: 0;
   color: @base04;
