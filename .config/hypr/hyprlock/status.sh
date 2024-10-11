@@ -25,11 +25,11 @@ for power_supply in /sys/class/power_supply/*; do
   if grep -q "Battery" "$power_supply/type"; then
     # Vérifier si le fichier "capacity" existe pour la batterie
     if [ -f "$power_supply/capacity" ]; then
-      capacity=$(cat "$power_supply/capacity")
+      capacity="$(cat "$power_supply/capacity")%"
       OUTPUT="${OUTPUT} "
     fi
   fi
 
 done
 
-echo "${OUTPUT}  ${capacity}%"
+echo "${OUTPUT}  ${capacity}"
