@@ -26,7 +26,7 @@ keep_padding       = true
 function_next_line = true
 
 [*.py]
-indent_size = 4
+indent_size = 2
 
 [*.{tf,tfvars}]
 indent_size = 2
