@@ -11,6 +11,11 @@ if [ -d ${HOME}/.local/bin ]; then
   rehash
 fi
 
+if [ -d /usr/bin/vendor_perl ]; then
+  export PATH="${PATH}:/usr/bin/vendor_perl"
+  rehash
+fi
+
 ZSH_THEME="pad"
 #VSCODE=vscodium
 
