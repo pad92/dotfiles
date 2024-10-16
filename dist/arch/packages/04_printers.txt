@@ -1,3 +1,4 @@
+cnijfilter2
 cups
 foomatic-db
 foomatic-db-gutenprint-ppds
