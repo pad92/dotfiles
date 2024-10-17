@@ -1,0 +1,7 @@
+lib32-nvidia-utils
+libva-nvidia-driver
+nvidia-container-toolkit
+nvidia-open-dkms
+nvidia-prime
+nvidia-settings
+nvidia-utils
