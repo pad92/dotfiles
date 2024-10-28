@@ -2,6 +2,12 @@
 
 Configuration used on my [Arch Linux](https://archlinux.org/) with i3 / i3status
 
+## Hyprland
+
+### Wallpaper
+
+Put wallpaper into your `~/.local/share/backgrounds` folder
+
 ## i3
 
 ![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot-i3.png)
