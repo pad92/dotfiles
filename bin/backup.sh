@@ -6,7 +6,7 @@ HOSTNAME="$(hostnamectl hostname)"
 
 BASEDIR=$(dirname "$0")
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
-RSYNC_OPTS='--archive --perms --xattrs --safe-links --no-specials --no-devices --no-links --delete --delete-excluded --info=progress2,name0,stats2'
+RSYNC_OPTS='--force --archive --perms --xattrs --safe-links --no-specials --no-devices --no-links --delete --delete-excluded --info=progress2,name0,stats2'
 SUDO_OPTS='-s'
 #if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
 #  echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
