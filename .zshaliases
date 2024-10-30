@@ -153,10 +153,10 @@ function lsmodp {
 
 if [ -S "${HOME}/.1password/agent.sock" ]; then
   [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK=$HOME/.1password/agent.sock
-elif [ -S "$XDG_RUNTIME_DIR/gcr/ssh" ]; then
-  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/gcr/ssh"
-else
-  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+#elif [ -S "$XDG_RUNTIME_DIR/gcr/ssh" ]; then
+#  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/gcr/ssh"
+#else
+#  [ -z "${SSH_CONNECTION}" ] && export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 fi
 
 # WSL with 1Password
