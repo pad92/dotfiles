@@ -21,10 +21,10 @@ while true; do
   # Loop through each monitor.
   for MONITOR in $MONITORS; do
     # Find a random image file in the wallpaper directory.
-    IMAGE=$(find "${WALLPAPER_DIR}" \( -iname "*.jpg" -o -iname "*.png" \) | shuf -n 1)
+    IMAGE=$(find -L "${WALLPAPER_DIR}" -type f \( -iname "*.jpg" -o -iname "*.png" \) | shuf -n 1)
 
     # Set the image as the wallpaper for the current monitor.
-    swww img --outputs "$MONITOR" "$IMAGE" --resize=crop --transition-type any
+    swww img --outputs "$MONITOR" "$IMAGE" --resize=crop --transition-type random
   done
 
   if [ $SWWW_EARLY_RUNNING = 1 ]; then break; fi
