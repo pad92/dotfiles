@@ -26,29 +26,35 @@
   border: none;
   border-radius: 0px;
   font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free";
-  font-size: 12px;
-  min-height: 0;
-  color: @base04;
+  font-weight: bold;
+  font-size: 10px;
+  min-height: 10px;
 }
 
 window#waybar {
-  background: transparent;
-  opacity: 1;
+  background:rgba(0, 0, 0, 0);
 }
 
 #taskbar,
 #workspaces button {
-  padding: 0 5px;
-  margin: 0 0px;
-  border-bottom: 3px solid;
+  box-shadow: none;
+  text-shadow: none;
+  padding: 0px;
+  margin: 0px;
+  padding-left: 3px;
+  padding-right: 3px;
   background-color: @base00;
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
+  animation: ws_normal 20s ease-in-out 1;
 }
 
 #workspaces button.active {
   border-bottom: 3px solid @base0A;
+  padding-left: 5px;
+  padding-right: 5px;
+  animation: ws_active 20s ease-in-out 1;
+  transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
 }
+
 
 #workspaces button.focused {
   border-bottom: 3px solid @base0C;
@@ -56,27 +62,22 @@ window#waybar {
 
 #workspaces button.hover {
   border-bottom: 3px solid @base0E;
+  animation: ws_hover 20s ease-in-out 1;
+  transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
 }
 
 #workspaces button.urgent {
   border-bottom: 3px solid @base0F;
 }
 
-#clock {
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
+
+
+#tray menu * {
+  min-height: 16px
 }
 
-#pulseaudio,
-#backlight,
-#tray {
-  border-bottom-left-radius: 5px;
-}
-
-#memory,
-#battery,
-#tray {
-  border-bottom-right-radius: 5px;
+#tray menu separator {
+  min-height: 10px
 }
 
 #clock,
