@@ -1,0 +1,9 @@
+[Unit]
+Description=Change wallpaper using SWWW
+After=swww.service
+
+[Service]
+ExecStart=/bin/bash %h/.dotfiles/bin/swww.sh
+
+[Install]
+WantedBy=default.target
