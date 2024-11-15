@@ -6,7 +6,6 @@ hypridle
 hyprland
 hyprlang
 hyprlock
-hyprpaper
 hyprpicker
 hyprshot
 hyprutils
@@ -18,6 +17,7 @@ qt5-wayland
 qt6-wayland
 swappy
 swayosd-git
+swww
 tela-circle-icon-theme-dracula
 wofi
 xdg-desktop-portal-hyprland
