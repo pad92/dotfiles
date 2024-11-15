@@ -5,22 +5,22 @@
 *
 */
 
-@define-color base00 #263238;
-@define-color base01 #2e3c43;
-@define-color base02 #314549;
-@define-color base03 #546e7a;
-@define-color base04 #b2ccd6;
-@define-color base05 #eeffff;
-@define-color base06 #eeffff;
-@define-color base07 #ffffff;
-@define-color base08 #f07178;
-@define-color base09 #f78c6c;
-@define-color base0A #ffcb6b;
-@define-color base0B #c3e88d;
-@define-color base0C #89ddff;
-@define-color base0D #82aaff;
-@define-color base0E #c792ea;
-@define-color base0F #ff5370;
+@define-color base00 rgba(38, 50, 56, 0.5);
+@define-color base01 rgba(46, 60, 67, 1);
+@define-color base02 rgba(49, 69, 73, 1);
+@define-color base03 rgba(84, 110, 122, 1);
+@define-color base04 rgba(178, 204, 214, 1);
+@define-color base05 rgba(238, 255, 255, 1);
+@define-color base06 rgba(238, 255, 255, 1);
+@define-color base07 rgba(255, 255, 255, 1);
+@define-color base08 rgba(240, 113, 120, 1);
+@define-color base09 rgba(247, 140, 108, 1);
+@define-color base0A rgba(255, 203, 107, 1);
+@define-color base0B rgba(195, 232, 141, 1);
+@define-color base0C rgba(137, 221, 255, 1);
+@define-color base0D rgba(130, 170, 255, 1);
+@define-color base0E rgba(199, 146, 234, 1);
+@define-color base0F rgba(255, 83, 112, 1);
 
 * {
   border: none;
@@ -39,10 +39,9 @@ window#waybar {
 #workspaces button {
   box-shadow: none;
   text-shadow: none;
-  padding: 0px;
-  margin: 0px;
-  padding-left: 3px;
-  padding-right: 3px;
+  padding: 0 5px;
+  margin: 0 0px;
+  border-bottom: 3px solid;
   background-color: @base00;
   animation: ws_normal 20s ease-in-out 1;
 }
