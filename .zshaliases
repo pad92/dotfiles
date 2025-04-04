@@ -4,24 +4,24 @@ alias openssl_s_client_date='f() { openssl s_client -connect $1:443 </dev/null |
 
 # Docker
 ## Ansible
-if [ $(command -v docker) ]; then
-  alias ansible-sh='docker run -it --rm \
-          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
-          -v ${PWD}:/ansible \
-          -e SSH_AUTH_SOCK=/ssh-agent \
-          cloudtempleinfra/ansible-alpine:latest sh'
-  alias ansible-sh-2.10.7-2='docker run -it --rm \
-          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
-          -v ${PWD}:/ansible \
-          -v /etc/ca-certificates/trust-source/anchors:/usr/local/share/ca-certificates:ro \
-          -e SSH_AUTH_SOCK=/ssh-agent \
-          pad92/ansible-alpine:2.10.7-2 sh'
-  alias ansible-playbook='docker run -it --rm \
-          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
-          -v ${PWD}:/ansible \
-          -e SSH_AUTH_SOCK=/ssh-agent \
-          pad92/ansible-alpine:latest ansible-playbook'
-fi
+#if [ $(command -v docker) ]; then
+#  alias ansible-sh='docker run -it --rm \
+#          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+#          -v ${PWD}:/ansible \
+#          -e SSH_AUTH_SOCK=/ssh-agent \
+#          cloudtempleinfra/ansible-alpine:latest sh'
+#  alias ansible-sh-2.10.7-2='docker run -it --rm \
+#          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+#          -v ${PWD}:/ansible \
+#          -v /etc/ca-certificates/trust-source/anchors:/usr/local/share/ca-certificates:ro \
+#          -e SSH_AUTH_SOCK=/ssh-agent \
+#          pad92/ansible-alpine:2.10.7-2 sh'
+#  alias ansible-playbook='docker run -it --rm \
+#          -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+#          -v ${PWD}:/ansible \
+#          -e SSH_AUTH_SOCK=/ssh-agent \
+#          pad92/ansible-alpine:latest ansible-playbook'
+#fi
 
 # Arch
 ## remove orphans

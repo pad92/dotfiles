@@ -5,6 +5,7 @@ export PAGER=less
 export ELECTRON_TRASH=gio
 export TERM="xterm-256color"
 export GPG_TTY=$(tty)
+export BROWSER=firefox
 
 # PIP
 export PATH="${HOME}/.local/bin:${PATH}"
