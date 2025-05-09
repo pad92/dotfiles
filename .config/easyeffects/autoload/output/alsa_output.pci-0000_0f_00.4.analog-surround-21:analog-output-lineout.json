@@ -1,0 +1,6 @@
+{
+    "device": "alsa_output.pci-0000_0f_00.4.analog-surround-21",
+    "device-description": "Starship/Matisse HD Audio Controller Analog Surround 2.1",
+    "device-profile": "analog-output-lineout",
+    "preset-name": "Perfect EQ"
+}
