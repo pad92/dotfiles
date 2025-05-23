@@ -5,6 +5,13 @@ docker-compose
 firefox-i18n-en-us
 firefox-i18n-fr
 fwupd
+gst-libav
+gst-plugins-bad
+gst-plugins-base
+gst-plugins-good
+gst-plugins-ugly
+gstreamer
+gstreamer-vaapi
 p7zip
 spotify
 telegram-desktop
