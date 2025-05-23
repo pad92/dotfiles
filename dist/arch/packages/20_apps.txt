@@ -5,7 +5,6 @@ docker-compose
 firefox-i18n-en-us
 firefox-i18n-fr
 fwupd
-google-chrome
 p7zip
 spotify
 spotifywm-git
@@ -13,4 +12,6 @@ telegram-desktop
 terraform
 vlc
 vscodium-bin
+vscodium-bin-features
+vscodium-bin-marketplace
 wget
