@@ -7,7 +7,6 @@ firefox-i18n-fr
 fwupd
 p7zip
 spotify
-spotifywm-git
 telegram-desktop
 terraform
 vlc
