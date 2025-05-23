@@ -14,9 +14,5 @@ polkit-gnome
 python-i3ipc
 redshift
 rofi
-thunar
-thunar-archive-plugin
-thunar-media-tags-plugin
-thunar-volman
 xautolock
 xcompmgr
