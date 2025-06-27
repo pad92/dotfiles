@@ -1,6 +1,9 @@
 {
     "input": {
-        "blocklist": [],
+        "blocklist": [
+            "Echo Cancellation Capture",
+            "input.filter-chain-37571-30"
+        ],
         "compressor#0": {
             "attack": 5.0,
             "boost-amount": 6.0,
@@ -32,6 +35,14 @@
             "threshold": -20.0,
             "wet": 0.0
         },
+        "deepfilternet#0": {
+            "attenuation-limit": 100.0,
+            "max-df-processing-threshold": 20.0,
+            "max-erb-processing-threshold": 30.0,
+            "min-processing-buffer": 0,
+            "min-processing-threshold": -10.0,
+            "post-filter-beta": 0.02
+        },
         "deesser#0": {
             "bypass": false,
             "detection": "RMS",
@@ -48,6 +59,14 @@
             "ratio": 5.0,
             "sc-listen": false,
             "threshold": -20.0
+        },
+        "echo_canceller#0": {
+            "bypass": false,
+            "filter-length": 100,
+            "input-gain": 0.0,
+            "near-end-suppression": -70,
+            "output-gain": 0.0,
+            "residual-echo-suppression": -70
         },
         "equalizer#0": {
             "balance": 0.0,
@@ -225,7 +244,9 @@
             "threshold": -1.0
         },
         "plugins_order": [
+            "echo_canceller#0",
             "rnnoise#0",
+            "deepfilternet#0",
             "gate#0",
             "deesser#0",
             "compressor#0",
@@ -237,7 +258,7 @@
             "bypass": false,
             "enable-vad": false,
             "input-gain": 0.0,
-            "model-path": "",
+            "model-name": "",
             "output-gain": 0.0,
             "release": 20.0,
             "vad-thres": 50.0,
@@ -246,8 +267,8 @@
         "speex#0": {
             "bypass": false,
             "enable-agc": false,
-            "enable-denoise": false,
-            "enable-dereverb": false,
+            "enable-denoise": true,
+            "enable-dereverb": true,
             "input-gain": 0.0,
             "noise-suppression": -70,
             "output-gain": 0.0,
