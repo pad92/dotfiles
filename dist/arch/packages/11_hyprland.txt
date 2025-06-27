@@ -16,7 +16,7 @@ nwg-look
 qt5-wayland
 qt6-wayland
 swappy
-swayosd-git
+swayosd
 swww
 tela-circle-icon-theme-dracula
 wofi
