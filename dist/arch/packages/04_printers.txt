@@ -6,4 +6,5 @@ foomatic-db-nonfree
 foomatic-db-nonfree-ppds
 foomatic-db-ppds
 gutenprint
+samsung-unified-driver
 system-config-printer
