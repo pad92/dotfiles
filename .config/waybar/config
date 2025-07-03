@@ -76,8 +76,6 @@
 
 
   "temperature": {
-    //"thermal-zone": 11,
-    //"hwmon-path": ["/sys/class/hwmon/hwmon3/temp1_input"],
 		"hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",
 		"input-filename": "temp2_input",
     "critical-threshold": 80,
@@ -113,11 +111,12 @@
     "format-no-controller": ""
   },
   "network": {
-    "format": "{ifname}",
-    "format-wifi": " {essid}",
+    "format": " {bandwidthDownBits}  {bandwidthUpBits} ",
+    "format-wifi": " {essid} ({signalStrength}%) {bandwidthDownBits}  {bandwidthUpBits} ",
     "format-ethernet": "",
-    "format-disconnected": "󰖪 No Network",
-    "tooltip": false
+    "format-disconnected": "",
+    "tooltip": false,
+    "max-length": 50
   },
   "pulseaudio": {
     "format": "{volume}% {icon}",
