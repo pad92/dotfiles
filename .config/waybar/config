@@ -111,11 +111,12 @@
     "format-no-controller": ""
   },
   "network": {
-    "format": " {bandwidthDownBits}  {bandwidthUpBits} ",
-    "format-wifi": " {essid} ({signalStrength}%) {bandwidthDownBits}  {bandwidthUpBits} ",
-    "format-ethernet": "",
+    "format-wifi": "",
+    "format-ethernet": "",
+    "tooltip-format": "{bandwidthDownBits}  {bandwidthUpBits}  {essid} ({signalStrength}%)",
+    "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "",
-    "tooltip": false,
+    "format-alt": "{ifname}: {ipaddr}/{cidr}",
     "max-length": 50
   },
   "pulseaudio": {
