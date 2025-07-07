@@ -11,3 +11,4 @@ swayidle
 swaylock-effects
 waybar
 wl-clipboard
+wttrbar

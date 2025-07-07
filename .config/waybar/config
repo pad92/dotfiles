@@ -20,9 +20,17 @@
     "memory",
     "backlight",
     "battery",
+    "custom/weather",
     "tray"
   ],
 
+  "custom/weather": {
+      "format": "{}°",
+      "tooltip": true,
+      "interval": 3600,
+      "exec": "wttrbar --date-format \"%m/%d\" --lang fr --location Aubenas --hide-conditions",
+      "return-type": "json"
+  },
   "wlr/taskbar": {
     "format": "{icon}",
     "rotate": 0,
