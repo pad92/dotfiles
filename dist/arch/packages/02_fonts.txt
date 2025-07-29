@@ -1,5 +1,5 @@
+otf-font-awesome
 terminus-font
-ttf-font-awesome
 ttf-google-fonts-git
 ttf-inconsolata
 ttf-inconsolata-nerd
@@ -8,3 +8,4 @@ ttf-jetbrains-mono-nerd
 ttf-meslo-nerd
 ttf-sourcecodepro-nerd
 ttf-ubuntu-font-family
+woff2-font-awesome
