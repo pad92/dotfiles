@@ -11,7 +11,6 @@ bluez-utils
 c-ares
 cifs-utils
 downgrade
-easyeffects
 exo
 fastfetch
 ffmpeg-compat-57
