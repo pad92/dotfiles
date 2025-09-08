@@ -1,7 +1,7 @@
 #!/bin/sh
 . /etc/os-release
 
-BACKUP_DIR="/mnt/pads918/home/backup"
+BACKUP_DIR="/mnt/pads918/backups"
 HOSTNAME="$(hostnamectl hostname)"
 
 BASEDIR=$(dirname "$0")
