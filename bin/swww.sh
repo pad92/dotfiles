@@ -6,6 +6,7 @@ export SWWW_TRANSITION_STEP=2
 
 # Get the names of all monitors.
 MONITORS=$(swww query | grep -Po "^[^:]+")
+MONITORS=$(swww query | sed -E 's/^: ([^:]+):.*/\1/')
 
 for MONITOR in $MONITORS; do
   # Find a random image file in the wallpaper directory.
