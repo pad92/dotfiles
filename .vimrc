@@ -14,7 +14,6 @@ Plugin 'morhetz/gruvbox'
 Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
 Plugin 'chrisbra/colorizer'
 Plugin 'editorconfig/editorconfig-vim'
-Plugin 'terminalnode/sway-vim-syntax'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
