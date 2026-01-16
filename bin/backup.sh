@@ -13,7 +13,7 @@ source /etc/os-release
 CURRENT_HOSTNAME="$(hostnamectl hostname)"
 REMOTE_HOST="pads918.home.lan"
 REMOTE_USER="$(whoami)"
-REMOTE_BASE_PATH="/volume1/NetBackup/PadsTower/home/pascal/${CURRENT_HOSTNAME}"
+REMOTE_BASE_PATH="/volume1/NetBackup/${CURRENT_HOSTNAME}/"
 
 SSH_KEY="${HOME}/.ssh/id_rsa"
 [ ! -f "$SSH_KEY" ] && SSH_KEY="${HOME}/.ssh/id_ed25519"
