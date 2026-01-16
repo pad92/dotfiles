@@ -113,7 +113,7 @@ manage_diffs
 
 START=$(date +%s)
 
-perform_rsync "${HOME}/" "home"
+perform_rsync "${HOME}/" "home/${REMOTE_USER}"
 perform_rsync "/etc/" "etc"
 
 FINISH=$(date +%s)
