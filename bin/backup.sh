@@ -1,75 +1,120 @@
-#!/bin/sh
-. /etc/os-release
+#!/bin/bash
+set -euo pipefail
 
-BACKUP_DIR="/mnt/pads918/backups"
-HOSTNAME="$(hostnamectl hostname)"
+# --- Gestion de l'option Verbose ---
+VERBOSE=false
+if [[ "${1:-}" == "-v" || "${1:-}" == "--verbose" ]]; then
+    VERBOSE=true
+fi
 
-BASEDIR=$(dirname "$0")
+# --- Configuration ---
+source /etc/os-release
+
+CURRENT_HOSTNAME="$(hostnamectl hostname)"
+REMOTE_HOST="pads918.home.lan"
+REMOTE_USER="$(whoami)"
+REMOTE_BASE_PATH="/volume1/NetBackup/PadsTower/home/pascal/${CURRENT_HOSTNAME}"
+
+SSH_KEY="${HOME}/.ssh/id_rsa"
+[ ! -f "$SSH_KEY" ] && SSH_KEY="${HOME}/.ssh/id_ed25519"
+
+BASEDIR=$(dirname "$(readlink -f "$0")")
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
-RSYNC_OPTS='--force --archive --perms --xattrs --safe-links --no-specials --no-devices --no-links --delete --delete-excluded --info=progress2,name0,stats2'
-SUDO_OPTS='-s'
-#if [ ! -d "${BACKUP_DIR}/${HOSTNAME}${HOME}/" ]; then
-#  echo "create ${BACKUP_DIR}/${HOSTNAME}${HOME}/"
-#  sudo mkdir -p "${BACKUP_DIR}/${HOSTNAME}${HOME}/"
-#fi
-PKGLIST_OLD="$(ls -1 ${BASEDIR}/../dist/${ID}/pkglist-*.txt 2> /dev/null | tail -1)"
-PKGLIST_CURRENT="${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}-${ID}.txt"
 
+# Chemins des listes de paquets
+DIST_DIR="${BASEDIR}/../dist/${ID}"
+mkdir -p "${DIST_DIR}"
+PKGLIST_OLD="$(ls -1 "${DIST_DIR}"/pkglist-*.txt 2> /dev/null | tail -1 || true)"
+PKGLIST_CURRENT="${DIST_DIR}/pkglist-${TIMESTAMP}-${ID}.txt"
+
+# --- Options Rsync Dynamiques ---
+RSYNC_OPTS=(
+    --force --archive --perms --xattrs --safe-links
+    --no-specials --no-devices --no-links
+    --delete --delete-excluded
+    -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new"
+)
+
+if [ "$VERBOSE" = true ]; then
+    # Mode détaillé : affiche les fichiers modifiés et leurs détails (taille, date, etc.)
+    RSYNC_OPTS+=(--info=progress2,name1,stats2 --itemize-changes)
+else
+    # Mode discret : affiche seulement la progression globale
+    RSYNC_OPTS+=(--info=progress2,name0,stats2)
+fi
+
+# Couleurs
 C_ORANGE='\033[0;33m'
 C_GREEN='\033[0;32m'
-C_NC='\033[0m' # No Color
+C_RED='\033[0;31m'
+C_NC='\033[0m'
 
-[ -z "${ID_LIKE}" ] && ID_LIKE="${ID}"
+log() { printf "${2:-$C_NC}${1}${C_NC}\n"; }
 
-case $ID_LIKE in
-  arch)
-    ORPHAN=$(pacman -Qtdq)
+# --- Maintenance OS ---
+manage_packages() {
+    local id_check="${ID_LIKE:-$ID}"
+    log "Vérification des paquets ($id_check)..." "$C_ORANGE"
+    case "$id_check" in
+        *arch*)
+            orphans=$(pacman -Qtdq) || true
+            if [ -n "$orphans" ]; then
+                log "Suppression des orphelins..." "$C_ORANGE"
+                yay -Rns $orphans --noconfirm
+            fi
+            yay -Scc --noconfirm
+            pacman -Qqe | awk '{print $1}' > "${PKGLIST_CURRENT}"
+            ;;
+        *debian*)
+            sudo apt autoremove --purge -y
+            dpkg --get-selections '*' > "${PKGLIST_CURRENT}"
+            ;;
+    esac
+}
 
-    if [ -n "${ORPHAN}" ]; then
-      echo "Remove orphans"
-      yay -Rs $(pacman -Qtdq)
+manage_diffs() {
+    if [ -n "${PKGLIST_OLD}" ] && [ -s "${PKGLIST_OLD}" ]; then
+        local diff_file="${DIST_DIR}/pkglist-${TIMESTAMP}.diff"
+        diff -U 0 "${PKGLIST_OLD}" "${PKGLIST_CURRENT}" > "${diff_file}" || true
+        [ -s "${diff_file}" ] && { log "Changements paquets :" "$C_ORANGE"; cat "${diff_file}"; } || rm -f "${diff_file}"
+        rm -f "${PKGLIST_OLD}"
     fi
+}
 
-    yay -Scc --noconfirm
+# --- Fonction de Backup ---
+perform_rsync() {
+    local src="$1"
+    local subfolder="$2"
+    local full_dest_path="${REMOTE_BASE_PATH}/${subfolder}"
 
-    pacman -Qqe | awk '{print $1}' | tee -a ${PKGLIST_CURRENT} 1> /dev/null
+    log "--- Syncing $src to ${REMOTE_HOST}:${full_dest_path} ---" "$C_ORANGE"
 
-    ;;
-  debian)
-    sudo apt autoremove --purge
-    dpkg --get-selections '*' | tee -a ${PKGLIST_CURRENT} 1> /dev/null
+    # Création du dossier distant
+    ssh -i "$SSH_KEY" "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p \"${full_dest_path}\""
 
-    ;;
+    # Compilation des exclusions
+    {
+        [ -f "${HOME}/.no_backup.txt" ] && cat "${HOME}/.no_backup.txt"
+        ls ${HOME}/.dotfiles/dist/*_excludes.txt 2>/dev/null | xargs cat 2>/dev/null || true
+    } | sudo rsync "${RSYNC_OPTS[@]}" \
+        --exclude-from=- \
+        "${src}" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/"
+}
 
-  *)
-    echo "unknown"
+# --- Exécution ---
+
+if ! ping -c 1 -W 2 "$REMOTE_HOST" > /dev/null; then
+    log "ERREUR: $REMOTE_HOST injoignable." "$C_RED"
     exit 1
-    ;;
-esac
-
-if [ -s "${PKGLIST_OLD}" ]; then
-  diff -U 0 "${PKGLIST_OLD}" "${PKGLIST_CURRENT}" > "${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}.diff"
-  if [ -s "${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}.diff" ]; then
-    cat "${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}.diff"
-  else
-    rm -f "${BASEDIR}/../dist/${ID}/pkglist-${TIMESTAMP}.diff"
-  fi
-  rm -f "${PKGLIST_OLD}"
 fi
+
+manage_packages
+manage_diffs
 
 START=$(date +%s)
 
-[ ! -f "${HOME}/.no_backup.txt" ] && touch "${HOME}/.no_backup.txt"
-
-printf "${C_ORANGE}Syncing ~/ to ${BACKUP_DIR}/${HOSTNAME}${HOME}${C_NC}\n"
-sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} ${HOME}/ ${BACKUP_DIR}/${HOSTNAME}${HOME}/ --delete-excluded --exclude-from=- <<- EOF
-$(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
-EOF
-
-printf "${C_ORANGE}Syncing /etc to ${BACKUP_DIR}/${HOSTNAME}/etc${C_NC}\n"
-sudo ${SUDO_OPTS} rsync ${RSYNC_OPTS} /etc/ ${BACKUP_DIR}/${HOSTNAME}/etc/ --delete-excluded --exclude-from=- <<- EOF
-$(cat ${HOME}/.no_backup.txt ${HOME}/.dotfiles/dist/*_excludes.txt)
-EOF
+perform_rsync "${HOME}/" "home"
+perform_rsync "/etc/" "etc"
 
 FINISH=$(date +%s)
-printf "${C_GREEN}rsync total time: $((($FINISH - $START) / 60)) minutes, $((($FINISH - $START) % 60)) seconds${C_NC}\n"
+log "Backup terminé en $(((FINISH - START) / 60))m $(((FINISH - START) % 60))s" "$C_GREEN"
