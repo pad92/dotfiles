@@ -20,6 +20,7 @@ swayosd
 swww
 tela-circle-icon-theme-dracula
 waybar
+wlogout
 wofi
 wttrbar
 xdg-desktop-portal-hyprland
