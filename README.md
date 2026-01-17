@@ -16,11 +16,10 @@ exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/back
 
 ## i3
 
-![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot-i3.png)
+![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/main/dist/arch/screenshot-i3.png)
 
 ## sway
-
-![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/arch/screenshot-sway.png)
+![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/main/dist/arch/screenshot-sway.png)
 
 # Install Dotfile
 
@@ -32,18 +31,18 @@ git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 ## Install only VIM
 
 ```sh
-curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/master/vim.sh | sh
+curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
 ```
 
 # ArchLinux
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/master/dist/arch/install.md)
-- [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/tree/master/dist/arch/packages/)
+- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/main/dist/arch/install.md)
+- [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/tree/main/dist/arch/packages/)
 
 # Ubuntu
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfiles/-/raw/master/dist/ubuntu/install.sh)
+- [install.md](https://gitlab.com/pad92/dotfiles/-/raw/main/dist/ubuntu/install.sh)
