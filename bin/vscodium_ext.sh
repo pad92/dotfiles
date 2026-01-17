@@ -2,30 +2,31 @@
 
 # List of extensions to install (as a space-separated string for sh compatibility)
 extensions="
-EditorConfig.EditorConfig
-Gruntfuggly.todo-tree
 aaron-bond.better-comments
-alefragnani.Bookmarks
+alefragnani.bookmarks
 alefragnani.project-manager
 be5invis.vscode-icontheme-nomo-dark
 budparr.language-hugo-vscode
 chrmarti.regex
-coolbear.systemd-unit-file
+continue.continue
 docker.docker
 eamodio.gitlens
 earshinov.sort-lines-by-selection
+editorconfig.editorconfig
 esbenp.prettier-vscode
+gruntfuggly.todo-tree
 hashicorp.terraform
 jaspernorth.vscode-pigments
 mkhl.shfmt
+ms-azuretools.vscode-containers
 ms-azuretools.vscode-docker
 ms-python.debugpy
 ms-python.python
 ms-python.vscode-pylance
+ms-python.vscode-python-envs
 ms-vscode-remote.remote-containers
 ms-vscode-remote.remote-ssh
 ms-vscode-remote.remote-ssh-edit
-ms-vscode-remote.remote-wsl
 ms-vscode.powershell
 ms-vscode.remote-explorer
 nonoroazoro.syncing
