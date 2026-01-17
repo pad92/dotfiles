@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-01-17
+### Added
+- Added changelog generation functionality
+- Added wlogout configuration
+- Added new package management features
+- Added support for newer Hyprland features
+
+### Changed
+- Updated to latest configuration
+- Enhanced Waybar and status bar configurations
+- Improved package installation scripts
+- Updated keybinding configurations
+- Updated font settings
+- Improved themes and color schemes
+
+### Fixed
+- Fixed waybar temperature display
+- Resolved network status formatting issues
+- Fixed various stability issues
+- Fixed configuration bugs in status bars
+- Fixed package installation inconsistencies
+- Fixed DST-related issues
+- Fixed wallpaper rotation and display issues
+
 ## [v5.0.0] - 2026-01-17
 ### Changed
 - Updated to latest configuration
