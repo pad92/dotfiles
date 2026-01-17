@@ -30,7 +30,7 @@ PKGLIST_CURRENT="${DIST_DIR}/pkglist-${TIMESTAMP}-${ID}.txt"
 # --- Options Rsync Dynamiques ---
 RSYNC_OPTS=(
     --force --archive --perms --xattrs --safe-links
-    --no-specials --no-devices --no-links
+    --no-specials --no-devices
     --delete --delete-excluded
     -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new"
 )

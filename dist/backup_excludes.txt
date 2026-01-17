@@ -254,3 +254,4 @@ Temporary Items
 terraform.rc
 Thumbs.db
 Thumbs.db:encryptable
+WebStorage
