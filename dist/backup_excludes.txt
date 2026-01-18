@@ -123,8 +123,7 @@
 .local/share/org.kde.gwenview/recentfolders
 .local/share/RecentDocuments
 .local/share/spotify-launcher
-.local/share/Steam/steamapps/common
-.local/share/Steam/steamapps/shadercache
+.local/share/Steam
 .local/share/torbrowser
 .local/share/tracker
 .local/share/Trash
@@ -239,6 +238,7 @@
 /snap/riot-web/
 /Trash
 \$RECYCLE.BIN/
+cache
 crash.*.log
 crash.log
 ehthumbs_vista.db
