@@ -11,6 +11,7 @@ hyprshot
 hyprutils
 hyprwayland-scanner
 kitty
+noto-fonts-emoji
 nwg-displays
 nwg-look
 qt5-wayland
@@ -21,6 +22,7 @@ swww
 tela-circle-icon-theme-dracula
 waybar
 wlogout
+woff2-font-awesome
 wofi
 wttrbar
 xdg-desktop-portal-hyprland
