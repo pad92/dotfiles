@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-01-17
+## [v5.1.0] - 2026-01-17
 ### Added
 - Added changelog generation functionality ([f78b794](https://gitlab.com/pad92/dotfiles/-/commit/f78b794))
 - Added wlogout configuration ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - Added support for newer Hyprland features ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
 
 ### Changed
+- Update submodule, add missing fonts ([3934888](https://gitlab.com/pad92/dotfiles/-/commit/3934888))
+- Update extension list ([406d7b9](https://gitlab.com/pad92/dotfiles/-/commit/406d7b9))
+- Backup symlink and ignore WebStorage directory ([e07edff](https://gitlab.com/pad92/dotfiles/-/commit/e07edff))
 - Updated to latest configuration ([f78b794](https://gitlab.com/pad92/dotfiles/-/commit/f78b794))
 - Enhanced Waybar and status bar configurations ([0a39607](https://gitlab.com/pad92/dotfiles/-/commit/0a39607))
 - Improved package installation scripts ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
@@ -18,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Improved themes and color schemes ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
 
 ### Fixed
+- Fix flags ([a399fa3](https://gitlab.com/pad92/dotfiles/-/commit/a399fa3))
 - Fixed waybar temperature display ([11e7a22](https://gitlab.com/pad92/dotfiles/-/commit/11e7a22))
 - Resolved network status formatting issues ([6a094de](https://gitlab.com/pad92/dotfiles/-/commit/6a094de))
 - Fixed various stability issues ([25f0cad](https://gitlab.com/pad92/dotfiles/-/commit/25f0cad))
