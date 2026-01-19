@@ -1,7 +1,8 @@
 ---
+default_install_hook_types: ["pre-commit", "commit-msg"]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       # syntax check
@@ -23,13 +24,13 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: [-c, .config/yamllint/config]
 
   - repo: https://github.com/JohnnyMorganz/StyLua
-    rev: v0.20.0
+    rev: v2.3.1
     hooks:
       - id: stylua-github
         args: [--config-path, .config/nvim/stylua.toml]
@@ -41,7 +42,7 @@ repos:
         exclude: ".config/nvim/lazy-lock.json"
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1.26.0
+    rev: v1
     hooks:
       - id: typos
 
@@ -52,11 +53,11 @@ repos:
         exclude: ".config/nvim/lazy-lock.json"
 
   - repo: https://github.com/zricethezav/gitleaks
-    rev: v8.20.1
+    rev: v8.30.0
     hooks:
       - id: gitleaks
 
   - repo: https://github.com/sirwart/ripsecrets
-    rev: v0.1.8
+    rev: v0.1.11
     hooks:
       - id: ripsecrets

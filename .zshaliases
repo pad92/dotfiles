@@ -40,6 +40,10 @@ if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
   }
 fi
 
+if [ $(command -v tofu) ]; then
+    alias terraform="tofu"
+fi
+
 ## get fastest mirrors
 if [ $(command -v reflector) ]; then
   alias mirror="sudo reflector -p https -c FR --latest 20 --fastest 20              --verbose --save /etc/pacman.d/mirrorlist"
@@ -136,7 +140,7 @@ function extract {
   fi
 }
 
-# Lsmod all with pararms
+# Lsmod all with params
 function lsmodp {
     cat /proc/modules | cut -f 1 -d " " | while read module; do
         echo "Module: $module"
