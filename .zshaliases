@@ -27,6 +27,17 @@ alias openssl_s_client_date='f() { openssl s_client -connect $1:443 </dev/null |
 ## remove orphans
 if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
   function clean_arch {
+    # Validate that required commands exist
+    if ! command -v pacman &> /dev/null; then
+      echo "Error: pacman could not be found"
+      return 1
+    fi
+
+    if ! command -v yay &> /dev/null; then
+      echo "Error: yay could not be found"
+      return 1
+    fi
+
     ORPHAN=$(pacman -Qtdq)
 
     if [ -n "${ORPHAN}" ]; then
@@ -34,7 +45,22 @@ if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
       sudo pacman -Rns $(pacman -Qtdq)
     fi
     yay -Scc --noconfirm
-    sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null
+    echo "Checking for .pacnew, .pacsave, and .pacorig files..."
+    PACNEW_FILES=$(sudo find /etc -regextype posix-extended -regex ".*\.pac(new|save|orig)$" 2> /dev/null)
+    if [ -n "$PACNEW_FILES" ]; then
+      echo "Found the following configuration files that need attention:"
+      echo "$PACNEW_FILES"
+      echo ""
+      echo "To compare each file with vimdiff:"
+      echo "for file in $(echo $PACNEW_FILES | tr '\n' ' '); do"
+      echo "  if [ -f \"\${file%.pacnew}\" ]; then"
+      echo "    echo \"Comparing \${file%.pacnew} with \${file}\""
+      echo "    vim -d \"\${file%.pacnew}\" \"\$file\""
+      echo "  fi"
+      echo "done"
+    else
+      echo "No .pacnew, .pacsave, or .pacorig files found."
+    fi
     paccache -ruk0
     paccache -rk1
   }
@@ -46,34 +72,98 @@ fi
 
 ## get fastest mirrors
 if [ $(command -v reflector) ]; then
-  alias mirror="sudo reflector -p https -c FR --latest 20 --fastest 20              --verbose --save /etc/pacman.d/mirrorlist"
-  alias mirrord="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort delay --verbose --save /etc/pacman.d/mirrorlist"
-  alias mirrors="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort score --verbose --save /etc/pacman.d/mirrorlist"
-  alias mirrora="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort age   --verbose --save /etc/pacman.d/mirrorlist"
+  function mirror() {
+    # Validate that required command exists
+    if ! command -v reflector &> /dev/null; then
+      echo "Error: reflector could not be found"
+      return 1
+    fi
+
+    local sort_type="$1"
+    local cmd=""
+
+    case "$sort_type" in
+      "delay")
+        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort delay --verbose --save /etc/pacman.d/mirrorlist"
+        ;;
+      "score")
+        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort score --verbose --save /etc/pacman.d/mirrorlist"
+        ;;
+      "age")
+        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort age --verbose --save /etc/pacman.d/mirrorlist"
+        ;;
+      *)
+        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --verbose --save /etc/pacman.d/mirrorlist"
+        ;;
+    esac
+
+    eval "$cmd"
+  }
+
+  alias mirror="mirror"
+  alias mirrord="mirror delay"
+  alias mirrors="mirror score"
+  alias mirrora="mirror age"
 fi
 
 ## Update
 function arch_update {
+    # Validate that required command exists
+    if ! command -v yay &> /dev/null; then
+      echo "Error: yay could not be found"
+      return 1
+    fi
+
+    echo "Updating system..."
     yay -Syu --devel
-    clean_arch
-    if [ $(command -v flatpak) ]; then
-        flatpak update -y
-        flatpak uninstall --unused -y
+
+    # Check if yay command succeeded before continuing
+    if [ $? -eq 0 ]; then
+        echo "Yay update completed successfully"
+        clean_arch
+
+        # Update firmware if fwupdmgr is available
+        if command -v fwupdmgr &> /dev/null; then
+            echo "Checking for firmware updates..."
+            fwupdmgr refresh
+            if [ $? -eq 0 ]; then
+                echo "Firmware refresh completed successfully"
+                fwupdmgr update -y
+            else
+                echo "Warning: Firmware refresh failed"
+            fi
+        else
+          echo 'fwupdmgr not found'
+        fi
+
+        if [ $(command -v flatpak) ]; then
+            echo "Updating flatpak packages..."
+            flatpak update -y
+            flatpak uninstall --unused -y
+        fi
+    else
+        echo "Yay update failed, skipping subsequent steps"
     fi
 }
 
 # Tools
 ## youtube-dl
 if [ $(command -v youtube-dl) ]; then
-  alias yta-aac="youtube-dl --extract-audio --audio-format aac "
-  alias yta-best="youtube-dl --extract-audio --audio-format best "
-  alias yta-flac="youtube-dl --extract-audio --audio-format flac "
-  alias yta-m4a="youtube-dl --extract-audio --audio-format m4a "
-  alias yta-mp3="youtube-dl --extract-audio --audio-format mp3 "
-  alias yta-opus="youtube-dl --extract-audio --audio-format opus "
-  alias yta-vorbis="youtube-dl --extract-audio --audio-format vorbis "
-  alias yta-wav="youtube-dl --extract-audio --audio-format wav "
-  alias ytv-best="youtube-dl -f bestvideo+bestaudio "
+  function yta() {
+    local format="$1"
+    shift
+    youtube-dl --extract-audio --audio-format "$format" "$@"
+  }
+
+  alias yta-aac="yta aac"
+  alias yta-best="yta best"
+  alias yta-flac="yta flac"
+  alias yta-m4a="yta m4a"
+  alias yta-mp3="yta mp3"
+  alias yta-opus="yta opus"
+  alias yta-vorbis="yta vorbis"
+  alias yta-wav="yta wav"
+  alias ytv-best="youtube-dl -f bestvideo+bestaudio"
 fi
 
 ## Backup
