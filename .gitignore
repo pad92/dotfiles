@@ -1,19 +1,201 @@
+# Local/OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+._*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# System files
+.core
+*.core
+*.log
+*.bak
+*.old
+*.orig
+*.rej
+*.diff
+
+# Editor files
 .vim/.netrwhist
 .vim/backup
 .vim/swap
-.fonts/.uuid
+.vim/view
+.vim/session
+.vim/tags
+.vim/undo
+.vim/autoload/plug.vim
 .vim/bundle/*
 .vim/bundle/.vundle
 !.vim/bundle/Vundle.vim/*
 .tmux/plugins/*
 !.tmux/plugins/tpm/*
 
+# Config files that may contain secrets or be system-specific
 .config/nitrogen/bg-saved.cfg
 .config/gtk-3.0/bookmarks
 .config/gtk-3.0/servers
 .config/sway/config.d/outputs/*.conf
+.config/rofi/*.cache
+.config/rofi/*.rasi.cache
 
+# Package manager files
+.node_modules
+.npm
+.bower_components
+.bundle
+*.gem
+*.egg-info
+dist
+build
+*.egg
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific directories
+.cache
+.local/share/Trash
+.local/share/applications/mimeapps.list
+.var/cache
+
+# Generated files
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Dotfiles specific
+.config/hypr/*.cache
+.config/hypr/*.log
+.config/waybar/state
+.config/waybar/*.cache
+.config/wlogout/*.cache
+
+# Vim-related
+.viminfo
+.vimrc.before
+.vimrc.after
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+.coverage.*
+.nox/
+.pylintrc
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ruby
+*.gem
+.bundle/
+Gemfile.lock
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+*.hprof
+
+# C/C++
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dylib
+
+# Rust
+target/
+Cargo.lock
+
+# Haskell
+*.hi
+*.o
+dist-newstyle/
+.stack-work/
+
+# Scala
+target/
+project/target/
+
+# Swift
+.build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcscheme
+
+# Emacs
+*~
+.#*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.fseventsd
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*~
+*.bak
+*.backup
+*.old
+*.orig
+
+# Distribution files
 dist/*/pkglist-*-*.txt
 dist/*/pkglist-*-*.diff
 
+# Hardware specific
 99-nvidia.conf
+
+# User-specific config
+.config/xfce4/panel/launcher-*.desktop
