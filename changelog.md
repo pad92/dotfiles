@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - Improved error handling and validation in shell aliases
 - Updated arch_update function to include firmware updates
 
-## [v5.1.0] - 2026-01-17
+## [v5.1.0] - 2026-01-18
 
 ### Added
 
@@ -50,7 +50,7 @@ All notable changes to this project will be documented in this file.
 - Fixed DST-related issues ([4de5dcd](https://gitlab.com/pad92/dotfiles/-/commit/4de5dcd))
 - Fixed wallpaper rotation and display issues ([608fd5e](https://gitlab.com/pad92/dotfiles/-/commit/608fd5e))
 
-## [v5.0.0] - 2026-01-17
+## [v5.0.0] - 2024-10-06
 
 ### Changed
 
@@ -58,7 +58,7 @@ All notable changes to this project will be documented in this file.
 - Major updates to Hyprland and Sway configurations ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
 - Enhanced Waybar and status bar configurations ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
 
-## [v4.4.1] - 2026-01-17
+## [v4.4.1] - 2024-10-06
 
 ### Fixed
 
@@ -71,7 +71,7 @@ All notable changes to this project will be documented in this file.
 - Updated themes and color schemes ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
 - Improved package management configurations ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
 
-## [v4.4.0] - 2026-01-17
+## [v4.4.0] - 2023-07-13
 
 ### Added
 
@@ -85,7 +85,7 @@ All notable changes to this project will be documented in this file.
 - Improved keybinding configurations ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
 - Updated font settings ([038cb43](https://gitlab.com/pad92/dotfiles/-/commit/038cb43))
 
-## [v4.3.0] - 2026-01-17
+## [v4.3.0] - 2022-07-06
 
 ### Added
 
@@ -99,7 +99,7 @@ All notable changes to this project will be documented in this file.
 - Updated module configurations ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
 - Improved installation process ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
 
-## [v4.2.1] - 2026-01-17
+## [v4.2.1] - 2021-12-12
 
 ### Fixed
 
@@ -107,7 +107,7 @@ All notable changes to this project will be documented in this file.
 - Configuration bugs in status bars ([06a3557](https://gitlab.com/pad92/dotfiles/-/commit/06a3557))
 - Package installation inconsistencies ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
 
-## [v4.2] - 2026-01-17
+## [v4.2] - 2021-12-11
 
 ### Added
 
@@ -121,7 +121,7 @@ All notable changes to this project will be documented in this file.
 - Updated dependency management ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
 - Improved installation scripts ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
 
-## [v4.1] - 2026-01-17
+## [v4.1] - 2021-12-01
 
 ### Added
 
@@ -135,7 +135,7 @@ All notable changes to this project will be documented in this file.
 - Updated status bar modules ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
 - Improved overall stability ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
 
-## [v4.0] - 2026-01-17
+## [v4.0] - 2021-11-24
 
 ### Added
 
@@ -150,7 +150,7 @@ All notable changes to this project will be documented in this file.
 - Updated to latest software versions ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
 - Restructured file organization ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
 
-## [v2.1] - 2026-01-17
+## [v2.1] - 2019-03-17
 
 ### Added
 
@@ -164,7 +164,7 @@ All notable changes to this project will be documented in this file.
 - Updated installation scripts ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
 - Refined status bar layouts ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
 
-## [v2.0] - 2026-01-17
+## [v2.0] - 2019-02-09
 
 ### Added
 
@@ -178,7 +178,7 @@ All notable changes to this project will be documented in this file.
 - Updated keybindings ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
 - Improved module configurations ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
 
-## [v1.0] - 2026-01-17
+## [v1.0] - 2019-02-09
 
 ### Added
 
