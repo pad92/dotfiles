@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Expanded .gitignore patterns for comprehensive file exclusion
 - Added firmware update capabilities to arch_update function
 - Added vimdiff guidance for .pacnew files in clean_arch function
+- Updated Arch Linux installation guide with modern practices and archinstall recommendations
 
 ### Changed
 
