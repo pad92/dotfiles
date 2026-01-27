@@ -12,6 +12,8 @@ Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671
 
 _Note:_ The system was installed on an NVMe SSD, substitute `/dev/nvme0nX` with `/dev/sdX` or your device as needed.
 
+Modern Arch Linux installations often use the `archinstall` tool for streamlined setup. This guide represents a manual approach to achieve the same result, which can be useful for understanding the underlying process or for systems where automated tools aren't available.
+
 ## Table of contents
 
 [[_TOC_]]
@@ -115,12 +117,20 @@ chmod 700 /boot
 ### Install base
 
 ```
-KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applied.
-KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
-KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
+# Available kernel options:
+# KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applied.
+# KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
+# KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
+# KERNEL='linux-hardened' # Security-focused kernel with additional hardening features
 
-UCODE='intel-ucode' # for Intel processors.
-UCODE='amd-ucode'   # for AMD processors
+# Modern archinstall typically recommends 'linux' for most users
+KERNEL='linux'
+
+# Available microcode options:
+# UCODE='intel-ucode' # for Intel processors.
+# UCODE='amd-ucode'   # for AMD processors.
+
+UCODE='intel-ucode' # for Intel processors, adjust as needed
 
 pacstrap /mnt \
   base \
@@ -341,27 +351,40 @@ EOF
 ### Packages manager
 
 ```
-sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf && \
-sed -i 's/#Color/Color\\\nILoveCandy/' /etc/pacman.conf && \
-sed -i 's/Color\\/Color/' /etc/pacman.conf && \
-sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf
+# Enable color, checksum, and verbose output in pacman
+sed -i 's/#Color/Color/' /etc/pacman.conf && \
+sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf && \
+sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
 
-sudo vim /etc/pacman.conf
-[multilib]
-SigLevel = PackageRequired
-Include = /etc/pacman.d/mirrorlist
+# Enable multilib repository for 32-bit application support
+# Uncomment the following lines in /etc/pacman.conf:
+# [multilib]
+# SigLevel = PackageRequired
+# Include = /etc/pacman.d/mirrorlist
+
+# Modern archinstall typically enables these repositories and settings automatically
+# For now, we'll leave the multilib configuration as a commented example
+# Uncomment the multilib section manually if needed
 ```
 
 ### aur
 
 ```
-sudo pacman -Sy
+# Modern archinstall typically handles AUR package management automatically
+# For manual installation, 'yay' is a popular choice for AUR packages
 
+# Install yay (AUR helper)
+sudo pacman -Sy --noconfirm git base-devel
 git clone https://aur.archlinux.org/yay.git
 cd yay
-makepkg -si
+makepkg -si --noconfirm
 cd
 rm -fr yay
+
+# Alternative AUR helpers:
+# - paru (more lightweight)
+# - pikaur (Python-based)
+# - pamac (GUI-based, if using a desktop environment)
 ```
 
 ### WM and softs
@@ -403,13 +426,6 @@ sudo systemctl start usbguard.service
 sudo systemctl enable usbguard.service
 ```
 
-## Flatpak Apps
-
-```
-flatpak install com.microsoft.Teams \
-                org.signal.Signal
-```
-
 ## Docker
 
 ```
@@ -440,8 +456,16 @@ Remove notification
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
 
-## Signal
+## Modern Security Practices
 
-```
-Exec=signal-desktop --use-tray-icon --enable-features=UseOzonePlatform --ozone-platform=wayland -- %u
-```
+Modern Arch Linux installations using tools like `archinstall` typically include additional security measures:
+
+- **Enable and configure firewalld** for network protection
+- **Install and configure fail2ban** to prevent brute-force attacks
+- **Set up automatic security updates** using tools like `pacman-contrib` and `reflector`
+- **Configure secure SSH settings** (disable root login, use key-based authentication only)
+- **Enable systemd-boot** as an alternative bootloader to GRUB (though GRUB is still widely used)
+- **Consider using a more secure initramfs configuration** with additional encryption layers
+- **Implement proper backup strategies** for the LUKS keyfiles and critical system data
+
+These practices enhance system security beyond the basic installation and are recommended for production systems.

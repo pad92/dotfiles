@@ -19,6 +19,7 @@ exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/back
 ![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/main/dist/arch/screenshot-i3.png)
 
 ## sway
+
 ![screenshot](https://gitlab.com/pad92/dotfiles/-/raw/main/dist/arch/screenshot-sway.png)
 
 # Install Dotfile
@@ -38,7 +39,7 @@ curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
 
 ## My Setup
 
-- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/main/dist/arch/install.md)
+- [install.md](https://gitlab.com/pad92/dotfiles/-/blob/main/dist/arch/install.md) - Updated for modern practices
 - [pkglist.txt](https://gitlab.com/pad92/dotfiles/-/tree/main/dist/arch/packages/)
 
 # Ubuntu
