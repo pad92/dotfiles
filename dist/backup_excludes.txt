@@ -161,6 +161,7 @@
 .npm
 .nv/GLCache
 .nvm
+.ollama
 .opera/application_cache
 .opera/cache
 .opera/icons
