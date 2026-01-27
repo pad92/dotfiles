@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Enhanced security leak detection in pre-commit configuration
 - Improved error handling and validation in shell aliases
 - Updated arch_update function to include firmware updates
+- Updated applications packages list
 
 ## [v5.1.0] - 2026-01-18
 

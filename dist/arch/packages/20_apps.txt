@@ -13,11 +13,10 @@ gst-plugins-ugly
 gstreamer
 gstreamer-vaapi
 p7zip
-spotify
+spotify-launcher
 telegram-desktop
 terraform
 vlc
 vscodium-bin
-vscodium-bin-features
 vscodium-bin-marketplace
 wget
