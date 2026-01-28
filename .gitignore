@@ -199,3 +199,4 @@ dist/*/pkglist-*-*.diff
 
 # User-specific config
 .config/xfce4/panel/launcher-*.desktop
+get_lidarr_artists_by_tag.yml
