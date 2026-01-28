@@ -147,6 +147,10 @@ function arch_update {
 }
 
 # Tools
+
+## Lidarr Sync
+alias lidarr-sync="${HOME}/.dotfiles/bin/lidarr-sync.py"
+
 ## youtube-dl
 if [ $(command -v youtube-dl) ]; then
   function yta() {

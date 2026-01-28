@@ -1,0 +1,8 @@
+lidarr:
+  url: "http://localhost:8686"
+  api_key: ""
+
+plex:
+  url: "http://localhost:32400"
+  token: ""
+  library_name: "Musique"
