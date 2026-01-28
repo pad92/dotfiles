@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -u
+set -o pipefail
+
+# =======================================================
+# Minimalist Colors
+# =======================================================
+BOLD=$'\033[1m'
+RESET=$'\033[0m'
+FG_RED=$'\033[31m'
+FG_GREEN=$'\033[32m'
+FG_YELLOW=$'\033[33m'
+FG_BLUE=$'\033[34m'
+FG_CYAN=$'\033[36m'
+FG_GRAY=$'\033[90m'
+
+# =========================
+# Minimalist UI Helpers
+# =========================
+log_ok()   { [ "$ONLY_MESSAGE" == "false" ] && echo -e "${FG_GREEN}[OK]${RESET} $1"; }
+log_warn() { [ "$ONLY_MESSAGE" == "false" ] && echo -e "${FG_YELLOW}[WARN]${RESET} $1"; }
+log_err()  { echo -e "${FG_RED}[ERROR]${RESET} $1"; }
+log_info() { [ "$ONLY_MESSAGE" == "false" ] && echo -e "${FG_BLUE}>${RESET} $1"; }
+
+# =========================
+# Flags
+# =========================
+ONLY_MESSAGE=false
+VERBOSE=false
+HELP=false
+UPDATE=false
+# MODEL_VARIANT may be set via environment variable GIT_GEN_COMMIT_MODEL.
+# Allowed values: default, mini, pro
+MODEL_VARIANT="${GIT_GEN_COMMIT_MODEL:-default}"
+DIFF_CONTEXT=5 # Default diff context lines
+PREV_COMMITS_WINDOW=20 # Default number of previous commit titles to fetch for context
+
+# Switched to a while loop for better argument parsing (to handle flags with values)
+while [[ $# -gt 0 ]]; do
+  arg="$1"
+  case "$arg" in
+    --only-message) ONLY_MESSAGE=true; shift ;;
+    --verbose)      VERBOSE=true; shift ;;
+    -h|--help)      HELP=true; shift ;;
+    --update)       UPDATE=true; shift ;;
+    --model)
+      if [[ -z "$2" ]]; then
+        log_err "The --model flag requires a value: default|mini|pro"
+        exit 1
+      fi
+      case "$2" in
+        default|mini|pro) MODEL_VARIANT="$2"; shift 2 ;;
+        *) log_err "Unknown model variant: $2. Use default|mini|pro"; exit 1 ;;
+      esac
+      ;;
+    --context) # Flag for diff context
+      if [[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]]; then
+        log_err "The --context flag requires a numeric value."
+        exit 1
+      fi
+      DIFF_CONTEXT="$2"
+      shift 2 # Shift past the flag and its value
+      ;;
+    --prev-commits) # New flag to customize the number of previous commits for context
+      if [[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]]; then
+        log_err "The --prev-commits flag requires a numeric value."
+        exit 1
+      fi
+      PREV_COMMITS_WINDOW="$2"
+      shift 2 # Shift past the flag and its value
+      ;;
+    *) # Unknown option
+      shift
+      ;;
+  esac
+done
+
+# =========================
+# Model Configuration
+# =========================
+MODEL_SP_CHANGE="tavernari/git-commit-message:sp_change"
+MODEL_SP_COMMIT="tavernari/git-commit-message:sp_commit"
+case "$MODEL_VARIANT" in
+  mini)
+    MODEL_SP_CHANGE="tavernari/git-commit-message:sp_change_mini"
+    MODEL_SP_COMMIT="tavernari/git-commit-message:sp_commit_mini"
+    ;;
+  pro)
+    MODEL_SP_CHANGE="tavernari/git-commit-message:sp_change_pro"
+    MODEL_SP_COMMIT="tavernari/git-commit-message:sp_commit_pro"
+    ;;
+  default|*)
+    ;; # keep defaults (8B)
+esac
+
+# =========================
+# Help
+# =========================
+if [ "$HELP" == "true" ]; then
+  cat <<'EOF'
+Gen Commit (Ollama) - Minimalist
+
+Usage:
+  git-gen-commit [flags]
+
+Flow:
+  1) Analyzes staged files.
+  2) Generates a summary for each file change.
+  3) Synthesizes a final commit message.
+  4) Presents a compact menu to commit, edit, regenerate, or discard.
+
+Flags:
+  --verbose       Show the diff for each file during analysis.
+  --only-message  Print only the final commit message and exit. Clean output for scripting.
+  --update        Pull the latest Ollama models (standard, mini, pro).
+  --model <variant>  Choose model variant: default, mini, pro. Overrides GIT_GEN_COMMIT_MODEL env var.
+  --context <n>      Set the number of context lines for the diff (default: 5).
+  --prev-commits <n> Set the number of previous commit titles to include as context (default: 20).
+
+Environment:
+  GIT_GEN_COMMIT_MODEL  Set default model variant (default|mini|pro). Can be overridden with --model.
+
+EOF
+  exit 0
+fi
+
+# =========================
+# Update models
+# =========================
+if [ "$UPDATE" == "true" ]; then
+  log_info "Pulling latest models (standard, mini, pro)..."
+  # Default model (8B)
+  ollama pull tavernari/git-commit-message:sp_change >/dev/null || true
+  ollama pull tavernari/git-commit-message:sp_commit >/dev/null || true
+  # Mini model (4B)
+  ollama pull tavernari/git-commit-message:sp_change_mini >/dev/null || true
+  ollama pull tavernari/git-commit-message:sp_commit_mini >/dev/null || true
+  # Pro model (14B)
+  ollama pull tavernari/git-commit-message:sp_change_pro >/dev/null || true
+  ollama pull tavernari/git-commit-message:sp_commit_pro >/dev/null || true
+  log_ok "All models updated."
+  exit 0
+fi
+
+# =========================
+# Header (only in interactive mode)
+# =========================
+if [ "$ONLY_MESSAGE" == "false" ]; then
+  echo -e "${BOLD}Gen Commit${RESET}"
+  echo -e "${FG_GRAY}by tavernari/git-commit-message${RESET}"
+  echo -e "${FG_YELLOW}Using ${MODEL_VARIANT} model${RESET}"
+  echo
+fi
+
+# =========================
+# Diff Collection
+# =========================
+# The -U flag is dynamic using the $DIFF_CONTEXT variable to control the number of context lines in the diff
+DIFF="$(git diff --staged -U${DIFF_CONTEXT})"
+if [ -z "$DIFF" ]; then
+  log_err "No staged changes detected. Run 'git add' first."
+  exit 1
+fi
+
+# =========================
+# Fetch Previous Commits for Context
+# =========================
+# Detect the main branch (usually 'main' or 'master') by checking the remote origin HEAD
+MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+if [ -z "$MAIN_BRANCH" ]; then
+  # Fallback to 'main' if no remote HEAD is found
+  MAIN_BRANCH="main"
+  # Check if 'main' exists, otherwise try 'master'
+  if ! git rev-parse --verify "$MAIN_BRANCH" >/dev/null 2>&1; then
+    MAIN_BRANCH="master"
+  fi
+fi
+
+# Get the current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Fetch the last N commit titles unique to the current branch (not on main branch)
+if [ "$CURRENT_BRANCH" != "$MAIN_BRANCH" ]; then
+  PREV_COMMITS="$(git log ${MAIN_BRANCH}.. --pretty=format:%s -n ${PREV_COMMITS_WINDOW} 2>/dev/null || true)"
+else
+  # If on main branch, fetch recent commits
+  PREV_COMMITS="$(git log --pretty=format:%s -n ${PREV_COMMITS_WINDOW} 2>/dev/null || true)"
+fi
+
+if [ -z "$PREV_COMMITS" ]; then
+  PREV_COMMITS="(no previous commits available)"
+fi
+# Wrap previous commits in a XML-like tag for structured input to the model
+PREV_COMMITS_TAG="<previous_commits>\n$PREV_COMMITS\n</previous_commits>"
+
+# =========================
+# Utils
+# =========================
+# Utility to colorize diff output for better readability in verbose mode
+colorize_diff() {
+  while IFS= read -r line; do
+    if [[ $line == "+"* ]]; then printf "  ${FG_GREEN}%s${RESET}\n" "$line";
+    elif [[ $line == "-"* ]]; then printf "  ${FG_RED}%s${RESET}\n" "$line";
+    else printf "  ${FG_GRAY}%s${RESET}\n" "$line"; fi
+  done <<< "$1"
+}
+
+# Utility to split the full diff into per-file chunks.
+# This processes the diff line-by-line, starting a new chunk on each 'diff --git' line.
+split_diff() {
+  local diff_content="$1" chunk=""; chunks=()
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^diff\ --git\  ]]; then
+      if [ -n "$chunk" ]; then chunks+=("$chunk"); fi; chunk="$line"$'\n'
+    else chunk+="$line"$'\n'; fi
+  done <<< "$diff_content"
+  if [ -n "$chunk" ]; then chunks+=("$chunk"); fi
+}
+
+# Utility to detect and choose a timeout command (timeout or gtimeout).
+# This is used to prevent Ollama from hanging indefinitely.
+choose_timeout_cmd() {
+  if command -v timeout >/dev/null 2>&1; then echo "timeout"; return 0; fi
+  if command -v gtimeout >/dev/null 2>&1; then echo "gtimeout"; return 0; fi
+  return 1
+}
+
+# =========================
+# Summarization per File
+# =========================
+split_diff "$DIFF"
+total_chunks=${#chunks[@]}
+log_info "Analyzing ${total_chunks} staged files..."
+[ "$ONLY_MESSAGE" == "false" ] && echo
+
+ACCUMULATED_CHANGES=""; ALL_CHANGES=""
+# Prepend previous commits to the accumulated changes for initial context
+ACCUMULATED_CHANGES="$PREV_COMMITS_TAG"
+for chunk in "${chunks[@]}"; do
+  file_display="$(echo "$chunk" | head -n 1 | sed -e 's#.* b/##')"
+  # Include previous commits and accumulated file summaries as context for each file analysis
+  INPUT_FOR_CHUNK="<previous_changes>\n$ACCUMULATED_CHANGES\n</previous_changes>\n<diff>\n$chunk\n</diff>"
+
+  change_desc="$(ollama run "$MODEL_SP_CHANGE" "$INPUT_FOR_CHUNK" 2>/dev/null || true)"
+  change_desc="$(printf "%s" "$change_desc" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  [ -z "$change_desc" ] && change_desc="(no description returned)"
+  
+  if [ "$ONLY_MESSAGE" == "false" ]; then
+    echo -e "${FG_GREEN}${BOLD}${file_display}${RESET}"
+    [ "$VERBOSE" == "true" ] && colorize_diff "$chunk"
+    echo -e "${FG_CYAN}→ ${change_desc}${RESET}"; echo
+  fi
+
+  # Wrap the change description with a <diff file="..."> tag so ALL_CHANGES includes filenames
+  wrapped_change="<diff file=\"${file_display}\">\n${change_desc}\n</diff>"
+  if [ -n "$ACCUMULATED_CHANGES" ]; then
+    ACCUMULATED_CHANGES+=$'\n'
+  fi
+  ACCUMULATED_CHANGES+="$wrapped_change"
+  ALL_CHANGES+="$wrapped_change"$'\n'
+done
+
+# =========================
+# Final Message Generation
+# =========================
+FINAL_COMMIT_MESSAGE=""
+generate_final_commit() {
+  log_info "Synthesizing final commit message..."
+
+  # Include previous commits in the final input for overall context in commit message synthesis
+  local FINAL_INPUT="<all_changes>\n$PREV_COMMITS_TAG\n$ALL_CHANGES\n</all_changes>"
+  local MAX_ATTEMPTS=3 ATTEMPT=1
+  while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    local OUTPUT="" RC=1
+    # Attempt to run Ollama with a timeout to prevent hangs.
+    # If timeout command is available, use it; otherwise, use a background process with a kill timer.
+    if TMO_CMD="$(choose_timeout_cmd)"; then
+      OUTPUT="$($TMO_CMD 60 ollama run "$MODEL_SP_COMMIT" "$FINAL_INPUT" 2>/dev/null)"; RC=$?
+    else
+      local TMP_OUT="$(mktemp)"; ( ollama run "$MODEL_SP_COMMIT" "$FINAL_INPUT" >"$TMP_OUT" 2>/dev/null ) &
+      local OLL_PID=$!; ( sleep 60; kill -0 "$OLL_PID" 2>/dev/null && kill -TERM "$OLL_PID" 2>/dev/null; ) &
+      local WATCH_PID=$!; wait "$OLL_PID"; RC=$?
+      kill "$WATCH_PID" >/dev/null 2>&1 || true; wait "$WATCH_PID" >/dev/null 2>&1 || true
+      OUTPUT="$(cat "$TMP_OUT")"; rm -f "$TMP_OUT"
+    fi
+
+    OUTPUT="$(printf "%s" "$OUTPUT" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    if [ "$RC" -eq 0 ] && [ -n "$OUTPUT" ]; then
+      FINAL_COMMIT_MESSAGE="$OUTPUT"; return 0
+    else log_warn "Generation failed. Retrying ($ATTEMPT/$MAX_ATTEMPTS)..."; fi
+    ATTEMPT=$((ATTEMPT+1))
+  done
+  log_err "Failed to generate commit message after $MAX_ATTEMPTS attempts."; return 1
+}
+
+# =========================
+# Initial Generation and Output
+# =========================
+generate_final_commit || exit 1
+
+if [ "$ONLY_MESSAGE" == "true" ]; then
+  printf "%s\n" "$FINAL_COMMIT_MESSAGE"; exit 0
+fi
+
+# =========================
+# Interactive Menu
+# =========================
+while true; do
+  echo "--- Proposed Commit ---"; printf "%s\n" "$FINAL_COMMIT_MESSAGE"; echo "-----------------------"
+  read -r -p "$(echo -e "${BOLD}${FG_YELLOW}Choose: ${FG_GREEN}(c)ommit, ${FG_CYAN}(e)dit, ${FG_YELLOW}(r)egenerate, ${FG_RED}(d)iscard > ${RESET}")" final_choice
+
+  case "$final_choice" in
+    c)
+      TEMP_FILE="$(mktemp)"; printf "%s\n" "$FINAL_COMMIT_MESSAGE" > "$TEMP_FILE"
+      if git commit -F "$TEMP_FILE"; then log_ok "Committed."; else log_err "Commit failed."; fi
+      rm -f "$TEMP_FILE"; break
+      ;;
+    e)
+      TEMP_FILE="$(mktemp)"; printf "%s\n" "$FINAL_COMMIT_MESSAGE" > "$TEMP_FILE"
+      ${EDITOR:-nano} "$TEMP_FILE"
+      if git commit -F "$TEMP_FILE"; then log_ok "Committed."; else log_err "Commit failed."; fi
+      rm -f "$TEMP_FILE"; break
+      ;;
+    r)
+      echo; generate_final_commit || break; continue
+      ;;
+    d|q|*)
+      log_warn "Discarded."; break
+      ;;
+  esac
+done
