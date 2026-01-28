@@ -44,6 +44,7 @@ Desktop.ini
 .config/sway/config.d/outputs/*.conf
 .config/rofi/*.cache
 .config/rofi/*.rasi.cache
+*-config.yml
 
 # Package manager files
 .node_modules
@@ -199,4 +200,3 @@ dist/*/pkglist-*-*.diff
 
 # User-specific config
 .config/xfce4/panel/launcher-*.desktop
-get_lidarr_artists_by_tag.yml
