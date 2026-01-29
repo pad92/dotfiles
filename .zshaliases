@@ -149,7 +149,7 @@ function arch_update {
 # Tools
 
 ## Lidarr Sync
-alias lidarr-sync="${HOME}/.dotfiles/bin/lidarr-sync.py"
+alias lidarr="${HOME}/.dotfiles/bin/lidarr.py"
 
 ## youtube-dl
 if [ $(command -v youtube-dl) ]; then

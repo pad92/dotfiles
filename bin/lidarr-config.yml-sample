@@ -1,3 +1,8 @@
+spotify:
+  redirect_uri: "http://localhost:8888/callback"
+  client_id: ""
+  client_secret: ""
+
 lidarr:
   url: "http://localhost:8686"
   api_key: ""
