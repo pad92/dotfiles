@@ -10,4 +10,4 @@ lidarr:
 plex:
   url: "http://localhost:32400"
   token: ""
-  library_name: "Musique"
+  library_name: ""
