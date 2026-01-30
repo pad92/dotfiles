@@ -1,6 +1,26 @@
 #!/usr/bin/env python3
 """
 Lidarr and Plex synchronization script for managing music library monitoring and organization.
+
+CHANGELOG:
+
+2026-01-30:
+- Added progress indicator for artist analysis in unmonitor operation
+- Enhanced error messages to include artist names and IDs for better debugging
+- Added graceful Ctrl+C handling with signal interruption support
+- Added confirmation prompt when Ctrl+C is pressed
+
+2026-01-30:
+- Added dry-run functionality (--dry-run flag) to simulate execution without making changes
+- Implemented comprehensive error handling for malformed API responses
+- Added type checking and data validation for album and artist data
+- Updated documentation files with dry-run usage information
+
+2026-01-29:
+- Initial implementation of lidarr.py script with full functionality
+- Support for monitor, sync-tag, unmonitor, and sync-likes commands
+- Integration with Lidarr, Plex, and Spotify APIs
+- Configuration file handling and validation
 """
 
 import os
@@ -10,6 +30,7 @@ import requests
 import time
 import argparse
 import logging
+import signal
 from typing import Dict, List, Optional, Any, Tuple
 from plexapi.server import PlexServer
 import spotipy
@@ -111,6 +132,75 @@ def is_quality_satisfied(api_base: str, headers: Dict[str, str], album: Dict[str
                 return False
 
         return True  # All files are 320 or FLAC
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Network error checking quality for album ID {album_id}: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Quality verification error for ID {album_id}: {e}")
+        return False
+
+def should_skip_monitoring(config: Dict[str, Any], api_base: str, headers: Dict[str, str], album: Dict[str, Any]) -> bool:
+    """
+    Determine if an album should be skipped during monitoring based on quality filters.
+
+    Args:
+        config (Dict[str, Any]): Configuration dictionary
+        api_base (str): Base URL for Lidarr API
+        headers (Dict[str, str]): HTTP headers with API key
+        album (Dict[str, Any]): Album data from Lidarr
+
+    Returns:
+        bool: True if album should be skipped during monitoring, False otherwise
+    """
+    # Check if quality filtering is enabled in config
+    monitor_filters = config.get('monitor_quality_filters', {})
+    exclude_qualities = monitor_filters.get('exclude_qualities', [])
+
+    if not exclude_qualities:
+        return False
+
+    # If album doesn't have an ID, we can't check quality
+    album_id = album.get('id')
+    if not album_id:
+        return False
+
+    try:
+        # Retrieve track files for this album
+        res = requests.get(
+            f"{api_base}/trackfile",
+            params={"albumId": album_id},
+            headers=headers,
+            timeout=30
+        )
+        res.raise_for_status()
+        files = res.json()
+
+        if not files:
+            return False
+
+        # Get the exclude_all_files setting, default to False if not specified
+        exclude_all_files = monitor_filters.get('exclude_all_files', False)
+
+        if exclude_all_files:
+            # Only skip if ALL files match the exclude criteria
+            all_files_match = True
+            for f in files:
+                quality_name = f.get('quality', {}).get('quality', {}).get('name', '').upper()
+                file_matches_criteria = any(exclude_quality.upper() in quality_name for exclude_quality in exclude_qualities)
+                if not file_matches_criteria:
+                    all_files_match = False
+                    break
+            return all_files_match
+        else:
+            # Skip if ANY file matches the exclude criteria
+            for f in files:
+                quality_name = f.get('quality', {}).get('quality', {}).get('name', '').upper()
+                file_matches_criteria = any(exclude_quality.upper() in quality_name for exclude_quality in exclude_qualities)
+                if file_matches_criteria:
+                    return True
+
+        return False  # No files matched exclusion criteria
+
     except requests.exceptions.RequestException as e:
         logger.warning(f"Network error checking quality for album ID {album_id}: {e}")
         return False
@@ -306,29 +396,33 @@ def unmonitor_high_quality_albums(config: Dict[str, Any], dry_run: bool = False)
         logger.error(f"Connection error: {e}")
         return
 
-    logger.info(f"Analyzing {len(artists)} artists...")
+    total_artists = len(artists)
+    logger.info(f"Analyzing {total_artists} artists...")
     count_updated = 0
 
-    for artist in artists:
+    for i, artist in enumerate(artists, 1):
         artist_id = artist.get('id')
         artist_name = artist.get('artistName', 'Unknown Artist')
+        logger.info(f"Progress: ({i}/{total_artists}) - Analyzing artist: {artist_name}")
 
         if not artist_id:
             continue
 
         # Retrieve artist's albums
         try:
-            albums = requests.get(
+            albums_response = requests.get(
                 f"{url}/api/v1/album",
                 params={'artistId': artist_id},
                 headers=headers,
                 timeout=30
-            ).json()
+            )
+            albums_response.raise_for_status()
+            albums = albums_response.json()
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Network error retrieving albums for artist {artist_name}: {e}")
+            logger.warning(f"Network error retrieving albums for artist {artist_name} (ID: {artist_id}): {e}")
             continue
         except Exception as e:
-            logger.warning(f"Error retrieving albums for artist {artist_name}: {e}")
+            logger.warning(f"Error retrieving albums for artist {artist_name} (ID: {artist_id}): {e}")
             continue
 
         for album in albums:
@@ -337,13 +431,22 @@ def unmonitor_high_quality_albums(config: Dict[str, Any], dry_run: bool = False)
                 logger.warning(f"Unexpected album data type: {type(album)}, skipping")
                 continue
 
-            if not album.get('monitored', False):
-                continue
+            # Additional safety check for album data
+            try:
+                # Verify album has required fields before using them
+                if not album.get('id'):
+                    logger.warning(f"Album missing ID field, skipping: {album}")
+                    continue
 
-            album_id = album.get('id')
-            album_title = album.get('title', 'Unknown Album')
+                album_id = album.get('id')
+                album_title = album.get('title', 'Unknown Album')
 
-            if not album_id:
+                # Skip if album is not monitored (already handled in calling function)
+                if not album.get('monitored', False):
+                    continue
+
+            except Exception as e:
+                logger.warning(f"Error processing album data: {e}, skipping album")
                 continue
 
             # Check file quality
@@ -511,9 +614,22 @@ def monitor_unmonitored(config: Dict[str, Any], dry_run: bool = False) -> None:
             ).json()
 
             # Only process UNMONITORED albums
-            unmonitored = [a for a in albums if not a['monitored']]
+            unmonitored = []
+            for a in albums:
+                # Safety check for malformed data
+                if isinstance(a, dict):
+                    if not a.get('monitored', False):
+                        unmonitored.append(a)
+                else:
+                    logger.warning(f"Skipping non-dict album data: {type(a)}")
+                    continue
 
             for album in unmonitored:
+                # Check if album should be skipped based on quality filters
+                if should_skip_monitoring(config, api_base, headers, album):
+                    album_title = album.get('title', 'Unknown Title')
+                    logger.info(f"⏭️  Skipped: {album_title} (quality filter)")
+                    continue
                 process_album(api_base, headers, album, dry_run)
 
             time.sleep(0.2)
@@ -525,8 +641,30 @@ def monitor_unmonitored(config: Dict[str, Any], dry_run: bool = False) -> None:
 
 # ================= MAIN ENTRY POINT =================
 
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully."""
+    import readline  # Import here to avoid issues in some environments
+
+    # Ask for confirmation before exiting
+    try:
+        response = input('\nAre you sure you want to exit? (y/N): ').strip().lower()
+        if response in ['y', 'yes']:
+            logger.info('Exiting as requested.')
+            sys.exit(0)
+        else:
+            logger.info('Continuing execution...')
+            # Re-register the signal handler to allow for another interrupt
+            signal.signal(signal.SIGINT, signal_handler)
+    except (KeyboardInterrupt, EOFError):
+        # If user presses Ctrl+C again during confirmation, exit anyway
+        logger.info('Force exiting...')
+        sys.exit(1)
+
 def main():
     """Main entry point for the script."""
+    # Register signal handler for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+
     parser = argparse.ArgumentParser(
         description="Lidarr and Plex synchronization script",
         formatter_class=argparse.RawDescriptionHelpFormatter,
