@@ -4,6 +4,9 @@ Lidarr and Plex synchronization script for managing music library monitoring and
 
 CHANGELOG:
 
+2026-01-31:
+- Modified artist listing to ignore unmonitored artists when processing unmonitor operations
+
 2026-01-30:
 - Added progress indicator for artist analysis in unmonitor operation
 - Enhanced error messages to include artist names and IDs for better debugging
@@ -389,6 +392,9 @@ def unmonitor_high_quality_albums(config: Dict[str, Any], dry_run: bool = False)
         )
         artist_res.raise_for_status()
         artists = artist_res.json()
+
+        # Filter artists to only include monitored ones
+        artists = [artist for artist in artists if artist.get('monitored', False)]
     except requests.exceptions.RequestException as e:
         logger.error(f"Network error connecting to Lidarr: {e}")
         return
