@@ -52,6 +52,9 @@ nfs-utils
 noise-suppression-for-voice
 ntfs-3g
 pacman-contrib
+pipewire
+pipewire-audio
+pipewire-pulse
 powertop
 reflector
 rkhunter
@@ -64,7 +67,9 @@ unarj
 usbutils
 vim-spell-en
 vim-spell-fr
+webrtc-audio-processing-0.3
 wireless-regdb
+wireplumber
 xarchiver
 xclip
 xf86-video-intel
