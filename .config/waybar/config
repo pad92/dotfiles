@@ -20,6 +20,7 @@
     "memory",
     "backlight",
     "battery",
+    "custom/headsetcontrol",
     "custom/weather",
     "tray"
   ],
@@ -30,6 +31,12 @@
       "interval": 3600,
       "exec": "wttrbar --date-format \"%m/%d\" --lang fr --location Aubenas --hide-conditions",
       "return-type": "json"
+  },
+  "custom/headsetcontrol": {
+      "format": "{}",
+      "exec": "headsetcontrol -b 2>/dev/null | awk -F'Level:' '/Level/ {gsub(/[^0-9]/,\"\",$2); print $2\"% \"; exit}'",
+      "tooltip": false,
+      "interval": 3600,
   },
   "wlr/taskbar": {
     "format": "{icon}",

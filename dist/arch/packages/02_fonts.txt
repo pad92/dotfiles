@@ -1,5 +1,6 @@
 otf-font-awesome
 terminus-font
+ttf-anonymouspro-nerd
 ttf-google-fonts-git
 ttf-inconsolata
 ttf-inconsolata-nerd
