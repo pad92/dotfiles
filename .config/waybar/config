@@ -14,14 +14,14 @@
   "modules-right": [
     "pulseaudio",
     "bluetooth",
-    "network",
+    // "network",
     "cpu",
     "temperature",
     "memory",
     "backlight",
     "battery",
     "custom/headsetcontrol",
-    "custom/weather",
+    // "custom/weather",
     "tray"
   ],
 
