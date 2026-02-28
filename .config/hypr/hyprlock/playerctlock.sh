@@ -7,16 +7,14 @@ fi
 
 # Function to get metadata using playerctl
 get_metadata()
-               {
+{
     key=$1
     playerctl metadata --format "{{ $key }}" 2> /dev/null
 }
 
-# Check for arguments
-
 # Function to determine the source and return an icon and text
 get_source_info()
-                  {
+{
     trackid=$(get_metadata "mpris:trackid")
     if [[ "$trackid" == *"firefox"* ]]; then
         echo -e "Firefox "
@@ -51,6 +49,13 @@ case "$1" in
                 curl -s "${url}" -o /tmp/mpris_artUrl
                 url=/tmp/mpris_artUrl
             fi
+
+            # Resize image to fit hyprlock display requirements (110px smallest dimension)
+            if command -v convert >/dev/null 2>&1; then
+                temp_resized="/tmp/mpris_artUrl_resized"
+                convert "$url" -resize 110x110^ -gravity center -crop 110x110+0+0 "$temp_resized" 2>/dev/null && url="$temp_resized"
+            fi
+
             echo "$url"
         fi
         ;;
