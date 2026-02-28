@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# --- GLOBAL CONFIGURATION ---
+export PROTON_USE_NTSYNC=1
+export VKD3D_CONFIG=dxr11
+export gamemoderun_enabled=true
+
+TAG="SteamLauncher"
+
+# --- LOGGING FUNCTION ---
+log_info() {
+    # Logs to syslog (view with: journalctl -t SteamLauncher -f)
+    logger -t "$TAG" "$SteamAppId : $1"
+}
+
+# --- PER-GAME OVERRIDES ---
+case "$SteamAppId" in
+    "1808500")
+        # Specific settings for Arc Raiders
+        export PROTON_ENABLE_WAYLAND=1
+        unset SDL_VIDEODRIVER
+        unset __GLX_VENDOR_LIBRARY_NAME
+        log_info "Applying native Wayland optimizations for Arc Raiders."
+        ;;
+    *)
+        # Default settings for other games
+        export PROTON_ENABLE_WAYLAND=0
+        log_info "Applying default settings (XWayland)."
+        ;;
+esac
+
+# --- LAUNCH LOGIC ---
+if [ "$gamemoderun_enabled" = true ]; then
+    log_info "Starting gamemoderun with arguments: $@"
+    exec gamemoderun "$@"
+else
+    log_info "Starting without gamemoderun with arguments: $@"
+    exec "$@"
+fi
