@@ -6,11 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Enhanced pre-commit configuration with improved leak detection and editorconfig integration
-- Expanded .gitignore patterns for comprehensive file exclusion
 - Added firmware update capabilities to arch_update function
 - Added vimdiff guidance for .pacnew files in clean_arch function
-- Updated Arch Linux installation guide with modern practices and archinstall recommendations
+- Added unified media library synchronization script (bin/mediasync.py)
+- Added hyprland host specific configuration
 
 ### Changed
 
@@ -19,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Improved error handling and validation in shell aliases
 - Updated arch_update function to include firmware updates
 - Updated applications packages list
+- Updated Arch Linux installation guide with modern practices and archinstall recommendations
+- Enhanced pre-commit configuration with improved leak detection and editorconfig integration
+- Expanded .gitignore patterns for comprehensive file exclusion
 
 ## [v5.1.0] - 2026-01-18
 

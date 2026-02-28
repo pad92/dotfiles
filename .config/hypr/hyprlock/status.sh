@@ -1,35 +1,48 @@
 #!/bin/sh
 
-# Vérifier si le répertoire /sys/class/power_supply existe
+OUTPUT=""
+capacity=""
+
+# On vérifie si le répertoire existe pour éviter l'erreur
 if [ ! -d /sys/class/power_supply ]; then
     exit 0
 fi
 
-# Parcourir toutes les sources d'alimentation
-for power_supply in /sys/class/power_supply/*; do
-    # Extraire le nom de la source
-    power_supply_name=$(basename "$power_supply")
+# On boucle sur chaque dossier trouvé dans power_supply
+for ps in /sys/class/power_supply/*; do
+    # On vérifie que c'est bien un répertoire (évite les erreurs si le dossier est vide)
+    [ ! -d "$ps" ] && continue
 
-    # Vérifier si la source est de type "Mains"
-    if grep -q "Mains" "$power_supply/type"; then
-        # Vérifier l'état du secteur en utilisant le fichier "online"
-        if [ -f "$power_supply/online" ]; then
-            status=$(cat "$power_supply/online")
-            if [ "$status" = "1" ]; then
-                OUTPUT="${OUTPUT}  "
-            fi
+    type=$(cat "$ps/type")
+
+    # Cas du Secteur
+    if [ "$type" = "Mains" ]; then
+        if [ -f "$ps/online" ] && [ "$(cat "$ps/online")" = "1" ]; then
+            OUTPUT=" "
         fi
     fi
 
-    # Vérifier si la source est de type "Battery"
-    if grep -q "Battery" "$power_supply/type"; then
-        # Vérifier si le fichier "capacity" existe pour la batterie
-        if [ -f "$power_supply/capacity" ]; then
-            capacity="$(cat "$power_supply/capacity")%"
-            OUTPUT="${OUTPUT} "
+    # Cas de la Batterie
+    if [ "$type" = "Battery" ]; then
+        if [ -f "$ps/capacity" ]; then
+            cap=$(cat "$ps/capacity")
+            capacity="${cap}%"
+
+            if [ "$cap" -gt 90 ]; then icon=" "
+            elif [ "$cap" -gt 60 ]; then icon=" "
+            elif [ "$cap" -gt 40 ]; then icon=" "
+            elif [ "$cap" -gt 10 ]; then icon=" "
+            else icon=" "; fi
+
+            # On ajoute l'icône à l'output existant (qui peut contenir la prise )
+            OUTPUT="${OUTPUT}${icon}"
         fi
     fi
-
 done
 
-echo "${OUTPUT}  ${capacity}"
+# Si rien n'est trouvé (PC fixe sans batterie), on sort sans rien écrire
+if [ -z "$OUTPUT" ] && [ -z "$capacity" ]; then
+    exit 0
+fi
+
+echo "${OUTPUT} ${capacity}"
