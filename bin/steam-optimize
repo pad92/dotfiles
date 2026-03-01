@@ -11,6 +11,7 @@ TAG="SteamLauncher"
 log_info() {
     # Logs to syslog (view with: journalctl -t SteamLauncher -f)
     logger -t "$TAG" "$SteamAppId : $1"
+    notify-send "$1"
 }
 
 # --- PER-GAME OVERRIDES ---
