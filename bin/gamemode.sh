@@ -36,8 +36,16 @@ case "$1" in
       log_message "Warning: Hyprland signature not found. Skipping hyprctl."
     else
       notify-send "🚀 GameMode" "Optimizing..."
-      # Désactive animations, ombres ET flou (blur)
-      if ! hyprctl --batch "keyword animations:enabled 0; keyword decoration:shadow:enabled 0; keyword decoration:blur:enabled 0"; then
+      # Désactive animations, ombres, flou (blur), arrondis, marges et opacité
+      if ! hyprctl --batch "keyword animations:enabled 0;\
+ keyword decoration:shadow:enabled 0;\
+ keyword decoration:blur:enabled 0;\
+ keyword decoration:rounding 0;\
+ keyword decoration:active_opacity 1.0;\
+ keyword decoration:inactive_opacity 1.0;\
+ keyword general:border_size 0;\
+ keyword general:gaps_in 0;\
+ keyword general:gaps_out 0"; then
         handle_error "Failed to configure Hyprland settings"
       fi
     fi

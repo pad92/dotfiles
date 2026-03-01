@@ -2,13 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v5.1.1] - 2026-03-01
 
 ### Added
 
+- Added gamemode support ([f78b794](https://gitlab.com/pad92/dotfiles/-/commit/f78b794))
 - Added firmware update capabilities to arch_update function
 - Added vimdiff guidance for .pacnew files in clean_arch function
-- Added unified media library synchronization script (bin/mediasync.py)
 - Added hyprland host specific configuration
 
 ### Changed
