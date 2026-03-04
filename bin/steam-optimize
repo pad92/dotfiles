@@ -2,8 +2,15 @@
 
 # --- GLOBAL CONFIGURATION ---
 export PROTON_USE_NTSYNC=1
-export VKD3D_CONFIG=dxr11
+#export VKD3D_CONFIG=dxr11
 export gamemoderun_enabled=true
+
+export PROTON_FSR4_UPGRADE=1
+export PROTON_FSR4_RDNA3_UPGRADE=1
+export PROTON_XESS_UPGRADE=1
+export ENABLE_LAYER_MESA_ANTI_LAG=1
+export RADV_PERFTEST='rt'
+export PROTON_NO_STEAMINPUT=1
 
 TAG="SteamLauncher"
 
@@ -22,6 +29,20 @@ case "$SteamAppId" in
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
         log_info "Applying native Wayland optimizations for Arc Raiders."
+        ;;
+    "526870")
+        # Specific settings for Satisfactory
+        export PROTON_ENABLE_WAYLAND=1
+        unset SDL_VIDEODRIVER
+        unset __GLX_VENDOR_LIBRARY_NAME
+        log_info "Applying native Wayland optimizations for Satisfactory."
+        ;;
+    "552990")
+        # Specific settings for World of Warships
+        export PROTON_ENABLE_WAYLAND=1
+        unset SDL_VIDEODRIVER
+        unset __GLX_VENDOR_LIBRARY_NAME
+        log_info "Applying native Wayland optimizations for World of Warships."
         ;;
     *)
         # Default settings for other games
