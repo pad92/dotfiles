@@ -1,2 +1,3 @@
 ludusavi
+power-profiles-daemon
 steam
