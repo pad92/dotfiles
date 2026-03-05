@@ -1,16 +1,17 @@
 #!/bin/sh
 
-# --- GLOBAL CONFIGURATION ---
 export PROTON_USE_NTSYNC=1
-#export VKD3D_CONFIG=dxr11
-export gamemoderun_enabled=true
-
 export PROTON_FSR4_UPGRADE=1
 export PROTON_FSR4_RDNA3_UPGRADE=1
 export PROTON_XESS_UPGRADE=1
 export ENABLE_LAYER_MESA_ANTI_LAG=1
-export RADV_PERFTEST='rt'
+export RADV_PERFTEST='rt,nggc,gpl'
 export PROTON_NO_STEAMINPUT=1
+export AMD_VULKAN_ICD=RADV
+export vblank_mode=0
+export PROTON_NO_WM_DECORATION=1
+export MESA_SHADER_CACHE_MAX_SIZE=12G
+export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
 
 TAG="SteamLauncher"
 
@@ -51,11 +52,5 @@ case "$SteamAppId" in
         ;;
 esac
 
-# --- LAUNCH LOGIC ---
-if [ "$gamemoderun_enabled" = true ]; then
-    log_info "Starting gamemoderun with arguments: $@"
-    exec gamemoderun "$@"
-else
-    log_info "Starting without gamemoderun with arguments: $@"
-    exec "$@"
-fi
+log_info "Starting game-performance with arguments: $@"
+exec game-performance "$@"
