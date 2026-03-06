@@ -13,13 +13,45 @@ export PROTON_NO_WM_DECORATION=1
 export MESA_SHADER_CACHE_MAX_SIZE=12G
 export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
 
-TAG="SteamLauncher"
+# --- HYPRLAND SETUP ---
+USER_ID=$(id -u)
+RUNTIME_DIR="/run/user/$USER_ID"
+if [ -d "$RUNTIME_DIR/hypr" ]; then
+    export HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "$RUNTIME_DIR/hypr" | head -n 1)
+    export XDG_RUNTIME_DIR="$RUNTIME_DIR"
+fi
+
+TAG=$(basename "$0")
 
 # --- LOGGING FUNCTION ---
 log_info() {
-    # Logs to syslog (view with: journalctl -t SteamLauncher -f)
+    # Logs to syslog (view with: journalctl -t steam-optimize -f)
     logger -t "$TAG" "$SteamAppId : $1"
     notify-send "$1"
+}
+
+hyprland_start() {
+    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+        log_info "Optimizing Hyprland for gaming..."
+        hyprctl --batch "keyword animations:enabled 0;\
+                        keyword decoration:shadow:enabled 0;\
+                        keyword decoration:blur:enabled 0;\
+                        keyword decoration:rounding 0;\
+                        keyword decoration:active_opacity 1.0;\
+                        keyword decoration:inactive_opacity 1.0" || log_info "Warning: Failed to apply Hyprland optimizations"
+    fi
+    systemctl --user stop hypridle.service 2>/dev/null || true
+}
+
+hyprland_end() {
+    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+        log_info "Restoring Hyprland configuration..."
+        hyprctl reload || log_info "Warning: Failed to reload Hyprland configuration"
+    fi
+    if ! systemctl --user is-active hypridle.service >/dev/null 2>&1; then
+        systemctl --user reset-failed hypridle.service 2>/dev/null || true
+        systemctl --user start hypridle.service 2>/dev/null || true
+    fi
 }
 
 # --- PER-GAME OVERRIDES ---
@@ -52,5 +84,7 @@ case "$SteamAppId" in
         ;;
 esac
 
+hyprland_start
 log_info "Starting game-performance with arguments: $@"
-exec game-performance "$@"
+game-performance "$@"
+hyprland_end

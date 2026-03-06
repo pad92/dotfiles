@@ -25,14 +25,18 @@
 * {
   border: none;
   border-radius: 0px;
-  font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free";
-  font-weight: bold;
+  font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free", FontAwesome, Roboto, Helvetica, Arial, sans-serif;
   font-size: 10px;
-  min-height: 10px;
+  /* Slightly smaller font size */
+  font-weight: 900;
+  margin: 0;
+  padding: 0;
+  transition-property: background-color;
+  transition-duration: 0.5s;
 }
 
 window#waybar {
-  background:rgba(0, 0, 0, 0);
+  background: rgba(0, 0, 0, 0);
 }
 
 #taskbar,
