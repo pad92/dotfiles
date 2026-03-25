@@ -1,10 +1,10 @@
 [Unit]
-Description=Start SWWW for Hyprland
+Description=Start AWWW for Hyprland
 After=hyprland.service
 
 [Service]
 Environment=RUST_BACKTRACE=1
-ExecStart=/usr/bin/swww-daemon -f xrgb
+ExecStart=/usr/bin/awww-daemon -f xrgb
 Restart=on-failure
 RestartSec=5
 

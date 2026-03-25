@@ -1,12 +1,14 @@
 #!/bin/sh
 
+ulimit -n 1048576
+
 export PROTON_USE_NTSYNC=1
 export PROTON_FSR4_UPGRADE=1
 export PROTON_FSR4_RDNA3_UPGRADE=1
 export PROTON_XESS_UPGRADE=1
 export ENABLE_LAYER_MESA_ANTI_LAG=1
 export RADV_PERFTEST='rt,nggc,gpl'
-export PROTON_NO_STEAMINPUT=1
+export VKD3D_CONFIG=dxr
 export AMD_VULKAN_ICD=RADV
 export vblank_mode=0
 export PROTON_NO_WM_DECORATION=1
@@ -44,6 +46,7 @@ hyprland_start() {
 }
 
 hyprland_end() {
+    razer-cli -d 1600
     if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
         log_info "Restoring Hyprland configuration..."
         hyprctl reload || log_info "Warning: Failed to reload Hyprland configuration"
@@ -58,14 +61,18 @@ hyprland_end() {
 case "$SteamAppId" in
     "1808500")
         # Specific settings for Arc Raiders
-        export PROTON_ENABLE_WAYLAND=1
+        razer-cli -d 800
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
+        export PROTON_ENABLE_WAYLAND=1
+        export RADV_PERFTEST='rt'
+        export PROTON_NO_STEAMINPUT=1
         log_info "Applying native Wayland optimizations for Arc Raiders."
         ;;
     "526870")
         # Specific settings for Satisfactory
         export PROTON_ENABLE_WAYLAND=1
+        export PROTON_NO_STEAMINPUT=1
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
         log_info "Applying native Wayland optimizations for Satisfactory."
@@ -76,6 +83,17 @@ case "$SteamAppId" in
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
         log_info "Applying native Wayland optimizations for World of Warships."
+        ;;
+    "3240220")
+        export PROTON_ENABLE_WAYLAND=0
+        export RADV_PERFTEST='rt' # On simplifie au max
+        export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
+        export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
+        export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
+
+        # Désactiver les fonctions qui pourraient ralentir le heartbeat
+        export PROTON_NO_STEAMINPUT=1
+        log_info "Applying native Wayland optimizations for Grand Theft Auto V Enhanced."
         ;;
     *)
         # Default settings for other games

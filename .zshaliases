@@ -149,7 +149,7 @@ function arch_update {
 # Tools
 
 ## Medias Sync
-alias mediasync="${HOME}/.dotfiles/bin/mediasync.py"
+alias mediasync="${HOME}/Documents/git/git.home.lan/pascal/tools/mediasync.py"
 
 ## youtube-dl
 if [ $(command -v youtube-dl) ]; then

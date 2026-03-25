@@ -4,7 +4,7 @@ Description=Timer to change wallpapers every 15 minutes
 [Timer]
 OnCalendar=*:0/15
 Persistent=true
-Unit=swww_random.service
+Unit=awww_random.service
 
 [Install]
 WantedBy=timers.target

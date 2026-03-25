@@ -1,3 +1,4 @@
+awww
 cliphist
 fastfetch
 grim
@@ -18,7 +19,6 @@ qt5-wayland
 qt6-wayland
 swappy
 swayosd
-swww
 tela-circle-icon-theme-dracula
 waybar
 wlogout
