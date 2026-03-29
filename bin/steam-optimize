@@ -2,18 +2,19 @@
 
 ulimit -n 1048576
 
-export PROTON_USE_NTSYNC=1
-export PROTON_FSR4_UPGRADE=1
-export PROTON_FSR4_RDNA3_UPGRADE=1
-export PROTON_XESS_UPGRADE=1
-export ENABLE_LAYER_MESA_ANTI_LAG=1
-export RADV_PERFTEST='rt,nggc,gpl'
-export VKD3D_CONFIG=dxr
 export AMD_VULKAN_ICD=RADV
-export vblank_mode=0
-export PROTON_NO_WM_DECORATION=1
-export MESA_SHADER_CACHE_MAX_SIZE=12G
+export ENABLE_LAYER_MESA_ANTI_LAG=1
+export MESA_SHADER_CACHE_MAX_SIZE=20G
 export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
+export PROTON_ENABLE_WAYLAND=0
+export PROTON_FSR4_RDNA3_UPGRADE=1
+export PROTON_FSR4_UPGRADE=1
+export PROTON_NO_WM_DECORATION=1
+export PROTON_USE_NTSYNC=1
+export PROTON_XESS_UPGRADE=1
+export RADV_PERFTEST='rt,nggc,gpl,video_decode'
+export vblank_mode=0
+export VKD3D_CONFIG=dxr
 
 # --- HYPRLAND SETUP ---
 USER_ID=$(id -u)
@@ -60,44 +61,38 @@ hyprland_end() {
 # --- PER-GAME OVERRIDES ---
 case "$SteamAppId" in
     "1808500")
-        # Specific settings for Arc Raiders
         razer-cli -d 800
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
-        export PROTON_ENABLE_WAYLAND=1
-        export RADV_PERFTEST='rt'
         export PROTON_NO_STEAMINPUT=1
         log_info "Applying native Wayland optimizations for Arc Raiders."
         ;;
     "526870")
-        # Specific settings for Satisfactory
-        export PROTON_ENABLE_WAYLAND=1
         export PROTON_NO_STEAMINPUT=1
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
         log_info "Applying native Wayland optimizations for Satisfactory."
         ;;
     "552990")
-        # Specific settings for World of Warships
-        export PROTON_ENABLE_WAYLAND=1
         unset SDL_VIDEODRIVER
         unset __GLX_VENDOR_LIBRARY_NAME
         log_info "Applying native Wayland optimizations for World of Warships."
         ;;
     "3240220")
-        export PROTON_ENABLE_WAYLAND=0
-        export RADV_PERFTEST='rt' # On simplifie au max
         export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
         export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
         export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
-
-        # Désactiver les fonctions qui pourraient ralentir le heartbeat
         export PROTON_NO_STEAMINPUT=1
         log_info "Applying native Wayland optimizations for Grand Theft Auto V Enhanced."
         ;;
+    "899770")
+        unset SDL_VIDEODRIVER
+        unset __GLX_VENDOR_LIBRARY_NAME
+        export PROTON_NO_STEAMINPUT=1
+        export RADV_PERFTEST='nggc,gpl'
+        log_info "Applying native Wayland optimizations for Last Epoch."
+        ;;
     *)
-        # Default settings for other games
-        export PROTON_ENABLE_WAYLAND=0
         log_info "Applying default settings (XWayland)."
         ;;
 esac
