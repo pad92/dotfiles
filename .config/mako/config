@@ -9,3 +9,6 @@ max-icon-size=48
 default-timeout=10000
 anchor=top-right
 margin=20
+
+[mode=dnd]
+invisible=1

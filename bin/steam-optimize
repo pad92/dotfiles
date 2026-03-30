@@ -36,21 +36,23 @@ log_info() {
 hyprland_start() {
     if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
         log_info "Optimizing Hyprland for gaming..."
+        makoctl mode -s dnd 2>/dev/null
         hyprctl --batch "keyword animations:enabled 0;\
                         keyword decoration:shadow:enabled 0;\
                         keyword decoration:blur:enabled 0;\
                         keyword decoration:rounding 0;\
                         keyword decoration:active_opacity 1.0;\
                         keyword decoration:inactive_opacity 1.0" || log_info "Warning: Failed to apply Hyprland optimizations"
+        systemctl --user stop hypridle.service 2>/dev/null || true
     fi
-    systemctl --user stop hypridle.service 2>/dev/null || true
 }
 
 hyprland_end() {
     razer-cli -d 1600
     if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-        log_info "Restoring Hyprland configuration..."
+        log_info "Reste Hyprland configuration..."
         hyprctl reload || log_info "Warning: Failed to reload Hyprland configuration"
+        makoctl mode -s default 2>/dev/null
     fi
     if ! systemctl --user is-active hypridle.service >/dev/null 2>&1; then
         systemctl --user reset-failed hypridle.service 2>/dev/null || true
@@ -97,7 +99,7 @@ case "$SteamAppId" in
         ;;
 esac
 
-hyprland_start
 log_info "Starting game-performance with arguments: $@"
+hyprland_start
 game-performance "$@"
 hyprland_end
