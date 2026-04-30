@@ -33,6 +33,18 @@ log_info() {
     notify-send "$1"
 }
 
+get_gamescope_args() {
+    local args="-f --force-grab-cursor"
+    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] && command -v jq >/dev/null 2>&1; then
+        local res_w=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .width' 2>/dev/null)
+        local res_h=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .height' 2>/dev/null)
+        if [ -n "$res_w" ] && [ -n "$res_h" ] && [ "$res_w" != "null" ]; then
+            args="-W $res_w -H $res_h -w $res_w -h $res_h $args"
+        fi
+    fi
+    echo "$args"
+}
+
 hyprland_start() {
     if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
         log_info "Optimizing Hyprland for gaming..."
@@ -103,7 +115,9 @@ case "$SteamAppId" in
     "379720")
         export mesa_glthread=true
         unset PROTON_ENABLE_WAYLAND
-        set -- gamescope -W 2560 -H 1440 -w 2560 -h 1440 -f --force-grab-cursor -- "$@" +com_skipIntroVideo 1 +set m_smooth 0
+        
+        GAMESCOPE_ARGS=$(get_gamescope_args)
+        set -- gamescope $GAMESCOPE_ARGS -- "$@" +com_skipIntroVideo 1 +set m_smooth 0
         log_info "Applying Gamescope optimizations for DOOM."
         ;;
     *)
