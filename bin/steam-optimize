@@ -1,131 +1,230 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# steam-optimize: Sets up performance environment variables and game-specific
+# overrides before delegating execution to game-performance.
+# View logs with: journalctl -t steam-optimize -f
 
-ulimit -n 1048576
+set -euo pipefail
 
-export AMD_VULKAN_ICD=RADV
-export ENABLE_LAYER_MESA_ANTI_LAG=1
-export MESA_SHADER_CACHE_MAX_SIZE=20G
-export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
-export PROTON_ENABLE_WAYLAND=1
-export PROTON_FSR4_RDNA3_UPGRADE=1
-export PROTON_FSR4_UPGRADE=1
-export PROTON_NO_WM_DECORATION=1
-export PROTON_USE_NTSYNC=1
-export PROTON_XESS_UPGRADE=1
-export RADV_PERFTEST='rt,nggc,gpl,video_decode'
-export vblank_mode=0
-export VKD3D_CONFIG=dxr
+# --- Constants ---
+readonly TAG=$(basename "$0")
+readonly STEAM_APP_ID="${SteamAppId:-}"
+readonly USER_ID=$(id -u)
+readonly RUNTIME_DIR="/run/user/${USER_ID}"
 
-# --- HYPRLAND SETUP ---
-USER_ID=$(id -u)
-RUNTIME_DIR="/run/user/$USER_ID"
-if [ -d "$RUNTIME_DIR/hypr" ]; then
-    export HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "$RUNTIME_DIR/hypr" | head -n 1)
-    export XDG_RUNTIME_DIR="$RUNTIME_DIR"
-fi
+# --- Logging ---
+# All log levels write to syslog; info also sends a desktop notification.
 
-TAG=$(basename "$0")
-
-# --- LOGGING FUNCTION ---
 log_info() {
-    # Logs to syslog (view with: journalctl -t steam-optimize -f)
-    logger -t "$TAG" "$SteamAppId : $1"
-    notify-send "$1"
+    logger -t "${TAG}" "INFO [${STEAM_APP_ID}] $1"
+    notify-send "$1" 2>/dev/null || true
 }
 
+log_warn() {
+    logger -t "${TAG}" "WARN [${STEAM_APP_ID}] $1"
+}
+
+log_error() {
+    logger -t "${TAG}" "ERROR [${STEAM_APP_ID}] $1"
+}
+
+# --- Global Environment Setup ---
+
+setup_global_env() {
+    # Raise the open file descriptor limit; required by heavily-threaded Proton games
+    ulimit -n 1048576 || log_warn "Failed to raise ulimit"
+
+    export AMD_VULKAN_ICD=RADV
+    export ENABLE_LAYER_MESA_ANTI_LAG=1
+    export MESA_SHADER_CACHE_MAX_SIZE=20G
+    export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
+    export PROTON_ENABLE_WAYLAND=1
+    export PROTON_FSR4_RDNA3_UPGRADE=1
+    export PROTON_FSR4_UPGRADE=1
+    export PROTON_NO_WM_DECORATION=1
+    export PROTON_USE_NTSYNC=1
+    export PROTON_XESS_UPGRADE=1
+    export RADV_PERFTEST='rt,nggc,gpl,video_decode'
+    export vblank_mode=0
+    export VKD3D_CONFIG=dxr
+}
+
+# --- Hyprland Integration ---
+
+setup_hyprland_env() {
+    export XDG_RUNTIME_DIR="${RUNTIME_DIR}"
+
+    if [[ -d "${RUNTIME_DIR}/hypr" ]]; then
+        # Use the most recently created socket to target the active Hyprland instance
+        export HYPRLAND_INSTANCE_SIGNATURE
+        HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "${RUNTIME_DIR}/hypr" | head -n 1)
+    fi
+}
+
+# Returns Gamescope resolution flags matching the focused Hyprland monitor.
+# Falls back to no resolution flags if Hyprland or jq is unavailable.
 get_gamescope_args() {
     local args="-f --force-grab-cursor"
-    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] && command -v jq >/dev/null 2>&1; then
-        local res_w=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .width' 2>/dev/null)
-        local res_h=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .height' 2>/dev/null)
-        if [ -n "$res_w" ] && [ -n "$res_h" ] && [ "$res_w" != "null" ]; then
-            args="-W $res_w -H $res_h -w $res_w -h $res_h $args"
-        fi
+
+    if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        echo "${args}"
+        return 0
     fi
-    echo "$args"
+
+    if ! command -v jq >/dev/null 2>&1; then
+        log_warn "jq not found; Gamescope will use default resolution"
+        echo "${args}"
+        return 0
+    fi
+
+    local res_w res_h
+    res_w=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | .width' 2>/dev/null || true)
+    res_h=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | .height' 2>/dev/null || true)
+
+    if [[ -n "${res_w}" && -n "${res_h}" && "${res_w}" != "null" ]]; then
+        args="-W ${res_w} -H ${res_h} -w ${res_w} -h ${res_h} ${args}"
+    fi
+
+    echo "${args}"
 }
 
+# Disables Hyprland effects that waste GPU time during gameplay
 hyprland_start() {
-    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-        log_info "Optimizing Hyprland for gaming..."
-        makoctl mode -s dnd 2>/dev/null
-        hyprctl --batch "keyword animations:enabled 0;\
-                        keyword decoration:shadow:enabled 0;\
-                        keyword decoration:blur:enabled 0;\
-                        keyword decoration:rounding 0;\
-                        keyword decoration:active_opacity 1.0;\
-                        keyword decoration:inactive_opacity 1.0" || log_info "Warning: Failed to apply Hyprland optimizations"
-        systemctl --user stop hypridle.service 2>/dev/null || true
-    fi
+    [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
+
+    log_info "Optimizing Hyprland for gaming"
+    makoctl mode -s dnd 2>/dev/null || true
+
+    # Disable animations, shadows, blur and opacity effects atomically
+    hyprctl --batch "keyword animations:enabled 0;\
+                     keyword decoration:shadow:enabled 0;\
+                     keyword decoration:blur:enabled 0;\
+                     keyword decoration:rounding 0;\
+                     keyword decoration:active_opacity 1.0;\
+                     keyword decoration:inactive_opacity 1.0" \
+        || log_warn "Failed to apply Hyprland rendering optimizations"
+
+    # Prevent the idle daemon from locking the screen mid-game
+    systemctl --user stop hypridle.service 2>/dev/null || true
 }
 
+# Restores the desktop to its normal state after the game exits
 hyprland_end() {
-    razer-cli -d 1600
-    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-        log_info "Reste Hyprland configuration..."
-        hyprctl reload || log_info "Warning: Failed to reload Hyprland configuration"
-        makoctl mode -s default 2>/dev/null
+    razer-cli -d 1600 2>/dev/null || true
+
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        log_info "Restoring Hyprland configuration"
+        hyprctl reload || log_error "Failed to reload Hyprland configuration"
+        makoctl mode -s default 2>/dev/null || true
     fi
+
+    # Only restart hypridle if it is not already running (e.g. was stopped above)
     if ! systemctl --user is-active hypridle.service >/dev/null 2>&1; then
         systemctl --user reset-failed hypridle.service 2>/dev/null || true
         systemctl --user start hypridle.service 2>/dev/null || true
     fi
 }
 
-# --- PER-GAME OVERRIDES ---
-case "$SteamAppId" in
-    "1808500")
-        razer-cli -d 800
-        unset SDL_VIDEODRIVER
-        unset __GLX_VENDOR_LIBRARY_NAME
-        export PROTON_NO_STEAMINPUT=1
-        log_info "Applying native Wayland optimizations for Arc Raiders."
-        ;;
-    "526870")
-        export PROTON_NO_STEAMINPUT=1
-        unset SDL_VIDEODRIVER
-        unset __GLX_VENDOR_LIBRARY_NAME
-        log_info "Applying native Wayland optimizations for Satisfactory."
-        ;;
-    "552990")
-        unset SDL_VIDEODRIVER
-        unset __GLX_VENDOR_LIBRARY_NAME
-        log_info "Applying native Wayland optimizations for World of Warships."
-        ;;
-    "3240220")
-        export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
-        export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
-        export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
-        export PROTON_NO_STEAMINPUT=1
-        log_info "Applying native Wayland optimizations for Grand Theft Auto V Enhanced."
-        ;;
-    "899770")
-        unset SDL_VIDEODRIVER
-        unset __GLX_VENDOR_LIBRARY_NAME
-        export PROTON_NO_STEAMINPUT=1
-        export RADV_PERFTEST='nggc,gpl'
-        log_info "Applying native Wayland optimizations for Last Epoch."
-        ;;
-    "412020"|"1449560")
-        unset SDL_VIDEODRIVER
-        unset __GLX_VENDOR_LIBRARY_NAME
-        export PROTON_NO_STEAMINPUT=1
-        log_info "Applying native Wayland optimizations for Metro Exodus."
-        ;;
-    "379720")
-        export mesa_glthread=true
-        unset PROTON_ENABLE_WAYLAND
-        
-        GAMESCOPE_ARGS=$(get_gamescope_args)
-        set -- gamescope $GAMESCOPE_ARGS -- "$@" +com_skipIntroVideo 1 +set m_smooth 0
-        log_info "Applying Gamescope optimizations for DOOM."
-        ;;
-    *)
-        log_info "Applying default settings (XWayland)."
-        ;;
-esac
+# --- Per-game Overrides ---
 
-log_info "Starting game-performance with arguments: $@"
-hyprland_start
-game-performance "$@"
-hyprland_end
+apply_game_overrides() {
+    case "${STEAM_APP_ID}" in
+        "1808500")
+            GAME_NAME="Arc Raiders"
+            razer-cli -d 800 2>/dev/null || true
+            unset SDL_VIDEODRIVER
+            unset __GLX_VENDOR_LIBRARY_NAME
+            export PROTON_NO_STEAMINPUT=1
+            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            ;;
+        "526870")
+            GAME_NAME="Satisfactory"
+            export PROTON_NO_STEAMINPUT=1
+            unset SDL_VIDEODRIVER
+            unset __GLX_VENDOR_LIBRARY_NAME
+            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            ;;
+        "552990")
+            GAME_NAME="World of Warships"
+            unset SDL_VIDEODRIVER
+            unset __GLX_VENDOR_LIBRARY_NAME
+            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            ;;
+        "3240220")
+            GAME_NAME="Grand Theft Auto V Enhanced"
+            export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
+            export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
+            export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
+            export PROTON_NO_STEAMINPUT=1
+            log_info "Applying BattlEye overrides for ${GAME_NAME}"
+            ;;
+        "899770")
+            GAME_NAME="Last Epoch"
+            unset SDL_VIDEODRIVER
+            unset __GLX_VENDOR_LIBRARY_NAME
+            export PROTON_NO_STEAMINPUT=1
+            # Narrower RADV feature set avoids a rendering regression in Last Epoch
+            export RADV_PERFTEST='nggc,gpl'
+            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            ;;
+        "412020"|"1449560")
+            GAME_NAME="Metro Exodus"
+            unset SDL_VIDEODRIVER
+            unset __GLX_VENDOR_LIBRARY_NAME
+            export PROTON_NO_STEAMINPUT=1
+            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            ;;
+        "379720")
+            GAME_NAME="DOOM"
+            # mesa_glthread improves CPU-side OpenGL throughput for this title
+            export mesa_glthread=true
+            # DOOM does not support Proton Wayland; revert to XWayland via Gamescope
+            unset PROTON_ENABLE_WAYLAND
+
+            local gamescope_args
+            gamescope_args=$(get_gamescope_args)
+            # Override the command array so Gamescope wraps the game binary;
+            # set -- cannot propagate positional params out of a function in bash
+            # shellcheck disable=SC2086
+            GAME_CMD=(gamescope ${gamescope_args} -- "${GAME_CMD[@]}" +com_skipIntroVideo 1 +set m_smooth 0)
+            log_info "Applying Gamescope wrapper for ${GAME_NAME}"
+            ;;
+        *)
+            GAME_NAME="AppID:${STEAM_APP_ID}"
+            log_info "No game-specific overrides; using default XWayland settings"
+            ;;
+    esac
+}
+
+# --- Entry Point ---
+
+# GAME_NAME is set by apply_game_overrides and read by main after the game exits
+GAME_NAME=""
+
+main() {
+    setup_global_env
+    setup_hyprland_env
+
+    # GAME_CMD holds the final command; game overrides may prepend wrappers (e.g. Gamescope)
+    GAME_CMD=("$@")
+    apply_game_overrides
+
+    # Ensure the desktop is restored even if game-performance crashes or is killed
+    trap hyprland_end EXIT
+
+    log_info "Launching: game-performance ${GAME_CMD[*]}"
+    hyprland_start
+
+    # $EPOCHSECONDS is a bash built-in: no subshell, no date overhead
+    local start_time=$EPOCHSECONDS
+    game-performance "${GAME_CMD[@]}"
+
+    local elapsed=$(( EPOCHSECONDS - start_time ))
+    local session_duration
+    session_duration=$(printf "%02d:%02d:%02d" \
+        $(( elapsed / 3600 )) \
+        $(( (elapsed % 3600) / 60 )) \
+        $(( elapsed % 60 )))
+    log_info "${GAME_NAME} — session ended, play time: ${session_duration}"
+}
+
+main "$@"
