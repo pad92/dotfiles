@@ -94,6 +94,18 @@ case "$SteamAppId" in
         export RADV_PERFTEST='nggc,gpl'
         log_info "Applying native Wayland optimizations for Last Epoch."
         ;;
+    "412020"|"1449560")
+        unset SDL_VIDEODRIVER
+        unset __GLX_VENDOR_LIBRARY_NAME
+        export PROTON_NO_STEAMINPUT=1
+        log_info "Applying native Wayland optimizations for Metro Exodus."
+        ;;
+    "379720")
+        export mesa_glthread=true
+        unset PROTON_ENABLE_WAYLAND
+        set -- gamescope -W 2560 -H 1440 -w 2560 -h 1440 -f --force-grab-cursor -- "$@" +com_skipIntroVideo 1 +set m_smooth 0
+        log_info "Applying Gamescope optimizations for DOOM."
+        ;;
     *)
         log_info "Applying default settings (XWayland)."
         ;;
