@@ -124,6 +124,24 @@ hyprland_end() {
     fi
 }
 
+# --- Game Configuration Helpers ---
+
+# Configures Proton's BattlEye runtime for games that require it.
+enable_battleye() {
+    export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
+    export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
+    export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
+}
+
+# Switches to Proton's native Wayland backend: clears XWayland fallback hints
+# and disables Steam Input. Call after setting GAME_NAME.
+use_native_wayland() {
+    unset SDL_VIDEODRIVER
+    unset __GLX_VENDOR_LIBRARY_NAME
+    export PROTON_NO_STEAMINPUT=1
+    log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+}
+
 # --- Per-game Overrides ---
 
 apply_game_overrides() {
@@ -131,19 +149,14 @@ apply_game_overrides() {
         "1808500")
             GAME_NAME="Arc Raiders"
             razer-cli -d 800 2>/dev/null || true
-            unset SDL_VIDEODRIVER
-            unset __GLX_VENDOR_LIBRARY_NAME
-            export PROTON_NO_STEAMINPUT=1
-            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            use_native_wayland
             ;;
         "526870")
             GAME_NAME="Satisfactory"
-            export PROTON_NO_STEAMINPUT=1
-            unset SDL_VIDEODRIVER
-            unset __GLX_VENDOR_LIBRARY_NAME
-            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            use_native_wayland
             ;;
         "552990")
+            # World of Warships uses native Wayland but keeps Steam Input enabled
             GAME_NAME="World of Warships"
             unset SDL_VIDEODRIVER
             unset __GLX_VENDOR_LIBRARY_NAME
@@ -152,27 +165,19 @@ apply_game_overrides() {
         "3240220")
             GAME_NAME="Grand Theft Auto V Enhanced"
             razer-cli -d 800 2>/dev/null || true
-            export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
-            export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
-            export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
+            enable_battleye
             export PROTON_NO_STEAMINPUT=1
             log_info "Applying BattlEye overrides for ${GAME_NAME}"
             ;;
         "899770")
             GAME_NAME="Last Epoch"
-            unset SDL_VIDEODRIVER
-            unset __GLX_VENDOR_LIBRARY_NAME
-            export PROTON_NO_STEAMINPUT=1
             # Narrower RADV feature set avoids a rendering regression in Last Epoch
             export RADV_PERFTEST='nggc,gpl'
-            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            use_native_wayland
             ;;
         "412020"|"1449560")
             GAME_NAME="Metro Exodus"
-            unset SDL_VIDEODRIVER
-            unset __GLX_VENDOR_LIBRARY_NAME
-            export PROTON_NO_STEAMINPUT=1
-            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            use_native_wayland
             ;;
         "379720")
             GAME_NAME="DOOM"
