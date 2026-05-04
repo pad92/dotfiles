@@ -194,6 +194,10 @@ apply_game_overrides() {
             GAME_CMD=(gamescope ${gamescope_args} -- "${GAME_CMD[@]}" +com_skipIntroVideo 1 +set m_smooth 0)
             log_info "Applying Gamescope wrapper for ${GAME_NAME}"
             ;;
+        "13240")
+            GAME_NAME="Unreal Tournament GOTY"
+            use_native_wayland
+            ;;
         *)
             GAME_NAME="AppID:${STEAM_APP_ID}"
             log_info "No game-specific overrides; using default XWayland settings"
