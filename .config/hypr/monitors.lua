@@ -1,7 +1,7 @@
 -- https://wiki.hypr.land/Configuring/Basics/Monitors/
 
 hl.monitor({ output = "desc:Sharp Corporation 0x1516",
-              mode = "840x2400",
+              mode = "3840x2400",
               position = "0x1440",
               scale = 2
             })
