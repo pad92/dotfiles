@@ -12,16 +12,21 @@ require("conf.animations")
 require("conf.keybindings")
 require("conf.windowrules")
 
--- Load generated displays settings
-require("conf.monitor")
 require("workspaces")
 
 -- Host specific configuration
--- This mirrors the 'exec-once = ln -sf ...' and 'source = ...' logic
-hl.on("hyprland.start", function()
-    hl.exec_cmd("ln -sf ~/.config/hypr/hosts/$(hostname).lua ~/.config/hypr/host-specific.lua")
-end)
--- Since host-specific.conf is a .conf file, we can use hl.source if supported,
--- or we assume the user will migrate host files to lua eventually.
--- For now, we'll try to source the generated host-specific config if it exists.
-require("host-specific")
+-- Optimized: Load host-specific config dynamically without symlinks
+local hostname = os.getenv("HOSTNAME")
+if not hostname then
+    -- Fallback to shell if environment variable is not set
+    local handle = io.popen("hostname")
+    hostname = handle:read("*a"):gsub("%s+", "")
+    handle:close()
+end
+
+if hostname then
+    local status, err = pcall(require, "hosts." .. hostname)
+    if not status then
+        print("Host-specific configuration not found for: " .. hostname)
+    end
+end

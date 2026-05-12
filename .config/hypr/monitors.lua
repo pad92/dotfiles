@@ -14,6 +14,11 @@ hl.monitor({
   output = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758",
     mode = "2560x1440",
     position = "2560x0",
-    bitdepth = 10
+    bitdepth = 10,
+    scale = 1,
+  },{
+  output = "",
+    mode = "preferred",
+    position = "auto",
     scale = 1,
 })
