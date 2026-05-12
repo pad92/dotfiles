@@ -18,15 +18,16 @@ require("workspaces")
 -- Optimized: Load host-specific config dynamically without symlinks
 local hostname = os.getenv("HOSTNAME")
 if not hostname then
-    -- Fallback to shell if environment variable is not set
-    local handle = io.popen("hostname")
-    hostname = handle:read("*a"):gsub("%s+", "")
-    handle:close()
+  -- Fallback to shell if environment variable is not set
+  local handle = io.popen("hostname")
+  hostname = handle:read("*a"):gsub("%s+", "")
+  handle:close()
 end
 
 if hostname then
-    local status, err = pcall(require, "hosts." .. hostname)
-    if not status then
-        print("Host-specific configuration not found for: " .. hostname)
-    end
+  local host_module = "hosts." .. hostname
+  local status, err = pcall(require, host_module)
+  if not status then
+    print("Host-specific configuration not found for: " .. hostname)
+  end
 end

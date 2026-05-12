@@ -53,7 +53,6 @@ Desktop.ini
 .bundle
 *.gem
 *.egg-info
-dist
 build
 *.egg
 
