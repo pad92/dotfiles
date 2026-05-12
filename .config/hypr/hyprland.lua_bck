@@ -1,0 +1,31 @@
+-- Main Hyprland Lua Configuration (v0.55)
+
+-- Load configuration modules
+require("conf.variables")
+require("conf.monitor")
+require("conf.environment")
+require("conf.autostart")
+require("conf.input")
+require("conf.layout")
+require("conf.misc")
+require("conf.animations")
+require("conf.keybindings")
+require("conf.windowrules")
+
+-- Load theme settings
+require("themes.common")
+require("themes.theme")
+
+-- Load generated displays settings
+require("monitors")
+require("workspaces")
+
+-- Host specific configuration
+-- This mirrors the 'exec-once = ln -sf ...' and 'source = ...' logic
+hl.on("hyprland.start", function()
+    hl.exec_cmd("ln -sf ~/.config/hypr/hosts/$(hostname).lua ~/.config/hypr/host-specific.lua")
+end)
+-- Since host-specific.conf is a .conf file, we can use hl.source if supported,
+-- or we assume the user will migrate host files to lua eventually.
+-- For now, we'll try to source the generated host-specific config if it exists.
+hl.source("~/.config/hypr/host-specific.lua")

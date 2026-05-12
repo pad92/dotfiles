@@ -1,0 +1,1 @@
+/home/pascal/.config/hypr/hosts/PadsP5560.lua
