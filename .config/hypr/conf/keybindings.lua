@@ -57,8 +57,9 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("swayosd-client --brightness lo
 hl.bind("CAPS", hl.dsp.exec_cmd("swayosd-client --caps-lock"), { description = "Caps Lock" })
 
 -- Screenshot
-hl.bind("SUPER + P", hl.dsp.window.pin(), { description = "Pin window" })
-hl.bind("Print", hl.dsp.exec_cmd("grim -g \"$(slurp -d)\" - | swappy -f -"), { locked = true })
+local screenshot_command = "grim -g \"$(slurp -d)\" - | swappy -f -"
+hl.bind("Print", hl.dsp.exec_cmd(screenshot_command), { locked = true })
+hl.bind("SUPER + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
 
 -- Custom scripts & Clipboard
 hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/swww.sh"), { description = "Change wallpaper" })
