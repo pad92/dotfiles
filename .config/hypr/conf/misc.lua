@@ -1,22 +1,22 @@
 -- General, Decoration, and Group settings
 
-hl.general({
+hl.config({ general = {
     gaps_in = 1,
     gaps_out = 1,
     border_size = 1,
-    col_active_border = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
-    col_inactive_border = "rgba(b4befecc) rgba(6c7086cc) 45deg",
+    -- col_active_border = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
+    -- col_inactive_border = "rgba(b4befecc) rgba(6c7086cc) 45deg",
     layout = "dwindle",
     resize_on_border = true,
-})
+}})
 
-hl.general_snap({
-    enabled = true,
-    window_gap = 25,
-    monitor_gap = 10,
-})
+-- hl.config({ group_snap = {
+--     enabled = true,
+--     window_gap = 25,
+--     monitor_gap = 10,
+-- }})
 
-hl.decoration({
+hl.config({ decoration = {
     rounding = 5,
     blur = {
         enabled = true,
@@ -32,11 +32,11 @@ hl.decoration({
         render_power = 3,
         color = "0x66000000",
     },
-})
+}})
 
-hl.group({
-    col_border_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
-    col_border_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
-    col_border_locked_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
-    col_border_locked_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
-})
+-- hl.config({ group = {
+--     col_border_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
+--     col_border_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
+--     col_border_locked_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
+--     col_border_locked_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
+-- }})

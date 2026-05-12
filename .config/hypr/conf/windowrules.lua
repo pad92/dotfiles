@@ -1,128 +1,61 @@
 -- Window Rules configuration
 
 -- Polkit agents
-hl.windowrule({
-    name = "polkit-agents",
-    match_class = "^(?i)(hyprpolkitagent|polkit-kde-authentication-agent-1|org.kde.polkit-kde-authentication-agent-1|polkit-gnome-authentication-agent-1|gcr-prompter|pinentry-.*)$",
-    float = true,
-    center = true,
-    rounding = 12,
-})
+hl.window_rule({ match = { class = "^(?i)(hyprpolkitagent|polkit-kde-authentication-agent-1|org.kde.polkit-kde-authentication-agent-1|polkit-gnome-authentication-agent-1|gcr-prompter|pinentry-.*)$" }, float = true, center = true, rounding = 12 })
 
 -- Steam
-hl.windowrule({
-    name = "steam-float",
-    match_class = "^(?i)(steam)$",
-    match_title = "^(?i)(Friends List|.*Chat.*|Settings|.* - News|Screenshot)$",
-    float = true,
-    size = "700 750",
-    rounding = 12,
-})
-
-hl.windowrule({
-    name = "steam-signin",
-    match_title = "^(?i)(Sign in to Steam)$",
-    float = true,
-    center = true,
-})
-
-hl.windowrule({
-    name = "steam-no-center",
-    match_class = "^(?i)(steam)$",
-    center = false,
-})
-
-hl.windowrule({
-    name = "steam-bigpicture",
-    match_class = "^(?i)(steam)$",
-    match_title = "^(?i)(Steam Big Picture Mode)$",
-    fullscreen = true,
-    monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758",
-})
-
-hl.windowrule({
-    name = "steam-games",
-    match_class = "^(?i)(gamescope|steam_app_.*)$",
-    fullscreen = true,
-    monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758",
-    immediate = true,
-})
+hl.window_rule({ match = { class = "^(?i)(steam)$", title = "^(?i)(Friends List|.*Chat.*|Settings|.* - News|Screenshot)$" }, float = true, size = { 700, 750 }, rounding = 12 })
+hl.window_rule({ match = { title = "^(?i)(Sign in to Steam)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(?i)(steam)$", title = "^(?i)(Steam Big Picture Mode)$" }, fullscreen = true, monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758" })
+hl.window_rule({ match = { class = "^(?i)(gamescope|steam_app_.*)$" }, fullscreen = true, immediate = true, monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758" })
 
 -- Other apps
-hl.windowrule({
-    name = "pavucontrol",
-    match_class = "^(?i)(pavucontrol|org.pulseaudio.pavucontrol|pavucontrol-qt)$",
-    float = true,
-    size = "900 600",
-    rounding = 12,
-})
-
-hl.windowrule({
-    name = "password-managers",
-    match_class = "^(?i)(org.keepassxc.KeePassXC|Bitwarden|1Password)$",
-    float = true,
-    center = true,
-})
-
-hl.windowrule({
-    name = "keepassxc",
-    match_class = "^(?i)(org.keepassxc.KeePassXC)$",
-    size = "900 500",
-})
-
-hl.windowrule({
-    name = "keepassxc-unlock",
-    match_class = "^(?i)(org.keepassxc.KeePassXC)$",
-    match_title = "^(?i)(Unlock Database)$",
-    float = true,
-})
-
-hl.windowrule({
-    name = "bitwarden",
-    match_class = "^(?i)(Bitwarden)$",
-    size = "800 600",
-})
+hl.window_rule({ match = { class = "^(?i)(pavucontrol|org.pulseaudio.pavucontrol|pavucontrol-qt)$" }, float = true, size = { 900, 600 }, rounding = 12 })
+hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC|Bitwarden|1Password)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC)$" }, size = { 900, 500 } })
+hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC)$", title = "^(?i)(Unlock Database)$" }, float = true })
+hl.window_rule({ match = { class = "^(?i)(Bitwarden)$" }, size = { 800, 600 } })
 
 -- Simple rules
-hl.windowrule("float", "match:class ^(Rofi)$, match:title ^(rofi - dmenu)$")
-hl.windowrule("float", "match:class ^(blueman-manager)$")
-hl.windowrule("float", "match:class ^(codium)$, match:title ^(Save Workspace)$")
-hl.windowrule("float", "match:class ^(com.github.wwmm.easyeffects)$")
-hl.windowrule("float", "match:class ^(firefox)$, match:title ^(Library)$")
-hl.windowrule("float", "match:class ^(kitty)$, match:title ^(btop)$")
-hl.windowrule("float", "match:class ^(kitty)$, match:title ^(htop)$")
-hl.windowrule("float", "match:class ^(kitty)$, match:title ^(top)$")
-hl.windowrule("float", "match:class ^(kvantummanager)$")
-hl.windowrule("float", "match:class ^(nm-applet)$")
-hl.windowrule("float", "match:class ^(nm-connection-editor)$")
-hl.windowrule("float", "match:class ^(nwg-look)$")
-hl.windowrule("float", "match:class ^(org.kde.ark)$")
-hl.windowrule("float", "match:class ^(org.kde.dolphin)$, match:title ^(Copying — Dolphin)$")
-hl.windowrule("float", "match:class ^(org.kde.dolphin)$, match:title ^(Progress Dialog — Dolphin)$")
-hl.windowrule("float", "match:class ^(org.kde.polkit-kde-authentication-agent-1)$")
-hl.windowrule("float", "match:class ^(qt5ct)$")
-hl.windowrule("float", "match:class ^(qt6ct)$")
-hl.windowrule("float", "match:class ^(vlc)$")
-hl.windowrule("float", "match:title ^(About Mozilla Firefox)$")
-hl.windowrule("float", "match:title ^(Picture-in-Picture)$")
+hl.window_rule({ match = { class = "^(Rofi)$", title = "^(rofi - dmenu)$" }, float = true })
+hl.window_rule({ match = { class = "^(blueman-manager)$" }, float = true })
+hl.window_rule({ match = { class = "^(codium)$", title = "^(Save Workspace)$" }, float = true })
+hl.window_rule({ match = { class = "^(com.github.wwmm.easyeffects)$" }, float = true })
+hl.window_rule({ match = { class = "^(firefox)$", title = "^(Library)$" }, float = true })
+hl.window_rule({ match = { class = "^(kitty)$", title = "^(btop)$" }, float = true })
+hl.window_rule({ match = { class = "^(kitty)$", title = "^(htop)$" }, float = true })
+hl.window_rule({ match = { class = "^(kitty)$", title = "^(top)$" }, float = true })
+hl.window_rule({ match = { class = "^(kvantummanager)$" }, float = true })
+hl.window_rule({ match = { class = "^(nm-applet)$" }, float = true })
+hl.window_rule({ match = { class = "^(nm-connection-editor)$" }, float = true })
+hl.window_rule({ match = { class = "^(nwg-look)$" }, float = true })
+hl.window_rule({ match = { class = "^(org.kde.ark)$" }, float = true })
+hl.window_rule({ match = { class = "^(org.kde.dolphin)$", title = "^(Copying — Dolphin)$" }, float = true })
+hl.window_rule({ match = { class = "^(org.kde.dolphin)$", title = "^(Progress Dialog — Dolphin)$" }, float = true })
+hl.window_rule({ match = { class = "^(org.kde.polkit-kde-authentication-agent-1)$" }, float = true })
+hl.window_rule({ match = { class = "^(qt5ct)$" }, float = true })
+hl.window_rule({ match = { class = "^(qt6ct)$" }, float = true })
+hl.window_rule({ match = { class = "^(vlc)$" }, float = true })
+hl.window_rule({ match = { title = "^(About Mozilla Firefox)$" }, float = true })
+hl.window_rule({ match = { title = "^(Picture-in-Picture)$" }, float = true })
 
-hl.windowrule("float", "match:class ^(app.drey.Warp)$")
-hl.windowrule("float", "match:class ^(com.github.rafostar.Clapper)$")
-hl.windowrule("float", "match:class ^(com.github.unrud.VideoDownloader)$")
-hl.windowrule("float", "match:class ^(eog)$")
-hl.windowrule("float", "match:class ^(io.github.alainm23.planify)$")
-hl.windowrule("float", "match:class ^(io.gitlab.adhami3310.Impression)$")
-hl.windowrule("float", "match:class ^(io.gitlab.theevilskeleton.Upscaler)$")
-hl.windowrule("float", "match:class ^(io.missioncenter.MissionCenter)$")
-hl.windowrule("float", "match:class ^(net.davidotek.pupgui2)$")
-hl.windowrule("float", "match:class ^(org.telegram.desktop)$")
-hl.windowrule("float", "match:class ^(Plexamp)$")
-hl.windowrule("float", "match:class ^(Signal)$")
-hl.windowrule("float", "match:class ^(yad)$")
+hl.window_rule({ match = { class = "^(app.drey.Warp)$" }, float = true })
+hl.window_rule({ match = { class = "^(com.github.rafostar.Clapper)$" }, float = true })
+hl.window_rule({ match = { class = "^(com.github.unrud.VideoDownloader)$" }, float = true })
+hl.window_rule({ match = { class = "^(eog)$" }, float = true })
+hl.window_rule({ match = { class = "^(io.github.alainm23.planify)$" }, float = true })
+hl.window_rule({ match = { class = "^(io.gitlab.adhami3310.Impression)$" }, float = true })
+hl.window_rule({ match = { class = "^(io.gitlab.theevilskeleton.Upscaler)$" }, float = true })
+hl.window_rule({ match = { class = "^(io.missioncenter.MissionCenter)$" }, float = true })
+hl.window_rule({ match = { class = "^(net.davidotek.pupgui2)$" }, float = true })
+hl.window_rule({ match = { class = "^(org.telegram.desktop)$" }, float = true })
+hl.window_rule({ match = { class = "^(Plexamp)$" }, float = true })
+hl.window_rule({ match = { class = "^(Signal)$" }, float = true })
+hl.window_rule({ match = { class = "^(yad)$" }, float = true })
 
 -- Layer rules
-hl.layerrule("blur", "match:namespace logout_dialog")
-hl.layerrule("blur", "match:namespace notifications", { ignore_alpha = 0 })
-hl.layerrule("blur", "match:namespace rofi", { ignore_alpha = 0 })
-hl.layerrule("blur", "match:namespace swaync-control-center", { ignore_alpha = 0 })
-hl.layerrule("blur", "match:namespace swaync-notification-window", { ignore_alpha = 0 })
+hl.layer_rule({ match = { namespace = "logout_dialog" }, blur = true })
+hl.layer_rule({ match = { namespace = "notifications" }, blur = true, ignore_alpha = 0 })
+hl.layer_rule({ match = { namespace = "rofi" }, blur = true, ignore_alpha = 0 })
+hl.layer_rule({ match = { namespace = "swaync-control-center" }, blur = true, ignore_alpha = 0 })
+hl.layer_rule({ match = { namespace = "swaync-notification-window" }, blur = true, ignore_alpha = 0 })

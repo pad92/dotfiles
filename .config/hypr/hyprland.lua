@@ -17,6 +17,7 @@ require("themes.common")
 require("themes.theme")
 
 -- Load generated displays settings
+require("conf.monitor")
 require("monitors")
 require("workspaces")
 
@@ -28,4 +29,4 @@ end)
 -- Since host-specific.conf is a .conf file, we can use hl.source if supported,
 -- or we assume the user will migrate host files to lua eventually.
 -- For now, we'll try to source the generated host-specific config if it exists.
-hl.source("~/.config/hypr/host-specific.lua")
+require("host-specific")
