@@ -1,22 +1,18 @@
 -- General, Decoration, and Group settings
 
-hl.config({ general = {
+hl.config({
+  general = {
+    col = {
+      active_border   = "rgba(b4befecc)",
+      inactive_border = "rgba(6c7086cc)",
+    },
     gaps_in = 1,
     gaps_out = 1,
     border_size = 1,
-    -- col_active_border = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
-    -- col_inactive_border = "rgba(b4befecc) rgba(6c7086cc) 45deg",
     layout = "dwindle",
     resize_on_border = true,
-}})
-
--- hl.config({ group_snap = {
---     enabled = true,
---     window_gap = 25,
---     monitor_gap = 10,
--- }})
-
-hl.config({ decoration = {
+  },
+  decoration = {
     rounding = 5,
     blur = {
         enabled = true,
@@ -32,11 +28,5 @@ hl.config({ decoration = {
         render_power = 3,
         color = "0x66000000",
     },
-}})
-
--- hl.config({ group = {
---     col_border_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
---     col_border_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
---     col_border_locked_active = "rgba(ca9ee6ff) rgba(f2d5cfff) 45deg",
---     col_border_locked_inactive = "rgba(b4befecc) rgba(6c7086cc) 45deg",
--- }})
+  }
+})

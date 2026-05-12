@@ -1,5 +1,6 @@
 -- Input configuration
-hl.config({ input = {
+hl.config({
+  input = {
     kb_layout = "us",
     kb_variant = "intl",
     follow_mouse = 1,
@@ -13,11 +14,18 @@ hl.config({ input = {
         tap_and_drag = true,
         drag_lock = false,
     },
-}})
-
-hl.config({ cursor = {
+  },
+  cursor = {
     no_hardware_cursors = false,
     enable_hyprcursor = true,
+  },
+  gestures = {
+      workspace_swipe_distance = 500,
+      workspace_swipe_invert = true,
+      workspace_swipe_min_speed_to_force = 30,
+      workspace_swipe_cancel_ratio = 0.5,
+      workspace_swipe_create_new = true,
+      workspace_swipe_forever = true,
 }})
 
 -- Device specific settings
@@ -26,12 +34,3 @@ hl.device = ({
     name = "epic mouse V1",
     sensitivity = -0.5,
 })
-
-hl.config({ gestures = {
-    workspace_swipe_distance = 500,
-    workspace_swipe_invert = true,
-    workspace_swipe_min_speed_to_force = 30,
-    workspace_swipe_cancel_ratio = 0.5,
-    workspace_swipe_create_new = true,
-    workspace_swipe_forever = true,
-}})

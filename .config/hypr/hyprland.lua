@@ -12,13 +12,8 @@ require("conf.animations")
 require("conf.keybindings")
 require("conf.windowrules")
 
--- Load theme settings
-require("themes.common")
-require("themes.theme")
-
 -- Load generated displays settings
 require("conf.monitor")
-require("monitors")
 require("workspaces")
 
 -- Host specific configuration

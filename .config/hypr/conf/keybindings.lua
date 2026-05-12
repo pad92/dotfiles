@@ -1,7 +1,7 @@
 local vars = require("conf.variables")
 
 -- Window/Session actions
-hl.bind("SUPER + Q", hl.dsp.window.close(), {description = "Close window"})
+hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close(), {description = "Close window"})
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({action = "toggle"}), {description = "Float/Tile"})
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({"fullscreen"}, {description = "Fullscreen"}) )
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"), {description = "Lock"})
@@ -57,19 +57,21 @@ hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. vars.menu .. 
 
 -- Workspaces
 for i = 1, 10 do
-    local numberkey = {10,11,12,13,14,15,16,17,18,19}
-    hl.bind("SUPER + code:"..numberkey[i], hl.dsp.focus({ workspace = i}) )
-    hl.bind("SUPER + ALT + code:"..numberkey[i], hl.dsp.window.move({ workspace = i, follow = false}) )
+ local numberkey = {10,11,12,13,14,15,16,17,18,19}
+ hl.bind("SUPER + ALT + code:"..numberkey[i], hl.dsp.window.move({ workspace = i, follow = false}) )
+end
+--# keypad numbers
+for i = 1, 10 do
+ local numpadkey = {87,88,89,83,84,85,79,80,81,90}
+ hl.bind("SUPER + ALT + code:"..numpadkey[i], hl.dsp.window.move({ workspace = i, follow = false}) )
 end
 
 hl.bind("CTRL + SUPER + Right", hl.dsp.focus({workspace = "r+1"}) )
 hl.bind("CTRL + SUPER + Left", hl.dsp.focus({workspace = "r-1"}) )
 
--- Resize windows
-hl.bind("SUPER + SHIFT + Right", hl.dsp.window.resize({x = 30, y = 0}), {repeating = true})
-hl.bind("SUPER + SHIFT + Left", hl.dsp.window.resize({x = -30, y = 0}), {repeating = true})
-hl.bind("SUPER + SHIFT + Up", hl.dsp.window.resize({x = 0, y = -30}), {repeating = true})
-hl.bind("SUPER + SHIFT + Down", hl.dsp.window.resize({x = 0, y = 30}), {repeating = true})
+for i = 0, 9 do
+  hl.bind("SUPER + "..i, hl.dsp.focus({workspace = i}))
+end
 
 -- Mouse bindings
 hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), {mouse = true, description = "Move window"})
