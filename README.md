@@ -80,4 +80,4 @@ My primary and main driver.
 Compatible configurations are provided.
 
 ---
-*Maintained by [pad92](https://gitlab.com/pad92)*
+*Maintained by [pad](https://gitlab.com/pad92) 🐐*
