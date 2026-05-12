@@ -6,7 +6,8 @@ local qsIsAlive = qsIpcCall.." TEST_ALIVE"
 hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close(), {description = "Close window"})
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({action = "toggle"}), {description = "Float/Tile"})
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({"fullscreen"}, {description = "Fullscreen"}) )
-hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"), {description = "Lock"})
+hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock -c ~/.config/hypr/hyprlock.conf"), {description = "Lock"})
+
 hl.bind("SUPER + Delete", hl.dsp.exec_cmd(qsIsAlive.." || pkill wlogout || wlogout -p layer-shell") )
 
 -- Application shortcuts
