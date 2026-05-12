@@ -1,11 +1,13 @@
 local vars = require("conf.variables")
+local qsIpcCall = "qs -c $qsConfig ipc call"
+local qsIsAlive = qsIpcCall.." TEST_ALIVE"
 
 -- Window/Session actions
 hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close(), {description = "Close window"})
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({action = "toggle"}), {description = "Float/Tile"})
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({"fullscreen"}, {description = "Fullscreen"}) )
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"), {description = "Lock"})
-hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("wlogout"), {description = "Session menu"})
+hl.bind("SUPER + Delete", hl.dsp.exec_cmd(qsIsAlive.." || pkill wlogout || wlogout -p layer-shell") )
 
 -- Application shortcuts
 hl.bind("SUPER + Return", hl.dsp.exec_cmd(vars.term), {description = "Terminal"})
