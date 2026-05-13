@@ -4,7 +4,7 @@
 local config = require("config")
 
 -- Load configuration modules
-require("conf.monitor")
+require("monitors")
 require("conf.environment")
 require("conf.autostart")
 require("conf.input")
@@ -26,20 +26,20 @@ if not hostname then
   handle:close()
 end
 
+local messages = {}
 if hostname then
   local host_module = "hosts." .. hostname
   local status, err = pcall(require, host_module)
   if status then
-    hl.notification.create({
-      text = "Host config loaded: " .. hostname,
-      duration = config.notif_duration
-    })
+    table.insert(messages, "Host config loaded: " .. hostname)
   else
     print("Host-specific configuration not found for: " .. hostname)
   end
 end
 
+table.insert(messages, "Hyprland Lua configuration loaded successfully")
+
 hl.notification.create({
-  text = "Hyprland Lua configuration loaded successfully",
+  text = table.concat(messages, "\n"),
   duration = config.notif_duration
 })
