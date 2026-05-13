@@ -1,10 +1,11 @@
 -- General, Decoration, and Group settings
+local config = require("config")
 
 hl.config({
   general = {
     col = {
-      active_border   = "rgba(b4befecc)",
-      inactive_border = "rgba(6c7086cc)",
+      active_border   = config.active_border,
+      inactive_border = config.inactive_border,
     },
     gaps_in = 1,
     gaps_out = 1,
@@ -13,7 +14,8 @@ hl.config({
     resize_on_border = true,
   },
   decoration = {
-    rounding = 5,
+        rounding_power = 2.5,
+        rounding = 10,
     blur = {
         enabled = true,
         size = 6,
@@ -24,9 +26,10 @@ hl.config({
     },
     shadow = {
         enabled = true,
-        range = 30,
-        render_power = 3,
-        color = "0x66000000",
+        range = 20,
+        offset = {0, 2},
+        render_power = 10,
+        color = "rgba(00000020)"
     },
   }
 })

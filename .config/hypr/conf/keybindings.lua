@@ -1,4 +1,4 @@
-local vars = require("conf.variables")
+local config = require("config")
 local qsIpcCall = "qs -c $qsConfig ipc call"
 local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 
@@ -11,11 +11,11 @@ hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock -c ~/.config/hypr/hyprlock.conf")
 hl.bind("SUPER + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
 
 -- Application shortcuts
-hl.bind("SUPER + Return", hl.dsp.exec_cmd(vars.term), { description = "Terminal" })
-hl.bind("SUPER + E", hl.dsp.exec_cmd(vars.file), { description = "File manager" })
-hl.bind("SUPER + C", hl.dsp.exec_cmd(vars.editor), { description = "Code editor" })
-hl.bind("SUPER + W", hl.dsp.exec_cmd(vars.browser), { description = "Browser" })
-hl.bind("SUPER + D", hl.dsp.exec_cmd(vars.menu .. " --show drun"), { description = "Application menu" })
+hl.bind("SUPER + Return", hl.dsp.exec_cmd(config.term), { description = "Terminal" })
+hl.bind("SUPER + E", hl.dsp.exec_cmd(config.file), { description = "File manager" })
+hl.bind("SUPER + C", hl.dsp.exec_cmd(config.editor), { description = "Code editor" })
+hl.bind("SUPER + W", hl.dsp.exec_cmd(config.browser), { description = "Browser" })
+hl.bind("SUPER + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
 hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd("1password"), { description = "1Password" })
 
 -- Focus and Move
@@ -63,7 +63,7 @@ hl.bind("SUPER + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
 
 -- Custom scripts & Clipboard
 hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/swww.sh"), { description = "Change wallpaper" })
-hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. vars.menu .. " -S dmenu | cliphist decode | wl-copy"),
+hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .. " -S dmenu | cliphist decode | wl-copy"),
   { description = "Clipboard history" })
 
 -- Workspaces

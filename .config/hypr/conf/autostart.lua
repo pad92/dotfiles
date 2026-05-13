@@ -1,20 +1,9 @@
 -- Autostart configuration
 hl.on("hyprland.start", function()
-  -- 1. Environment & Theme settings
-  local theme_settings = {
-    { key = "org.gnome.desktop.interface icon-theme",          value = "'Papirus-Dark'" },
-    { key = "org.gnome.desktop.interface gtk-theme",           value = "'Materia-dark-compact'" },
-    { key = "org.gnome.desktop.interface color-scheme",        value = "'prefer-dark'" },
-    { key = "org.gnome.desktop.interface cursor-theme",        value = "'Adwaita'" },
-    { key = "org.gnome.desktop.interface cursor-size",         value = "24" },
-    { key = "org.gnome.desktop.interface font-antialiasing",   value = "'rgba'" },
-    { key = "org.gnome.desktop.interface font-hinting",        value = "'full'" },
-    { key = "org.gnome.desktop.interface monospace-font-name", value = "'SauceCodePro Nerd Font 14'" },
-    { key = "org.gnome.desktop.interface font-name",           value = "'Cantarell 10'" },
-    { key = "org.gnome.desktop.interface document-font-name",  value = "'Cantarell 10'" },
-  }
+  local config = require("config")
 
-  for _, setting in ipairs(theme_settings) do
+  -- 1. Environment & Theme settings
+  for _, setting in ipairs(config.theme_settings) do
     hl.exec_cmd("gsettings set " .. setting.key .. " " .. setting.value)
   end
 
@@ -29,15 +18,7 @@ hl.on("hyprland.start", function()
   "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 || /usr/libexec/polkit-gnome-authentication-agent-1")
 
   -- 3. Applications & Applets
-  local apps = {
-    "waybar",
-    "blueman-applet",
-    "nm-applet --indicator",
-    "/usr/bin/swayosd-server",
-    "1password --silent",
-  }
-
-  for _, app in ipairs(apps) do
+  for _, app in ipairs(config.autostart_apps) do
     hl.exec_cmd(app)
   end
 
