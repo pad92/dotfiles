@@ -7,7 +7,34 @@
 
 set -euo pipefail
 
-# --- Constants ---
+# --- Configuration ---
+
+# Global Environment Defaults
+readonly DEFAULT_ENV_VARS=(
+    # Graphics Drivers/Layers
+    "AMD_VULKAN_ICD=RADV"                     # Sets Vulkan ICD to RADV driver for AMD GPUs.
+    "ENABLE_LAYER_MESA_ANTI_LAG=1"            # Enables a Mesa anti-lag layer for better performance.
+    "MESA_SHADER_CACHE_MAX_SIZE=20G"          # Sets the maximum size of the Mesa shader cache (20GB).
+    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1"   # Prevents cleanup of the OpenGL shader disk cache.
+
+    # Proton/Wayland Optimizations
+    "PROTON_ENABLE_WAYLAND=1"                 # Enables Wayland support via Proton.
+    "PROTON_FSR4_RDNA3_UPGRADE=1"             # Enables FSR 4 upgrade specifically for RDNA3 hardware.
+    "PROTON_FSR4_UPGRADE=1"                   # Enables general FSR 4 upgrade support.
+    "PROTON_NO_WM_DECORATION=1"               # Disables window manager decorations within Proton.
+    "PROTON_USE_NTSYNC=1"                     # Uses ntouchy sync for improved input/timing accuracy.
+    "PROTON_XESS_UPGRADE=1"                   # Enables Proton's Xess upgrade.
+
+    # Advanced/Other Configs
+    "RADV_PERFTEST=rt,nggc,gpl,video_decode"  # Enables specific performance tests/features in RADV.
+    "vblank_mode=0"                           # Disables vertical blanking mode (VSync).
+    "VKD3D_CONFIG=dxr"                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
+)
+
+# Paths
+readonly BATTLEYE_RUNTIME_PATH="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
+
+# Constants
 readonly TAG=$(basename "$0")
 readonly STEAM_APP_ID="${SteamAppId:-}"
 readonly USER_ID=$(id -u)
@@ -28,6 +55,16 @@ _log() {
     notify-send "${msg}" 2>/dev/null || true
 }
 
+_log_silent() {
+    local level="$1"
+    local msg="$2"
+    logger -t "${TAG}" "${level} [${STEAM_APP_ID}] ${msg}"
+}
+
+log_info_silent() {
+    _log_silent "INFO" "$1"
+}
+
 log_info() {
     _log "INFO" 1 "$1"
 }
@@ -46,19 +83,9 @@ setup_global_env() {
     # Raise the open file descriptor limit; required by heavily-threaded Proton games
     ulimit -n 1048576 || log_warn "Failed to raise ulimit"
 
-    export AMD_VULKAN_ICD=RADV
-    export ENABLE_LAYER_MESA_ANTI_LAG=1
-    export MESA_SHADER_CACHE_MAX_SIZE=20G
-    export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
-    export PROTON_ENABLE_WAYLAND=1
-    export PROTON_FSR4_RDNA3_UPGRADE=1
-    export PROTON_FSR4_UPGRADE=1
-    export PROTON_NO_WM_DECORATION=1
-    export PROTON_USE_NTSYNC=1
-    export PROTON_XESS_UPGRADE=1
-    export RADV_PERFTEST='rt,nggc,gpl,video_decode'
-    export vblank_mode=0
-    export VKD3D_CONFIG=dxr
+    for var in "${DEFAULT_ENV_VARS[@]}"; do
+        export "$var"
+    done
 }
 
 # --- Hyprland Integration ---
@@ -146,7 +173,7 @@ hyprland_end() {
 
 # Configures Proton's BattlEye runtime for games that require it.
 enable_battleye() {
-    export PROTON_BATTLEYE_RUNTIME="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
+    export PROTON_BATTLEYE_RUNTIME="${BATTLEYE_RUNTIME_PATH}"
     export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
     export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
 }
@@ -241,7 +268,7 @@ main() {
     # Ensure the desktop is restored even if game-performance crashes or is killed
     trap hyprland_end EXIT
 
-    log_info "Launching: game-performance ${GAME_CMD[*]}"
+    log_info_silent "Launching: game-performance ${GAME_CMD[*]}"
     hyprland_start
 
     # $EPOCHSECONDS is a bash built-in: no subshell, no date overhead
