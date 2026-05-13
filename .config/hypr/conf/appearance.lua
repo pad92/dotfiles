@@ -7,15 +7,15 @@ hl.config({
       active_border   = config.active_border,
       inactive_border = config.inactive_border,
     },
-    gaps_in = 1,
-    gaps_out = 1,
-    border_size = 1,
+    gaps_in = config.gaps_in,
+    gaps_out = config.gaps_out,
+    border_size = config.border_size,
     layout = "dwindle",
     resize_on_border = true,
   },
   decoration = {
         rounding_power = 2.5,
-        rounding = 10,
+        rounding = config.rounding,
     blur = {
         enabled = true,
         size = 6,
@@ -29,7 +29,7 @@ hl.config({
         range = 20,
         offset = {0, 2},
         render_power = 10,
-        color = "rgba(00000020)"
+        color = config.shadow
     },
   }
 })

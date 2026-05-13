@@ -8,12 +8,12 @@ local config = {
     menu = "wofi -s ~/.config/wofi/menu.css",
 
     -- Interface
-    gaps_in = 5,
-    gaps_out = 10,
+    gaps_in = 2,
+    gaps_out = 2,
     rounding = 10,
     border_size = 2,
     font = "JetBrainsMono Nerd Font",
-    font_size = 10,
+    font_size = 12,
 
     -- Colors
     accent = "#89b4fa",
@@ -22,6 +22,7 @@ local config = {
     border = "#585b70",
     active_border = "#b4befecc",
     inactive_border = "#6c7086cc",
+    shadow = "#1e1e2e20",
 
     -- Notifications
     notif_duration = 3000,
