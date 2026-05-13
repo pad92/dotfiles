@@ -25,7 +25,7 @@ A collection of custom shell scripts and utilities housed in the `bin/` director
 *   **`backup.sh`**: Utility for system backups.
 *   **`xrandr.sh`**: Script for managing display and resolution.
 *   **`razer_dpi.py`**: Python utility for Razer peripheral DPI management.
-*   **Media/Arch Tools**: Includes functions for system maintenance (e.g., `clean_arch`, `arch_update`) and media handling (e.g., `extract`, `mediasync`).
+*   Includes zsh functions for system maintenance (e.g., `clean_arch`, `arch_update`) and media handling (e.g., `extract`, `mediasync`).
 
 ## 🖥️ Desktop Environments & Window Managers
 
@@ -74,7 +74,7 @@ A comprehensive list of configured tools:
 ### Arch Linux
 My primary and main driver.
 *   **Installation Guide**: See the full, detailed guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
-*   **Maintenance**: Includes specialized scripts like `arch_update` (for full system updates and cleaning old pacman files) and `mirror` functions for mirrorlist management.
+*   **Maintenance**: Includes specialized scripts like `arch_update` for full system updates and cleaning old pacman files) and `mirror` functions for mirrorlist management.
 
 ### Ubuntu
 Compatible configurations are provided.

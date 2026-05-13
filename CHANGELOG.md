@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v5.2.0] - 2026-05-13
 
 ### Added
 - Update monitor module and consolidate startup notifications ([ef8b516](/commit/ef8b516))
