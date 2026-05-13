@@ -108,13 +108,18 @@ hyprland_start() {
     makoctl mode -s dnd 2>/dev/null || true
 
     # Disable animations, shadows, blur and opacity effects atomically
-    hyprctl --batch "keyword animations:enabled 0;\
-                     keyword decoration:shadow:enabled 0;\
-                     keyword decoration:blur:enabled 0;\
-                     keyword decoration:rounding 0;\
-                     keyword decoration:active_opacity 1.0;\
-                     keyword decoration:inactive_opacity 1.0" \
-        || log_warn "Failed to apply Hyprland rendering optimizations"
+    hyprctl eval "
+      hl.config({
+        animations = { enabled = false },
+        decoration = {
+          rounding = 0,
+          active_opacity = 1.0,
+          inactive_opacity = 1.0,
+          shadow = { enabled = false },
+          blur = { enabled = false }
+        }
+      })
+    " || log_warn "Failed to apply Hyprland rendering optimizations"
 
     # Prevent the idle daemon from locking the screen mid-game
     systemctl --user stop hypridle.service 2>/dev/null || true
@@ -198,14 +203,8 @@ apply_game_overrides() {
             export mesa_glthread=true
             # DOOM does not support Proton Wayland; revert to XWayland via Gamescope
             unset PROTON_ENABLE_WAYLAND
-
-            local gamescope_args
-            gamescope_args=$(get_gamescope_args)
-            # Override the command array so Gamescope wraps the game binary;
-            # set -- cannot propagate positional params out of a function in bash
-            # shellcheck disable=SC2086
-            GAME_CMD=(gamescope ${gamescope_args} -- "${GAME_CMD[@]}" +com_skipIntroVideo 1 +set m_smooth 0)
-            log_info "Applying Gamescope wrapper for ${GAME_NAME}"
+            # Add game-specific arguments to the command array
+            GAME_CMD+=("+com_skipIntroVideo" "1" "+set" "m_smooth" "0")
             ;;
         "13240")
             GAME_NAME="Unreal Tournament GOTY"
@@ -213,9 +212,17 @@ apply_game_overrides() {
             ;;
         *)
             GAME_NAME="AppID:${STEAM_APP_ID}"
-            log_info "No game-specific overrides; using default XWayland settings"
+            log_info "No game-specific overrides; using default settings"
             ;;
     esac
+
+    # Wrap all games in Gamescope if not already wrapped
+    if [[ "${GAME_CMD[0]}" != "gamescope" ]]; then
+        local gamescope_args
+        gamescope_args=$(get_gamescope_args)
+        GAME_CMD=(gamescope ${gamescope_args} -- "${GAME_CMD[@]}")
+        log_info "Applying Gamescope wrapper for ${GAME_NAME}"
+    fi
 }
 
 # --- Entry Point ---
