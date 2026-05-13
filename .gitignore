@@ -53,7 +53,6 @@ Desktop.ini
 .bundle
 *.gem
 *.egg-info
-dist
 build
 *.egg
 
@@ -201,6 +200,7 @@ dist/*/pkglist-*-*.diff
 # User-specific config
 .config/xfce4/panel/launcher-*.desktop
 .config/hypr/host-specific.conf
+.config/hypr/host-specific.lua
 .config/systemd/user/default.target.wants/gamemoded.service
 .config/systemd/user/graphical-session.target.wants/hypridle.service
 *.db

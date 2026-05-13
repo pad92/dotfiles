@@ -14,19 +14,30 @@ readonly USER_ID=$(id -u)
 readonly RUNTIME_DIR="/run/user/${USER_ID}"
 
 # --- Logging ---
-# All log levels write to syslog; info also sends a desktop notification.
+
+_log() {
+    local level="$1"
+    local icon="$2"
+    local msg="$3"
+
+    logger -t "${TAG}" "${level} [${STEAM_APP_ID}] ${msg}"
+
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        hyprctl notify "${icon}" 5000 0 "${msg}" 2>/dev/null && return 0
+    fi
+    notify-send "${msg}" 2>/dev/null || true
+}
 
 log_info() {
-    logger -t "${TAG}" "INFO [${STEAM_APP_ID}] $1"
-    notify-send "$1" 2>/dev/null || true
+    _log "INFO" 1 "$1"
 }
 
 log_warn() {
-    logger -t "${TAG}" "WARN [${STEAM_APP_ID}] $1"
+    _log "WARN" 0 "$1"
 }
 
 log_error() {
-    logger -t "${TAG}" "ERROR [${STEAM_APP_ID}] $1"
+    _log "ERROR" 3 "$1"
 }
 
 # --- Global Environment Setup ---
