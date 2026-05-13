@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v5.2.0] - 2026-05-13
+
+### Added
+- Upgrade Hyprland configuration to 0.55 ([b62490a](https://gitlab.com/pad92/dotfiles/-/commit/b62490a))
+- Implement central configuration module for Hyprland ([a6dba06](https://gitlab.com/pad92/dotfiles/-/commit/a6dba06))
+- Add standard coding rules and guidelines ([f198f5a](https://gitlab.com/pad92/dotfiles/-/commit/f198f5a))
+- Enhance Hyprland keybindings for screenshots, session menu, and lock commands ([c059ed2](https://gitlab.com/pad92/dotfiles/-/commit/c059ed2), [0530cb2](https://gitlab.com/pad92/dotfiles/-/commit/0530cb2), [566d28c](https://gitlab.com/pad92/dotfiles/-/commit/566d28c))
+- Add DOOM (2016) optimizations and Gamescope fixes to steam-optimize ([280b982](https://gitlab.com/pad92/dotfiles/-/commit/280b982))
+- Set workspace 1 as default monitor ([040cd11](https://gitlab.com/pad92/dotfiles/-/commit/040cd11))
+
+### Changed
+- Refactor steam-optimize with helper functions and standard coding rules ([a6142b1](https://gitlab.com/pad92/dotfiles/-/commit/a6142b1), [6ed6765](https://gitlab.com/pad92/dotfiles/-/commit/6ed6765), [78e8421](https://gitlab.com/pad92/dotfiles/-/commit/78e8421), [d29728c](https://gitlab.com/pad92/dotfiles/-/commit/d29728c))
+- Optimize backup script by porting to POSIX sh and improving rsync ([4024cfe](https://gitlab.com/pad92/dotfiles/-/commit/4024cfe))
+- Switch notification system from dunst to mako ([54a1a7a](https://gitlab.com/pad92/dotfiles/-/commit/54a1a7a))
+- Migrate wallpaper daemon from swww to awww ([c1570cc](https://gitlab.com/pad92/dotfiles/-/commit/c1570cc))
+- Refine Hyprland animations and autostart configurations ([630eff0](https://gitlab.com/pad92/dotfiles/-/commit/630eff0), [9b995ee](https://gitlab.com/pad92/dotfiles/-/commit/9b995ee), [ce361ea](https://gitlab.com/pad92/dotfiles/-/commit/ce361ea))
+- Update README maintenance and maintainer information ([f8f49aa](https://gitlab.com/pad92/dotfiles/-/commit/f8f49aa), [12c5527](https://gitlab.com/pad92/dotfiles/-/commit/12c5527), [9f19255](https://gitlab.com/pad92/dotfiles/-/commit/9f19255))
+
+### Fixed
+- Resolve blackscreen issue on fullscreen mode ([ee2bca1](https://gitlab.com/pad92/dotfiles/-/commit/ee2bca1))
+- Fix Steam overlay functionality ([54e3093](https://gitlab.com/pad92/dotfiles/-/commit/54e3093))
+
 ## [v5.1.1] - 2026-03-01
 
 ### Added
