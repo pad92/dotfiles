@@ -53,5 +53,5 @@ mv "${TMP_VIM}/.vimrc" ~/
 # Remove temporary directory
 rm -rf "${TMP_VIM}"
 
-# Install vim bundles
-vim +BundleInstall! +BundleClean +q
+# Install vim plugins
+vim +PluginInstall! +qall
