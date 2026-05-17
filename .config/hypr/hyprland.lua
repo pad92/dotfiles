@@ -4,7 +4,7 @@
 local config = require("config")
 
 -- Load configuration modules
-require("monitors")
+require("conf.monitors")
 require("conf.environment")
 require("conf.autostart")
 require("conf.input")
@@ -13,8 +13,7 @@ require("conf.appearance")
 require("conf.animations")
 require("conf.keybindings")
 require("conf.windowrules")
-
-require("workspaces")
+require("conf.workspaces")
 
 -- Host specific configuration
 -- Optimized: Load host-specific config dynamically without symlinks
