@@ -134,14 +134,14 @@ hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .
 -- =============================================================================
 
 -- Move active window to a workspace SILENTLY (focus does not follow to destination workspace)
--- Mapped to number keys 1 through 10 using hardware keycodes
-for i = 1, 10 do
+-- Mapped to number keys 1 through 9 using hardware keycodes
+for i = 1, 9 do
   local numberkey = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
   hl.bind("SUPER + ALT + code:" .. numberkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
 end
 
 -- Move active window to a workspace SILENTLY using hardware Numpad keycodes
-for i = 1, 10 do
+for i = 1, 9 do
   local numpadkey = { 87, 88, 89, 83, 84, 85, 79, 80, 81, 90 }
   hl.bind("SUPER + ALT + code:" .. numpadkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
 end
@@ -155,11 +155,10 @@ for i = 1, 9 do
   hl.bind("SUPER + " .. i, hl.dsp.focus({ workspace = i }))
 end
 
--- Move active window to workspace and FOLLOW focus to destination workspace (workspaces 1 to 10)
+-- Move active window to workspace and FOLLOW focus to destination workspace (workspaces 1 to 9)
 for i = 1, 9 do
   hl.bind("SUPER + SHIFT + " .. i, hl.dsp.window.move({ workspace = i, follow = true }))
 end
-hl.bind("SUPER + SHIFT + 0", hl.dsp.window.move({ workspace = 10, follow = true }))
 
 -- =============================================================================
 -- INTERACTIVE MOUSE BINDINGS
