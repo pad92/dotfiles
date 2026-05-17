@@ -8,7 +8,20 @@
 include:
 - template: Security/Secret-Detection.gitlab-ci.yml
 - template: Security/SAST.gitlab-ci.yml
+
 stages:
-- test
+  - test
+  - package
+
 sast:
   stage: test
+
+package_vim:
+  stage: package
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  script:
+    - tar -czf vim.tar.gz .vim .vimrc
+  artifacts:
+    paths:
+      - vim.tar.gz
