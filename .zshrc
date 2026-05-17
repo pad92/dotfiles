@@ -90,6 +90,5 @@ if [ -d /etc/profile.d ]; then
 fi
 
 [ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs
-[ -f "${HOME}/.zshaliases" ]            && source ${HOME}/.zshaliases
 [ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
 [ -x $(command -v fastfetch) ]          && fastfetch

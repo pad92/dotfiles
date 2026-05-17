@@ -21,7 +21,25 @@ youtubeEncode() {
     if [[ "$CLEAN" == "true" ]]; then
          mv $OUTPUT $OUTPUT_OK
      else
-         rm $INPUT
     fi
     return 0
 }
+
+## youtube-dl
+if [ $(command -v youtube-dl) ]; then
+  function yta() {
+    local format="$1"
+    shift
+    youtube-dl --extract-audio --audio-format "$format" "$@"
+  }
+
+  alias yta-aac="yta aac"
+  alias yta-best="yta best"
+  alias yta-flac="yta flac"
+  alias yta-m4a="yta m4a"
+  alias yta-mp3="yta mp3"
+  alias yta-opus="yta opus"
+  alias yta-vorbis="yta vorbis"
+  alias yta-wav="yta wav"
+  alias ytv-best="youtube-dl -f bestvideo+bestaudio"
+fi

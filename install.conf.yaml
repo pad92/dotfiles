@@ -10,7 +10,6 @@
     ~/.vim: .vim
     ~/.vimrc: .vimrc
     ~/.xinitrc: .xinitrc
-    ~/.zshaliases: .zshaliases
     ~/.zshenv: .zshenv
     ~/.zshrc: .zshrc
     ~/.gitconfig: .gitconfig
