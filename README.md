@@ -2,9 +2,9 @@
 
 This repository contains my curated personal configuration files (dotfiles) for various operating systems and environments. It aims to provide a robust, reliable, and highly customized foundation for modern Linux desktop usage.
 
-## 🚀 Quick Start
+## 🚀 Installation & Quick Start
 
-### Install everything
+### Full Setup
 This script performs a full setup, applying all configurations and managing necessary installations.
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
@@ -12,99 +12,103 @@ cd ~/.dotfiles
 ./install
 ```
 
-### Install only VIM/Editor
-To set up your preferred editor without installing everything else:
+### Editor Only
+To set up the editor configuration without installing the full suite:
 ```sh
 curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
 ```
 
-## 🔧 System Utilities & Scripts
+## 🛠️ Core Tooling
 
-A collection of custom shell scripts and utilities housed in the `bin/` directory.
+### 🐚 Shell (Zsh)
+Configured for maximum efficiency with advanced features:
+*   **Plugins**: Powered by `oh-my-zsh` with `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
+*   **Customization**: Extensive history management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
 
-*   **`backup.sh`**: Utility for system backups.
-*   **`xrandr.sh`**: Script for managing display and resolution.
-*   **`razer_dpi.py`**: Python utility for Razer peripheral DPI management.
-*   Includes zsh functions for system maintenance (e.g., `clean_arch`, `arch_update`) and media handling (e.g., `extract`, `mediasync`).
+### 📖 Editor (Vim)
+A highly configured editor built with `vundle` and the `gruvbox` color scheme.
+*   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
 
-## 🖥️ Desktop Environments & Window Managers
+### 💾 Terminal & Session Management
+*   **Terminal Emulators**: Optimized configurations for **Kitty** and **Alacritty**.
+*   **Multiplexer**: `tmux` configured with plugins for session management and layout persistence.
 
-### Hyprland
+## 🖥️ Desktop Environment & Window Management
+
+### ⌨️ Unified Keybindings
+| Shortcut                            | Action                   | WM       |
+| :---------------------------------- | :----------------------- | :------- |
+| `SUPER + Return`                    | Terminal                 | All      |
+| `SUPER + Shift + Q`                 | Close window             | All      |
+| `SUPER + [1-9]`                     | Focus workspace          | All      |
+| `SUPER + Shift + [1-9]`             | Move window to workspace | All      |
+| `SUPER + [Arrows/Vim keys]`         | Focus window             | All      |
+| `SUPER + Shift + [Arrows/Vim keys]` | Move window              | All      |
+| `SUPER + F`                         | Fullscreen toggle        | All      |
+| `XF86Audio...`                      | Audio Controls           | All      |
+| `XF86Mon...`                        | Brightness Controls      | All      |
+| `SUPER + E`                         | File manager             | Hyprland |
+| `SUPER + C`                         | Code editor              | Hyprland |
+| `SUPER + W`                         | Browser                  | Hyprland |
+| `SUPER + M`                         | Music Player             | Hyprland |
+| `SUPER + Shift + Return`            | Password Manager         | Hyprland |
+| `SUPER + L`                         | Lock                     | Hyprland |
+| `SUPER + Delete`                    | Logout menu              | Hyprland |
+| `SUPER + ALT + Space`               | Float/Tile               | Hyprland |
+| `SUPER + SHIFT + F`                 | Toggle Float             | Hyprland |
+| `SUPER + ALT + Right`               | Change wallpaper         | Hyprland |
+| `Print` / `SUPER + P`               | Screenshot               | Hyprland |
+| `SUPER + D`                         | Application menu         | i3/Sway  |
+| `SUPER + Shift + V`                 | Clipboard history        | i3/Sway  |
+| `SUPER + Shift + R`                 | Reload config            | i3       |
+| `SUPER + Shift + E`                 | Exit i3                  | i3       |
+| `Alt + Tab`                         | Next floating window     | Sway     |
+| `Alt + Shift + Tab`                 | Prev floating window     | Sway     |
+| `Caps Lock`                         | Caps Lock toggle         | Sway     |
+
+### Hyprland (Primary)
 My current primary Window Manager configuration.
 > [!WARNING]
-> **Breaking Change Warning**: The Hyprland configuration in this repository has migrated to Lua. These configurations are compatible with **Hyprland v0.55 and above**. Using these files with older versions will result in configuration errors.
+> **Breaking Change**: The Hyprland configuration has migrated to Lua. These files are compatible with **Hyprland v0.55 and above**.
 
 *   **Configuration**: Located in `.config/hypr`
-*   **Wallpaper**: Place wallpapers into `~/.local.share/backgrounds`
+*   **Wallpapers**: Place images into `~/.local/share/backgrounds`
 *   **Batch upload tip**:
     ```sh
     exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
     ```
 
-### ⌨️ Hyprland Keybindings
-| Shortcut | Action |
+### i3 & Sway (Alternatives)
+Legacy and alternative configurations are available in `.config/i3` and `.config/sway` for testing or alternative setups.
+
+
+## 📦 System Utilities & OS Specifics
+
+### 🔧 Custom Scripts
+A collection of shell scripts and utilities located in the `bin/` directory:
+*   **`backup.sh`**: System backup utility.
+*   **`xrandr.sh`**: Display and resolution management.
+*   **`razer_dpi.py`**: Razer peripheral DPI management.
+*   **Zsh Functions**: Includes system maintenance (`clean_arch`, `arch_update`) and media handling (`extract`, `mediasync`).
+
+### 🐧 OS Maintenance
+*   **Arch Linux (Primary)**:
+    *   Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
+    *   Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
+*   **Ubuntu**: Compatible configurations provided.
+
+## 📋 Application Ecosystem Summary
+
+A comprehensive list of configured tools across the stack:
+
+| Category | Tools |
 | :--- | :--- |
-| `SUPER + Return` | Terminal |
-| `SUPER + E` | File manager |
-| `SUPER + C` | Code editor |
-| `SUPER + W` | Browser |
-| `SUPER + M` | Music Player |
-| `SUPER + D` | Application menu |
-| `SUPER + SHIFT + Return` | Password Manager |
-| `SUPER + SHIFT + Q` | Close window |
-| `SUPER + F` | Fullscreen |
-| `SUPER + L` | Lock |
-| `SUPER + Delete` | Logout menu |
-| `SUPER + ALT + Space` | Float/Tile |
-| `SUPER + SHIFT + F` | Toggle Float |
-| `SUPER + ALT + Right` | Change wallpaper |
-| `SUPER + SHIFT + V` | Clipboard history |
-| `SUPER + [1-9]` | Focus workspace |
-| `SUPER + SHIFT + [1-9]` | Move window to workspace |
-| `CTRL + SUPER + Right/Left` | Next/Prev workspace |
-| `SUPER + [Arrows/Vim keys]` | Focus window |
-| `SUPER + SHIFT + [Arrows/Vim keys]` | Move window |
-| `Print` / `SUPER + P` | Screenshot |
-| `XF86Audio...` | Audio Controls |
-| `XF86Mon...` | Brightness Controls |
-
-### i3 & Sway
-Legacy/Alternative configurations are available in `.config/i3` and `.config/sway` for testing or alternative setups.
-
-## ⚙️ Tool-Specific Configurations
-
-### 🐚 Shell (Zsh)
-Zsh is configured for maximum efficiency with advanced features:
-*   **Plugins**: Uses `oh-my-zsh` with plugins for `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
-*   **Customization**: Features extensive history management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
-
-### 📖 Editor (Vim)
-A highly configured editor built with `vundle` and `gruvbox` color scheme.
-*   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
-
-### 💾 Terminal & Session Management
-*   **Terminal Emulator**: Configured for Kitty and Alacritty.
-*   **Multiplexer**: `tmux` is set up with plugins for session management and layout persistence.
-
-### ⌨️ Application Ecosystem
-A comprehensive list of configured tools:
-*   **Shell**: Zsh
-*   **Editor**: Vim
-*   **Terminal**: Kitty, Alacritty
-*   **Multiplexer**: Tmux
-*   **UI/UX**: Waybar, Rofi, Wofi, Dunst, Mako (A modern, complete look-and-feel stack.)
-*   **System**: Fastfetch, Htop (Provides system information and resource monitoring.)
-*   **IDE/Editor**: VSCode has specific settings applied via `settings.json`.
-
-## 📦 OS Specifics & Maintenance
-
-### Arch Linux
-My primary and main driver.
-*   **Installation Guide**: See the full, detailed guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
-*   **Maintenance**: Includes specialized scripts like `arch_update` for full system updates and cleaning old pacman files) and `mirror` functions for mirrorlist management.
-
-### Ubuntu
-Compatible configurations are provided.
+| **Shell** | Zsh |
+| **Editor** | Vim, VSCode (`settings.json`) |
+| **Terminal** | Kitty, Alacritty |
+| **Multiplexer** | Tmux |
+| **UI/UX** | Waybar, Rofi, Wofi, Dunst, Mako |
+| **System** | Fastfetch, Htop |
 
 ---
 *Maintained by [pad](https://gitlab.com/pad92)🐐 with ❤️ since 2015 (11+ years)*
