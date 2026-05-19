@@ -104,7 +104,7 @@ A comprehensive list of configured tools across the stack:
 | Category | Tools |
 | :--- | :--- |
 | **Shell** | Zsh |
-| **Editor** | Vim, VSCode (`settings.json`) |
+| **Editor** | Vim, VSCode |
 | **Terminal** | Kitty, Alacritty |
 | **Multiplexer** | Tmux |
 | **UI/UX** | Waybar, Rofi, Wofi, Dunst, Mako |
