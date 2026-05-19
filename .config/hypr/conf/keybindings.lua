@@ -54,7 +54,7 @@ hl.bind("SUPER + M", hl.dsp.exec_cmd(config.music), { description = "Music Playe
 hl.bind("SUPER + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
 
 -- Open 1Password password manager
-hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd("1password"), { description = "1Password" })
+hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd(config.password_manager), { description = "Password Manager" })
 
 -- =============================================================================
 -- NAVIGATION & DÉPLACEMENT (FOCUS & MOVE)
@@ -129,7 +129,7 @@ hl.bind("SUPER + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
 -- =============================================================================
 
 -- Cycle desktop wallpaper using swww daemon script
-hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/swww.sh"), { description = "Change wallpaper" })
+hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/awww.sh"), { description = "Change wallpaper" })
 
 -- Query and decode clipboard history via wofi selection and paste it to wl-copy
 hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .. " -S dmenu | cliphist decode | wl-copy"),

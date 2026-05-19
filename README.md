@@ -35,11 +35,38 @@ My current primary Window Manager configuration.
 > **Breaking Change Warning**: The Hyprland configuration in this repository has migrated to Lua. These configurations are compatible with **Hyprland v0.55 and above**. Using these files with older versions will result in configuration errors.
 
 *   **Configuration**: Located in `.config/hypr`
-*   **Wallpaper**: Place wallpapers into `~/.local/share/backgrounds`
+*   **Wallpaper**: Place wallpapers into `~/.local.share/backgrounds`
 *   **Batch upload tip**:
     ```sh
     exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
     ```
+
+### ⌨️ Hyprland Keybindings
+| Shortcut | Action |
+| :--- | :--- |
+| `SUPER + Return` | Terminal |
+| `SUPER + E` | File manager |
+| `SUPER + C` | Code editor |
+| `SUPER + W` | Browser |
+| `SUPER + M` | Music Player |
+| `SUPER + D` | Application menu |
+| `SUPER + SHIFT + Return` | Password Manager |
+| `SUPER + SHIFT + Q` | Close window |
+| `SUPER + F` | Fullscreen |
+| `SUPER + L` | Lock |
+| `SUPER + Delete` | Logout menu |
+| `SUPER + ALT + Space` | Float/Tile |
+| `SUPER + SHIFT + F` | Toggle Float |
+| `SUPER + ALT + Right` | Change wallpaper |
+| `SUPER + SHIFT + V` | Clipboard history |
+| `SUPER + [1-9]` | Focus workspace |
+| `SUPER + SHIFT + [1-9]` | Move window to workspace |
+| `CTRL + SUPER + Right/Left` | Next/Prev workspace |
+| `SUPER + [Arrows/Vim keys]` | Focus window |
+| `SUPER + SHIFT + [Arrows/Vim keys]` | Move window |
+| `Print` / `SUPER + P` | Screenshot |
+| `XF86Audio...` | Audio Controls |
+| `XF86Mon...` | Brightness Controls |
 
 ### i3 & Sway
 Legacy/Alternative configurations are available in `.config/i3` and `.config/sway` for testing or alternative setups.

@@ -6,6 +6,7 @@ local config = {
     file = "nautilus",
     browser = "firefox",
     music = "spotify-launcher",
+    password_manager = "1Password",
     menu = "wofi -s ~/.config/wofi/menu.css",
 
     -- Interface
