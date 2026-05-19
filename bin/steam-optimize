@@ -3,7 +3,7 @@
 # overrides before delegating execution to game-performance.
 # View logs with: journalctl -t steam-optimize -f
 
-# https://notes.depad.fr/2026/05/steam-optimize-le-wrapper-ultime-pour-le-gaming-sous-linux/
+# https://notes.depad.fr/linux/2026/05/steam-optimize-le-wrapper-ultime-pour-le-gaming-sous-linux/
 
 set -euo pipefail
 
