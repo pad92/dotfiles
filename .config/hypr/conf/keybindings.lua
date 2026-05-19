@@ -44,6 +44,12 @@ hl.bind("SUPER + C", hl.dsp.exec_cmd(config.editor), { description = "Code edito
 -- Launch default web browser (Firefox)
 hl.bind("SUPER + W", hl.dsp.exec_cmd(config.browser), { description = "Browser" })
 
+-- Toggle the window between focus and float
+hl.bind("SUPER + SHIFT + F", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle Float" })
+
+-- Launch default music player (Spotify)
+hl.bind("SUPER + M", hl.dsp.exec_cmd(config.music), { description = "Music Player" })
+
 -- Toggle the Wofi application launcher menu
 hl.bind("SUPER + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
 

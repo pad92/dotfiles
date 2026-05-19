@@ -5,6 +5,7 @@ local config = {
     editor = "vscodium",
     file = "nautilus",
     browser = "firefox",
+    music = "spotify-launcher",
     menu = "wofi -s ~/.config/wofi/menu.css",
 
     -- Interface
