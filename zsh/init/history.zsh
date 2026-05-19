@@ -3,8 +3,9 @@ if [ -z "$HISTFILE" ]; then
     HISTFILE=$HOME/.zsh_history
 fi
 
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=${HISTSIZE:-10000}
+SAVEHIST=${SAVEHIST:-10000}
+
 
 setopt BANG_HIST              # Treat the '!' character specially during expansion.
 setopt APPEND_HISTORY         # Allow multiple terminal sessions to all append to one zsh command history

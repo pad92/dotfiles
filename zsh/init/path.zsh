@@ -13,3 +13,4 @@ addExportPath '/usr/sbin'
 addExportPath '/usr/local/sbin'
 addExportPath "$HOME/local/bin"
 addExportPath "$HOME/.local/bin"
+addExportPath "$HOME/.dotfiles/bin"
