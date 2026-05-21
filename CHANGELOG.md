@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v5.2.1] - 2026-05-21
+
+### Changed
+- Cleaned up `waybar` configuration by removing unused modules
+- Merged and preserved essential packages (like `alacritty` and GNOME utilities) into `11_hyprland.txt` and `20_apps.txt`
+- Updated `install.md` to fix the package installation path
+- Updated `README.md` to reflect the archiving of legacy environments
+
+### Removed
+- Archived legacy X11, Sway, and Dunst configurations to `.config-archive/`
+- Cleaned up `dist/arch` by removing old package diffs and legacy screenshots
+- Removed obsolete package lists (`10_i3.txt`, `11_sway.txt`, `11_gnome.txt`)
+- Removed legacy Nitrogen configuration from `install.md`
+
+### Fixed
+- Fixed Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line
+
 ## [v5.2.0] - 2026-05-13
 
 ### Added

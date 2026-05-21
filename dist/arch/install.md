@@ -340,12 +340,7 @@ git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 mkdir ~/.config
 ~/.dotfiles/install
 
-cat <<EOF> ~/.config/nitrogen/bg-saved.cfg
-[xin_-1]
-file=/usr/share/backgrounds/archlinux/geolanes.png
-mode=4
-bgcolor=#000000
-EOF
+
 ```
 
 ### Packages manager
@@ -390,7 +385,7 @@ rm -fr yay
 ### WM and softs
 
 ```
-yay -S --needed $(cat ~/.dotfiles/dist/archlinux/packages/*.txt)
+yay -S --needed $(cat ~/.dotfiles/dist/arch/packages/*.txt)
 
 exit
 ```

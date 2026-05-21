@@ -91,35 +91,28 @@ A highly configured editor built with `vundle` and the `gruvbox` color scheme.
 ## 🖥️ Desktop Environment & Window Management
 
 ### ⌨️ Unified Keybindings
-| Shortcut                            | Action                   | WM       |
-| :---------------------------------- | :----------------------- | :------- |
-| `SUPER + Return`                    | Terminal                 | All      |
-| `SUPER + Shift + Q`                 | Close window             | All      |
-| `SUPER + [1-9]`                     | Focus workspace          | All      |
-| `SUPER + Shift + [1-9]`             | Move window to workspace | All      |
-| `SUPER + [Arrows/Vim keys]`         | Focus window             | All      |
-| `SUPER + Shift + [Arrows/Vim keys]` | Move window              | All      |
-| `SUPER + F`                         | Fullscreen toggle        | All      |
-| `XF86Audio...`                      | Audio Controls           | All      |
-| `XF86Mon...`                        | Brightness Controls      | All      |
-| `SUPER + E`                         | File manager             | Hyprland |
-| `SUPER + C`                         | Code editor              | Hyprland |
-| `SUPER + W`                         | Browser                  | Hyprland |
-| `SUPER + M`                         | Music Player             | Hyprland |
-| `SUPER + Shift + Return`            | Password Manager         | Hyprland |
-| `SUPER + L`                         | Lock                     | Hyprland |
-| `SUPER + Delete`                    | Logout menu              | Hyprland |
-| `SUPER + ALT + Space`               | Float/Tile               | Hyprland |
-| `SUPER + SHIFT + F`                 | Toggle Float             | Hyprland |
-| `SUPER + ALT + Right`               | Change wallpaper         | Hyprland |
-| `Print` / `SUPER + P`               | Screenshot               | Hyprland |
-| `SUPER + D`                         | Application menu         | i3/Sway  |
-| `SUPER + Shift + V`                 | Clipboard history        | i3/Sway  |
-| `SUPER + Shift + R`                 | Reload config            | i3       |
-| `SUPER + Shift + E`                 | Exit i3                  | i3       |
-| `Alt + Tab`                         | Next floating window     | Sway     |
-| `Alt + Shift + Tab`                 | Prev floating window     | Sway     |
-| `Caps Lock`                         | Caps Lock toggle         | Sway     |
+| Shortcut                            | Action                   |
+| :---------------------------------- | :----------------------- |
+| `SUPER + Return`                    | Terminal                 |
+| `SUPER + Shift + Q`                 | Close window             |
+| `SUPER + [1-9]`                     | Focus workspace          |
+| `SUPER + Shift + [1-9]`             | Move window to workspace |
+| `SUPER + [Arrows/Vim keys]`         | Focus window             |
+| `SUPER + Shift + [Arrows/Vim keys]` | Move window              |
+| `SUPER + F`                         | Fullscreen toggle        |
+| `XF86Audio...`                      | Audio Controls           |
+| `XF86Mon...`                        | Brightness Controls      |
+| `SUPER + E`                         | File manager             |
+| `SUPER + C`                         | Code editor              |
+| `SUPER + W`                         | Browser                  |
+| `SUPER + M`                         | Music Player             |
+| `SUPER + Shift + Return`            | Password Manager         |
+| `SUPER + L`                         | Lock                     |
+| `SUPER + Delete`                    | Logout menu              |
+| `SUPER + ALT + Space`               | Float/Tile               |
+| `SUPER + SHIFT + F`                 | Toggle Float             |
+| `SUPER + ALT + Right`               | Change wallpaper         |
+| `Print` / `SUPER + P`               | Screenshot               |
 
 ### Hyprland (Primary)
 My current primary Window Manager configuration.
@@ -132,10 +125,6 @@ My current primary Window Manager configuration.
     ```sh
     exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
     ```
-
-### i3 & Sway (Alternatives)
-Legacy and alternative configurations are available in `.config/i3` and `.config/sway` for testing or alternative setups.
-
 
 ## 📦 System Utilities & OS Specifics
 
@@ -162,7 +151,7 @@ A comprehensive list of configured tools across the stack:
 | **Editor** | Vim, VSCode |
 | **Terminal** | Kitty, Alacritty |
 | **Multiplexer** | Tmux |
-| **UI/UX** | Waybar, Rofi, Wofi, Dunst, Mako |
+| **UI/UX** | Waybar, Wofi, Mako |
 | **System** | Fastfetch, Htop |
 
 ---

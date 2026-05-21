@@ -5,7 +5,6 @@
   "modules-left": [
     "sway/workspaces",
     "hyprland/workspaces",
-    // "wlr/taskbar",
     "sway/mode"
   ],
   "modules-center": [
@@ -14,14 +13,12 @@
   "modules-right": [
     "pulseaudio",
     "bluetooth",
-    // "network",
     "cpu",
     "temperature",
     "memory",
     "backlight",
     "battery",
     "custom/headsetcontrol",
-    // "custom/weather",
     "tray"
   ],
   "include": [

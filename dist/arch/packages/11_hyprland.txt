@@ -1,5 +1,8 @@
 awww
+blueman
+brightnessctl
 cliphist
+dex
 fastfetch
 grim
 hyprcursor
@@ -14,6 +17,8 @@ kitty
 noto-fonts-emoji
 nwg-displays
 nwg-look
+playerctl
+polkit-gnome
 qt5-wayland
 qt6-wayland
 slurp
@@ -21,6 +26,7 @@ swappy
 swayosd
 tela-circle-icon-theme-dracula
 waybar
+wl-clipboard
 wlogout
 woff2-font-awesome
 wofi
