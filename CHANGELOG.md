@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Migrate environment variables to UWSM and modernize install script ([4b0f495](/commit/4b0f495))
+- Implement UWSM session start ([69c1292](/commit/69c1292))
 - Added documentation for TTY launch and GNOME Keyring session integration in `README.md`
 
 ### Removed
@@ -13,19 +15,19 @@ All notable changes to this project will be documented in this file.
 ## [v5.2.1] - 2026-05-21
 
 ### Changed
-- Cleaned up `waybar` configuration by removing unused modules
-- Merged and preserved essential packages (like `alacritty` and GNOME utilities) into `11_hyprland.txt` and `20_apps.txt`
-- Updated `install.md` to fix the package installation path
-- Updated `README.md` to reflect the archiving of legacy environments
+- Cleaned up `waybar` configuration by removing unused modules ([e396f61](/commit/e396f61))
+- Merged and preserved essential packages (like `alacritty` and GNOME utilities) into `11_hyprland.txt` and `20_apps.txt` ([c965323](/commit/c965323))
+- Updated `install.md` to fix the package installation path ([c965323](/commit/c965323))
+- Updated `README.md` to reflect the archiving of legacy environments ([c965323](/commit/c965323))
 
 ### Removed
-- Archived legacy X11, Sway, and Dunst configurations to `.config-archive/`
-- Cleaned up `dist/arch` by removing old package diffs and legacy screenshots
-- Removed obsolete package lists (`10_i3.txt`, `11_sway.txt`, `11_gnome.txt`)
-- Removed legacy Nitrogen configuration from `install.md`
+- Archived legacy X11, Sway, and Dunst configurations to `.config-archive/` ([c965323](/commit/c965323))
+- Cleaned up `dist/arch` by removing old package diffs and legacy screenshots ([c965323](/commit/c965323))
+- Removed obsolete package lists (`10_i3.txt`, `11_sway.txt`, `11_gnome.txt`) ([c965323](/commit/c965323))
+- Removed legacy Nitrogen configuration from `install.md` ([c965323](/commit/c965323))
 
 ### Fixed
-- Fixed Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line
+- Fixed Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line ([6a2de32](/commit/6a2de32))
 
 ## [v5.2.0] - 2026-05-13
 
