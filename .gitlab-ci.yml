@@ -29,10 +29,13 @@ package_vim:
 
 pages:
   stage: pages
-  image: pandoc/core
+  image:
+    name: pandoc/core
+    entrypoint: [""]
   script:
     - mkdir public
-    - pandoc README.md -o public/index.html
+    - cp style.css public/
+    - pandoc -s README.md -c style.css -o public/index.html
   artifacts:
     paths:
       - public
