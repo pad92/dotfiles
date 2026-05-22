@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # Equivalent to SAST and Secret Detection
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Secret scanning
+        uses: trufflesecurity/trufflehog@main
+
+      - name: SAST (CodeQL)
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'javascript' # Adjusted based on project, but CodeQL is the GH equivalent to SAST
+        # Note: Full CodeQL setup usually requires a separate workflow file,
+        # but this represents the intent of the GitLab templates.
+
+  # Equivalent to package_vim
+  package:
+    needs: security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Package Vim configuration
+        run: tar -czf vim.tar.gz .vim .vimrc
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vim-package
+          path: vim.tar.gz
+
+  # Equivalent to pages
+  pages:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate HTML from README
+        run: |
+          mkdir public
+          npx markdown-it-cli README.md > public/index.html
+
+      - name: Upload public folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-site
+          path: public/
