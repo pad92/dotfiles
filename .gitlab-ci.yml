@@ -34,8 +34,7 @@ pages:
     entrypoint: [""]
   script:
     - mkdir public
-    - cp style.css public/
-    - pandoc -s README.md -c style.css -o public/index.html
+    - pandoc -s README.md -o public/index.html
   artifacts:
     paths:
       - public
