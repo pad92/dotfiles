@@ -12,6 +12,7 @@ include:
 stages:
   - test
   - package
+  - pages
 
 sast:
   stage: test
@@ -25,3 +26,13 @@ package_vim:
   artifacts:
     paths:
       - vim.tar.gz
+
+pages:
+  stage: pages
+  image: pandoc/core
+  script:
+    - mkdir public
+    - pandoc README.md -o public/index.html
+  artifacts:
+    paths:
+      - public
