@@ -1,17 +1,114 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+# Modernized dotfiles installation script
+# This script sets up the environment using dotbot and handles vim plugin installation.
 
+set -euo pipefail
+
+# --- Configuration ---
 CONFIG="install.conf.yaml"
 DOTBOT_DIR="dotbot"
-
 DOTBOT_BIN="bin/dotbot"
+# Get the absolute path of the script directory
 BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cd "${BASEDIR}"
-git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-git submodule update --init --recursive "${DOTBOT_DIR}"
+# --- Colors for output ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-vim +PluginInstall +PluginUpdate +qall
+# --- Helper Functions ---
+
+backup_existing_files() {
+    log_info "Backing up existing regular files that should be symlinks..."
+
+    # Extract target paths from the config file
+    # We look for lines containing '~/' and a ':'
+    local targets
+    targets=$(grep '~/' "${BASEDIR}/${CONFIG}" | grep ':' | sed 's/ *:.*//' | sed 's/^ *//')
+
+    for target in $targets; do
+        # Expand ~ to home directory
+        local full_path
+        full_path=$(eval echo "$target")
+
+        if [[ -f "$full_path" && ! -L "$full_path" ]]; then
+            local backup_path="${full_path}.bak"
+            log_warn "Backing up existing regular file: $full_path -> $backup_path"
+            mv -f "$full_path" "$backup_path"
+        fi
+    done
+    log_success "Backup completed."
+}
+
+check_dependencies() {
+    log_info "Checking dependencies..."
+    local deps=("git" "python3")
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &> /dev/null; then
+            log_error "Required dependency '$dep' is not installed. Please install it and try again."
+            exit 1
+        fi
+    done
+    log_success "All dependencies found."
+}
+
+setup_dotbot() {
+    log_info "Updating dotbot submodule..."
+    cd "${BASEDIR}"
+
+    # Sync and update submodules recursively
+    git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
+    git submodule update --init --recursive "${DOTBOT_DIR}"
+
+    log_success "Dotbot submodule updated."
+}
+
+run_dotbot() {
+    log_info "Running dotbot to link configuration files..."
+
+    local dotbot_path="${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}"
+
+    if [[ ! -x "$dotbot_path" ]]; then
+        log_error "Dotbot binary not found or not executable at $dotbot_path"
+        exit 1
+    fi
+
+    # Execute dotbot with provided arguments
+    "${dotbot_path}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+
+    log_success "Dotbot execution completed."
+}
+
+install_vim_plugins() {
+    if command -v vim &> /dev/null; then
+        log_info "Installing and updating Vim plugins..."
+        # Run vim in headless mode to install and update plugins
+        vim +PluginInstall +PluginUpdate +qall
+        log_success "Vim plugins updated."
+    else
+        log_warn "Vim not found, skipping plugin installation."
+    fi
+}
+
+main() {
+    log_info "Starting dotfiles installation..."
+
+    check_dependencies
+    backup_existing_files
+    setup_dotbot
+    run_dotbot "$@"
+    install_vim_plugins
+
+    log_success "Dotfiles installation completed successfully!"
+}
+
+# Start the script
+main "$@"
