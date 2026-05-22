@@ -126,6 +126,26 @@ My current primary Window Manager configuration.
     exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
     ```
 
+### 🔑 TTY Launch & Session Integration
+When launching from a tty instead of a display manager, some session integrations that display managers normally handle may not be configured. One common example is GNOME Keyring - if `pam_gnome_keyring.so` is not present in your PAM login configuration, the keyring will not auto-unlock, and applications may prompt you to unlock it manually.
+
+To set this up, add the `pam_gnome_keyring.so` lines to the PAM configuration file used by your login method (e.g. `/etc/pam.d/login` for `login(1)`). Consult your distribution’s documentation for the correct file and syntax. For example, on Arch Linux:
+
+```
+#%PAM-1.0
+
+auth       requisite    pam_nologin.so
+auth       include      system-local-login
+-auth      optional     pam_gnome_keyring.so
+account    include      system-local-login
+password   include      system-local-login
+-password  optional     pam_gnome_keyring.so    use_authtok
+session    include      system-local-login
+-session   optional     pam_gnome_keyring.so    auto_start
+```
+
+For more details, see: [Hyprland Wiki - Systemd-start in TTY](https://wiki.hypr.land/Useful-Utilities/Systemd-start/#in-tty)
+
 ## 📦 System Utilities & OS Specifics
 
 ### 🔧 Custom Scripts

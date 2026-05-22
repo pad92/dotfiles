@@ -34,6 +34,7 @@ lib32-libva-mesa-driver
 lib32-libva-vdpau-driver
 lib32-libvdpau
 libmaxminddb
+libnewt
 libuv
 libva-intel-driver
 libva-mesa-driver
@@ -64,6 +65,7 @@ tlp
 traceroute
 tumbler
 unarj
+uwsm
 usbutils
 vim-spell-en
 vim-spell-fr

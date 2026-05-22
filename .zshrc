@@ -92,3 +92,7 @@ fi
 [ -f "${HOME}/.config/user-dirs.dirs" ] && source ${HOME}/.config/user-dirs.dirs
 [ -f "${HOME}/.dir_colors" ]            && eval $(dircolors ${HOME}/.dir_colors)
 [ -x $(command -v fastfetch) ]          && fastfetch
+
+if uwsm check may-start && uwsm select; then
+	exec uwsm start default
+fi

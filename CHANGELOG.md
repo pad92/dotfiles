@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Added documentation for TTY launch and GNOME Keyring session integration in `README.md`
+
+### Removed
+- Removed GDM from the system configuration
+
 ## [v5.2.1] - 2026-05-21
 
 ### Changed
