@@ -32,7 +32,6 @@ local config = {
 
     -- Autostart Applications
     autostart_apps = {
-        "waybar",
         "blueman-applet",
         "nm-applet --indicator",
         "/usr/bin/swayosd-server",

@@ -205,3 +205,4 @@ dist/*/pkglist-*-*.diff
 .config/systemd/user/graphical-session.target.wants/hypridle.service
 *.db
 .agents
+.config/uwsm/default-id
