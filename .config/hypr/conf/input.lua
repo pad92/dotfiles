@@ -3,15 +3,17 @@
 -- =============================================================================
 -- Defines keyboard layouts, mouse sensitivities, and trackpad gestures.
 
+local config = require("config")
+
 hl.config({
   -- Keyboard & general mouse input settings
   input = {
-    kb_layout = "us",                       -- US Keyboard Layout
-    kb_variant = "intl",                    -- US International variant (enables dead-key accents)
+    kb_layout = config.input.kb_layout,     -- US Keyboard Layout
+    kb_variant = config.input.kb_variant,   -- US International variant (enables dead-key accents)
     follow_mouse = 1,                       -- Window focus follows the mouse movement
     numlock_by_default = true,              -- Enables Num Lock on startup
     sensitivity = 0,                        -- Default system pointer sensitivity (-1.0 to 1.0)
-    
+
     -- Laptop Touchpad / Trackpad configuration
     touchpad = {
         natural_scroll = false,             -- True enables reverse scrolling (like macOS)
@@ -22,13 +24,13 @@ hl.config({
         drag_lock = false,                  -- Keeps dragging even if finger is briefly lifted
     },
   },
-  
+
   -- Mouse Cursor preferences
   cursor = {
     no_hardware_cursors = false,            -- Hardware cursor acceleration
     enable_hyprcursor = true,               -- Activates modern high-DPI hyprcursor support
   },
-  
+
   -- Touch/Trackpad Swipe gestures for workspace switching
   gestures = {
       workspace_swipe_distance = 500,       -- Swipe travel distance required to switch workspaces (pixels)

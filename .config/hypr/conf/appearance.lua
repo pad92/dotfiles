@@ -9,21 +9,21 @@ hl.config({
   -- Core layout, borders, and margins
   general = {
     col = {
-      active_border   = config.active_border,   -- Border color for focused windows
-      inactive_border = config.inactive_border, -- Border color for unfocused windows
+      active_border = config.colors.active_border,     -- Border color for focused windows
+      inactive_border = config.colors.inactive_border, -- Border color for unfocused windows
     },
-    gaps_in = config.gaps_in,                   -- Margins between adjacent windows
-    gaps_out = config.gaps_out,                 -- Margins between windows and screen edges
-    border_size = config.border_size,           -- Thickness of window borders
-    layout = "dwindle",                         -- Default window partitioning algorithm
-    resize_on_border = true,                    -- Allows resizing windows by dragging their borders
+    gaps_in = config.visuals.gaps_in,                  -- Margins between adjacent windows
+    gaps_out = config.visuals.gaps_out,                -- Margins between windows and screen edges
+    border_size = config.visuals.border_size,          -- Thickness of window borders
+    layout = "dwindle",                                -- Default window partitioning algorithm
+    resize_on_border = true,                           -- Allows resizing windows by dragging their borders
   },
-  
+
   -- Window decorations (Rounding, Blur, Shadows)
   decoration = {
     rounding_power = 2.5,                       -- Corner curvature math factor
-    rounding = config.rounding,                 -- Radius of rounded corners in pixels
-    
+    rounding = config.visuals.rounding,         -- Radius of rounded corners in pixels
+
     -- Glassmorphism blur settings
     blur = {
       enabled = true,                           -- Enables active background blur
@@ -33,14 +33,14 @@ hl.config({
       ignore_opacity = true,                    -- Blurs the area regardless of window transparency
       xray = true,                              -- Optimizes blur passes by drawing directly on the layer beneath
     },
-    
+
     -- Drop shadow settings
     shadow = {
       enabled = true,                           -- Enables soft drop shadows under windows
       range = 20,                               -- Blur radius of the shadows
       offset = {0, 2},                          -- Position offset of shadows (X, Y)
       render_power = 10,                        -- Density and strength of the shadow decay
-      color = config.shadow                     -- Color of the drop shadows
+      color = config.colors.shadow              -- Color of the drop shadows
     },
   }
 })

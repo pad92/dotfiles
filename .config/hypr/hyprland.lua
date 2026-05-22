@@ -40,5 +40,5 @@ table.insert(messages, "Hyprland Lua configuration loaded successfully")
 
 hl.notification.create({
   text = table.concat(messages, "\n"),
-  duration = config.notif_duration
+  duration = config.notifications.duration
 })

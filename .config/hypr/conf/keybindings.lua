@@ -5,16 +5,16 @@
 
 local config = require("config")
 
--- IPC commands to communicate with Quickshell (top bar and panel widgets)
-local qsIpcCall = "qs -c $qsConfig ipc call"
-local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
-
 -- =============================================================================
 -- SESSION & WINDOW MANAGEMENT ACTIONS
 -- =============================================================================
 
 -- Close the currently focused window
 hl.bind(config.mainMod .. " + SHIFT + Q", hl.dsp.window.close(), { description = "Close window" })
+
+-- Cycle through windows and bring the active one to top (ALT + Tab)
+hl.bind("ALT + Tab", hl.dsp.focus({ window = "next" }), { repeating = true, description = "Cycle next window" })
+hl.bind("ALT + Tab", hl.dsp.window.bring_to_top(), { repeating = true, description = "Bring active to top" })
 
 -- Toggle the active window between Floating and Tiled modes
 hl.bind(config.mainMod .. " + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Float/Tile" })
@@ -23,38 +23,38 @@ hl.bind(config.mainMod .. " + ALT + Space", hl.dsp.window.float({ action = "togg
 hl.bind(config.mainMod .. " + F", hl.dsp.window.fullscreen({ "fullscreen" }, { description = "Fullscreen" }))
 
 -- Lock the display session using hyprlock
-hl.bind(config.mainMod .. " + L", hl.dsp.exec_cmd("hyprlock -c ~/.config/hypr/hyprlock.conf"), { description = "Lock" })
+hl.bind(config.mainMod .. " + L", hl.dsp.exec_cmd(config.utils.lock), { description = "Lock" })
 
 -- Session logout menu (tries to signal quickshell widget, falls back to wlogout overlay)
-hl.bind(config.mainMod .. " + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
+hl.bind(config.mainMod .. " + Delete", hl.dsp.exec_cmd(config.utils.logout))
 
 -- =============================================================================
 -- APPLICATION SHORTCUTS (configured in config.lua)
 -- =============================================================================
 
 -- Open primary terminal emulator (Alacritty)
-hl.bind(config.mainMod .. " + Return", hl.dsp.exec_cmd(config.term), { description = "Terminal" })
+hl.bind(config.mainMod .. " + Return", hl.dsp.exec_cmd(config.apps.term), { description = "Terminal" })
 
 -- Launch default file manager (Nautilus)
-hl.bind(config.mainMod .. " + E", hl.dsp.exec_cmd(config.file), { description = "File manager" })
+hl.bind(config.mainMod .. " + E", hl.dsp.exec_cmd(config.apps.file), { description = "File manager" })
 
 -- Launch preferred code editor (VS Codium)
-hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.editor), { description = "Code editor" })
+hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.apps.editor), { description = "Code editor" })
 
 -- Launch default web browser (Firefox)
-hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.browser), { description = "Browser" })
+hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.apps.browser), { description = "Browser" })
 
 -- Toggle the window between focus and float
 hl.bind(config.mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle Float" })
 
 -- Launch default music player (Spotify)
-hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.music), { description = "Music Player" })
+hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { description = "Music Player" })
 
 -- Toggle the Wofi application launcher menu
-hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
+hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " --show drun"), { description = "Application menu" })
 
 -- Open 1Password password manager
-hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.password_manager), { description = "Password Manager" })
+hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.apps.password_manager), { description = "Password Manager" })
 
 -- =============================================================================
 -- NAVIGATION & DÉPLACEMENT (FOCUS & MOVE)
@@ -82,57 +82,56 @@ end
 -- =============================================================================
 
 -- Toggle sound mute status
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("swayosd-client --output-volume mute-toggle"), { locked = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(config.utils.vol_mute), { locked = true })
 
 -- Toggle microphone mute status
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("swayosd-client --input-volume mute-toggle"), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(config.utils.mic_mute), { locked = true })
 
 -- Raise system audio volume (repeats on hold, locked when display is locked)
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("swayosd-client --output-volume raise"),
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(config.utils.vol_up),
   { locked = true, repeating = true })
 
 -- Lower system audio volume (repeats on hold, locked when display is locked)
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("swayosd-client --output-volume lower"),
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(config.utils.vol_down),
   { locked = true, repeating = true })
 
 -- Media playback controls using playerctl daemon
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(config.utils.media_play_pause), { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd(config.utils.media_play_pause), { locked = true })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd(config.utils.media_next), { locked = true })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd(config.utils.media_prev), { locked = true })
 
 -- =============================================================================
 -- DISPLAY BRIGHTNESS & CAPS LOCK OVERLAYS
 -- =============================================================================
 
 -- Increase monitor brightness using SwayOSD
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("swayosd-client --brightness raise"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(config.utils.bright_up), { locked = true, repeating = true })
 
 -- Decrease monitor brightness using SwayOSD
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("swayosd-client --brightness lower"),
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(config.utils.bright_down),
   { locked = true, repeating = true })
 
 -- Toggle Caps Lock state with an overlay notification
-hl.bind("CAPS", hl.dsp.exec_cmd("swayosd-client --caps-lock"), { description = "Caps Lock" })
+hl.bind("CAPS", hl.dsp.exec_cmd(config.utils.caps_lock), { description = "Caps Lock" })
 
 -- =============================================================================
 -- SCREENSHOT UTILITIES
 -- =============================================================================
 
 -- Capture selection area via grim/slurp, send output to swappy editor
-local screenshot_command = "grim -g \"$(slurp -d)\" - | swappy -f -"
-hl.bind("Print", hl.dsp.exec_cmd(screenshot_command), { locked = true })
-hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
+hl.bind("Print", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
+hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
 
 -- =============================================================================
 -- WALLPAPER & CLIPBOARD HISTORY SCRIPTS
 -- =============================================================================
 
 -- Cycle desktop wallpaper using swww daemon script
-hl.bind(config.mainMod .. " + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/awww.sh"), { description = "Change wallpaper" })
+hl.bind(config.mainMod .. " + ALT + Right", hl.dsp.exec_cmd(config.utils.wallpaper), { description = "Change wallpaper" })
 
 -- Query and decode clipboard history via wofi selection and paste it to wl-copy
-hl.bind(config.mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .. " -S dmenu | cliphist decode | wl-copy"),
+hl.bind(config.mainMod .. " + SHIFT + V", hl.dsp.exec_cmd(string.format(config.utils.clipboard, config.apps.menu)),
   { description = "Clipboard history" })
 
 -- =============================================================================

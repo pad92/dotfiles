@@ -13,7 +13,7 @@ hl.on("hyprland.start", function()
 
   -- 1. Environment & Theme settings
   -- Applies GTK/GNOME theme settings stored in config.lua via gsettings
-  for _, setting in ipairs(config.theme_settings) do
+  for _, setting in ipairs(config.theme) do
     hl.exec_cmd("gsettings set " .. setting.key .. " " .. setting.value)
   end
 
@@ -36,7 +36,7 @@ hl.on("hyprland.start", function()
 
   -- 3. Core Desktop Services & Applets
   -- Starts background components such as waybar, blueman, network indicators, etc.
-  for _, app in ipairs(config.autostart_apps) do
+  for _, app in ipairs(config.autostart) do
     uwsm_app(app)
   end
 

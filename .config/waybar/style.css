@@ -5,22 +5,22 @@
 *
 */
 
-@define-color base00 rgba(38, 50, 56, 0.5);
-@define-color base01 rgba(46, 60, 67, 1);
-@define-color base02 rgba(49, 69, 73, 1);
-@define-color base03 rgba(84, 110, 122, 1);
-@define-color base04 rgba(178, 204, 214, 1);
-@define-color base05 rgba(238, 255, 255, 1);
-@define-color base06 rgba(238, 255, 255, 1);
+@define-color base00 rgba(30, 30, 46, 0.5);
+@define-color base01 rgba(46, 46, 60, 1);
+@define-color base02 rgba(60, 60, 80, 1);
+@define-color base03 rgba(80, 80, 100, 1);
+@define-color base04 rgba(150, 150, 180, 1);
+@define-color base05 rgba(205, 214, 244, 1);
+@define-color base06 rgba(205, 214, 244, 1);
 @define-color base07 rgba(255, 255, 255, 1);
-@define-color base08 rgba(240, 113, 120, 1);
-@define-color base09 rgba(247, 140, 108, 1);
-@define-color base0A rgba(255, 203, 107, 1);
-@define-color base0B rgba(195, 232, 141, 1);
-@define-color base0C rgba(137, 221, 255, 1);
-@define-color base0D rgba(130, 170, 255, 1);
-@define-color base0E rgba(199, 146, 234, 1);
-@define-color base0F rgba(255, 83, 112, 1);
+@define-color base08 rgba(243, 139, 168, 1);
+@define-color base09 rgba(245, 150, 160, 1);
+@define-color base0A rgba(137, 180, 250, 1);
+@define-color base0B rgba(166, 227, 161, 1);
+@define-color base0C rgba(180, 190, 254, 1);
+@define-color base0D rgba(137, 180, 250, 1);
+@define-color base0E rgba(205, 214, 244, 1);
+@define-color base0F rgba(243, 139, 168, 1);
 
 * {
   border: none;
