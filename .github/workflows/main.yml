@@ -31,7 +31,7 @@ jobs:
       - name: SAST (CodeQL Init)
         uses: github/codeql-action/init@v3
         with:
-          languages: 'javascript'
+          languages: 'python'
 
       - name: SAST (CodeQL Analysis)
         uses: github/codeql-action/analyze@v3
@@ -67,6 +67,7 @@ jobs:
         run: |
           mkdir public
           npx markdown-it-cli README.md > public/index.html
+          npx markdown-it-cli dist/arch/install.md > public/arch.html
 
       - name: Upload public folder
         uses: actions/upload-artifact@v4

@@ -29,12 +29,11 @@ package_vim:
 
 pages:
   stage: pages
-  image:
-    name: pandoc/core
-    entrypoint: [""]
+  image: node
   script:
     - mkdir public
-    - pandoc -s README.md -o public/index.html
+    - npx markdown-it-cli README.md > public/index.html
+    - npx markdown-it-cli dist/arch/install.md > public/arch.html
   artifacts:
     paths:
       - public
