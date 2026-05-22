@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - Implement UWSM session start ([69c1292](/commit/69c1292))
 - Added documentation for TTY launch and GNOME Keyring session integration in `README.md`
 
+### Changed
+- Modernize and refactor Hyprland autostart configuration to use UWSM for polkit and clipboard monitors
+
 ### Removed
 - Removed GDM from the system configuration
 
