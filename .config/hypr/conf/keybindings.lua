@@ -14,47 +14,47 @@ local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 -- =============================================================================
 
 -- Close the currently focused window
-hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close(), { description = "Close window" })
+hl.bind(config.mainMod .. " + SHIFT + Q", hl.dsp.window.close(), { description = "Close window" })
 
 -- Toggle the active window between Floating and Tiled modes
-hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Float/Tile" })
+hl.bind(config.mainMod .. " + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Float/Tile" })
 
 -- Toggle active window to fullscreen mode
-hl.bind("SUPER + F", hl.dsp.window.fullscreen({ "fullscreen" }, { description = "Fullscreen" }))
+hl.bind(config.mainMod .. " + F", hl.dsp.window.fullscreen({ "fullscreen" }, { description = "Fullscreen" }))
 
 -- Lock the display session using hyprlock
-hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock -c ~/.config/hypr/hyprlock.conf"), { description = "Lock" })
+hl.bind(config.mainMod .. " + L", hl.dsp.exec_cmd("hyprlock -c ~/.config/hypr/hyprlock.conf"), { description = "Lock" })
 
 -- Session logout menu (tries to signal quickshell widget, falls back to wlogout overlay)
-hl.bind("SUPER + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
+hl.bind(config.mainMod .. " + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
 
 -- =============================================================================
 -- APPLICATION SHORTCUTS (configured in config.lua)
 -- =============================================================================
 
 -- Open primary terminal emulator (Alacritty)
-hl.bind("SUPER + Return", hl.dsp.exec_cmd(config.term), { description = "Terminal" })
+hl.bind(config.mainMod .. " + Return", hl.dsp.exec_cmd(config.term), { description = "Terminal" })
 
 -- Launch default file manager (Nautilus)
-hl.bind("SUPER + E", hl.dsp.exec_cmd(config.file), { description = "File manager" })
+hl.bind(config.mainMod .. " + E", hl.dsp.exec_cmd(config.file), { description = "File manager" })
 
 -- Launch preferred code editor (VS Codium)
-hl.bind("SUPER + C", hl.dsp.exec_cmd(config.editor), { description = "Code editor" })
+hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.editor), { description = "Code editor" })
 
 -- Launch default web browser (Firefox)
-hl.bind("SUPER + W", hl.dsp.exec_cmd(config.browser), { description = "Browser" })
+hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.browser), { description = "Browser" })
 
 -- Toggle the window between focus and float
-hl.bind("SUPER + SHIFT + F", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle Float" })
+hl.bind(config.mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle Float" })
 
 -- Launch default music player (Spotify)
-hl.bind("SUPER + M", hl.dsp.exec_cmd(config.music), { description = "Music Player" })
+hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.music), { description = "Music Player" })
 
 -- Toggle the Wofi application launcher menu
-hl.bind("SUPER + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
+hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.menu .. " --show drun"), { description = "Application menu" })
 
 -- Open 1Password password manager
-hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd(config.password_manager), { description = "Password Manager" })
+hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.password_manager), { description = "Password Manager" })
 
 -- =============================================================================
 -- NAVIGATION & DÉPLACEMENT (FOCUS & MOVE)
@@ -66,7 +66,7 @@ local focus_map = {
   { "BracketLeft", "l" }, { "BracketRight", "r" }
 }
 for _, pair in ipairs(focus_map) do
-  hl.bind("SUPER + " .. pair[1], hl.dsp.focus({ direction = pair[2] }))
+  hl.bind(config.mainMod .. " + " .. pair[1], hl.dsp.focus({ direction = pair[2] }))
 end
 
 -- Move focused window within active workspace (supports Arrow keys or l/r/u/d keys)
@@ -74,7 +74,7 @@ local move_map = {
   { "Left", "l" }, { "Right", "r" }, { "Up", "u" }, { "Down", "d" }
 }
 for _, pair in ipairs(move_map) do
-  hl.bind("SUPER + SHIFT + " .. pair[1], hl.dsp.window.move({ direction = pair[2] }))
+  hl.bind(config.mainMod .. " + SHIFT + " .. pair[1], hl.dsp.window.move({ direction = pair[2] }))
 end
 
 -- =============================================================================
@@ -122,17 +122,17 @@ hl.bind("CAPS", hl.dsp.exec_cmd("swayosd-client --caps-lock"), { description = "
 -- Capture selection area via grim/slurp, send output to swappy editor
 local screenshot_command = "grim -g \"$(slurp -d)\" - | swappy -f -"
 hl.bind("Print", hl.dsp.exec_cmd(screenshot_command), { locked = true })
-hl.bind("SUPER + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
+hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(screenshot_command), { locked = true })
 
 -- =============================================================================
 -- WALLPAPER & CLIPBOARD HISTORY SCRIPTS
 -- =============================================================================
 
 -- Cycle desktop wallpaper using swww daemon script
-hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/awww.sh"), { description = "Change wallpaper" })
+hl.bind(config.mainMod .. " + ALT + Right", hl.dsp.exec_cmd("~/.dotfiles/bin/awww.sh"), { description = "Change wallpaper" })
 
 -- Query and decode clipboard history via wofi selection and paste it to wl-copy
-hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .. " -S dmenu | cliphist decode | wl-copy"),
+hl.bind(config.mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .. " -S dmenu | cliphist decode | wl-copy"),
   { description = "Clipboard history" })
 
 -- =============================================================================
@@ -143,13 +143,13 @@ hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. config.menu .
 -- Mapped to number keys 1 through 9 using hardware keycodes
 for i = 1, 9 do
   local numberkey = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
-  hl.bind("SUPER + ALT + code:" .. numberkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
+  hl.bind(config.mainMod .. " + ALT + code:" .. numberkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
 end
 
 -- Move active window to a workspace SILENTLY using hardware Numpad keycodes
 for i = 1, 9 do
   local numpadkey = { 87, 88, 89, 83, 84, 85, 79, 80, 81, 90 }
-  hl.bind("SUPER + ALT + code:" .. numpadkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
+  hl.bind(config.mainMod .. " + ALT + code:" .. numpadkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
 end
 
 -- Relative navigation: Switch focus to adjacent workspace (Left or Right)
@@ -158,12 +158,12 @@ hl.bind("CTRL + SUPER + Left", hl.dsp.focus({ workspace = "r-1" }))
 
 -- Absolute navigation: Focus workspaces 1 through 9
 for i = 1, 9 do
-  hl.bind("SUPER + " .. i, hl.dsp.focus({ workspace = i }))
+  hl.bind(config.mainMod .. " + " .. i, hl.dsp.focus({ workspace = i }))
 end
 
 -- Move active window to workspace and FOLLOW focus to destination workspace (workspaces 1 to 9)
 for i = 1, 9 do
-  hl.bind("SUPER + SHIFT + " .. i, hl.dsp.window.move({ workspace = i, follow = true }))
+  hl.bind(config.mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i, follow = true }))
 end
 
 -- =============================================================================
@@ -171,7 +171,7 @@ end
 -- =============================================================================
 
 -- Drag floating windows with SUPER + Left Mouse Button
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Move window" })
+hl.bind(config.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Move window" })
 
 -- Resize floating windows with SUPER + Right Mouse Button
-hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })
+hl.bind(config.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })
