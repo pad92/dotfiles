@@ -6,8 +6,17 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+# Prevent multiple concurrent runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Principle of Least Privilege: explicitly define permissions
+permissions:
+  contents: read
+
 jobs:
-  # Equivalent to SAST and Secret Detection
+  # Security Gate: Must pass before packaging or publishing
   security:
     runs-on: ubuntu-latest
     steps:
@@ -19,14 +28,15 @@ jobs:
       - name: Secret scanning
         uses: trufflesecurity/trufflehog@main
 
-      - name: SAST (CodeQL)
+      - name: SAST (CodeQL Init)
         uses: github/codeql-action/init@v3
         with:
-          languages: 'javascript' # Adjusted based on project, but CodeQL is the GH equivalent to SAST
-        # Note: Full CodeQL setup usually requires a separate workflow file,
-        # but this represents the intent of the GitLab templates.
+          languages: 'javascript'
 
-  # Equivalent to package_vim
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v3
+
+  # Parallel Job: Package Vim configuration
   package:
     needs: security
     runs-on: ubuntu-latest
@@ -45,9 +55,9 @@ jobs:
           name: vim-package
           path: vim.tar.gz
 
-  # Equivalent to pages
+  # Parallel Job: Generate Documentation Page
   pages:
-    needs: package
+    needs: security
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
