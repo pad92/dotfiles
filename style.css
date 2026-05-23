@@ -1,12 +1,12 @@
-/* Hyprland Sober Theme */
+/* Hyprland Sober Theme - Official Catppuccin Mocha */
 :root {
-    --bg-color: #1e1e2e; /* Hyprland background */
-    --text-color: #cdd6f4; /* Hyprland foreground */
-    --accent-color: #89b4fa; /* Hyprland accent */
-    --code-bg: #181825;
-    --border-color: #313244;
-    --link-color: #89b4fa;
-    --highlight-bg: #2a2a2a;
+    --bg-color: #1e1e2e; /* Base */
+    --text-color: #cdd6f4; /* Text */
+    --accent-color: #cba6f7; /* Mauve */
+    --code-bg: #11111b; /* Crust */
+    --border-color: #45475a; /* Surface 0 */
+    --link-color: #89b4fa; /* Blue */
+    --highlight-bg: #585b70; /* Surface 1 */
 }
 
 body {
@@ -66,7 +66,7 @@ pre code {
 blockquote {
     margin: 0;
     padding: 0 0 0 1em;
-    color: #888;
+    color: var(--highlight-bg);
     border-left: 0.25em solid var(--border-color);
 }
 
@@ -82,18 +82,18 @@ table th, table td {
 }
 
 table tr:nth-child(even) {
-    background-color: #222;
+    background-color: var(--highlight-bg);
 }
 
 img {
     max-width: 100%;
 }
 
-/* Override Pandoc syntax highlighting for a sober SRE look */
-pre.sourceCode .fu, pre.sourceCode .kw { color: #f87171; } /* Functions, Keywords: Muted Red */
-pre.sourceCode .st { color: #a78bfa; } /* Strings: Muted Purple */
-pre.sourceCode .cm { color: #6b7280; } /* Comments: Slate Grey */
-pre.sourceCode .df { color: #fbbf24; } /* Definitions: Muted Amber */
-pre.sourceCode .nn { color: #60a5fa; } /* Numbers: Muted Blue */
-pre.sourceCode .op, pre.sourceCode .va { color: #d4d4d4; } /* Operators, Variables: Soft White */
-pre.sourceCode .ex { color: #93c5fd; } /* Exceptions: Light Blue */
+/* Override Pandoc syntax highlighting based on official Catppuccin Mocha */
+pre.sourceCode .fu, pre.sourceCode .kw { color: #f38ba8; } /* Functions, Keywords: Red */
+pre.sourceCode .st { color: #a6e3a1; } /* Strings: Green */
+pre.sourceCode .cm { color: #585b70; } /* Comments: Surface 1 */
+pre.sourceCode .df { color: #f9e2af; } /* Definitions: Yellow */
+pre.sourceCode .nn { color: #89b4fa; } /* Numbers: Blue */
+pre.sourceCode .op, pre.sourceCode .va { color: #cdd6f4; } /* Operators, Variables: Text */
+pre.sourceCode .ex { color: #89dceb; } /* Exceptions: Sky */
