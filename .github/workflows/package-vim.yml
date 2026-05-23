@@ -1,0 +1,41 @@
+name: Package Vim Configuration
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".vimrc"
+      - ".vim/**"
+      - "vim.sh"
+      - ".github/workflows/package-vim.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - ".vimrc"
+      - ".vim/**"
+      - "vim.sh"
+
+concurrency:
+  group: vim-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Package Vim configuration
+        run: tar -czf vim.tar.gz .vim .vimrc
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vim-package
+          path: vim.tar.gz

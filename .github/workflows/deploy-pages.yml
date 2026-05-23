@@ -1,42 +1,39 @@
-name: CI
+name: Deploy GitHub Pages
 
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "README.md"
+      - "CHANGELOG.md"
+      - "dist/arch/install.md"
+      - "style.css"
+      - ".github/workflows/deploy-pages.yml"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "README.md"
+      - "CHANGELOG.md"
+      - "dist/arch/install.md"
+      - "style.css"
 
-# Prevent multiple concurrent runs on the same branch
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: pages-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Principle of Least Privilege: explicitly define permissions
 permissions:
   contents: read
 
 jobs:
-  # Parallel Job: Package Vim configuration
-  package:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Package Vim configuration
-        run: tar -czf vim.tar.gz .vim .vimrc
-
-      - name: Upload package
-        uses: actions/upload-artifact@v4
-        with:
-          name: vim-package
-          path: vim.tar.gz
-
-  # Parallel Job: Generate Documentation Page
-  pages:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,8 +48,12 @@ jobs:
           pandoc CHANGELOG.md -s -c style.css -o public/changelog.html --metadata title="Changelog"
           pandoc dist/arch/install.md -s -c ../../../style.css -o public/dist/arch/install.md/index.html --metadata title="Installation"
 
-      - name: Upload public folder
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: public-site
           path: public/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: github.ref == 'refs/heads/main'
+        uses: actions/deploy-pages@v4
