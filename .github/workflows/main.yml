@@ -65,10 +65,10 @@ jobs:
 
       - name: Generate HTML from README
         run: |
-          mkdir public
+          mkdir -p public/dist/arch/install.md/
           npx markdown-it-cli README.md > public/index.html
           npx markdown-it-cli CHANGELOG.md > public/changelog.html
-          npx markdown-it-cli dist/arch/install.md > public/arch.html
+          npx markdown-it-cli dist/arch/install.md > public/dist/arch/install.md/index.html
 
       - name: Upload public folder
         uses: actions/upload-artifact@v4
