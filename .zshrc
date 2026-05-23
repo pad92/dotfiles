@@ -16,7 +16,6 @@ if [ -d /usr/bin/vendor_perl ]; then
 fi
 
 ZSH_THEME="pad"
-#VSCODE=vscodium
 
 plugins=(
   1password           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/1password/README.md

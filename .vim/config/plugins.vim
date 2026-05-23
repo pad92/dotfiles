@@ -8,7 +8,6 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
-Plugin 'morhetz/gruvbox'
 Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
 Plugin 'chrisbra/colorizer'
 Plugin 'editorconfig/editorconfig-vim'

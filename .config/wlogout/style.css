@@ -4,18 +4,18 @@
 	font-family: "JetBrains Mono NFM";
 }
 
-@import '../../.config/waybar/style.css';
+@import '../waybar/style.css';
 
 window {
-	background-color: rgba(17, 17, 17, 0.45)
+	background-color: rgba(30, 30, 46, 0.45)
 }
 
 button {
 	border-radius: 20px;
 	margin: 10px;
-	color: @inverse_surface;
-	border-color: @inverse_surface;
-	background-color: rgba(0, 0, 0, 0.5);
+	color: #cdd6f4;
+	border-color: #cdd6f4;
+	background-color: rgba(30, 30, 46, 0.5);
 	outline-style: none;
 	border-style: solid;
 	border-width: 0px;
@@ -29,7 +29,7 @@ button {
 
 button:hover,
 button:focus {
-	background-color: @on_secondary_fixed_variant;
+	background-color: #89b4fa;
 	background-size: 30%;
 	animation: gradient_f 20s ease-in infinite;
 	transition: all 0.3s cubic-bezier(.55, 0.0, .28, 1.682);

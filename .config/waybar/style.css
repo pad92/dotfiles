@@ -1,27 +1,29 @@
-/*
-*
-* Base16 Material
-* Author: Nate Peterson
-*
-*/
-
-@define-color base00 rgba(30, 30, 46, 0.5);
-@define-color base01 rgba(46, 46, 60, 1);
-@define-color base02 rgba(60, 60, 80, 1);
-@define-color base03 rgba(80, 80, 100, 1);
-@define-color base04 rgba(150, 150, 180, 1);
-@define-color base05 rgba(205, 214, 244, 1);
-@define-color base06 rgba(205, 214, 244, 1);
-@define-color base07 rgba(255, 255, 255, 1);
-@define-color base08 rgba(243, 139, 168, 1);
-@define-color base09 rgba(245, 150, 160, 1);
-@define-color base0A rgba(137, 180, 250, 1);
-@define-color base0B rgba(166, 227, 161, 1);
-@define-color base0C rgba(180, 190, 254, 1);
-@define-color base0D rgba(137, 180, 250, 1);
-@define-color base0E rgba(205, 214, 244, 1);
-@define-color base0F rgba(243, 139, 168, 1);
-
+@define-color rosewater #f5e0dc;
+@define-color flamingo #f2cdcd;
+@define-color pink #f5c2e7;
+@define-color mauve #cba6f7;
+@define-color red #f38ba8;
+@define-color maroon #eba0ac;
+@define-color peach #fab387;
+@define-color yellow #f9e2af;
+@define-color green #a6e3a1;
+@define-color teal #94e2d5;
+@define-color sky #89dceb;
+@define-color sapphire #74c7ec;
+@define-color blue #89b4fa;
+@define-color lavender #b4befe;
+@define-color text #cdd6f4;
+@define-color subtext1 #bac2de;
+@define-color subtext0 #a6adc8;
+@define-color overlay2 #9399b2;
+@define-color overlay1 #7f849c;
+@define-color overlay0 #6c7086;
+@define-color surface2 #585b70;
+@define-color surface1 #45475a;
+@define-color surface0 #313244;
+@define-color base rgba(30, 30, 46, 0.5);
+@define-color mantle #181825;
+@define-color crust #11111b;
 * {
   border: none;
   border-radius: 0px;
@@ -46,12 +48,12 @@ window#waybar {
   padding: 0 5px;
   margin: 0 0px;
   border-bottom: 3px solid;
-  background-color: @base00;
+  background-color: @base;
   animation: ws_normal 20s ease-in-out 1;
 }
 
 #workspaces button.active {
-  border-bottom: 3px solid @base0A;
+  border-bottom: 3px solid @blue;
   padding-left: 5px;
   padding-right: 5px;
   animation: ws_active 20s ease-in-out 1;
@@ -60,17 +62,17 @@ window#waybar {
 
 
 #workspaces button.focused {
-  border-bottom: 3px solid @base0C;
+  border-bottom: 3px solid @lavender;
 }
 
 #workspaces button.hover {
-  border-bottom: 3px solid @base0E;
+  border-bottom: 3px solid @yellow;
   animation: ws_hover 20s ease-in-out 1;
   transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
 }
 
 #workspaces button.urgent {
-  border-bottom: 3px solid @base0F;
+  border-bottom: 3px solid @peach;
 }
 
 
@@ -100,13 +102,13 @@ window#waybar {
 #idle_inhibitor {
   padding: 0 10px;
   margin: 0 0px;
-  background-color: @base00;
+  background-color: @base;
 }
 
 #battery.warning:not(.charging) {
-  border-bottom: 3px solid @base0F;
+  border-bottom: 3px solid @peach;
 }
 
 #pulseaudio.muted {
-  background: @base0A;
+  background: @blue;
 }

@@ -45,7 +45,7 @@ local config = {
         background       = "#1e1e2e",
         foreground       = "#cdd6f4",
         active_border    = "#b4befecc",
-        inactive_border  = "#6c7086cc",
+        inactive_border  = "#9399b2cc",
         shadow           = "#1e1e2e20",
     },
 
