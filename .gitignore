@@ -206,3 +206,4 @@ dist/*/pkglist-*-*.diff
 *.db
 .agents
 .config/uwsm/default-id
+public/
