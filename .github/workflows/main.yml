@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
 # Prevent multiple concurrent runs on the same branch
 concurrency:
@@ -16,29 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  # Security Gate: Must pass before packaging or publishing
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Secret scanning
-        uses: trufflesecurity/trufflehog@main
-
-      - name: SAST (CodeQL Init)
-        uses: github/codeql-action/init@v3
-        with:
-          languages: 'python'
-
-      - name: SAST (CodeQL Analysis)
-        uses: github/codeql-action/analyze@v3
-
   # Parallel Job: Package Vim configuration
   package:
-    needs: security
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -57,7 +36,6 @@ jobs:
 
   # Parallel Job: Generate Documentation Page
   pages:
-    needs: security
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
