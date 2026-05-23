@@ -29,12 +29,14 @@ package_vim:
 
 pages:
   stage: pages
-  image: node
+  image: alpine:latest
   script:
+    - apk add --no-cache pandoc
     - mkdir -p public/dist/arch/install.md/
-    - npx markdown-it-cli README.md > public/index.html
-    - npx markdown-it-cli CHANGELOG.md > public/changelog.html
-    - npx markdown-it-cli dist/arch/install.md > public/dist/arch/install.md/index.html
+    - cp style.css public/style.css
+    - pandoc README.md -s -c style.css -o public/index.html --metadata title="Documentation"
+    - pandoc CHANGELOG.md -s -c style.css -o public/changelog.html --metadata title="Changelog"
+    - pandoc dist/arch/install.md -s -c style.css -o public/dist/arch/install.md/index.html --metadata title="Installation"
   artifacts:
     paths:
       - public

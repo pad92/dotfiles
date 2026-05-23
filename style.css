@@ -1,0 +1,92 @@
+/* SRE Sober Theme - Refined */
+:root {
+    --bg-color: #0f0f0f;
+    --text-color: #d4d4d4;
+    --accent-color: #60a5fa;
+    --code-bg: #1e1e1e;
+    --border-color: #333;
+    --link-color: #93c5fd;
+    --highlight-bg: #2a2a2a;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.3em;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background-color: var(--code-bg);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 85%;
+}
+
+pre {
+    background-color: var(--code-bg);
+    padding: 16px;
+    overflow: auto;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+pre code {
+    background-color: transparent;
+    padding: 0;
+    font-size: 100%;
+}
+
+blockquote {
+    margin: 0;
+    padding: 0 0 0 1em;
+    color: #888;
+    border-left: 0.25em solid var(--border-color);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+table th, table td {
+    border: 1px solid var(--border-color);
+    padding: 6px 13px;
+}
+
+table tr:nth-child(even) {
+    background-color: #222;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Override Pandoc syntax highlighting for a sober SRE look */
+pre.sourceCode .fu, pre.sourceCode .kw { color: #f87171; } /* Functions, Keywords: Muted Red */
+pre.sourceCode .st { color: #a78bfa; } /* Strings: Muted Purple */
+pre.sourceCode .cm { color: #6b7280; } /* Comments: Slate Grey */
+pre.sourceCode .df { color: #fbbf24; } /* Definitions: Muted Amber */
+pre.sourceCode .nn { color: #60a5fa; } /* Numbers: Muted Blue */
+pre.sourceCode .op, pre.sourceCode .va { color: #d4d4d4; } /* Operators, Variables: Soft White */
+pre.sourceCode .ex { color: #93c5fd; } /* Exceptions: Light Blue */

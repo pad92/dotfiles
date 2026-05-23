@@ -65,10 +65,13 @@ jobs:
 
       - name: Generate HTML from README
         run: |
+          sudo apt-get update && sudo apt-get install -y pandoc
           mkdir -p public/dist/arch/install.md/
-          npx markdown-it-cli README.md > public/index.html
-          npx markdown-it-cli CHANGELOG.md > public/changelog.html
-          npx markdown-it-cli dist/arch/install.md > public/dist/arch/install.md/index.html
+          cp style.css public/style.css
+
+          pandoc README.md -s -c style.css -o public/index.html --metadata title="Documentation"
+          pandoc CHANGELOG.md -s -c style.css -o public/changelog.html --metadata title="Changelog"
+          pandoc dist/arch/install.md -s -c style.css -o public/dist/arch/install.md/index.html --metadata title="Installation"
 
       - name: Upload public folder
         uses: actions/upload-artifact@v4
