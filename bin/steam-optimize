@@ -283,6 +283,13 @@ apply_game_overrides() {
             GAME_NAME="Unreal Tournament GOTY"
             use_native_wayland
             ;;
+        "2483190")
+            GAME_NAME="Forza Horizon 6"
+            export VKD3D_CONFIG=no_upload_hvv,single_queue
+            export PROTON_SET_GAME_DRIVE=1
+            export WINEDLLOVERRIDES="winmm=n,b;steam_api64=n,b;version=n,b"
+            export SDL_VIDEODRIVER=x11
+            ;;
         *)
             GAME_NAME="AppID:${STEAM_APP_ID}"
             log_info "No game-specific overrides; using default settings"
