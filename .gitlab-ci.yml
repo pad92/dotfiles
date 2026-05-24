@@ -19,12 +19,6 @@ package_vim:
   stage: package
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
-  rules:
-    - changes:
-        - ".vimrc"
-        - ".vim/**/*"
-        - "vim.sh"
-        - ".gitlab-ci.yml"
   script:
     - tar -czf vim.tar.gz .vim .vimrc
   artifacts:
