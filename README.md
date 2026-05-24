@@ -16,10 +16,12 @@ cd ~/.dotfiles
 ```
 
 ### Editor Only
-To set up the editor configuration without installing the full suite:
+*   To set up the editor configuration without installing the full suite:
 ```sh
 curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
 ```
+*   **Quick Install**: You can download the pre-packaged configuration from the [Artifacts](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim
+).
 
 ## 🛠️ Core Tooling
 
@@ -84,8 +86,7 @@ Organized by functional modules for clean management:
 *   **`src`**: Sourced reloader helper for shell config.
 
 ### 📖 Editor (Vim)
-A highly configured editor built with `vundle` and the `gruvbox` color scheme.
-*   **Quick Install**: You can download the pre-packaged configuration from the [CI Artifacts page](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main).
+A highly configured editor built with `vundle`.
 *   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
 
 ### 💾 Terminal & Session Management
