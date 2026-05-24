@@ -85,6 +85,7 @@ Organized by functional modules for clean management:
 
 ### 📖 Editor (Vim)
 A highly configured editor built with `vundle` and the `gruvbox` color scheme.
+*   **Quick Install**: You can download the pre-packaged configuration from the [CI Artifacts page](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main).
 *   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
 
 ### 💾 Terminal & Session Management
