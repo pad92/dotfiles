@@ -1,0 +1,50 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract release notes
+        id: extract_notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Extracting notes for $VERSION..."
+
+          # Extract section from CHANGELOG.md starting with ## [VERSION] until the next ## [
+          # We use sed to get the block and then clean up the first and last lines.
+          sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md > release_notes.txt
+
+          # Remove the version header line
+          sed -i '1d' release_notes.txt
+          # Remove the boundary line of the next version if it exists
+          sed -i '$d' release_notes.txt
+
+          # Default message if empty
+          if [ ! -s release_notes.txt ]; then
+            echo "No specific notes found in CHANGELOG.md for $VERSION." > release_notes.txt
+          fi
+
+          # Store the notes in a GitHub Action output (escaping newlines for the output)
+          # We use a delimiter to handle multi-line output safely
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          NOTES="${{ steps.extract_notes.outputs.notes }}"
+          gh release create "$VERSION" --title "$VERSION" --notes "$NOTES"

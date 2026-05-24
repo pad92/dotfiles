@@ -4,6 +4,9 @@ This repository contains my curated personal configuration files (dotfiles) for 
 
 ## 🚀 Installation & Quick Start
 
+For the latest updates, check the [Changelog](./CHANGELOG.md).
+You can also download the current version directly from [here](https://gitlab.com/pad92/dotfiles/-/archive/main/dotfiles-main.tar.gz?ref_type=heads).
+
 ### Full Setup
 This script performs a full setup, applying all configurations and managing necessary installations.
 ```sh
