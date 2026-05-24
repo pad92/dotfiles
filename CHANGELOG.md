@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - Removed GDM from the system configuration
 
-## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/archive/v5.2.1/dotfiles-v5.2.1.tar.gz?ref_type=tags) - 2026-05-21
+## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1) - 2026-05-21
 
 ### Changed
 - Cleaned up `waybar` configuration by removing unused modules ([e396f61](/commit/e396f61))
@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fixed Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line ([6a2de32](/commit/6a2de32))
 
-## [v5.2.0](https://gitlab.com/pad92/dotfiles/-/archive/v5.2.0/dotfiles-v5.2.0.tar.gz?ref_type=tags) - 2026-05-13
+## [v5.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.0) - 2026-05-13
 
 ### Added
 - Update monitor module and consolidate startup notifications ([ef8b516](/commit/ef8b516))
@@ -57,7 +57,7 @@ All notable changes to this project will be documented in this file.
 - Resolve blackscreen issue on fullscreen mode ([ee2bca1](/commit/ee2bca1))
 - Fix Steam overlay functionality ([54e3093](/commit/54e3093))
 
-## [v5.1.1](https://gitlab.com/pad92/dotfiles/-/archive/v5.1.1/dotfiles-v5.1.1.tar.gz?ref_type=tags) - 2026-03-01
+## [v5.1.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.1) - 2026-03-01
 
 ### Added
 - Gamemode support ([14104d55](/commit/14104d55))
@@ -75,7 +75,7 @@ All notable changes to this project will be documented in this file.
 - Enhanced pre-commit configuration with improved leak detection and editorconfig integration ([14104d55](/commit/14104d55))
 - Expanded .gitignore patterns for comprehensive file exclusion ([14104d55](/commit/14104d55))
 
-## [v5.1.0](https://gitlab.com/pad92/dotfiles/-/archive/v5.1.0/dotfiles-v5.1.0.tar.gz?ref_type=tags) - 2026-01-18
+## [v5.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.0) - 2026-01-18
 
 ### Added
 - Changelog generation functionality ([f78b794](/commit/f78b794))
@@ -104,14 +104,14 @@ All notable changes to this project will be documented in this file.
 - DST-related issues ([4de5dcd](/commit/4de5dcd))
 - Wallpaper rotation and display issues ([608fd5e](/commit/608fd5e))
 
-## [v5.0.0](https://gitlab.com/pad92/dotfiles/-/archive/v5.0.0/dotfiles-v5.0.0.tar.gz?ref_type=tags) - 2024-10-06
+## [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0) - 2024-10-06
 
 ### Changed
 - Updated to latest configuration ([8422c78](/commit/8422c78))
 - Major updates to Hyprland and Sway configurations ([8422c78](/commit/8422c78))
 - Enhanced Waybar and status bar configurations ([8422c78](/commit/8422c78))
 
-## [v4.4.1](https://gitlab.com/pad92/dotfiles/-/archive/v4.4.1/dotfiles-v4.4.1.tar.gz?ref_type=tags) - 2024-10-06
+## [v4.4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.1) - 2024-10-06
 
 ### Fixed
 - Minor issues with configurations ([d5fcda1](/commit/d5fcda1))
@@ -122,7 +122,7 @@ All notable changes to this project will be documented in this file.
 - Updated themes and color schemes ([0e73433](/commit/0e73433))
 - Improved package management configurations ([0e73433](/commit/0e73433))
 
-## [v4.4.0](https://gitlab.com/pad92/dotfiles/-/archive/v4.4.0/dotfiles-v4.4.0.tar.gz?ref_type=tags) - 2023-07-13
+## [v4.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.0) - 2023-07-13
 
 ### Added
 - New configuration options for Hyprland ([4bb4afa](/commit/4bb4afa))
@@ -134,7 +134,7 @@ All notable changes to this project will be documented in this file.
 - Improved keybinding configurations ([4bb4afa](/commit/4bb4afa))
 - Updated font settings ([038cb43](/commit/038cb43))
 
-## [v4.3.0](https://gitlab.com/pad92/dotfiles/-/archive/v4.3.0/dotfiles-v4.3.0.tar.gz?ref_type=tags) - 2022-07-06
+## [v4.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.3.0) - 2022-07-06
 
 ### Added
 - Support for new Hyprland features ([b540b0f](/commit/b540b0f))
@@ -146,14 +146,14 @@ All notable changes to this project will be documented in this file.
 - Updated module configurations ([b540b0f](/commit/b540b0f))
 - Improved installation process ([b540b0f](/commit/b540b0f))
 
-## [v4.2.1](https://gitlab.com/pad92/dotfiles/-/archive/v4.2.1/dotfiles-v4.2.1.tar.gz?ref_type=tags) - 2021-12-12
+## [v4.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.2.1) - 2021-12-12
 
 ### Fixed
 - Various stability issues ([25f0cad](/commit/25f0cad))
 - Configuration bugs in status bars ([06a3557](/commit/06a3557))
 - Package installation inconsistencies ([f8199c6](/commit/f8199c6))
 
-## [v4.2](https://gitlab.com/pad92/dotfiles/-/archive/v4.2/dotfiles-v4.2.tar.gz?ref_type=tags) - 2021-12-11
+## [v4.2](https://gitlab.com/pad92/dotfiles/-/releases/v4.2) - 2021-12-11
 
 ### Added
 - New configuration templates ([2308e30](/commit/2308e30))
@@ -165,7 +165,7 @@ All notable changes to this project will be documented in this file.
 - Updated dependency management ([2308e30](/commit/2308e30))
 - Improved installation scripts ([2308e30](/commit/2308e30))
 
-## [v4.1](https://gitlab.com/pad92/dotfiles/-/archive/v4.1/dotfiles-v4.1.tar.gz?ref_type=tags) - 2021-12-01
+## [v4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.1) - 2021-12-01
 
 ### Added
 - New themes and visual enhancements ([a62c196](/commit/a62c196))
@@ -177,7 +177,7 @@ All notable changes to this project will be documented in this file.
 - Updated status bar modules ([a62c196](/commit/a62c196))
 - Improved overall stability ([a62c196](/commit/a62c196))
 
-## [v4.0](https://gitlab.com/pad92/dotfiles/-/archive/v4.0/dotfiles-v4.0.tar.gz?ref_type=tags) - 2021-11-24
+## [v4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.0) - 2021-11-24
 
 ### Added
 - Complete overhaul of configuration system ([f8199c6](/commit/f8199c6))
@@ -190,7 +190,7 @@ All notable changes to this project will be documented in this file.
 - Updated to latest software versions ([f8199c6](/commit/f8199c6))
 - Restructured file organization ([f8199c6](/commit/f8199c6))
 
-## [v2.1](https://gitlab.com/pad92/dotfiles/-/archive/v2.1/dotfiles-v2.1.tar.gz?ref_type=tags) - 2019-03-17
+## [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1) - 2019-03-17
 
 ### Added
 - Additional configuration files ([a62c196](/commit/a62c196))
@@ -202,7 +202,7 @@ All notable changes to this project will be documented in this file.
 - Updated installation scripts ([a62c196](/commit/a62c196))
 - Refined status bar layouts ([a62c196](/commit/a62c196))
 
-## [v2.0](https://gitlab.com/pad92/dotfiles/-/archive/v2.0/dotfiles-v2.0.tar.gz?ref_type=tags) - 2019-02-09
+## [v2.0](https://gitlab.com/pad92/dotfiles/-/releases/v2.0) - 2019-02-09
 
 ### Added
 - Transparency support ([75a8716](/commit/75a8716))
@@ -214,7 +214,7 @@ All notable changes to this project will be documented in this file.
 - Updated keybindings ([75a8716](/commit/75a8716))
 - Improved module configurations ([75a8716](/commit/75a8716))
 
-## [v1.0](https://gitlab.com/pad92/dotfiles/-/archive/v1.0/dotfiles-v1.0.tar.gz?ref_type=tags) - 2019-02-09
+## [v1.0](https://gitlab.com/pad92/dotfiles/-/releases/v1.0) - 2019-02-09
 
 ### Added
 - Initial release ([3b696a2](/commit/3b696a2))

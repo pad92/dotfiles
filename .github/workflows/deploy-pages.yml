@@ -41,10 +41,10 @@ jobs:
       - name: Generate HTML from README
         run: |
           sudo apt-get update && sudo apt-get install -y pandoc
-          mkdir -p public/dist/arch/install.md/ public/changelog.md/
+          mkdir -p public/dist/arch/install.md/ public/CHANGELOG.md/
           cp style.css public/style.css
-          pandoc README.md -s -c style.css -o public/index.html --metadata title="Documentation"
-          pandoc CHANGELOG.md -s -c ../style.css -o public/changelog.md/index.html --metadata title="Changelog"
+          pandoc README.md -s -c style.css -o public/index.html --metadata title="Pad's Dotfiles"
+          pandoc CHANGELOG.md -s -c ../style.css -o public/CHANGELOG.md/index.html --metadata title="Changelog"
           pandoc dist/arch/install.md -s -c ../../../style.css -o public/dist/arch/install.md/index.html --metadata title="Installation"
 
       - name: Upload Pages artifact
