@@ -5,15 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Migrate environment variables to UWSM and modernize install script ([4b0f495](/commit/4b0f495))
-- Implement UWSM session start ([69c1292](/commit/69c1292))
-- Added documentation for TTY launch and GNOME Keyring session integration in `README.md`
+- Add specific overrides for Forza Horizon 6 in `steam-optimize` ([12ad469](/commit/12ad469))
+- Integrate UWSM for session start and environment variables ([8819620](/commit/8819620), [fe97725](/commit/fe97725))
+- Update Hyprland keybindings and configuration references ([3c9561f](/commit/3c9561f), [b276f51](/commit/b276f51))
+- Implement automated release workflows and GitLab/GitHub Pages integration ([8a781e2](/commit/8a781e2), [ee26a9f](/commit/ee26a9f))
 
 ### Changed
-- Modernize and refactor Hyprland autostart configuration to use UWSM for polkit and clipboard monitors ([5c831c6](/commit/5c831c6))
+- Update theme, colors, and typography to official Catppuccin Mocha palette ([3579885](/commit/3579885), [a07eb9b](/commit/a07eb9b), [4fc7843](/commit/4fc7843))
+- Modernize Hyprland autostart using UWSM ([333c239](/commit/333c239), [20a9a24](/commit/20a9a24))
+- Optimize CI/CD pipelines and documentation build process ([4a27841](/commit/4a27841), [7dd08e3](/commit/7dd08e3), [b307628](/commit/b307628))
 
 ### Removed
-- Removed GDM from the system configuration
+- Remove GDM from the system configuration
 
 ## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1) - 2026-05-21
 
