@@ -9,18 +9,17 @@ set -euo pipefail
 
 # --- Configuration ---
 
-# Global Environment Defaults
-# Global Environment Defaults (Common for all GPUs)
+# Common environment variables applied to all GPUs
 readonly COMMON_ENV_VARS=(
     # Proton/Wayland Optimizations
     "PROTON_ENABLE_WAYLAND=1"                 # Enables Wayland support via Proton.
     "PROTON_NO_WM_DECORATION=1"               # Disables window manager decorations within Proton.
-    "PROTON_USE_NTSYNC=1"                     # Uses ntouchy sync for improved input/timing accuracy.
-    "PROTON_XESS_UPGRADE=1"                   # Enables Proton's Xess upgrade.
+    "PROTON_USE_NTSYNC=1"                     # Uses NTSync for improved input/timing accuracy.
+    "PROTON_XESS_UPGRADE=1"                   # Enables Proton's XeSS upgrade.
     "vblank_mode=0"                           # Disables vertical blanking mode (VSync) for Mesa.
 )
 
-# AMD/Radeon Specific Environment Variables
+# AMD/Radeon specific environment variables
 readonly AMD_ENV_VARS=(
     # Graphics Drivers/Layers
     "AMD_VULKAN_ICD=RADV"                     # Sets Vulkan ICD to RADV driver for AMD GPUs.
@@ -35,10 +34,10 @@ readonly AMD_ENV_VARS=(
     "VKD3D_CONFIG=dxr"                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
 )
 
-# NVIDIA Specific Environment Variables
+# NVIDIA specific environment variables
 readonly NVIDIA_ENV_VARS=(
     # Graphics Drivers/Layers
-    "__GLX_VENDOR_LIBRARY_NAME=nvidia"       # Forces NVIDIA proprietary OpenGL driver.
+    "__GLX_VENDOR_LIBRARY_NAME=nvidia"        # Forces NVIDIA proprietary OpenGL driver.
     "__NV_PRIME_RENDER_OFFLOAD=1"             # Offloads rendering to NVIDIA GPU (hybrid laptops).
     "__VK_LAYER_NV_optimus=NVIDIA_only"       # Vulkan layer for hybrid laptops offloading.
     "__GL_SHADER_DISK_CACHE=1"                # Enables OpenGL shader disk cache.
@@ -55,81 +54,126 @@ readonly NVIDIA_ENV_VARS=(
 readonly BATTLEYE_RUNTIME_PATH="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
 
 # Constants
-readonly TAG=$(basename "$0")
-readonly STEAM_APP_ID="${SteamAppId:-}"
-readonly USER_ID=$(id -u)
+TAG=$(basename "$0"); readonly TAG
+STEAM_APP_ID="${SteamAppId:-}"; readonly STEAM_APP_ID
+USER_ID=$(id -u); readonly USER_ID
 readonly RUNTIME_DIR="/run/user/${USER_ID}"
+
+# Monitor selection: "workspace:N" (default), "focused", or a monitor name (e.g. "DP-1")
+MONITOR_SELECTOR="workspace:1"
+
+# Game command array, populated by parse_args and potentially modified by apply_game_overrides
+declare -a GAME_CMD=()
+
+# GAME_NAME is set by apply_game_overrides and read by main after the game exits
+GAME_NAME=""
+
+# Whether Gamescope supports -O/--prefer-output; resolved once in setup_global_env
+GAMESCOPE_SUPPORTS_OUTPUT=false
+
+# --- Usage ---
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS] -- <game command>
+
+A Steam launch wrapper that sets up GPU-specific environment variables,
+applies per-game Proton overrides, and runs the game inside Gamescope.
+
+Options:
+  -m, --monitor <selector>  Choose the target monitor for Gamescope resolution.
+                            Selectors:
+                              workspace:<N>   Monitor hosting workspace N (default: workspace:1)
+                              focused         Currently focused monitor
+                              <name>          Monitor name, e.g. DP-1, HDMI-A-1
+  -h, --help                Show this help message and exit
+
+Examples:
+  # Default: use the monitor that has workspace 1
+  $(basename "$0") -- %command%
+
+  # Use the currently focused monitor
+  $(basename "$0") --monitor focused -- %command%
+
+  # Use workspace 2's monitor
+  $(basename "$0") --monitor workspace:2 -- %command%
+
+  # Use a specific output by name
+  $(basename "$0") --monitor DP-1 -- %command%
+
+Steam launch option (add before %command%):
+  steam-optimize -- %command%
+
+Logs:
+  journalctl -t steam-optimize -f
+EOF
+}
 
 # --- Logging ---
 
 _log() {
-    local level="$1"
-    local icon="$2"
-    local msg="$3"
+    local LEVEL="$1"
+    local ICON="${2:-}"   # empty = silent (logger only, no desktop notification)
+    local MSG="$3"
 
-    logger -t "${TAG}" "${level} [${STEAM_APP_ID}] ${msg}"
+    logger -t "${TAG}" "${LEVEL} [${STEAM_APP_ID}] ${MSG}"
+
+    [[ -z "${ICON}" ]] && return 0
 
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-        hyprctl notify "${icon}" 5000 0 "${msg}" 2>/dev/null && return 0
+        hyprctl notify "${ICON}" 5000 0 "${MSG}" 2>/dev/null || true
+        return 0
     fi
-    notify-send "${msg}" 2>/dev/null || true
+    notify-send "${MSG}" 2>/dev/null || true
 }
 
-_log_silent() {
-    local level="$1"
-    local msg="$2"
-    logger -t "${TAG}" "${level} [${STEAM_APP_ID}] ${msg}"
-}
-
-log_info_silent() {
-    _log_silent "INFO" "$1"
-}
-
-log_info() {
-    _log "INFO" 1 "$1"
-}
-
-log_warn() {
-    _log "WARN" 0 "$1"
-}
-
-log_error() {
-    _log "ERROR" 3 "$1"
-}
+log_info_silent() { _log "INFO" ""  "$1"; }
+log_info()        { _log "INFO"  1  "$1"; }
+log_warn()        { _log "WARN"  0  "$1"; }
+log_error()       { _log "ERROR" 3  "$1"; }
 
 # --- Global Environment Setup ---
+
+# Exports all entries of a named array as environment variables.
+# Usage: export_vars ARRAY_NAME
+export_vars() {
+    local -n _VARS="$1"
+    for VAR in "${_VARS[@]}"; do
+        export "$VAR"
+    done
+}
 
 setup_global_env() {
     # Raise the open file descriptor limit; required by heavily-threaded Proton games
     ulimit -n 1048576 || log_warn "Failed to raise ulimit"
 
-    # Export common variables
-    for var in "${COMMON_ENV_VARS[@]}"; do
-        export "$var"
-    done
+    export_vars COMMON_ENV_VARS
 
-    local gpu_detected=false
+    local GPU_DETECTED=false
 
     # Check for AMD GPU (amdgpu kernel module loaded)
     if [[ -d /sys/module/amdgpu ]]; then
         log_info "AMD GPU detected (amdgpu module loaded) — applying RADV optimizations"
-        for var in "${AMD_ENV_VARS[@]}"; do
-            export "$var"
-        done
-        gpu_detected=true
+        export_vars AMD_ENV_VARS
+        GPU_DETECTED=true
     fi
 
     # Check for NVIDIA GPU (nvidia kernel module loaded)
     if [[ -d /sys/module/nvidia ]]; then
         log_info "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
-        for var in "${NVIDIA_ENV_VARS[@]}"; do
-            export "$var"
-        done
-        gpu_detected=true
+        export_vars NVIDIA_ENV_VARS
+        GPU_DETECTED=true
     fi
 
-    if [[ "${gpu_detected}" = false ]]; then
+    if [[ "${GPU_DETECTED}" = false ]]; then
         log_warn "No specific GPU module (amdgpu/nvidia) detected — using common defaults"
+    fi
+
+    # Probe Gamescope capabilities once to avoid repeated forks later
+    if gamescope --help 2>&1 | grep -q -- '--prefer-output'; then
+        GAMESCOPE_SUPPORTS_OUTPUT=true
+    else
+        log_warn "Gamescope does not support -O/--prefer-output; monitor pinning will be skipped"
     fi
 }
 
@@ -145,31 +189,79 @@ setup_hyprland_env() {
     fi
 }
 
-# Returns Gamescope resolution flags matching the focused Hyprland monitor.
-# Falls back to no resolution flags if Hyprland or jq is unavailable.
+# Returns Gamescope resolution and output flags for the selected monitor.
+# Monitor selection is controlled by MONITOR_SELECTOR:
+#   "workspace:N"  — monitor hosting Hyprland workspace N (default: workspace:1)
+#   "focused"      — currently focused monitor
+#   "<name>"       — monitor name as reported by hyprctl (e.g. DP-1, HDMI-A-1)
+# Falls back to no resolution flags if Hyprland or jq is unavailable, or if
+# no matching monitor is found.
 get_gamescope_args() {
-    local args="-f --force-grab-cursor"
+    local -a ARGS=(-f --force-grab-cursor)
 
     if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-        echo "${args}"
+        echo "${ARGS[*]}"
         return 0
     fi
 
     if ! command -v jq >/dev/null 2>&1; then
         log_warn "jq not found; Gamescope will use default resolution"
-        echo "${args}"
+        echo "${ARGS[*]}"
         return 0
     fi
 
-    local res_w res_h
-    res_w=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | .width' 2>/dev/null || true)
-    res_h=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | .height' 2>/dev/null || true)
+    local MONITORS
+    MONITORS=$(hyprctl monitors -j 2>/dev/null) || true
 
-    if [[ -n "${res_w}" && -n "${res_h}" && "${res_w}" != "null" ]]; then
-        args="-W ${res_w} -H ${res_h} -w ${res_w} -h ${res_h} ${args}"
+    if [[ -z "${MONITORS}" ]]; then
+        log_warn "hyprctl monitors returned no data; Gamescope will use default resolution"
+        echo "${ARGS[*]}"
+        return 0
     fi
 
-    echo "${args}"
+    local RES_W="" RES_H="" MON_NAME=""
+    local JQ_FILTER=""
+
+    case "${MONITOR_SELECTOR}" in
+        focused)
+            JQ_FILTER='.[] | select(.focused == true)'
+            ;;
+        workspace:*)
+            local WS_ID="${MONITOR_SELECTOR#workspace:}"
+            JQ_FILTER=".[] | select(.activeWorkspace.id == ${WS_ID})"
+            if ! jq -e "${JQ_FILTER}" <<< "${MONITORS}" >/dev/null 2>&1; then
+                log_warn "No monitor found with workspace ${WS_ID}; Gamescope will use default resolution"
+                echo "${ARGS[*]}"
+                return 0
+            fi
+            ;;
+        *)
+            JQ_FILTER=".[] | select(.name == \"${MONITOR_SELECTOR}\")"
+            if ! jq -e "${JQ_FILTER}" <<< "${MONITORS}" >/dev/null 2>&1; then
+                log_warn "Monitor '${MONITOR_SELECTOR}' not found; Gamescope will use default resolution"
+                echo "${ARGS[*]}"
+                return 0
+            fi
+            ;;
+    esac
+
+    # Single jq call to extract all three fields at once
+    IFS=$'\t' read -r RES_W RES_H MON_NAME < <(
+        jq -r "${JQ_FILTER} | [.width, .height, .name] | @tsv" <<< "${MONITORS}" 2>/dev/null || true
+    )
+
+    if [[ -n "${RES_W}" && "${RES_W}" != "null" ]]; then
+        ARGS=(-W "${RES_W}" -H "${RES_H}" -w "${RES_W}" -h "${RES_H}" "${ARGS[@]}")
+    fi
+
+    # -O <connector> pins Gamescope to the target output (--prefer-output).
+    # The connector name reported by hyprctl (e.g. DP-1, HDMI-A-1) matches the DRM
+    # connector name that Gamescope expects.
+    if [[ -n "${MON_NAME}" && "${MON_NAME}" != "null" && "${GAMESCOPE_SUPPORTS_OUTPUT}" == true ]]; then
+        ARGS+=(-O "${MON_NAME}")
+    fi
+
+    echo "${ARGS[*]}"
 }
 
 # Disables Hyprland effects that waste GPU time during gameplay
@@ -179,8 +271,9 @@ hyprland_start() {
     log_info "Optimizing Hyprland for gaming"
     makoctl mode -s dnd 2>/dev/null || true
 
-    # Disable animations, shadows, blur and opacity effects atomically
-    hyprctl eval "
+    # Disable animations, shadows, blur and opacity effects atomically.
+    # Note: hl.config() is an experimental Hyprland API; failures are non-fatal.
+    if ! hyprctl eval "
       hl.config({
         animations = { enabled = false },
         decoration = {
@@ -191,7 +284,9 @@ hyprland_start() {
           blur = { enabled = false }
         }
       })
-    " || log_warn "Failed to apply Hyprland rendering optimizations"
+    " 2>/dev/null; then
+        log_warn "Failed to apply Hyprland rendering optimizations (hl.config unavailable?)"
+    fi
 
     # Prevent the idle daemon from locking the screen mid-game
     systemctl --user stop hypridle.service 2>/dev/null || true
@@ -203,7 +298,7 @@ hyprland_end() {
 
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
         log_info "Restoring Hyprland configuration"
-        hyprctl reload || log_error "Failed to reload Hyprland configuration"
+        hyprctl reload 2>/dev/null || log_error "Failed to reload Hyprland configuration"
         makoctl mode -s default 2>/dev/null || true
     fi
 
@@ -225,10 +320,13 @@ enable_battleye() {
 
 # Switches to Proton's native Wayland backend: clears XWayland fallback hints
 # and disables Steam Input. Call after setting GAME_NAME.
+# Pass --keep-steaminput to skip disabling Steam Input (e.g. World of Warships).
 use_native_wayland() {
     unset SDL_VIDEODRIVER
     unset __GLX_VENDOR_LIBRARY_NAME
-    export PROTON_NO_STEAMINPUT=1
+    if [[ "${1:-}" != "--keep-steaminput" ]]; then
+        export PROTON_NO_STEAMINPUT=1
+    fi
     log_info "Applying native Wayland optimizations for ${GAME_NAME}"
 }
 
@@ -248,9 +346,7 @@ apply_game_overrides() {
         "552990")
             # World of Warships uses native Wayland but keeps Steam Input enabled
             GAME_NAME="World of Warships"
-            unset SDL_VIDEODRIVER
-            unset __GLX_VENDOR_LIBRARY_NAME
-            log_info "Applying native Wayland optimizations for ${GAME_NAME}"
+            use_native_wayland --keep-steaminput
             ;;
         "271590"|"3240220")
             GAME_NAME="Grand Theft Auto V"
@@ -298,24 +394,65 @@ apply_game_overrides() {
 
     # Wrap all games in Gamescope if not already wrapped
     if [[ "${GAME_CMD[0]}" != "gamescope" ]]; then
-        local gamescope_args
-        gamescope_args=$(get_gamescope_args)
-        GAME_CMD=(gamescope ${gamescope_args} -- "${GAME_CMD[@]}")
+        local GAMESCOPE_ARGS
+        GAMESCOPE_ARGS=$(get_gamescope_args)
+        # Word-splitting of gamescope_args is intentional: it contains only short flags
+        # shellcheck disable=SC2086
+        GAME_CMD=(gamescope ${GAMESCOPE_ARGS} -- "${GAME_CMD[@]}")
         log_info "Applying Gamescope wrapper for ${GAME_NAME}"
     fi
 }
 
+# --- Argument Parsing ---
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -m|--monitor)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --monitor requires an argument" >&2
+                    usage >&2
+                    exit 1
+                fi
+                MONITOR_SELECTOR="$2"
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                echo "Error: unknown option '$1'" >&2
+                usage >&2
+                exit 1
+                ;;
+            *)
+                # No leading dash: treat as start of game command (no '--' separator used)
+                break
+                ;;
+        esac
+    done
+
+    GAME_CMD=("$@")
+}
+
 # --- Entry Point ---
 
-# GAME_NAME is set by apply_game_overrides and read by main after the game exits
-GAME_NAME=""
-
 main() {
+    parse_args "$@"
+
+    if [[ ${#GAME_CMD[@]} -eq 0 ]]; then
+        echo "Error: no game command specified" >&2
+        usage >&2
+        exit 1
+    fi
+
     setup_global_env
     setup_hyprland_env
-
-    # GAME_CMD holds the final command; game overrides may prepend wrappers (e.g. Gamescope)
-    GAME_CMD=("$@")
     apply_game_overrides
 
     # Ensure the desktop is restored even if game-performance crashes or is killed
@@ -325,16 +462,16 @@ main() {
     hyprland_start
 
     # $EPOCHSECONDS is a bash built-in: no subshell, no date overhead
-    local start_time=$EPOCHSECONDS
+    local START_TIME=$EPOCHSECONDS
     game-performance "${GAME_CMD[@]}"
 
-    local elapsed=$(( EPOCHSECONDS - start_time ))
-    local session_duration
-    session_duration=$(printf "%02d:%02d:%02d" \
-        $(( elapsed / 3600 )) \
-        $(( (elapsed % 3600) / 60 )) \
-        $(( elapsed % 60 )))
-    log_info "${GAME_NAME} — session ended, play time: ${session_duration}"
+    local ELAPSED=$(( EPOCHSECONDS - START_TIME ))
+    local SESSION_DURATION
+    SESSION_DURATION=$(printf "%02d:%02d:%02d" \
+        $(( ELAPSED / 3600 )) \
+        $(( (ELAPSED % 3600) / 60 )) \
+        $(( ELAPSED % 60 )))
+    log_info "${GAME_NAME} — session ended, play time: ${SESSION_DURATION}"
 }
 
 main "$@"
