@@ -41,12 +41,12 @@ local config = {
     -- COLORS
     -- =============================================================================
     colors = {
-        accent           = "#89b4fa",
-        background       = "#1e1e2e",
-        foreground       = "#cdd6f4",
-        active_border    = "#b4befecc",
-        inactive_border  = "#9399b2cc",
-        shadow           = "#1e1e2e20",
+        accent           = "#83a598",  -- bright_blue
+        background       = "#1d2021",  -- bg
+        foreground       = "#ebdbb2",  -- light1
+        active_border    = "#83a598cc", -- bright_blue
+        inactive_border  = "#928374cc", -- gray
+        shadow           = "#1d202120", -- bg
     },
 
     -- =============================================================================

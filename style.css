@@ -1,12 +1,19 @@
-/* Hyprland Sober Theme - Official Catppuccin Mocha */
+/* Hyprland Sober Theme - Official Gruvbox Dark */
 :root {
-    --bg-color: #1e1e2e; /* Base */
-    --text-color: #cdd6f4; /* Text */
-    --accent-color: #cba6f7; /* Mauve */
-    --code-bg: #11111b; /* Crust */
-    --border-color: #45475a; /* Surface 0 */
-    --link-color: #89b4fa; /* Blue */
-    --highlight-bg: #585b70; /* Surface 1 */
+    --bg-color: #1d2021;
+    /* bg */
+    --text-color: #ebdbb2;
+    /* fg / light1 */
+    --accent-color: #d3869b;
+    /* bright_purple */
+    --code-bg: #282828;
+    /* dark0 */
+    --border-color: #504945;
+    /* dark2 */
+    --link-color: #83a598;
+    /* bright_blue */
+    --highlight-bg: #3c3836;
+    /* dark3 */
 }
 
 body {
@@ -19,18 +26,41 @@ body {
     padding: 0 20px;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: var(--accent-color);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.3em;
 }
 
-h1 { font-size: 2em; }
-h2 { font-size: 1.5em; }
-h3 { font-size: 1.25em; }
-h4 { font-size: 1.1em; }
-h5 { font-size: 1em; }
-h6 { font-size: 1em; font-weight: bold; }
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+h3 {
+    font-size: 1.25em;
+}
+
+h4 {
+    font-size: 1.1em;
+}
+
+h5 {
+    font-size: 1em;
+}
+
+h6 {
+    font-size: 1em;
+    font-weight: bold;
+}
 
 a {
     color: var(--link-color);
@@ -76,7 +106,8 @@ table {
     margin-bottom: 16px;
 }
 
-table th, table td {
+table th,
+table td {
     border: 1px solid var(--border-color);
     padding: 6px 13px;
 }
@@ -89,11 +120,41 @@ img {
     max-width: 100%;
 }
 
-/* Override Pandoc syntax highlighting based on official Catppuccin Mocha */
-pre.sourceCode .fu, pre.sourceCode .kw { color: #f38ba8; } /* Functions, Keywords: Red */
-pre.sourceCode .st { color: #a6e3a1; } /* Strings: Green */
-pre.sourceCode .cm { color: #585b70; } /* Comments: Surface 1 */
-pre.sourceCode .df { color: #f9e2af; } /* Definitions: Yellow */
-pre.sourceCode .nn { color: #89b4fa; } /* Numbers: Blue */
-pre.sourceCode .op, pre.sourceCode .va { color: #cdd6f4; } /* Operators, Variables: Text */
-pre.sourceCode .ex { color: #89dceb; } /* Exceptions: Sky */
+/* Override Pandoc syntax highlighting based on official Gruvbox Dark */
+pre.sourceCode .fu,
+pre.sourceCode .kw {
+    color: #fb4934;
+}
+
+/* Functions, Keywords: bright_red */
+pre.sourceCode .st {
+    color: #b8bb26;
+}
+
+/* Strings: bright_green */
+pre.sourceCode .cm {
+    color: #928374;
+}
+
+/* Comments: gray */
+pre.sourceCode .df {
+    color: #fabd2f;
+}
+
+/* Definitions: bright_yellow */
+pre.sourceCode .nn {
+    color: #83a598;
+}
+
+/* Numbers: bright_blue */
+pre.sourceCode .op,
+pre.sourceCode .va {
+    color: #ebdbb2;
+}
+
+/* Operators, Variables: light1 */
+pre.sourceCode .ex {
+    color: #8ec07c;
+}
+
+/* Exceptions: bright_aqua */

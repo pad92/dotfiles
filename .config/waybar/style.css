@@ -1,29 +1,57 @@
-@define-color rosewater #f5e0dc;
-@define-color flamingo #f2cdcd;
-@define-color pink #f5c2e7;
-@define-color mauve #cba6f7;
-@define-color red #f38ba8;
-@define-color maroon #eba0ac;
-@define-color peach #fab387;
-@define-color yellow #f9e2af;
-@define-color green #a6e3a1;
-@define-color teal #94e2d5;
-@define-color sky #89dceb;
-@define-color sapphire #74c7ec;
-@define-color blue #89b4fa;
-@define-color lavender #b4befe;
-@define-color text #cdd6f4;
-@define-color subtext1 #bac2de;
-@define-color subtext0 #a6adc8;
-@define-color overlay2 #9399b2;
-@define-color overlay1 #7f849c;
-@define-color overlay0 #6c7086;
-@define-color surface2 #585b70;
-@define-color surface1 #45475a;
-@define-color surface0 #313244;
-@define-color base rgba(30, 30, 46, 0.5);
-@define-color mantle #181825;
-@define-color crust #11111b;
+/* Gruvbox Dark palette */
+@define-color rosewater #fe8019;
+/* bright_orange */
+@define-color flamingo #d65d0e;
+/* neutral_orange */
+@define-color pink #d3869b;
+/* bright_purple */
+@define-color mauve #b16286;
+/* neutral_purple */
+@define-color red #fb4934;
+/* bright_red */
+@define-color maroon #cc241d;
+/* neutral_red */
+@define-color peach #fe8019;
+/* bright_orange */
+@define-color yellow #fabd2f;
+/* bright_yellow */
+@define-color green #b8bb26;
+/* bright_green */
+@define-color teal #8ec07c;
+/* bright_aqua */
+@define-color sky #83a598;
+/* bright_blue */
+@define-color sapphire #458588;
+/* neutral_blue */
+@define-color blue #83a598;
+/* bright_blue */
+@define-color lavender #458588;
+/* neutral_blue */
+@define-color text #ebdbb2;
+/* light1 */
+@define-color subtext1 #d5c4a1;
+/* light2 */
+@define-color subtext0 #bdae93;
+/* light3 */
+@define-color overlay2 #a89984;
+/* light4 */
+@define-color overlay1 #928374;
+/* gray */
+@define-color overlay0 #7c6f64;
+/* dark4 */
+@define-color surface2 #665c54;
+/* dark3 */
+@define-color surface1 #504945;
+/* dark2 */
+@define-color surface0 #3c3836;
+/* dark1 */
+@define-color base rgba(29, 32, 33, 0.5);
+/* bg = #1d2021 */
+@define-color mantle #32302f;
+/* dark0_soft */
+@define-color crust #282828;
+
+/* dark0_hard */
 * {
   border: none;
   border-radius: 0px;

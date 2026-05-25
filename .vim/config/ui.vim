@@ -1,7 +1,8 @@
-" Use the terminal's base16 color scheme
-set background=dark
-" To fully support Base16 Material Darker, install the base16-vim plugin
-" colorscheme base16
+" Gruvbox options
+" see https://github.com/morhetz/gruvbox
+set background=dark    " Setting dark mode
+let g:gruvbox_contrast_dark='hard'
+colorscheme gruvbox
 
 " Vim5 and later versions support syntax highlighting. Uncommenting the next
 " line enables syntax highlighting by default.
