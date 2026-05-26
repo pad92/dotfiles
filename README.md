@@ -132,24 +132,18 @@ My current primary Window Manager configuration.
     ```
 
 ### 🔑 TTY Launch & Session Integration
-When launching from a tty instead of a display manager, some session integrations that display managers normally handle may not be configured. One common example is GNOME Keyring - if `pam_gnome_keyring.so` is not present in your PAM login configuration, the keyring will not auto-unlock, and applications may prompt you to unlock it manually.
 
-To set this up, add the `pam_gnome_keyring.so` lines to the PAM configuration file used by your login method (e.g. `/etc/pam.d/login` for `login(1)`). Consult your distribution’s documentation for the correct file and syntax. For example, on Arch Linux:
+When launching Hyprland from a TTY, PAM and session management must be configured to support services like GNOME Keyring auto-unlock and UWSM session wrapping.
 
-```
-#%PAM-1.0
+For a detailed, step-by-step setup covering:
+- **GNOME Keyring PAM configuration** (`/etc/pam.d/login`)
+- **UWSM (Universal Wayland Session Manager) installation and setup**
+- **TTY shell profile integration (`~/.zprofile`)**
+- **Systemd graphical session target and application autostart**
 
-auth       requisite    pam_nologin.so
-auth       include      system-local-login
--auth      optional     pam_gnome_keyring.so
-account    include      system-local-login
-password   include      system-local-login
--password  optional     pam_gnome_keyring.so    use_authtok
-session    include      system-local-login
--session   optional     pam_gnome_keyring.so    auto_start
-```
+See the [Arch Linux Installation Guide - UWSM & PAM Setup](./dist/arch/install.md#gnome-keyring-pam-setup).
 
-For more details, see: [Hyprland Wiki - Systemd-start in TTY](https://wiki.hypr.land/Useful-Utilities/Systemd-start/#in-tty)
+Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Utilities/Systemd-start/) for official upstream details.
 
 ## 📦 System Utilities & OS Specifics
 

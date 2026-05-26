@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Update Hyprland keybindings and configuration references ([3c9561f](https://gitlab.com/pad92/dotfiles/-/commit/3c9561f), [b276f51](https://gitlab.com/pad92/dotfiles/-/commit/b276f51))
 - Implement automated release workflows and GitLab/GitHub Pages integration ([8a781e2](https://gitlab.com/pad92/dotfiles/-/commit/8a781e2), [ee26a9f](https://gitlab.com/pad92/dotfiles/-/commit/ee26a9f))
 - Add GitHub Actions workflow for CI pipeline ([1271fb2](https://gitlab.com/pad92/dotfiles/-/commit/1271fb2))
+- Add UWSM Systemd startup and GNOME Keyring PAM setup documentation to Arch Linux installation guide
 
 ### Changed
 - Update theme, colors, and typography to official Catppuccin Mocha palette and refine overall aesthetics ([3579885](https://gitlab.com/pad92/dotfiles/-/commit/3579885), [a07eb9b](https://gitlab.com/pad92/dotfiles/-/commit/a07eb9b), [4fc7843](https://gitlab.com/pad92/dotfiles/-/commit/4fc7843), [0a92290](https://gitlab.com/pad92/dotfiles/-/commit/0a92290), [ecac0b9](https://gitlab.com/pad92/dotfiles/-/commit/ecac0b9), [7798b53](https://gitlab.com/pad92/dotfiles/-/commit/7798b53))

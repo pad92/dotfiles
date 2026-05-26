@@ -2,7 +2,7 @@
 
 This guide provides instructions for an Arch Linux installation featuring full-disk encryption via LVM on LUKS and an encrypted boot partition (GRUB) for UEFI systems.
 
-Following the main installation are further instructions to harden against Evil Maid attacks via UEFI Secure Boot custom key enrollment and self-signed kernel and bootloader.
+For advanced security, the system can be further hardened against Evil Maid attacks using UEFI Secure Boot with custom enrolled keys and a self-signed kernel/bootloader.
 
 ## Preface
 
@@ -212,7 +212,7 @@ At this point you should have the following partitions and logical volumes:
 | ├─nvme0n1p3                  | 259:3   | 0   | 953.3G | 0   | part  |                 |
 | ..└─cryptlvm                 | 254:0   | 0   | 953.3G | 0   | crypt |                 |
 | ....├─archlvm-swap           | 254:1   | 0   | 31.1G  | 0   | lvm   | [SWAP]          |
-| ....├─archlvm-root           | 254:2   | 0   | 32G    | 0   | lvm   | /               |
+| ....├─archlvm-slash          | 254:2   | 0   | 32G    | 0   | lvm   | /               |
 | ....└─archlvm-home           | 254:3   | 0   | 100G   | 0   | lvm   | /home           |
 | ....└─archlvm-opt            | 254:4   | 0   | 30G    | 0   | lvm   | /opt            |
 | ....└─archlvm-var_lib_docker | 254:5   | 0   | 10G    | 0   | lvm   | /var/lib/docker |
@@ -308,8 +308,10 @@ grub-mkconfig -o /boot/grub/grub.cfg
 ```
 mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
 head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
+# Note: -i 1 sets the PBKDF iterations time to 1ms for faster boot. Increase for stronger security.
 cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
 
+# For Intel graphics; for AMD use: MODULES=(amdgpu), for Nvidia use: MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 sed -i '/^MODULES/c\MODULES=(intel_agp i915)' /etc/mkinitcpio.conf
 sed -i '/^FILES/c\FILES=(/root/.cryptlvm/archluks.bin)' /etc/mkinitcpio.conf
 sed -i '/^HOOKS/c\HOOKS=(base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 filesystems fsck)' /etc/mkinitcpio.conf
@@ -335,10 +337,12 @@ passwd ${MYUSER}
 ### dotfiles
 
 ```
-su - ${MYUSER}
-git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
-mkdir ~/.config
-~/.dotfiles/install
+# Run setup commands in user context without blocking shell execution
+sudo -u ${MYUSER} -i bash -c '
+  git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
+  mkdir -p ~/.config
+  ~/.dotfiles/install
+'
 
 
 ```
@@ -450,6 +454,73 @@ Remove notification
 ```
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
+
+## GNOME Keyring PAM Setup
+
+Add `pam_gnome_keyring.so` to `/etc/pam.d/login` to automatically unlock GNOME Keyring on TTY login:
+
+```ini
+#%PAM-1.0
+
+auth       requisite    pam_nologin.so
+auth       include      system-local-login
+-auth      optional     pam_gnome_keyring.so
+account    include      system-local-login
+password   include      system-local-login
+-password  optional     pam_gnome_keyring.so    use_authtok
+session    include      system-local-login
+-session   optional     pam_gnome_keyring.so    auto_start
+```
+
+## Systemd Startup (UWSM)
+
+For complete documentation, see [Hyprland Wiki](https://wiki.hypr.land/Useful-Utilities/Systemd-start/).
+
+[UWSM](https://github.com/Vladimir-csp/uwsm) (Universal Wayland Session Manager) wraps the compositor in Systemd units for robust environment, application, and session management.
+
+### Installation
+
+```bash
+sudo pacman -S uwsm libnewt
+```
+
+### Launch from TTY
+
+Add to your shell profile (e.g. `~/.zprofile`):
+
+#### Option A: Interactive selection menu at login
+```zsh
+if uwsm check may-start && uwsm select; then
+    exec uwsm start default
+fi
+```
+
+#### Option B: Direct launch
+```zsh
+if uwsm check may-start; then
+    exec uwsm start hyprland.desktop
+fi
+```
+
+*Note: For display managers, select `Hyprland (uwsm-managed)`.*
+
+### Application Launching
+
+Launch graphical applications as Systemd scopes:
+
+```bash
+uwsm app -- kitty
+```
+
+### Autostart
+
+- **XDG Autostart**: Handled automatically by the Systemd session target.
+- **Native User Services**:
+  ```bash
+  systemctl --user enable <service>
+  # If the service lacks an [Install] section:
+  systemctl --user add-wants graphical-session.target <service>
+  ```
 
 ## Modern Security Practices
 
