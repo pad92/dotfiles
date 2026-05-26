@@ -1,25 +1,17 @@
--- █▄░█ █░█ █ █▀▄ █ ▄▀█
--- █░▀█ ▀▄▀ █ █▄▀ █ █▀█
+-- █▄░█ █░█ █ █▀▄ █ ▄▀█
+-- █░▀█ ▀▄▀ █ █▄▀ █ █▀█
 
--- Intel graphics optimization for reduced CPU and GPU usage
--- See https://wiki.hyprland.org/Intel-Graphics/
-
--- Intel graphics environment variables for power saving
-hl.env("__GLX_VENDOR_LIBRARY_NAME", "intel")
-hl.env("__VK_LAYER_NV_optimus", "INTEL_only")
-hl.env("DRI_PRIME", "0")
+-- Configuration du backend graphique pour l'iGPU Intel (TigerLake)
 hl.env("GBM_BACKEND", "drm")
 hl.env("LIBVA_DRIVER_NAME", "iHD")
-hl.env("WLR_DRM_NO_ATOMIC", "1")
+hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 
--- Disable NVIDIA offloading to reduce power consumption
--- hl.env("__NV_PRIME_RENDER_OFFLOAD", "1")
+-- Isolation stricte du driver Vulkan sur Intel pour stopper les coredumps d'Electron
+hl.env("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/intel_icd.json")
 
--- Intel-specific optimizations
-hl.env("INTEL_DRIVER", "1")
-hl.env("mesa_glthread", "true")
-hl.env("MESA_LOADER_DRIVER_OVERRIDE", "iris")
-
--- Additional Intel-specific environment variables for power management
-hl.env("VblankMode", "0")
-hl.env("MESA_GLSL_CACHE_DISABLE", "1")
+-- Session Wayland standard et intégration des toolkits
+hl.env("XDG_SESSION_TYPE", "wayland")
+hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+hl.env("GDK_BACKEND", "wayland,x11,*")
+hl.env("QT_QPA_PLATFORM", "wayland;xcb")
+hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
