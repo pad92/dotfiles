@@ -23,6 +23,33 @@ curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
 *   **Quick Install**: You can download the pre-packaged configuration from the [Artifacts](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim
 ).
 
+## ⚙️ Customization & Personalization
+
+To customize and adapt this dotfiles collection to your own system and identity, you should adjust the following key configuration files:
+
+### 👤 Git Identity
+*   **`~/.gitconfig.local`** *(Not tracked, created locally)*: Define your personal Git credentials here. It is automatically imported by the main [`.gitconfig`](./.gitconfig):
+    ```ini
+    [user]
+        name = Your Name
+        email = your.email@example.com
+        signingkey = your_ssh_or_gpg_key
+    ```
+
+### 🐚 Shell & Environment (`Zsh`)
+*   **[`.zshrc`](./.zshrc)**: Adjust primary shell configurations (e.g., local language `LANG`, default editor `EDITOR`, and the active Oh My Zsh `plugins` list).
+*   **[`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)**: Add, edit, or remove terminal aliases to fit your daily workflow.
+
+### 🖥️ Wayland & Hyprland Session
+*   **[`.config/uwsm/env`](./.config/uwsm/env)**: Manage global environment variables for the Wayland session (e.g., default browser `BROWSER`, default terminal `TERMINAL`, and default cursor theme `XCURSOR_THEME`) and set hostname-specific GPU/driver optimizations (such as `AQ_DRM_DEVICES` or Vulkan driver settings).
+*   **`.config/hypr/`**: Adjust window manager bindings, window rules, workspaces, and look-and-feel preferences (now migrated to Lua).
+*   **`~/.local/share/backgrounds/`**: Add your custom wallpaper image files here to integrate with desktop slideshow/randomizer scripts.
+
+### 💻 Terminals & Tools
+*   **`.config/alacritty/`**: Customize the Alacritty terminal's font, window spacing, opacity, and color palette.
+*   **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
+*   **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core Vim editor.
+
 ## 🛠️ Core Tooling
 
 ### 🐚 Shell (Zsh)

@@ -10,10 +10,10 @@ local config = {
     -- APPLICATION DEFAULTS
     -- =============================================================================
     apps = {
-        term             = uwsm .. "alacritty",
+        term             = uwsm .. (os.getenv("TERMINAL") or "alacritty"),
         editor           = uwsm .. "vscodium",
         file             = uwsm .. "nautilus",
-        browser          = uwsm .. "firefox",
+        browser          = uwsm .. (os.getenv("BROWSER") or "firefox"),
         music            = uwsm .. "spotify-launcher",
         password_manager = uwsm .. "1Password",
         menu             = "wofi -s ~/.config/wofi/menu.css",
@@ -30,8 +30,8 @@ local config = {
         border_size      = 2,
         font             = "JetBrainsMono Nerd Font",
         font_size        = 12,
-        cursor_theme     = "Adwaita",
-        cursor_size      = 24,
+        cursor_theme     = os.getenv("XCURSOR_THEME") or "Adwaita",
+        cursor_size      = tonumber(os.getenv("XCURSOR_SIZE")) or 24,
 
         blur = {
             enabled = true,

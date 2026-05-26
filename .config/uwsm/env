@@ -1,5 +1,6 @@
 # System
 export BROWSER=firefox
+export TERMINAL=alacritty
 export ELECTRON_TRASH=gio
 
 # Wayland / Hyprland Core
@@ -20,6 +21,7 @@ export _JAVA_AWT_WM_NONREPARENTING=1
 
 # Cursors
 export GDK_SCALE=1
+export XCURSOR_THEME=Adwaita
 export HYPRCURSOR_SIZE=24
 export XCURSOR_SIZE=24
 export QT_CURSOR_SIZE=24
