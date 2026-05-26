@@ -14,3 +14,16 @@ hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
 hl.env("GDK_BACKEND", "wayland,x11,*")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
+
+hl.config({
+  decoration = {
+    blur = {
+      enabled = false,
+    },
+    shadow = {
+      enabled = false,
+    },
+  },
+})
+
+
