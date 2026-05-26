@@ -20,18 +20,8 @@ hl.on("hyprland.start", function()
   -- Set system-wide mouse cursor theme and size using hyprctl
   hl.exec_cmd("hyprctl setcursor Adwaita 24")
 
-  -- 2. System Core & Environment Setup
-  -- Import system environment variables into systemd and D-Bus user sessions
-  local system_core = {
-    "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE",
-    "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE",
-    "hash dbus-update-activation-environment 2>/dev/null",
-  }
-  for _, cmd in ipairs(system_core) do
-    hl.exec_cmd(cmd)
-  end
-
-  -- Launch Polkit authentication agent (checks common locations for polkit agent)
+  -- 2. System Core & Authentication Setup
+  -- Launch Polkit authentication agent via UWSM 
   hl.exec_cmd("uwsm app -- /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 || uwsm app -- /usr/libexec/polkit-gnome-authentication-agent-1")
 
   -- 3. Core Desktop Services & Applets
