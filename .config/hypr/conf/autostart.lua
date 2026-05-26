@@ -23,8 +23,8 @@ hl.on("hyprland.start", function()
   -- 2. System Core & Environment Setup
   -- Import system environment variables into systemd and D-Bus user sessions
   local system_core = {
-    "systemctl --user import-environment",
-    "dbus-update-activation-environment --systemd",
+    "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE",
+    "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE",
     "hash dbus-update-activation-environment 2>/dev/null",
   }
   for _, cmd in ipairs(system_core) do

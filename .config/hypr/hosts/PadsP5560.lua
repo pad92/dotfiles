@@ -1,12 +1,11 @@
 -- █▄░█ █░█ █ █▀▄ █ ▄▀█
 -- █░▀█ ▀▄▀ █ █▄▀ █ █▀█
 
--- Configuration du backend graphique pour l'iGPU Intel (TigerLake)
-hl.env("GBM_BACKEND", "drm")
+-- Pilotes d'accélération matérielle pour l'iGPU Intel (Mesa/Iris)
 hl.env("LIBVA_DRIVER_NAME", "iHD")
 hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 
--- Isolation stricte du driver Vulkan sur Intel pour stopper les coredumps d'Electron
+-- Isolation stricte du driver Vulkan sur Intel
 hl.env("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/intel_icd.json")
 
 -- Session Wayland standard et intégration des toolkits
