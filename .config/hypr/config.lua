@@ -1,3 +1,5 @@
+local uwsm = "uwsm app -- "
+
 local config = {
     -- =============================================================================
     -- GENERAL
@@ -8,12 +10,12 @@ local config = {
     -- APPLICATION DEFAULTS
     -- =============================================================================
     apps = {
-        term             = "alacritty",
-        editor           = "vscodium",
-        file             = "nautilus",
-        browser          = "firefox",
-        music            = "spotify-launcher",
-        password_manager = "1Password",
+        term             = uwsm .. "alacritty",
+        editor           = uwsm .. "vscodium",
+        file             = uwsm .. "nautilus",
+        browser          = uwsm .. "firefox",
+        music            = uwsm .. "spotify-launcher",
+        password_manager = uwsm .. "1Password",
         menu             = "wofi -s ~/.config/wofi/menu.css",
     },
 
@@ -24,33 +26,92 @@ local config = {
         gaps_in          = 2,
         gaps_out         = 2,
         rounding         = 10,
+        rounding_power   = 2.5,
         border_size      = 2,
         font             = "JetBrainsMono Nerd Font",
         font_size        = 12,
+        cursor_theme     = "Adwaita",
+        cursor_size      = 24,
+
+        blur = {
+            enabled = true,
+            size = 6,
+            passes = 2,
+            new_optimizations = true,
+            ignore_opacity = true,
+            xray = true
+        },
+        shadow = {
+            enabled = true,
+            range = 20,
+            offset = {0, 2},
+            render_power = 10
+        }
     },
 
     -- =============================================================================
-    -- INPUT SETTINGS
+    -- LAYOUT CONFIGURATIONS
+    -- =============================================================================
+    layout = {
+        active_layout = "dwindle",
+        resize_on_border = true,
+        dwindle = {
+            preserve_split = true,
+            smart_split = false,
+            smart_resizing = false,
+        }
+    },
+
+    -- =============================================================================
+    -- INPUT SETTINGS (KEYBOARD, MOUSE, TOUCHPAD, GESTURES)
     -- =============================================================================
     input = {
-        kb_layout = "us",
-        kb_variant = "intl",
+        kb_layout          = "us",
+        kb_variant         = "intl",
+        follow_mouse       = 1,
+        numlock_by_default = true,
+        sensitivity        = 0,
+
+        touchpad = {
+            natural_scroll       = false,
+            tap_to_click         = true,
+            disable_while_typing = true,
+            scroll_factor        = 0.5,
+            tap_and_drag         = true,
+            drag_lock            = false,
+        },
+        cursor = {
+            no_hardware_cursors = false,
+            enable_hyprcursor   = true,
+        },
+        gestures = {
+            workspace_swipe_distance           = 500,
+            workspace_swipe_invert             = true,
+            workspace_swipe_min_speed_to_force = 30,
+            workspace_swipe_cancel_ratio       = 0.5,
+            workspace_swipe_create_new         = true,
+            workspace_swipe_forever            = true,
+        },
+        device_overrides = {
+            name        = "epic mouse V1",
+            sensitivity = -0.5,
+        }
     },
 
     -- =============================================================================
-    -- COLORS
+    -- COLORS (GRUVBOX HARMONIOUS ACCENTS)
     -- =============================================================================
     colors = {
-        accent           = "#83a598",  -- bright_blue
-        background       = "#1d2021",  -- bg
-        foreground       = "#ebdbb2",  -- light1
+        accent           = "#83a598",   -- bright_blue
+        background       = "#1d2021",   -- bg
+        foreground       = "#ebdbb2",   -- light1
         active_border    = "#83a598cc", -- bright_blue
         inactive_border  = "#928374cc", -- gray
         shadow           = "#1d202120", -- bg
     },
 
     -- =============================================================================
-    -- SYSTEM UTILITIES & COMMANDS
+    -- SYSTEM UTILITIES, AUTHENTICATION & COMMANDS
     -- =============================================================================
     utils = {
         screenshot = "grim -g \"$(slurp -d)\" - | swappy -f -",
@@ -89,7 +150,7 @@ local config = {
     },
 
     -- =============================================================================
-    -- GTK & THEME SETTINGS
+    -- GTK & THEME SETTINGS (GSETTINGS OVERRIDES)
     -- =============================================================================
     theme = {
         { key = "org.gnome.desktop.interface icon-theme",          value = "'Papirus-Dark'" },
