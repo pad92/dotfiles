@@ -1,8 +1,8 @@
 #!/bin/bash
 
 WALLPAPER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds"
-export AWWW_TRANSITION_FPS=1
-export AWWW_TRANSITION_STEP=255
+export AWWW_TRANSITION_FPS=30
+export AWWW_TRANSITION_STEP=10
 
 # Get the names of all monitors.
 MONITORS=$(awww query | grep -Po "^[^:]+")
@@ -13,5 +13,5 @@ for MONITOR in ${MONITORS}; do
   IMAGE=$(find -L "${WALLPAPER_DIR}" -type f \( -iname "*.jpg" -o -iname "*.png" \) | shuf -n 1)
 
   # Set the image as the wallpaper for the current monitor.
-  awww img --outputs "${MONITOR}" "${IMAGE}" --resize=crop --transition-type simple
+  awww img --outputs "${MONITOR}" "${IMAGE}" --resize=crop --transition-type fade
 done
