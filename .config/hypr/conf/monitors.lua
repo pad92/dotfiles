@@ -31,10 +31,10 @@ local monitors = {
   -- Secondary/Right Monitor (Top row)
   {
     output = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758",
-    mode = "2560x1440",
+    mode = "2560x1440@144",
     position = "2560x0",                     -- Placed to the right of the Dell monitor (X offset = 2560)
     scale = 1,
-    bitdepth = 10,                            -- High bitdepth (HDR / 10-bit color depth display)
+    bitdepth = 10,                            -- High bitdepth (10-bit color depth display)
   },
   -- Fallback rule for any newly connected displays
   {
