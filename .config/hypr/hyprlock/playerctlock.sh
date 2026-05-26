@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 --title | --arturl | --artist | --length | --album | --source"
