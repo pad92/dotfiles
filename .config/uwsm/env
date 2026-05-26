@@ -24,10 +24,6 @@ export HYPRCURSOR_SIZE=24
 export XCURSOR_SIZE=24
 export QT_CURSOR_SIZE=24
 
-# GNOME Keyring / PAM Integration
-export GNOME_KEYRING_CONTROL
-export SSH_AUTH_SOCK
-
 # =============================================================================
 # CONFIGURATIONS SPÉCIFIQUES AUX HÔTES (HOSTNAME)
 # =============================================================================
