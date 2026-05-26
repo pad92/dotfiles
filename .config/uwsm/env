@@ -20,7 +20,6 @@ export _JAVA_AWT_WM_NONREPARENTING=1
 
 # Cursors
 export GDK_SCALE=1
-export WLR_NO_HARDWARE_CURSORS=1
 export HYPRCURSOR_SIZE=24
 export XCURSOR_SIZE=24
 export QT_CURSOR_SIZE=24
@@ -28,3 +27,20 @@ export QT_CURSOR_SIZE=24
 # GNOME Keyring / PAM Integration
 export GNOME_KEYRING_CONTROL
 export SSH_AUTH_SOCK
+
+# =============================================================================
+# CONFIGURATIONS SPÉCIFIQUES AUX HÔTES (HOSTNAME)
+# =============================================================================
+case "$(hostname)" in
+    PadsP5560)
+        # Pilotes d'accélération matérielle pour l'iGPU Intel (Mesa/Iris)
+        export LIBVA_DRIVER_NAME=iHD
+        export __GLX_VENDOR_LIBRARY_NAME=mesa
+        export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/intel_icd.json
+        ;;
+    PadsTower)
+        # AMD GPU Optimizations
+        export AMD_VULKAN_ICD=RADV
+        export AQ_DRM_DEVICES=/dev/dri/card1
+        ;;
+esac

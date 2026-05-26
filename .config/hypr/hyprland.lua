@@ -5,7 +5,6 @@ local config = require("config")
 
 -- Load configuration modules
 require("conf.monitors")
-require("conf.environment")
 require("conf.autostart")
 require("conf.input")
 require("conf.layout")
@@ -28,11 +27,30 @@ end
 local messages = {}
 if hostname then
   local host_module = "hosts." .. hostname
-  local status, err = pcall(require, host_module)
-  if status then
-    table.insert(messages, "Host config loaded: " .. hostname)
+  local found_path = package.searchpath(host_module, package.path)
+  
+  if found_path then
+    local status, err = pcall(require, host_module)
+    if status then
+      table.insert(messages, "Host config loaded: " .. hostname)
+    else
+      print("Error loading host configuration: " .. tostring(err))
+    end
   else
-    print("Host-specific configuration not found for: " .. hostname)
+    -- Fallback to default host-specific configuration
+    local default_module = "hosts.default"
+    local default_found = package.searchpath(default_module, package.path)
+    
+    if default_found then
+      local status, err = pcall(require, default_module)
+      if status then
+        table.insert(messages, "Default host config loaded")
+      else
+        print("Error loading default host configuration: " .. tostring(err))
+      end
+    else
+      print("No host-specific or default configuration found")
+    end
   end
 end
 

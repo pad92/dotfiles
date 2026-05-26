@@ -1,5 +1,0 @@
--- =============================================================================
--- SYSTEM ENVIRONMENT VARIABLES
--- =============================================================================
--- Environment variables are now managed by uwsm in ~/.config/uwsm/env
--- This file is kept for structure but no longer defines environment variables.
