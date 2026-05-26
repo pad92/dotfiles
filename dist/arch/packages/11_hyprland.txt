@@ -13,7 +13,6 @@ hyprlock
 hyprpicker
 hyprutils
 hyprwayland-scanner
-kitty
 noto-fonts-emoji
 nwg-displays
 nwg-look

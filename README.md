@@ -90,7 +90,7 @@ A highly configured editor built with `vundle`.
 *   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
 
 ### 💾 Terminal & Session Management
-*   **Terminal Emulators**: Optimized configurations for **Kitty** and **Alacritty**.
+*   **Terminal Emulators**: Optimized configuration for **Alacritty**.
 *   **Multiplexer**: `tmux` configured with plugins for session management and layout persistence.
 
 ## 🖥️ Desktop Environment & Window Management
@@ -174,7 +174,7 @@ A comprehensive list of configured tools across the stack:
 | :--- | :--- |
 | **Shell** | Zsh |
 | **Editor** | Vim, VSCode |
-| **Terminal** | Kitty, Alacritty |
+| **Terminal** | Alacritty |
 | **Multiplexer** | Tmux |
 | **UI/UX** | Waybar, Wofi, Mako |
 | **System** | Fastfetch, Htop |

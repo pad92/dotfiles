@@ -55,7 +55,6 @@ set_float(float_apps)
 -- 5. Special Case Title Matches (Float specific windows/dialogs inside tiled apps)
 hl.window_rule({ match = { class = "^(codium)$", title = "^(Save Workspace)$" }, float = true })
 hl.window_rule({ match = { class = "^(firefox)$", title = "^(Library)$" }, float = true })
-hl.window_rule({ match = { class = "^(kitty)$", title = "^(btop|htop|top)$" }, float = true })
 hl.window_rule({ match = { class = "^(org.kde.dolphin)$", title = "^(Copying — Dolphin|Progress Dialog — Dolphin)$" }, float = true })
 hl.window_rule({ match = { title = "^(About Mozilla Firefox|Picture-in-Picture)$" }, float = true })
 
