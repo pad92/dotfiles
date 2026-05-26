@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # List of extensions to install (as a space-separated string for sh compatibility)
 extensions="
@@ -40,14 +40,20 @@ zokugun.cron-tasks
 
 # Function to install extensions
 install_extensions() {
-    editor_cmd=$1
+    local editor_cmd="$1"
     echo "-----------------------------------------------------"
     echo "Installing extensions for $editor_cmd..."
     echo "-----------------------------------------------------"
+    
+    local args=()
     for extension in $extensions; do
-        echo "Installing: $extension"
-        "$editor_cmd" --install-extension "$extension"
+        args+=(--install-extension "$extension")
     done
+    
+    if [ ${#args[@]} -gt 0 ]; then
+        "$editor_cmd" "${args[@]}"
+    fi
+    
     echo "-----------------------------------------------------"
     echo "Installation for $editor_cmd finished."
     echo "-----------------------------------------------------"

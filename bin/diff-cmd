@@ -11,5 +11,5 @@ CMD=$3
 CMD1="${CMD/IN/$1}"
 CMD2="${CMD/IN/$2}"
 
-diff -wB --label "$1" --label "$2" -u <(eval $CMD1) <(eval $CMD2)
-#meld -L "$1" -L "$2" <(eval $CMD1) <(eval $CMD2)
+diff -wB --label "$1" --label "$2" -u <(eval "$CMD1") <(eval "$CMD2")
+#meld -L "$1" -L "$2" <(eval "$CMD1") <(eval "$CMD2")

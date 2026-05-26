@@ -1,113 +1,65 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Pulseaudio manage sound
-
-DEVICES_LIST_UNSORTED=($(pactl list sinks | grep -o "#[[:digit:]]" | tr -d '#'))
-DEVICES_LIST_SORTED=($(tr ' ' '\n' <<<"${DEVICES_LIST_UNSORTED[@]}" | sort -u | tr '\n' ' '))
-
-function getMaxVal() {
-  arr=("$@")
-  max=${arr[0]}
-  for n in "${arr[@]}"; do
-    ((n > max)) && max=$n
-  done
-  echo $max
-}
+# Volume management wrapper for PipeWire-Pulse/PulseAudio
 
 function incVol() {
-  SOUND=($(pactl list sinks | grep -E "Volume:|Lautstärke:" | grep -v "Base Volume" | grep -o '[^ ]*%' | tr -d '%'))
-  MAX_SOUND_LVL=($(getMaxVal "${SOUND[@]}"))
-  if [ "$MAX_SOUND_LVL" -lt 150 ]; then
-    for i in "${DEVICES_LIST_SORTED[@]}"; do
-      pactl set-sink-mute $i false
-      pactl set-sink-volume $i +5%
-    done
-  fi
+  # Increase volume safely on default sink
+  pactl set-sink-mute @DEFAULT_SINK@ false
+  pactl set-sink-volume @DEFAULT_SINK@ +5%
 }
 
 function decVol() {
-  for i in "${DEVICES_LIST_SORTED[@]}"; do
-    pactl set-sink-mute $i false
-    pactl set-sink-volume $i -5%
-  done
+  # Decrease volume safely on default sink
+  pactl set-sink-mute @DEFAULT_SINK@ false
+  pactl set-sink-volume @DEFAULT_SINK@ -5%
 }
 
 function muteVol() {
-  for i in "${DEVICES_LIST_SORTED[@]}"; do
-    pactl set-sink-mute $i toggle
+  # Toggle mute state of default sink
+  pactl set-sink-mute @DEFAULT_SINK@ toggle
+}
+
+function switchAudioSink() {
+  # Get all sink names
+  local sinks=($(pactl list sinks short | awk '{print $2}'))
+  if [ ${#sinks[@]} -le 1 ]; then
+    return 0
+  fi
+  
+  # Find currently default/active sink name
+  local active_sink=$(pactl get-default-sink 2>/dev/null || pactl info | grep "Default Sink:" | awk '{print $3}')
+  if [ -z "$active_sink" ]; then
+    return 0
+  fi
+  
+  # Find the next sink in the list to switch to
+  local next_sink=""
+  for i in "${!sinks[@]}"; do
+    if [ "${sinks[$i]}" = "$active_sink" ]; then
+      local next_idx=$(( (i + 1) % ${#sinks[@]} ))
+      next_sink="${sinks[$next_idx]}"
+      break
+    fi
   done
-}
-
-function pa-list() {
-  pacmd list-sinks | awk '/index/ || /name:/'
-}
-
-function pa-set() {
-  # list all apps in playback tab (ex: cmus, mplayer, vlc)
-  inputs=($(pacmd list-sink-inputs | awk '/index/ {print $2}'))
-  # set the default output device
-  pacmd set-default-sink $1 &>/dev/null
-  # apply the changes to all running apps to use the new output device
-  for i in ${inputs[*]}; do pacmd move-sink-input $i $1 &>/dev/null; done
-}
-
-function pa-playbacklist() {
-  # list individual apps
-  echo "==============="
-  echo "Running Apps"
-  pacmd list-sink-inputs | awk '/index/ || /application.name /'
-
-  # list all sound device
-  echo "==============="
-  echo "Sound Devices"
-  pacmd list-sinks | awk '/index/ || /name:/'
-}
-
-function pa-playbackset() {
-  # set the default output device
-  pacmd set-default-sink "$2" &>/dev/null
-  # apply changes to one running app to use the new output device
-  pacmd move-sink-input "$1" "$2" &>/dev/null
-}
-
-function pa-switch-sink() {
-  sink=$(pacmd list-sink-inputs | awk '/sink: / {print $2; exit}')
-  [[ "$sink" == "0" ]] && pa-set 1 || pa-set 0
-}
-
-function manageSound() {
-  if [ "$1" == "mute" ]; then
-    muteVol
-  elif [ "$1" == "inc" ]; then
-    incVol
-  elif [ "$1" == "dec" ]; then
-    decVol
-  elif [ "$1" == "sw" ]; then
-    pa-switch-sink
+  
+  # Fallback to first if not found
+  if [ -z "$next_sink" ] && [ ${#sinks[@]} -gt 0 ]; then
+    next_sink="${sinks[0]}"
+  fi
+  
+  if [ -n "$next_sink" ]; then
+    pactl set-default-sink "$next_sink"
   fi
 }
 
-manageSound $1
-exit 0
+function manageSound() {
+  case "$1" in
+    mute) muteVol ;;
+    inc)  incVol ;;
+    dec)  decVol ;;
+    sw)   switchAudioSink ;;
+    *)    echo "Usage: $0 {mute|inc|dec|sw}" >&2; exit 1 ;;
+  esac
+}
 
-: <<'EOC'
-DEVICES_LIST_UNSORTED=( $( pactl list sinks | grep -o "#[[:digit:]]" | tr -d '#' ) )
-DEVICES_NUM=( $(getMaxVal "${DEVICES_LIST_UNSORTED[@]}") )
-
-for i in $(seq 0 $DEVICES_NUM); do
-	if [ "$1" -eq 1 ]; then
-		SOUND=( $( pactl list sinks | grep "\sLautstärke:\s" | grep -o '[^ ]*%' | tr -d '%' ) )
-		if [ ${SOUND[0]} -le 150 ] && [ ${SOUND[1]} -le 150 ]; then
-			pactl set-sink-mute $i false
-			pactl set-sink-volume $i +5%
-		fi
-	else
-		pactl set-sink-mute $i false
-		pactl set-sink-volume $i -5%
-	fi
-done
-
-Pulseaudio extras
-pactl list sinks short
-sh -c "SOUND=( $(pactl list sinks | perl -000ne 'if(/#1/){/(Volume:.*)/; print "$1\n"}' | grep -o '[^ ]*%' | tr -d '%') ); if (( ${SOUND[0]} < 150 )); then pactl set-sink-mute 1 false ; pactl set-sink-volume 1 +5%; fi"
-EOC
+manageSound "$1"

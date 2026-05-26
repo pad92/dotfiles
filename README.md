@@ -156,7 +156,6 @@ For more details, see: [Hyprland Wiki - Systemd-start in TTY](https://wiki.hypr.
 ### 🔧 Custom Scripts
 A collection of shell scripts and utilities located in the `bin/` directory:
 *   **`backup.sh`**: System backup utility.
-*   **`xrandr.sh`**: Display and resolution management.
 *   **`razer_dpi.py`**: Razer peripheral DPI management.
 *   **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
 
