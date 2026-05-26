@@ -138,7 +138,7 @@ When launching Hyprland from a TTY, PAM and session management must be configure
 For a detailed, step-by-step setup covering:
 - **GNOME Keyring PAM configuration** (`/etc/pam.d/login`)
 - **UWSM (Universal Wayland Session Manager) installation and setup**
-- **TTY shell profile integration (`~/.zprofile`)**
+- **TTY shell profile/rc integration (`~/.zshrc` or `~/.zprofile`)**
 - **Systemd graphical session target and application autostart**
 
 See the [Arch Linux Installation Guide - UWSM & PAM Setup](./dist/arch/install.md#gnome-keyring-pam-setup).

@@ -486,7 +486,7 @@ sudo pacman -S uwsm libnewt
 
 ### Launch from TTY
 
-Add to your shell profile (e.g. `~/.zprofile`):
+Add to your shell configuration (note that this is already integrated at the bottom of `~/.zshrc` in this dotfiles setup, but you can use `~/.zprofile` instead if you prefer to create and configure one):
 
 #### Option A: Interactive selection menu at login
 ```zsh

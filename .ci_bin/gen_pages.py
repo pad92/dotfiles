@@ -7,6 +7,9 @@ def generate_html(input_file, output_file, title):
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
 
+    # Replace [[TOC]] and [[_TOC_]] with [TOC] so python-markdown's toc extension recognizes them
+    text = text.replace('[[TOC]]', '[TOC]').replace('[[_TOC_]]', '[TOC]')
+
     # Convert markdown to html
     html_content = markdown.markdown(text, extensions=['extra', 'codehilite', 'toc'])
 
