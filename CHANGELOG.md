@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Add a modern, state-of-the-art, fully modular Neovim (`nvim`) configuration in Lua, supporting `lazy.nvim`, native LSP configurations for Neovim 0.11/0.12+, Telescope, Treesitter, Lualine, and Gitsigns.
+- Modularize Neovim setup into distinct, logically isolated components in `lua/config/` and `lua/plugins/`.
 - Add specific overrides for Forza Horizon 6 in `steam-optimize` ([12ad469](https://gitlab.com/pad92/dotfiles/-/commit/12ad469))
 - Integrate UWSM for session start and environment variables ([8819620](https://gitlab.com/pad92/dotfiles/-/commit/8819620), [fe97725](https://gitlab.com/pad92/dotfiles/-/commit/fe97725))
 - Update Hyprland keybindings and configuration references ([3c9561f](https://gitlab.com/pad92/dotfiles/-/commit/3c9561f), [b276f51](https://gitlab.com/pad92/dotfiles/-/commit/b276f51))

@@ -48,7 +48,8 @@ To customize and adapt this dotfiles collection to your own system and identity,
 ### 💻 Terminals & Tools
 *   **`.config/alacritty/`**: Customize the Alacritty terminal's font, window spacing, opacity, and color palette.
 *   **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
-*   **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core Vim editor.
+*   **[`.config/nvim/`](./.config/nvim/)**: Curated, modern, and modular **Neovim** configuration written from scratch in Lua.
+*   **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core legacy Vim editor.
 
 ## 🛠️ Core Tooling
 
@@ -112,9 +113,21 @@ Organized by functional modules for clean management:
 *   **`calc "<expr>"`**: Command-line evaluator powered by `bc`.
 *   **`src`**: Sourced reloader helper for shell config.
 
-### 📖 Editor (Vim)
-A highly configured editor built with `vundle`.
-*   **Key Features**: Advanced statusline customization, robust filetype detection, and modern plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
+### 📖 Editors (Vim & Neovim)
+
+#### ⚡ Neovim (Modern & Modular)
+A state-of-the-art configuration written completely in Lua from scratch, designed to turn Neovim into a blazing-fast, IDE-like developer workspace.
+*   **Key Features**:
+    *   **Plugin Manager**: Managed by `lazy.nvim` for fast startup and lazy loading.
+    *   **Fuzzy Finder**: Built with `telescope.nvim` for rapid interactive file/buffer/symbol searching.
+    *   **Syntax & AST**: Powered by `nvim-treesitter` for beautiful, precise, and fast syntax highlighting.
+    *   **Native LSP**: Utilizes the modern native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for rich IDE autocompletions and go-to-definitions.
+    *   **Git Integration**: Realtime changes displayed in the margin by `gitsigns.nvim`.
+    *   **Aesthetics**: Sleek `gruvbox` colorscheme coupled with `lualine.nvim` statusline and vertical indentation guides.
+
+#### 📖 Legacy Vim
+My original editor configuration built with `vundle`.
+*   **Key Features**: Advanced statusline customization, robust filetype detection, and classic plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
 
 ### 💾 Terminal & Session Management
 *   **Terminal Emulators**: Optimized configuration for **Alacritty**.
