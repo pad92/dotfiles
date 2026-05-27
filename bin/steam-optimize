@@ -30,7 +30,7 @@ readonly AMD_ENV_VARS=(
     "PROTON_FSR4_UPGRADE=1"                   # Enables general FSR 4 upgrade support.
 
     # Advanced/Other Configs
-    "RADV_PERFTEST=rt,nggc,gpl,video_decode"  # Enables specific performance tests/features in RADV.
+    "RADV_PERFTEST=nggc,gpl"                  # Enables stable performance features in RADV (disabled unstable rt/video_decode).
     "VKD3D_CONFIG=dxr"                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
 )
 
@@ -245,13 +245,19 @@ get_gamescope_args() {
             ;;
     esac
 
-    # Single jq call to extract all three fields at once
-    IFS=$'\t' read -r RES_W RES_H MON_NAME < <(
-        jq -r "${JQ_FILTER} | [.width, .height, .name] | @tsv" <<< "${MONITORS}" 2>/dev/null || true
+    # Single jq call to extract all four fields at once (rounding the refresh rate)
+    local MON_REFRESH=""
+    IFS=$'\t' read -r RES_W RES_H MON_NAME MON_REFRESH < <(
+        jq -r "${JQ_FILTER} | [.width, .height, .name, (.refreshRate | round)] | @tsv" <<< "${MONITORS}" 2>/dev/null || true
     )
 
     if [[ -n "${RES_W}" && "${RES_W}" != "null" ]]; then
         ARGS=(-W "${RES_W}" -H "${RES_H}" -w "${RES_W}" -h "${RES_H}" "${ARGS[@]}")
+    fi
+
+    # Pin the virtual screen refresh rate to match the monitor's native frequency
+    if [[ -n "${MON_REFRESH}" && "${MON_REFRESH}" != "null" && "${MON_REFRESH}" != "0" ]]; then
+        ARGS+=(-r "${MON_REFRESH}")
     fi
 
     # -O <connector> pins Gamescope to the target output (--prefer-output).

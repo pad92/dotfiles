@@ -17,6 +17,7 @@ hl.config({
     border_size = config.visuals.border_size,          -- Thickness of window borders
     layout = "dwindle",                                -- Default window partitioning algorithm
     resize_on_border = true,                           -- Allows resizing windows by dragging their borders
+    allow_tearing = true,                              -- Master toggle for screen tearing
   },
 
   -- Window decorations (Rounding, Blur, Shadows)
