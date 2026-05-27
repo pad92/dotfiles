@@ -49,13 +49,44 @@ def generate_html(input_file, output_file, title):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css">
     <link rel="stylesheet" href="{css_path}">
 </head>
-<body>
+<body data-bs-spy="scroll" data-bs-target="#toc">
     <div class="container py-5">
-        {html_content}
+        <div class="row">
+            <div class="col-xl-9 col-lg-8 col-12">
+                {html_content}
+            </div>
+            <div class="col-xl-3 col-lg-4 d-none d-lg-block">
+                <nav id="toc" class="sticky-top"></nav>
+            </div>
+        </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js"></script>
+    <script>
+        $(function() {{
+            // Skip the "Table of contents" heading in the bootstrap-toc and hide it
+            var tocHeader = $('#table-of-contents');
+            if (tocHeader.length) {{
+                tocHeader.attr('data-toc-skip', 'true').hide();
+                // Also hide any paragraph right after it if it contains the inline TOC marker
+                var next = tocHeader.next();
+                if (next.length && (next.find('.toc').length || next.hasClass('toc'))) {{
+                    next.hide();
+                }}
+            }}
+            // Also hide standard inline TOC
+            $('.toc').hide();
+
+            // Initialize bootstrap-toc
+            Toc.init({{
+                $nav: $('#toc')
+            }});
+        }});
+    </script>
 </body>
 </html>'''
 

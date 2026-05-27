@@ -30,7 +30,12 @@ body {
     max-width: 900px;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: var(--accent-color);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.3em;
@@ -80,7 +85,8 @@ a:hover {
 code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     background-color: var(--code-bg);
-    color: #f5e0dc; /* Rosewater */
+    color: #f5e0dc;
+    /* Rosewater */
     padding: 0.2em 0.4em;
     border-radius: 3px;
     font-size: 85%;
@@ -105,7 +111,8 @@ pre code {
 blockquote {
     margin: 1rem 0;
     padding: 0 0 0 1em;
-    color: #bac2de; /* Subtext1 */
+    color: #bac2de;
+    /* Subtext1 */
     border-left: 0.25em solid var(--border-color);
 }
 
@@ -116,7 +123,8 @@ table {
     color: var(--text-color);
 }
 
-table th, table td {
+table th,
+table td {
     border: 1px solid var(--border-color);
     padding: 6px 13px;
 }
@@ -129,4 +137,47 @@ img {
     max-width: 100%;
     height: auto;
     border-radius: 6px;
+}
+
+/* Custom styling for bootstrap-toc in Catppuccin theme */
+nav[data-toggle="toc"] {
+    margin-top: 2rem;
+    background-color: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.9rem;
+}
+
+nav[data-toggle="toc"] .nav-link {
+    color: rgba(205, 214, 244, 0.7);
+    padding: 0.25rem 0.75rem;
+    border-left: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+nav[data-toggle="toc"] .nav-link:hover,
+nav[data-toggle="toc"] .nav-link:focus {
+    color: var(--accent-color);
+    border-left-color: var(--accent-color);
+    padding-left: 0.9rem;
+    background-color: rgba(203, 166, 247, 0.05);
+    text-decoration: none;
+}
+
+nav[data-toggle="toc"] .nav-link.active {
+    color: var(--accent-color);
+    font-weight: 600;
+    border-left-color: var(--accent-color);
+    background-color: rgba(203, 166, 247, 0.1);
+}
+
+nav[data-toggle="toc"] .nav .nav {
+    padding-left: 1rem;
+}
+
+/* Hide standard inline markdown TOC and the "Table of contents" header */
+.toc,
+#table-of-contents {
+    display: none !important;
 }
