@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Implement a new `shelly-notifications` Systemd user service to receive dynamic system notifications ([8268536](https://gitlab.com/pad92/dotfiles/-/commit/8268536))
 - Enable tearing support in Hyprland configuration for low-latency gaming ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
 - Implement environment-based configuration loading for Hyprland and update documentation for system personalization ([466809c](https://gitlab.com/pad92/dotfiles/-/commit/466809c))
+- Decouple hardware-specific monitor layouts and static workspace mappings out of global `conf/monitors.lua` and `conf/workspaces.lua` configurations, moving them to modular hosts configurations (`hosts/PadsTower.lua` and `hosts/PadsP5560.lua`).
 
 ### Changed
 - Rewrite `steam-optimize` wrapper from Bash to Python 3, refactoring monitor and game-specific override logic to use native JSON parsing and direct command execution ([b505840](https://gitlab.com/pad92/dotfiles/-/commit/b505840))
@@ -36,6 +37,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Update Electron/Chromium flags with optimized GPU flags (`--disable-gpu-rasterization`, `--disable-gpu-compositing`, `--no-sandbox`) ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
 - Improve `steam-optimize` refresh rate detection and RADV stability under AMD graphics drivers ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
+- Fix Gamescope mouse cursor escaping/leaking to secondary displays on multi-monitor setups by setting `no_hardware_cursors = true` in `conf/input.lua` (forcing software rendering to respect compositor pointer confinement).
 
 ## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
 

@@ -42,7 +42,7 @@ To customize and adapt this dotfiles collection to your own system and identity,
 
 ### 🖥️ Wayland & Hyprland Session
 *   **[`.config/uwsm/env`](./.config/uwsm/env)**: Manage global environment variables for the Wayland session (e.g., default browser `BROWSER`, default terminal `TERMINAL`, and default cursor theme `XCURSOR_THEME`) and set hostname-specific GPU/driver optimizations (such as `AQ_DRM_DEVICES` or Vulkan driver settings).
-*   **`.config/hypr/`**: Adjust window manager bindings, window rules, workspaces, and look-and-feel preferences (now migrated to Lua).
+*   **`.config/hypr/`**: Adjust window manager bindings, window rules, workspaces, and look-and-feel preferences (now migrated to Lua). Host-specific hardware layouts (such as monitor outputs and static workspace mappings) are modularly loaded from `hosts/<hostname>.lua` to maintain clean dotfiles portability.
 *   **`~/.local/share/backgrounds/`**: Add your custom wallpaper image files here to integrate with desktop slideshow/randomizer scripts.
 
 ### 💻 Terminals & Tools
