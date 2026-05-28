@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Safety flags
 set -uo pipefail
 
