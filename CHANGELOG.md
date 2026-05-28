@@ -13,8 +13,16 @@ All notable changes to this project will be documented in this file.
 - Implement automated release workflows and GitLab/GitHub Pages integration ([8a781e2](https://gitlab.com/pad92/dotfiles/-/commit/8a781e2), [ee26a9f](https://gitlab.com/pad92/dotfiles/-/commit/ee26a9f))
 - Add GitHub Actions workflow for CI pipeline ([1271fb2](https://gitlab.com/pad92/dotfiles/-/commit/1271fb2))
 - Add UWSM Systemd startup and GNOME Keyring PAM setup documentation to Arch Linux installation guide
+- Implement a new `shelly-notifications` Systemd user service to receive dynamic system notifications ([8268536](https://gitlab.com/pad92/dotfiles/-/commit/8268536))
+- Enable tearing support in Hyprland configuration for low-latency gaming ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
+- Implement environment-based configuration loading for Hyprland and update documentation for system personalization ([466809c](https://gitlab.com/pad92/dotfiles/-/commit/466809c))
 
 ### Changed
+- Rewrite `steam-optimize` wrapper from Bash to Python 3, refactoring monitor and game-specific override logic to use native JSON parsing and direct command execution ([b505840](https://gitlab.com/pad92/dotfiles/-/commit/b505840))
+- Improve `awww.sh` reliability by adding error checking, safety flags (`set -uo pipefail`), daemon connectivity polling, and safe array processing with `mapfile` and null-terminated strings for wallpaper randomization ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
+- Optimize Steam client window behavior and clean up duplicate startup autostart entries ([44f5c3c](https://gitlab.com/pad92/dotfiles/-/commit/44f5c3c))
+- Add bootstrap-toc support to pages generator and update styling for build outputs ([8268536](https://gitlab.com/pad92/dotfiles/-/commit/8268536))
+- Streamline `uwsm/env` environment configurations by removing redundant GNOME Keyring and SSH socket variable exports ([c3a2195](https://gitlab.com/pad92/dotfiles/-/commit/c3a2195))
 - Update theme, colors, and typography to official Catppuccin Mocha palette and refine overall aesthetics ([3579885](https://gitlab.com/pad92/dotfiles/-/commit/3579885), [a07eb9b](https://gitlab.com/pad92/dotfiles/-/commit/a07eb9b), [4fc7843](https://gitlab.com/pad92/dotfiles/-/commit/4fc7843), [0a92290](https://gitlab.com/pad92/dotfiles/-/commit/0a92290), [ecac0b9](https://gitlab.com/pad92/dotfiles/-/commit/ecac0b9), [7798b53](https://gitlab.com/pad92/dotfiles/-/commit/7798b53))
 - Modernize Hyprland autostart using UWSM ([333c239](https://gitlab.com/pad92/dotfiles/-/commit/333c239), [20a9a24](https://gitlab.com/pad92/dotfiles/-/commit/20a9a24))
 - Optimize CI/CD pipelines, documentation build process and Pages deployment ([4a27841](https://gitlab.com/pad92/dotfiles/-/commit/4a27841), [7dd08e3](https://gitlab.com/pad92/dotfiles/-/commit/7dd08e3), [b307628](https://gitlab.com/pad92/dotfiles/-/commit/b307628), [931deb5](https://gitlab.com/pad92/dotfiles/-/commit/931deb5), [8cca767](https://gitlab.com/pad92/dotfiles/-/commit/8cca767), [15f832c](https://gitlab.com/pad92/dotfiles/-/commit/15f832c), [fe30ba8](https://gitlab.com/pad92/dotfiles/-/commit/fe30ba8), [f41022b](https://gitlab.com/pad92/dotfiles/-/commit/f41022b), [3a9915a](https://gitlab.com/pad92/dotfiles/-/commit/3a9915a), [2727ee2](https://gitlab.com/pad92/dotfiles/-/commit/2727ee2), [dd1ac7b](https://gitlab.com/pad92/dotfiles/-/commit/dd1ac7b), [9d2eba6](https://gitlab.com/pad92/dotfiles/-/commit/9d2eba6), [0152e05](https://gitlab.com/pad92/dotfiles/-/commit/0152e05))
@@ -24,6 +32,10 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Remove GDM from the system configuration
+
+### Fixed
+- Update Electron/Chromium flags with optimized GPU flags (`--disable-gpu-rasterization`, `--disable-gpu-compositing`, `--no-sandbox`) ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
+- Improve `steam-optimize` refresh rate detection and RADV stability under AMD graphics drivers ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
 
 ## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
 
