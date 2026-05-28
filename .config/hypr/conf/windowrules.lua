@@ -25,11 +25,12 @@ hl.window_rule({
   fullscreen = true,
   monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758"
 })
--- Gamescope & Steam Apps: Fullscreen and bypass composition delay (immediate) on Asus Monitor
+-- Gamescope & Steam Apps: Fullscreen, confine pointer, and bypass composition delay (immediate) on Asus Monitor
 hl.window_rule({
   match = { class = "^(?i)(gamescope|steam_app_.*)$" },
   fullscreen = true,
   immediate = true,
+  confine_pointer = 1,
   monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758"
 })
 

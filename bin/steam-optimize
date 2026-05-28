@@ -17,6 +17,7 @@ readonly COMMON_ENV_VARS=(
     "PROTON_USE_NTSYNC=1"                     # Uses NTSync for improved input/timing accuracy.
     "PROTON_XESS_UPGRADE=1"                   # Enables Proton's XeSS upgrade.
     "vblank_mode=0"                           # Disables vertical blanking mode (VSync) for Mesa.
+    "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS=0"      # Prevents window from minimizing when focus is lost (essential for multi-screen mouse capture).
 )
 
 # AMD/Radeon specific environment variables

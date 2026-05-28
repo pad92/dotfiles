@@ -146,7 +146,6 @@ local config = {
         "blueman-applet",
         "nm-applet --indicator",
         "/usr/bin/swayosd-server",
-        "1password --silent",
     },
 
     -- =============================================================================
