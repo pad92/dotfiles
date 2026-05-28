@@ -27,7 +27,7 @@ hl.config({
 
   -- Mouse Cursor preferences
   cursor = {
-    no_hardware_cursors = false,            -- Hardware cursor acceleration
+    no_hardware_cursors = true,             -- Hardware cursor acceleration
     enable_hyprcursor = true,               -- Activates modern high-DPI hyprcursor support
   },
 

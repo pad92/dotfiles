@@ -19,19 +19,17 @@ hl.window_rule({ match = { class = "^(?i)(hyprpolkitagent|polkit-kde-authenticat
 -- Forces Steam child dialogs/lists to float with fixed sizes
 hl.window_rule({ match = { class = "^(?i)(steam)$", title = "^(?i)(Friends List|.*Chat.*|Settings|.* - News|Screenshot)$" }, float = true, size = { 700, 750 }, rounding = 12 })
 hl.window_rule({ match = { title = "^(?i)(Sign in to Steam)$" }, float = true, center = true })
--- Forces Steam Big Picture Mode to Asus HDR Monitor
+-- Forces Steam Big Picture Mode to Fullscreen
 hl.window_rule({
   match = { class = "^(?i)(steam)$", title = "^(?i)(Steam Big Picture Mode)$" },
-  fullscreen = true,
-  monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758"
+  fullscreen = true
 })
--- Gamescope & Steam Apps: Fullscreen, confine pointer, and bypass composition delay (immediate) on Asus Monitor
+-- Gamescope & Steam Apps: Fullscreen, confine pointer, and bypass composition delay (immediate)
 hl.window_rule({
   match = { class = "^(?i)(gamescope|steam_app_.*)$" },
   fullscreen = true,
   immediate = true,
-  confine_pointer = 1,
-  monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758"
+  confine_pointer = 1
 })
 
 -- 3. Audio & Password Manager tools (Custom floating/size/placement)
