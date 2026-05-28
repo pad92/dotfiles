@@ -1,15 +1,1 @@
-{
-  "Lua.workspace.library": [
-    "/usr/share/hypr/stubs"
-  ],
-  "Lua.runtime.version": "LuaJIT",
-  "Lua.runtime.path": [
-    "?.lua",
-    "?/init.lua",
-    ".config/hypr/?.lua",
-    ".config/hypr/?/init.lua"
-  ],
-  "Lua.diagnostics.globals": [
-    "hl"
-  ]
-}
+{}
