@@ -16,12 +16,25 @@ require("conf.workspaces")
 
 -- Host specific configuration
 -- Optimized: Load host-specific config dynamically without symlinks
-local hostname = os.getenv("HOSTNAME")
+local hostname = os.getenv("HOSTNAME") or os.getenv("HOST")
 if not hostname then
-  -- Fallback to shell if environment variable is not set
+  -- Faster, non-blocking check by reading /proc/sys/kernel/hostname directly on Linux
+  local file = io.open("/proc/sys/kernel/hostname", "r")
+  if file then
+    hostname = file:read("*a")
+    file:close()
+  end
+end
+
+if hostname then
+  hostname = hostname:gsub("%s+", "")
+else
+  -- Ultimate fallback if proc is unavailable
   local handle = io.popen("hostname")
-  hostname = handle:read("*a"):gsub("%s+", "")
-  handle:close()
+  if handle then
+    hostname = handle:read("*a"):gsub("%s+", "")
+    handle:close()
+  end
 end
 
 local messages = {}

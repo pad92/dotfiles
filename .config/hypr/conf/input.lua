@@ -44,7 +44,7 @@ hl.config({
 
 -- Device-specific overrides (for mice, keyboards, touchpads, etc.)
 -- Reference: https://wiki.hypr.land/Configuring/Advanced-and-Cool/Devices/
-hl.device = ({
+hl.device({
     name = "epic mouse V1",
     sensitivity = -0.5,                     -- Lowers sensitivity specifically for this hardware mouse
 })

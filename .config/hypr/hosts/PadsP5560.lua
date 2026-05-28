@@ -48,16 +48,14 @@ hl.config({
 -- 2. Host-Specific Window Routing Rules
 
 -- 3. Host-Specific Workspace Rules
-hl.workspace_rule(
-  -- Workspace 1 opens on the primary Asus monitor and is set as default
-  { workspace = 1, monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758", default = true },
-  
-  -- Workspace 2 opens on the top-left Dell monitor and is set as default
-  { workspace = 2, monitor = "desc:Dell Inc. DELL P2423DE 3PJ4CN3", default = true },
-  
-  -- Workspace 8 opens on the bottom-left Sharp High-DPI monitor and is set as default
-  { workspace = 8, monitor = "desc:Sharp Corporation 0x1516", default = true }
-)
+-- Workspace 1 opens on the primary Asus monitor and is set as default
+hl.workspace_rule({ workspace = 1, monitor = "desc:ASUSTek COMPUTER INC XG32WCS TALMAS012758", default = true })
+
+-- Workspace 2 opens on the top-left Dell monitor and is set as default
+hl.workspace_rule({ workspace = 2, monitor = "desc:Dell Inc. DELL P2423DE 3PJ4CN3", default = true })
+
+-- Workspace 8 opens on the bottom-left Sharp High-DPI monitor and is set as default
+hl.workspace_rule({ workspace = 8, monitor = "desc:Sharp Corporation 0x1516", default = true })
 
 
 
