@@ -1,286 +1,208 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 # steam-optimize: Sets up performance environment variables and game-specific
 # overrides before delegating execution to game-performance.
 # View logs with: journalctl -t steam-optimize -f
 
 # https://notes.depad.fr/linux/2026/05/steam-optimize-le-wrapper-ultime-pour-le-gaming-sous-linux/
 
-set -euo pipefail
+import os
+import sys
+import time
+import json
+import subprocess
+import shutil
 
 # --- Configuration ---
 
 # Common environment variables applied to all GPUs
-readonly COMMON_ENV_VARS=(
-    # Proton/Wayland Optimizations
-    "PROTON_ENABLE_WAYLAND=1"                 # Enables Wayland support via Proton.
-    "PROTON_NO_WM_DECORATION=1"               # Disables window manager decorations within Proton.
-    "PROTON_USE_NTSYNC=1"                     # Uses NTSync for improved input/timing accuracy.
-    "PROTON_XESS_UPGRADE=1"                   # Enables Proton's XeSS upgrade.
-    "vblank_mode=0"                           # Disables vertical blanking mode (VSync) for Mesa.
-    "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS=0"      # Prevents window from minimizing when focus is lost (essential for multi-screen mouse capture).
-)
+COMMON_ENV_VARS = {
+    "PROTON_ENABLE_WAYLAND": "1",                 # Enables Wayland support via Proton.
+    "PROTON_NO_WM_DECORATION": "1",               # Disables window manager decorations within Proton.
+    "PROTON_USE_NTSYNC": "1",                     # Uses NTSync for improved input/timing accuracy.
+    "PROTON_XESS_UPGRADE": "1",                   # Enables Proton's XeSS upgrade.
+    "vblank_mode": "0",                           # Disables vertical blanking mode (VSync) for Mesa.
+    "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS": "0",      # Prevents window from minimizing when focus is lost.
+}
 
 # AMD/Radeon specific environment variables
-readonly AMD_ENV_VARS=(
-    # Graphics Drivers/Layers
-    "AMD_VULKAN_ICD=RADV"                     # Sets Vulkan ICD to RADV driver for AMD GPUs.
-    "ENABLE_LAYER_MESA_ANTI_LAG=1"            # Enables a Mesa anti-lag layer for better performance.
-    "MESA_SHADER_CACHE_MAX_SIZE=20G"          # Sets the maximum size of the Mesa shader cache (20GB).
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1"   # Prevents cleanup of the OpenGL shader disk cache.
-    "PROTON_FSR4_RDNA3_UPGRADE=1"             # Enables FSR 4 upgrade specifically for RDNA3 hardware.
-    "PROTON_FSR4_UPGRADE=1"                   # Enables general FSR 4 upgrade support.
-
-    # Advanced/Other Configs
-    "RADV_PERFTEST=nggc,gpl"                  # Enables stable performance features in RADV (disabled unstable rt/video_decode).
-    "VKD3D_CONFIG=dxr"                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
-)
+AMD_ENV_VARS = {
+    "AMD_VULKAN_ICD": "RADV",                     # Sets Vulkan ICD to RADV driver for AMD GPUs.
+    "ENABLE_LAYER_MESA_ANTI_LAG": "1",            # Enables a Mesa anti-lag layer for better performance.
+    "MESA_SHADER_CACHE_MAX_SIZE": "20G",          # Sets the maximum size of the Mesa shader cache (20GB).
+    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",   # Prevents cleanup of the OpenGL shader disk cache.
+    "PROTON_FSR4_RDNA3_UPGRADE": "1",             # Enables FSR 4 upgrade specifically for RDNA3 hardware.
+    "PROTON_FSR4_UPGRADE": "1",                   # Enables general FSR 4 upgrade support.
+    "RADV_PERFTEST": "nggc,gpl",                  # Enables stable performance features in RADV.
+    "VKD3D_CONFIG": "dxr",                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
+}
 
 # NVIDIA specific environment variables
-readonly NVIDIA_ENV_VARS=(
-    # Graphics Drivers/Layers
-    "__GLX_VENDOR_LIBRARY_NAME=nvidia"        # Forces NVIDIA proprietary OpenGL driver.
-    "__NV_PRIME_RENDER_OFFLOAD=1"             # Offloads rendering to NVIDIA GPU (hybrid laptops).
-    "__VK_LAYER_NV_optimus=NVIDIA_only"       # Vulkan layer for hybrid laptops offloading.
-    "__GL_SHADER_DISK_CACHE=1"                # Enables OpenGL shader disk cache.
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1"   # Prevents cleanup of OpenGL shader cache.
-    "__GL_THREADED_OPTIMIZATIONS=1"           # Enables threaded optimization for OpenGL.
-
-    # Proton/DLSS Optimizations
-    "PROTON_ENABLE_NVAPI=1"                   # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
-    "PROTON_HIDE_NVIDIA_GPU=0"                # Exposes NVIDIA GPU (required for NVAPI/DLSS).
-    "__GL_SYNC_TO_VBLANK=0"                   # Disables VSync for OpenGL applications.
-)
-
-# Paths
-readonly BATTLEYE_RUNTIME_PATH="/mnt/games/SteamLibrary/steamapps/common/Proton BattlEye Runtime"
-
-# Constants
-TAG=$(basename "$0"); readonly TAG
-STEAM_APP_ID="${SteamAppId:-}"; readonly STEAM_APP_ID
-USER_ID=$(id -u); readonly USER_ID
-readonly RUNTIME_DIR="/run/user/${USER_ID}"
-
-# Monitor selection: "workspace:N" (default), "focused", or a monitor name (e.g. "DP-1")
-MONITOR_SELECTOR="workspace:1"
-
-# Game command array, populated by parse_args and potentially modified by apply_game_overrides
-declare -a GAME_CMD=()
-
-# GAME_NAME is set by apply_game_overrides and read by main after the game exits
-GAME_NAME=""
-
-# Whether Gamescope supports -O/--prefer-output; resolved once in setup_global_env
-GAMESCOPE_SUPPORTS_OUTPUT=false
-
-# --- Usage ---
-
-usage() {
-    cat <<EOF
-Usage: $(basename "$0") [OPTIONS] -- <game command>
-
-A Steam launch wrapper that sets up GPU-specific environment variables,
-applies per-game Proton overrides, and runs the game inside Gamescope.
-
-Options:
-  -m, --monitor <selector>  Choose the target monitor for Gamescope resolution.
-                            Selectors:
-                              workspace:<N>   Monitor hosting workspace N (default: workspace:1)
-                              focused         Currently focused monitor
-                              <name>          Monitor name, e.g. DP-1, HDMI-A-1
-  -h, --help                Show this help message and exit
-
-Examples:
-  # Default: use the monitor that has workspace 1
-  $(basename "$0") -- %command%
-
-  # Use the currently focused monitor
-  $(basename "$0") --monitor focused -- %command%
-
-  # Use workspace 2's monitor
-  $(basename "$0") --monitor workspace:2 -- %command%
-
-  # Use a specific output by name
-  $(basename "$0") --monitor DP-1 -- %command%
-
-Steam launch option (add before %command%):
-  steam-optimize -- %command%
-
-Logs:
-  journalctl -t steam-optimize -f
-EOF
+NVIDIA_ENV_VARS = {
+    "__GLX_VENDOR_LIBRARY_NAME": "nvidia",        # Forces NVIDIA proprietary OpenGL driver.
+    "__NV_PRIME_RENDER_OFFLOAD": "1",             # Offloads rendering to NVIDIA GPU.
+    "__VK_LAYER_NV_optimus": "NVIDIA_only",       # Vulkan layer for hybrid laptops offloading.
+    "__GL_SHADER_DISK_CACHE": "1",                # Enables OpenGL shader disk cache.
+    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",   # Prevents cleanup of OpenGL shader cache.
+    "__GL_THREADED_OPTIMIZATIONS": "1",           # Enables threaded optimization for OpenGL.
+    "PROTON_ENABLE_NVAPI": "1",                   # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
+    "PROTON_HIDE_NVIDIA_GPU": "0",                # Exposes NVIDIA GPU (required for NVAPI/DLSS).
+    "__GL_SYNC_TO_VBLANK": "0",                   # Disables VSync for OpenGL applications.
 }
+
+# --- Helpers ---
+
+def run_silent(cmd):
+    """Executes a command silently, ignoring output and failures."""
+    try:
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
 
 # --- Logging ---
 
-_log() {
-    local LEVEL="$1"
-    local ICON="${2:-}"   # empty = silent (logger only, no desktop notification)
-    local MSG="$3"
+def log_msg(level, icon, msg):
+    steam_app_id = os.environ.get("SteamAppId", "")
+    tag = "steam-optimize"
+    
+    log_text = f"{level} [{steam_app_id}] {msg}"
+    run_silent(["logger", "-t", tag, log_text])
+        
+    if icon is None:
+        return
+        
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        if run_silent(["hyprctl", "notify", str(icon), "5000", "0", msg]):
+            return
+            
+    run_silent(["notify-send", msg])
 
-    logger -t "${TAG}" "${LEVEL} [${STEAM_APP_ID}] ${MSG}"
-
-    [[ -z "${ICON}" ]] && return 0
-
-    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-        hyprctl notify "${ICON}" 5000 0 "${MSG}" 2>/dev/null || true
-        return 0
-    fi
-    notify-send "${MSG}" 2>/dev/null || true
-}
-
-log_info_silent() { _log "INFO" ""  "$1"; }
-log_info()        { _log "INFO"  1  "$1"; }
-log_warn()        { _log "WARN"  0  "$1"; }
-log_error()       { _log "ERROR" 3  "$1"; }
+def log_info_silent(msg): log_msg("INFO", None, msg)
+def log_info(msg):        log_msg("INFO", 1, msg)
+def log_warn(msg):        log_msg("WARN", 0, msg)
+def log_error(msg):       log_msg("ERROR", 3, msg)
 
 # --- Global Environment Setup ---
 
-# Exports all entries of a named array as environment variables.
-# Usage: export_vars ARRAY_NAME
-export_vars() {
-    local -n _VARS="$1"
-    for VAR in "${_VARS[@]}"; do
-        export "$VAR"
-    done
-}
+def check_gamescope_supports_output():
+    try:
+        res = subprocess.run(["gamescope", "--help"], capture_output=True, text=True)
+        help_text = res.stdout + res.stderr
+        return "--prefer-output" in help_text
+    except Exception:
+        return False
 
-setup_global_env() {
-    # Raise the open file descriptor limit; required by heavily-threaded Proton games
-    ulimit -n 1048576 || log_warn "Failed to raise ulimit"
+def setup_global_env():
+    # Raise open file descriptor limit
+    try:
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        target = min(1048576, hard)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
+    except Exception as e:
+        log_warn(f"Failed to raise ulimit: {e}")
 
-    export_vars COMMON_ENV_VARS
+    # Set common variables
+    os.environ.update(COMMON_ENV_VARS)
 
-    local GPU_DETECTED=false
+    gpu_detected = False
 
-    # Check for AMD GPU (amdgpu kernel module loaded)
-    if [[ -d /sys/module/amdgpu ]]; then
-        log_info "AMD GPU detected (amdgpu module loaded) — applying RADV optimizations"
-        export_vars AMD_ENV_VARS
-        GPU_DETECTED=true
-    fi
+    if os.path.isdir("/sys/module/amdgpu"):
+        log_info("AMD GPU detected (amdgpu module loaded) — applying RADV optimizations")
+        os.environ.update(AMD_ENV_VARS)
+        gpu_detected = True
 
-    # Check for NVIDIA GPU (nvidia kernel module loaded)
-    if [[ -d /sys/module/nvidia ]]; then
-        log_info "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
-        export_vars NVIDIA_ENV_VARS
-        GPU_DETECTED=true
-    fi
+    if os.path.isdir("/sys/module/nvidia"):
+        log_info("NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations")
+        os.environ.update(NVIDIA_ENV_VARS)
+        gpu_detected = True
 
-    if [[ "${GPU_DETECTED}" = false ]]; then
-        log_warn "No specific GPU module (amdgpu/nvidia) detected — using common defaults"
-    fi
+    if not gpu_detected:
+        log_warn("No specific GPU module (amdgpu/nvidia) detected — using common defaults")
 
-    # Probe Gamescope capabilities once to avoid repeated forks later
-    if gamescope --help 2>&1 | grep -q -- '--prefer-output'; then
-        GAMESCOPE_SUPPORTS_OUTPUT=true
-    else
-        log_warn "Gamescope does not support -O/--prefer-output; monitor pinning will be skipped"
-    fi
-}
+    gamescope_supports_output = check_gamescope_supports_output()
+    if not gamescope_supports_output:
+        log_warn("Gamescope does not support -O/--prefer-output; monitor pinning will be skipped")
+        
+    return gamescope_supports_output
 
 # --- Hyprland Integration ---
 
-setup_hyprland_env() {
-    export XDG_RUNTIME_DIR="${RUNTIME_DIR}"
+def setup_hyprland_env():
+    user_id = os.getuid()
+    runtime_dir = f"/run/user/{user_id}"
+    os.environ["XDG_RUNTIME_DIR"] = runtime_dir
+    
+    hypr_dir = os.path.join(runtime_dir, "hypr")
+    if os.path.isdir(hypr_dir):
+        try:
+            items = os.listdir(hypr_dir)
+            if items:
+                items_with_time = [(os.path.join(hypr_dir, x), x) for x in items]
+                items_with_time.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+                os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = items_with_time[0][1]
+        except Exception:
+            pass
 
-    if [[ -d "${RUNTIME_DIR}/hypr" ]]; then
-        # Use the most recently created socket to target the active Hyprland instance
-        export HYPRLAND_INSTANCE_SIGNATURE
-        HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "${RUNTIME_DIR}/hypr" | head -n 1)
-    fi
-}
+def get_gamescope_args(monitor_selector, gamescope_supports_output):
+    args = ["-f", "--force-grab-cursor"]
+    
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return args
 
-# Returns Gamescope resolution and output flags for the selected monitor.
-# Monitor selection is controlled by MONITOR_SELECTOR:
-#   "workspace:N"  — monitor hosting Hyprland workspace N (default: workspace:1)
-#   "focused"      — currently focused monitor
-#   "<name>"       — monitor name as reported by hyprctl (e.g. DP-1, HDMI-A-1)
-# Falls back to no resolution flags if Hyprland or jq is unavailable, or if
-# no matching monitor is found.
-get_gamescope_args() {
-    local -a ARGS=(-f --force-grab-cursor)
+    try:
+        res = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True)
+        if res.returncode != 0 or not res.stdout:
+            return args
+        monitors = json.loads(res.stdout)
+    except Exception as e:
+        log_warn(f"Failed to query hyprctl: {e}")
+        return args
 
-    if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-        echo "${ARGS[*]}"
-        return 0
-    fi
+    target_monitor = None
+    if monitor_selector == "focused":
+        target_monitor = next((m for m in monitors if m.get("focused")), None)
+    elif monitor_selector.startswith("workspace:"):
+        try:
+            ws_id = int(monitor_selector.split(":")[1])
+            target_monitor = next((m for m in monitors if m.get("activeWorkspace", {}).get("id") == ws_id), None)
+        except Exception:
+            pass
+    else:
+        target_monitor = next((m for m in monitors if m.get("name") == monitor_selector), None)
 
-    if ! command -v jq >/dev/null 2>&1; then
-        log_warn "jq not found; Gamescope will use default resolution"
-        echo "${ARGS[*]}"
-        return 0
-    fi
+    if not target_monitor:
+        log_warn(f"Monitor '{monitor_selector}' not found; using default Gamescope settings.")
+        return args
 
-    local MONITORS
-    MONITORS=$(hyprctl monitors -j 2>/dev/null) || true
+    w = target_monitor.get("width")
+    h = target_monitor.get("height")
+    name = target_monitor.get("name")
+    refresh = target_monitor.get("refreshRate")
 
-    if [[ -z "${MONITORS}" ]]; then
-        log_warn "hyprctl monitors returned no data; Gamescope will use default resolution"
-        echo "${ARGS[*]}"
-        return 0
-    fi
+    if w and h:
+        args = ["-W", str(w), "-H", str(h), "-w", str(w), "-h", str(h)] + args
 
-    local RES_W="" RES_H="" MON_NAME=""
-    local JQ_FILTER=""
+    if refresh:
+        r_rate = int(round(refresh))
+        if r_rate > 0:
+            args.append("-r")
+            args.append(str(r_rate))
 
-    case "${MONITOR_SELECTOR}" in
-        focused)
-            JQ_FILTER='.[] | select(.focused == true)'
-            ;;
-        workspace:*)
-            local WS_ID="${MONITOR_SELECTOR#workspace:}"
-            JQ_FILTER=".[] | select(.activeWorkspace.id == ${WS_ID})"
-            if ! jq -e "${JQ_FILTER}" <<< "${MONITORS}" >/dev/null 2>&1; then
-                log_warn "No monitor found with workspace ${WS_ID}; Gamescope will use default resolution"
-                echo "${ARGS[*]}"
-                return 0
-            fi
-            ;;
-        *)
-            JQ_FILTER=".[] | select(.name == \"${MONITOR_SELECTOR}\")"
-            if ! jq -e "${JQ_FILTER}" <<< "${MONITORS}" >/dev/null 2>&1; then
-                log_warn "Monitor '${MONITOR_SELECTOR}' not found; Gamescope will use default resolution"
-                echo "${ARGS[*]}"
-                return 0
-            fi
-            ;;
-    esac
+    if name and gamescope_supports_output:
+        args.append("-O")
+        args.append(name)
 
-    # Single jq call to extract all four fields at once (rounding the refresh rate)
-    local MON_REFRESH=""
-    IFS=$'\t' read -r RES_W RES_H MON_NAME MON_REFRESH < <(
-        jq -r "${JQ_FILTER} | [.width, .height, .name, (.refreshRate | round)] | @tsv" <<< "${MONITORS}" 2>/dev/null || true
-    )
+    return args
 
-    if [[ -n "${RES_W}" && "${RES_W}" != "null" ]]; then
-        ARGS=(-W "${RES_W}" -H "${RES_H}" -w "${RES_W}" -h "${RES_H}" "${ARGS[@]}")
-    fi
+def hyprland_start():
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return
 
-    # Pin the virtual screen refresh rate to match the monitor's native frequency
-    if [[ -n "${MON_REFRESH}" && "${MON_REFRESH}" != "null" && "${MON_REFRESH}" != "0" ]]; then
-        ARGS+=(-r "${MON_REFRESH}")
-    fi
+    log_info("Optimizing Hyprland for gaming")
+    run_silent(["makoctl", "mode", "-s", "dnd"])
 
-    # -O <connector> pins Gamescope to the target output (--prefer-output).
-    # The connector name reported by hyprctl (e.g. DP-1, HDMI-A-1) matches the DRM
-    # connector name that Gamescope expects.
-    if [[ -n "${MON_NAME}" && "${MON_NAME}" != "null" && "${GAMESCOPE_SUPPORTS_OUTPUT}" == true ]]; then
-        ARGS+=(-O "${MON_NAME}")
-    fi
-
-    echo "${ARGS[*]}"
-}
-
-# Disables Hyprland effects that waste GPU time during gameplay
-hyprland_start() {
-    [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
-
-    log_info "Optimizing Hyprland for gaming"
-    makoctl mode -s dnd 2>/dev/null || true
-
-    # Disable animations, shadows, blur and opacity effects atomically.
-    # Note: hl.config() is an experimental Hyprland API; failures are non-fatal.
-    if ! hyprctl eval "
+    eval_cmd = """
       hl.config({
         animations = { enabled = false },
         decoration = {
@@ -291,194 +213,534 @@ hyprland_start() {
           blur = { enabled = false }
         }
       })
-    " 2>/dev/null; then
-        log_warn "Failed to apply Hyprland rendering optimizations (hl.config unavailable?)"
-    fi
+    """
+    if not run_silent(["hyprctl", "eval", eval_cmd]):
+        log_warn("Failed to apply Hyprland rendering optimizations (hl.config unavailable?)")
 
-    # Prevent the idle daemon from locking the screen mid-game
-    systemctl --user stop hypridle.service 2>/dev/null || true
-}
+    run_silent(["systemctl", "--user", "stop", "hypridle.service"])
 
-# Restores the desktop to its normal state after the game exits
-hyprland_end() {
-    razer-cli -d 1600 2>/dev/null || true
+def hyprland_end():
+    run_silent(["razer-cli", "-d", "1600"])
 
-    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-        log_info "Restoring Hyprland configuration"
-        hyprctl reload 2>/dev/null || log_error "Failed to reload Hyprland configuration"
-        makoctl mode -s default 2>/dev/null || true
-    fi
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        log_info("Restoring Hyprland configuration")
+        if not run_silent(["hyprctl", "reload"]):
+            log_error("Failed to reload Hyprland configuration")
+        run_silent(["makoctl", "mode", "-s", "default"])
 
-    # Only restart hypridle if it is not already running (e.g. was stopped above)
-    if ! systemctl --user is-active hypridle.service >/dev/null 2>&1; then
-        systemctl --user reset-failed hypridle.service 2>/dev/null || true
-        systemctl --user start hypridle.service 2>/dev/null || true
-    fi
-}
+    try:
+        res = subprocess.run(["systemctl", "--user", "is-active", "hypridle.service"], capture_output=True, text=True)
+        if "active" not in res.stdout:
+            run_silent(["systemctl", "--user", "reset-failed", "hypridle.service"])
+            run_silent(["systemctl", "--user", "start", "hypridle.service"])
+    except Exception:
+        pass
 
-# --- Game Configuration Helpers ---
+# --- Game Configuration Helpers & Overrides ---
 
-# Configures Proton's BattlEye runtime for games that require it.
-enable_battleye() {
-    export PROTON_BATTLEYE_RUNTIME="${BATTLEYE_RUNTIME_PATH}"
-    export PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY=1
-    export PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC=1
-}
+def apply_game_overrides(steam_app_id, game_cmd):
+    game_name = f"AppID:{steam_app_id}" if steam_app_id else "UnknownGame"
+    cmd = list(game_cmd)
 
-# Switches to Proton's native Wayland backend: clears XWayland fallback hints
-# and disables Steam Input. Call after setting GAME_NAME.
-# Pass --keep-steaminput to skip disabling Steam Input (e.g. World of Warships).
-use_native_wayland() {
-    unset SDL_VIDEODRIVER
-    unset __GLX_VENDOR_LIBRARY_NAME
-    if [[ "${1:-}" != "--keep-steaminput" ]]; then
-        export PROTON_NO_STEAMINPUT=1
-    fi
-    log_info "Applying native Wayland optimizations for ${GAME_NAME}"
-}
+    def enable_battleye():
+        be_path = find_battleye_runtime()
+        if not be_path:
+            steam_root = find_steam_root()
+            default_root = steam_root if steam_root else os.path.expanduser("~/.local/share/Steam")
+            be_path = os.path.join(default_root, "steamapps", "common", "Proton BattlEye Runtime")
+            log_warn(f"Proton BattlEye Runtime not found in Steam libraries. Falling back to default: {be_path}")
+        os.environ["PROTON_BATTLEYE_RUNTIME"] = be_path
+        os.environ["PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY"] = "1"
+        os.environ["PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC"] = "1"
 
-# --- Per-game Overrides ---
+    def use_native_wayland(keep_steaminput=False):
+        os.environ.pop("SDL_VIDEODRIVER", None)
+        os.environ.pop("__GLX_VENDOR_LIBRARY_NAME", None)
+        if not keep_steaminput:
+            os.environ["PROTON_NO_STEAMINPUT"] = "1"
+        log_info(f"Applying native Wayland optimizations for {game_name}")
 
-apply_game_overrides() {
-    case "${STEAM_APP_ID}" in
-        "1808500")
-            GAME_NAME="Arc Raiders"
-            razer-cli -d 800 2>/dev/null || true
-            use_native_wayland
-            ;;
-        "526870")
-            GAME_NAME="Satisfactory"
-            use_native_wayland
-            ;;
-        "552990")
-            # World of Warships uses native Wayland but keeps Steam Input enabled
-            GAME_NAME="World of Warships"
-            use_native_wayland --keep-steaminput
-            ;;
-        "271590"|"3240220")
-            GAME_NAME="Grand Theft Auto V"
-            [[ "${STEAM_APP_ID}" = "3240220" ]] && GAME_NAME="Grand Theft Auto V Enhanced"
-            razer-cli -d 800 2>/dev/null || true
-            enable_battleye
-            export PROTON_NO_STEAMINPUT=1
-            log_info "Applying BattlEye overrides for ${GAME_NAME}"
-            ;;
-        "899770")
-            GAME_NAME="Last Epoch"
-            # Narrower RADV feature set avoids a rendering regression in Last Epoch
-            export RADV_PERFTEST='nggc,gpl'
-            use_native_wayland
-            ;;
-        "412020"|"1449560")
-            GAME_NAME="Metro Exodus"
-            use_native_wayland
-            ;;
-        "379720")
-            GAME_NAME="DOOM"
-            # mesa_glthread improves CPU-side OpenGL throughput for this title
-            export mesa_glthread=true
-            # DOOM does not support Proton Wayland; revert to XWayland via Gamescope
-            unset PROTON_ENABLE_WAYLAND
-            # Add game-specific arguments to the command array
-            GAME_CMD+=("+com_skipIntroVideo" "1" "+set" "m_smooth" "0")
-            ;;
-        "13240")
-            GAME_NAME="Unreal Tournament GOTY"
-            use_native_wayland
-            ;;
-        "2483190")
-            GAME_NAME="Forza Horizon 6"
-            export VKD3D_CONFIG=no_upload_hvv,single_queue
-            export PROTON_SET_GAME_DRIVE=1
-            export WINEDLLOVERRIDES="winmm=n,b;steam_api64=n,b;version=n,b"
-            export SDL_VIDEODRIVER=x11
-            ;;
-        *)
-            GAME_NAME="AppID:${STEAM_APP_ID}"
-            log_info "No game-specific overrides; using default settings"
-            ;;
-    esac
+    def set_mouse_dpi(dpi):
+        run_silent(["razer-cli", "-d", str(dpi)])
 
-    # Wrap all games in Gamescope if not already wrapped
-    if [[ "${GAME_CMD[0]}" != "gamescope" ]]; then
-        local GAMESCOPE_ARGS
-        GAMESCOPE_ARGS=$(get_gamescope_args)
-        # Word-splitting of gamescope_args is intentional: it contains only short flags
-        # shellcheck disable=SC2086
-        GAME_CMD=(gamescope ${GAMESCOPE_ARGS} -- "${GAME_CMD[@]}")
-        log_info "Applying Gamescope wrapper for ${GAME_NAME}"
-    fi
-}
+    if steam_app_id == "1808500":
+        game_name = "Arc Raiders"
+        set_mouse_dpi(800)
+        use_native_wayland()
+    elif steam_app_id == "526870":
+        game_name = "Satisfactory"
+        use_native_wayland()
+    elif steam_app_id == "552990":
+        game_name = "World of Warships"
+        use_native_wayland(keep_steaminput=True)
+    elif steam_app_id in ("271590", "3240220"):
+        game_name = "Grand Theft Auto V"
+        if steam_app_id == "3240220":
+            game_name = "Grand Theft Auto V Enhanced"
+        set_mouse_dpi(800)
+        enable_battleye()
+        os.environ["PROTON_NO_STEAMINPUT"] = "1"
+        log_info(f"Applying BattlEye overrides for {game_name}")
+    elif steam_app_id == "899770":
+        game_name = "Last Epoch"
+        os.environ["RADV_PERFTEST"] = "nggc,gpl"
+        use_native_wayland()
+    elif steam_app_id in ("412020", "1449560"):
+        game_name = "Metro Exodus"
+        use_native_wayland()
+    elif steam_app_id == "379720":
+        game_name = "DOOM"
+        os.environ["mesa_glthread"] = "true"
+        os.environ.pop("PROTON_ENABLE_WAYLAND", None)
+        cmd.extend(["+com_skipIntroVideo", "1", "+set", "m_smooth", "0"])
+    elif steam_app_id == "13240":
+        game_name = "Unreal Tournament GOTY"
+        use_native_wayland()
+    elif steam_app_id == "2483190":
+        game_name = "Forza Horizon 6"
+        os.environ["VKD3D_CONFIG"] = "no_upload_hvv,single_queue"
+        os.environ["PROTON_SET_GAME_DRIVE"] = "1"
+        os.environ["WINEDLLOVERRIDES"] = "winmm=n,b;steam_api64=n,b;version=n,b"
+        os.environ["SDL_VIDEODRIVER"] = "x11"
+    else:
+        log_info("No game-specific overrides; using default settings")
 
-# --- Argument Parsing ---
+    return game_name, cmd
 
-parse_args() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                usage
-                exit 0
-                ;;
-            -m|--monitor)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --monitor requires an argument" >&2
-                    usage >&2
-                    exit 1
-                fi
-                MONITOR_SELECTOR="$2"
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            -*)
-                echo "Error: unknown option '$1'" >&2
-                usage >&2
-                exit 1
-                ;;
-            *)
-                # No leading dash: treat as start of game command (no '--' separator used)
-                break
-                ;;
-        esac
-    done
+# --- Interactive Installer (Factorized) ---
 
-    GAME_CMD=("$@")
-}
+def find_steam_root():
+    paths = [
+        os.path.expanduser("~/.local/share/Steam"),
+        os.path.expanduser("~/.steam/steam"),
+        os.path.expanduser("~/.steam/root"),
+    ]
+    for p in paths:
+        if os.path.isdir(p) and os.path.exists(os.path.join(p, "steamapps", "libraryfolders.vdf")):
+            return p
+    return None
 
-# --- Entry Point ---
+def find_library_folders(steam_root, vdf_module=None):
+    lib_vdf = os.path.join(steam_root, "steamapps", "libraryfolders.vdf")
+    if not os.path.isfile(lib_vdf):
+        return [steam_root]
+    
+    folders = []
+    if vdf_module:
+        try:
+            with open(lib_vdf, "r") as f:
+                data = vdf_module.load(f)
+            for k, v in data.get("libraryfolders", {}).items():
+                if "path" in v:
+                    folders.append(v["path"])
+        except Exception as e:
+            print(f"Warning: Error reading libraryfolders.vdf with vdf module ({e}). Falling back to manual parsing.", file=sys.stderr)
+            
+    if not folders:
+        try:
+            with open(lib_vdf, "r") as f:
+                for line in f:
+                    if '"path"' in line:
+                        parts = line.split('"')
+                        if len(parts) >= 4:
+                            folders.append(parts[3])
+        except Exception:
+            pass
+            
+    return folders if folders else [steam_root]
 
-main() {
-    parse_args "$@"
+def find_battleye_runtime():
+    steam_root = find_steam_root()
+    if not steam_root:
+        return None
+    library_folders = find_library_folders(steam_root)
+    for folder in library_folders:
+        be_path = os.path.join(folder, "steamapps", "common", "Proton BattlEye Runtime")
+        if os.path.isdir(be_path):
+            return be_path
+    return None
 
-    if [[ ${#GAME_CMD[@]} -eq 0 ]]; then
-        echo "Error: no game command specified" >&2
-        usage >&2
-        exit 1
-    fi
+def find_localconfig_paths(steam_root):
+    userdata_dir = os.path.join(steam_root, "userdata")
+    if not os.path.isdir(userdata_dir):
+        return []
+    paths = []
+    for d in os.listdir(userdata_dir):
+        if d.isdigit():
+            vdf_path = os.path.join(userdata_dir, d, "config", "localconfig.vdf")
+            if os.path.isfile(vdf_path):
+                paths.append(vdf_path)
+    return paths
 
-    setup_global_env
-    setup_hyprland_env
-    apply_game_overrides
+def get_installed_games(library_folders, vdf_module):
+    games = {}
+    for folder in library_folders:
+        steamapps_dir = os.path.join(folder, "steamapps")
+        if not os.path.isdir(steamapps_dir):
+            continue
+        for filename in os.listdir(steamapps_dir):
+            if filename.startswith("appmanifest_") and filename.endswith(".acf"):
+                acf_path = os.path.join(steamapps_dir, filename)
+                try:
+                    with open(acf_path, "r") as f:
+                        manifest = vdf_module.load(f)
+                    app_state = manifest.get("AppState", {})
+                    appid = app_state.get("appid")
+                    name = app_state.get("name")
+                    if appid and name:
+                        name_lower = name.lower()
+                        exclude_keywords = [
+                            "steam linux runtime",
+                            "proton",
+                            "steamworks",
+                            "steamvr",
+                            "steam controller configs"
+                        ]
+                        if not any(kw in name_lower for kw in exclude_keywords):
+                            games[appid] = name
+                except Exception:
+                    pass
+    return games
 
-    # Ensure the desktop is restored even if game-performance crashes or is killed
-    trap hyprland_end EXIT
+def is_steam_running():
+    try:
+        res = subprocess.run(["pgrep", "-x", "steam"], capture_output=True)
+        return res.returncode == 0
+    except Exception:
+        return False
 
-    log_info_silent "Launching: game-performance ${GAME_CMD[*]}"
-    hyprland_start
+def shutdown_steam():
+    if not is_steam_running():
+        return True
+    
+    print("\n\033[93m⚠️  Steam is currently running.\033[0m")
+    print("\033[93mGracefully shutting down Steam to safely modify configurations...\033[0m")
+    
+    run_silent(["steam", "-shutdown"])
+    
+    for _ in range(30):
+        time.sleep(0.5)
+        if not is_steam_running():
+            print("\033[92m✓ Steam has been shut down successfully.\033[0m\n")
+            return True
+            
+    print("\033[91mSteam did not shut down in time. Sending termination signal (SIGTERM)...\033[0m")
+    run_silent(["pkill", "-x", "steam"])
+        
+    for _ in range(10):
+        time.sleep(0.5)
+        if not is_steam_running():
+            print("\033[92m✓ Steam has been shut down.\033[0m\n")
+            return True
+            
+    print("\033[91m❌ Unable to shut down Steam. Please close it manually and run the command again.\033[0m")
+    return False
 
-    # $EPOCHSECONDS is a bash built-in: no subshell, no date overhead
-    local START_TIME=$EPOCHSECONDS
-    game-performance "${GAME_CMD[@]}"
+def get_app_entry(config, appid):
+    """Retrieves or creates a mutable dictionary for a given AppID in a VDF config."""
+    apps = config.setdefault("UserLocalConfigStore", {}).setdefault("Software", {}).setdefault("Valve", {}).setdefault("Steam", {}).setdefault("apps", {})
+    entry = apps.setdefault(appid, {})
+    if not isinstance(entry, dict):
+        apps[appid] = {}
+        entry = apps[appid]
+    return entry
 
-    local ELAPSED=$(( EPOCHSECONDS - START_TIME ))
-    local SESSION_DURATION
-    SESSION_DURATION=$(printf "%02d:%02d:%02d" \
-        $(( ELAPSED / 3600 )) \
-        $(( (ELAPSED % 3600) / 60 )) \
-        $(( ELAPSED % 60 )))
-    log_info "${GAME_NAME} — session ended, play time: ${SESSION_DURATION}"
-}
+def get_app_entry_safe(config, appid):
+    """Safely retrieves a dictionary for a given AppID in a VDF config if it exists."""
+    apps = config.get("UserLocalConfigStore", {}).get("Software", {}).get("Valve", {}).get("Steam", {}).get("apps", {})
+    if apps and isinstance(apps, dict):
+        entry = apps.get(appid)
+        if isinstance(entry, dict):
+            return entry
+    return None
 
-main "$@"
+def run_installer(script_path):
+    # Check if the script is in PATH to warn the user if they can't run it globally
+    script_name = os.path.basename(script_path)
+    is_in_path = shutil.which(script_name) is not None
+    if not is_in_path:
+        print(f"\033[93m⚠️  Warning: '{script_name}' is not in your PATH.\033[0m")
+        print(f"\033[93m   To launch it globally, consider adding its directory to your PATH:")
+        print(f"   export PATH=\"{os.path.dirname(script_path)}:$PATH\"\033[0m\n")
+
+    try:
+        import vdf as vdf_module
+    except ImportError:
+        print("Error: The python 'vdf' module is required for the installer.", file=sys.stderr)
+        print("Please install it with: pip install vdf", file=sys.stderr)
+        sys.exit(1)
+
+    target_option = f"{script_path} -- %command%"
+
+    steam_root = find_steam_root()
+    if not steam_root:
+        print("\033[91m❌ Error: Unable to find Steam installation folder.\033[0m", file=sys.stderr)
+        sys.exit(1)
+
+    localconfig_paths = find_localconfig_paths(steam_root)
+    if not localconfig_paths:
+        print("\033[91m❌ Error: No localconfig.vdf file found in userdata.\033[0m", file=sys.stderr)
+        sys.exit(1)
+
+    if not shutdown_steam():
+        sys.exit(1)
+
+    vdf_configs = {}
+    for path in localconfig_paths:
+        try:
+            with open(path, "r") as f:
+                vdf_configs[path] = vdf_module.load(f)
+        except Exception as e:
+            print(f"\033[91m❌ Unable to read {path}: {e}\033[0m", file=sys.stderr)
+
+    if not vdf_configs:
+        print("\033[91m❌ Error: No localconfig.vdf configuration files could be loaded.\033[0m", file=sys.stderr)
+        sys.exit(1)
+
+    library_folders = find_library_folders(steam_root, vdf_module)
+    installed_games = get_installed_games(library_folders, vdf_module)
+
+    if not installed_games:
+        print("\033[93m⚠️ No installed Steam games detected.\033[0m")
+        sys.exit(0)
+
+    games_list = sorted(installed_games.items(), key=lambda x: x[1].lower())
+    dirty = False
+
+    while True:
+        launch_options_by_app = {}
+        for appid, _ in games_list:
+            opts = []
+            for path, config in vdf_configs.items():
+                apps = config.get("UserLocalConfigStore", {}).get("Software", {}).get("Valve", {}).get("Steam", {}).get("apps", {})
+                app_data = apps.get(appid, {})
+                if isinstance(app_data, dict) and "LaunchOptions" in app_data:
+                    opts.append(app_data["LaunchOptions"])
+                else:
+                    opts.append("")
+            
+            if len(set(opts)) == 1:
+                launch_options_by_app[appid] = opts[0]
+            else:
+                launch_options_by_app[appid] = opts[0] if opts else ""
+
+        os.system("clear")
+        print("=" * 85)
+        print(f"\033[1;96m{'STEAM-OPTIMIZE INTERACTIVE CONFIGURATOR':^85}\033[0m")
+        print("=" * 85)
+        print(f"{'#':<4} | {'Game Name':<42} | {'AppID':<10} | {'Launch Options / Status'}")
+        print("-" * 85)
+
+        for idx, (appid, name) in enumerate(games_list, 1):
+            current_options = launch_options_by_app.get(appid, "")
+            if current_options == target_option:
+                status = f"\033[92m[Optimized (steam-optimize)]\033[0m"
+            elif current_options:
+                status = f"\033[93m[Other: {current_options}]\033[0m"
+            else:
+                status = f"\033[90m[Not optimized]\033[0m"
+
+            print(f"{idx:<4} | {name[:42]:<42} | {appid:<10} | {status}")
+
+        print("-" * 85)
+        print("\033[1mOptions:\033[0m")
+        print("  \033[96m[t]\033[0m     Toggle optimization for a specific game")
+        print("  \033[96m[e]\033[0m     Enable optimization for ALL games")
+        print("  \033[96m[d]\033[0m     Disable/Remove optimization for ALL games")
+        print("  \033[96m[s]\033[0m     Save changes and exit")
+        print("  \033[96m[c]\033[0m     Cancel and exit without saving")
+        print("=" * 85)
+
+        if dirty:
+            print("\033[93m⚠️  You have unsaved changes. Press 's' to save them.\033[0m")
+
+        choice = input("\nChoose an option or enter a game number: ").strip().lower()
+
+        if choice == "s":
+            if dirty:
+                print("\nSaving configurations...")
+                for path, config in vdf_configs.items():
+                    try:
+                        with open(path, "w") as f:
+                            vdf_module.dump(config, f, pretty=True)
+                        print(f"\033[92m✓ Saved: {path}\033[0m")
+                    except Exception as e:
+                        print(f"\033[91m❌ Error saving {path}: {e}\033[0m", file=sys.stderr)
+                print("\n\033[92m✓ Installation complete! You can now restart Steam.\033[0m")
+            else:
+                print("\nNo changes to save.")
+            break
+
+        elif choice == "c":
+            print("\nChanges cancelled.")
+            break
+
+        elif choice == "e":
+            for appid, _ in games_list:
+                for path, config in vdf_configs.items():
+                    get_app_entry(config, appid)["LaunchOptions"] = target_option
+            dirty = True
+            print("\nEnabled for all games.")
+            time.sleep(1)
+
+        elif choice == "d":
+            for appid, _ in games_list:
+                for path, config in vdf_configs.items():
+                    entry = get_app_entry_safe(config, appid)
+                    if entry and entry.get("LaunchOptions") == target_option:
+                        entry.pop("LaunchOptions", None)
+            dirty = True
+            print("\nDisabled for all games.")
+            time.sleep(1)
+
+        elif choice == "t" or choice.isdigit():
+            if choice == "t":
+                choice_idx = input("\nEnter game number to toggle: ").strip()
+            else:
+                choice_idx = choice
+
+            if choice_idx.isdigit():
+                idx = int(choice_idx)
+                if 1 <= idx <= len(games_list):
+                    appid, name = games_list[idx - 1]
+                    current_opts = launch_options_by_app.get(appid, "")
+
+                    for path, config in vdf_configs.items():
+                        if current_opts == target_option:
+                            entry = get_app_entry_safe(config, appid)
+                            if entry:
+                                entry.pop("LaunchOptions", None)
+                        else:
+                            get_app_entry(config, appid)["LaunchOptions"] = target_option
+
+                    dirty = True
+                    action = "Disabled" if current_opts == target_option else "Enabled"
+                    print(f"\n{action} for {name}.")
+                    time.sleep(1)
+                else:
+                    print("\nInvalid game index.")
+                    time.sleep(1)
+            else:
+                print("\nInvalid game index.")
+                time.sleep(1)
+        else:
+            print("\nInvalid option. Please try again.")
+            time.sleep(1)
+
+# --- Usage & Main ---
+
+def usage():
+    script_name = os.path.basename(sys.argv[0])
+    help_text = f"""Usage: {script_name} [OPTIONS] -- <game command>
+
+A Steam launch wrapper that sets up GPU-specific environment variables,
+applies per-game Proton overrides, and runs the game inside Gamescope.
+
+Options:
+  -m, --monitor <selector>  Choose the target monitor for Gamescope resolution.
+                            Selectors:
+                              workspace:<N>   Monitor hosting workspace N (default: workspace:1)
+                              focused         Currently focused monitor
+                              <name>          Monitor name, e.g. DP-1, HDMI-A-1
+  -i, --install             Run the interactive installer to list and configure
+                            steam-optimize for your games.
+  -h, --help                Show this help message and exit
+
+Examples:
+  # Default: use the monitor that has workspace 1
+  {script_name} -- %command%
+
+  # Use the currently focused monitor
+  {script_name} --monitor focused -- %command%
+
+  # Use workspace 2's monitor
+  {script_name} --monitor workspace:2 -- %command%
+
+  # Use a specific output by name
+  {script_name} --monitor DP-1 -- %command%
+
+Steam launch option (add before %command%):
+  {script_name} -- %command%
+
+Logs:
+  journalctl -t steam-optimize -f"""
+    print(help_text)
+
+def parse_args():
+    argv = sys.argv[1:]
+    monitor_selector = "workspace:1"
+    install_mode = False
+    game_cmd = []
+    
+    idx = 0
+    while idx < len(argv):
+        arg = argv[idx]
+        if arg in ("-h", "--help"):
+            usage()
+            sys.exit(0)
+        elif arg in ("-i", "--install"):
+            install_mode = True
+            idx += 1
+        elif arg in ("-m", "--monitor"):
+            if idx + 1 >= len(argv):
+                print("Error: --monitor requires an argument", file=sys.stderr)
+                usage()
+                sys.exit(1)
+            monitor_selector = argv[idx + 1]
+            idx += 2
+        elif arg == "--":
+            game_cmd = argv[idx + 1:]
+            break
+        elif arg.startswith("-"):
+            print(f"Error: unknown option '{arg}'", file=sys.stderr)
+            usage()
+            sys.exit(1)
+        else:
+            game_cmd = argv[idx:]
+            break
+            
+    return install_mode, monitor_selector, game_cmd
+
+def main():
+    install_mode, monitor_selector, game_cmd = parse_args()
+    
+    script_abs_path = os.path.abspath(sys.argv[0])
+    
+    if install_mode:
+        run_installer(script_abs_path)
+        sys.exit(0)
+        
+    if not game_cmd:
+        print("Error: no game command specified", file=sys.stderr)
+        usage()
+        sys.exit(1)
+
+    gamescope_supports_output = setup_global_env()
+    setup_hyprland_env()
+    
+    steam_app_id = os.environ.get("SteamAppId", "")
+    game_name, cmd = apply_game_overrides(steam_app_id, game_cmd)
+    
+    if cmd and cmd[0] != "gamescope":
+        gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
+        cmd = ["gamescope"] + gs_args + ["--"] + cmd
+        log_info(f"Applying Gamescope wrapper for {game_name}")
+        
+    log_info_silent(f"Launching: game-performance {' '.join(cmd)}")
+    hyprland_start()
+    
+    start_time = int(time.time())
+    try:
+        subprocess.run(["game-performance"] + cmd)
+    finally:
+        hyprland_end()
+        
+    elapsed = int(time.time()) - start_time
+    hours, remainder = divmod(elapsed, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    
+    log_info(f"{game_name} — session ended, play time: {duration}")
+
+if __name__ == "__main__":
+    main()
