@@ -522,6 +522,24 @@ uwsm app -- kitty
   systemctl --user add-wants graphical-session.target <service>
   ```
 
+## Real-time Audio & Latency (Gaming/Work/VoIP)
+
+To allow PipeWire and WirePlumber to run with real-time scheduling (preventing audio stuttering, clicks, and dropouts under heavy CPU load, such as in games or during compilation on a work machine):
+
+1. Install the `realtime-privileges` package, which configures the necessary PAM limits and creates the `realtime` group:
+
+```bash
+sudo pacman -S realtime-privileges
+```
+
+2. Add your user to the `realtime` group:
+
+```bash
+sudo usermod -aG realtime MyUser
+```
+
+*Note: You must log out and log back in (or reboot) for the group membership to take effect. If you don't do this, PipeWire logs will show `mod.rt: could not set nice-level to -11: Permission denied`.*
+
 ## Modern Security Practices
 
 Modern Arch Linux installations using tools like `archinstall` typically include additional security measures:

@@ -57,6 +57,7 @@ pipewire
 pipewire-audio
 pipewire-pulse
 powertop
+realtime-privileges
 reflector
 rkhunter
 seahorse
