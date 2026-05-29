@@ -2,13 +2,14 @@
 Description=Start AWWW for Hyprland
 PartOf=graphical-session.target
 After=graphical-session.target
-Requisite=graphical-session.target
+
 
 [Service]
 Environment=RUST_BACKTRACE=1
 ExecCondition=/bin/sh -c '[ -n "$WAYLAND_DISPLAY" ]'
+ExecStartPre=/bin/sh -c 'rm -f "$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY}-awww-daemon.sock"'
 ExecStartPre=/bin/sh -c 'for i in $(seq 1 50); do [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ] && exit 0; sleep 0.1; done; exit 1'
-ExecStart=/usr/bin/awww-daemon -f xrgb
+ExecStart=/usr/bin/awww-daemon --no-cache
 Restart=on-failure
 RestartSec=5
 

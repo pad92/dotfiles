@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Add dynamic Wayland socket initialization check (`ExecStartPre`) to `awww.service` Systemd user unit to prevent startup SIGABRT race conditions ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
+- Add dynamic Wayland socket initialization check (`ExecStartPre`), `--no-cache` flag, and remove strict `Requisite=graphical-session.target` in `awww.service` Systemd user unit to prevent startup SIGABRT race conditions, BrokenPipe panics, and dependency failures ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
 - Add native Wayland flags support for Antigravity IDE and link to unified Electron configuration ([c69fc15](https://gitlab.com/pad92/dotfiles/-/commit/c69fc15))
 - Add a modern, state-of-the-art, fully modular Neovim (`nvim`) configuration in Lua, supporting `lazy.nvim`, native LSP configurations for Neovim 0.11/0.12+, Telescope, Treesitter, Lualine, and Gitsigns.
 - Modularize Neovim setup into distinct, logically isolated components in `lua/config/` and `lua/plugins/`.

@@ -3,9 +3,10 @@ Description=Timer to change wallpapers every 15 minutes
 PartOf=graphical-session.target
 
 [Timer]
+OnActiveSec=1s
 OnCalendar=*:0/15
 Persistent=true
 Unit=awww_random.service
 
 [Install]
-WantedBy=timers.target
+WantedBy=graphical-session.target

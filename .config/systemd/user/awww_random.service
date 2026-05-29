@@ -4,7 +4,7 @@ PartOf=graphical-session.target
 After=awww.service
 
 [Service]
+ExecCondition=/bin/sh -c '[ -n "$WAYLAND_DISPLAY" ]'
 ExecStart=/bin/bash %h/.dotfiles/bin/awww.sh
 
-[Install]
-WantedBy=graphical-session.target
+# This service is triggered by awww_random.timer

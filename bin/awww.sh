@@ -24,7 +24,7 @@ if ! awww query >/dev/null 2>&1; then
     if systemctl --user list-unit-files awww.service >/dev/null 2>&1; then
         systemctl --user start awww.service >/dev/null 2>&1
     else
-        awww-daemon -f xrgb >/dev/null 2>&1 &
+        awww-daemon --no-cache >/dev/null 2>&1 &
     fi
 fi
 
