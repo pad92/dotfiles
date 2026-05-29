@@ -61,6 +61,7 @@ realtime-privileges
 reflector
 rkhunter
 seahorse
+swh-plugins
 thefuck
 tlp
 traceroute
