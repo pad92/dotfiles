@@ -5,247 +5,149 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Add dynamic Wayland socket initialization check (`ExecStartPre`), `--no-cache` flag, and remove strict `Requisite=graphical-session.target` in `awww.service` Systemd user unit to prevent startup SIGABRT race conditions, BrokenPipe panics, and dependency failures ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
-- Add native Wayland flags support for Antigravity IDE and link to unified Electron configuration ([c69fc15](https://gitlab.com/pad92/dotfiles/-/commit/c69fc15))
-- Add a modern, state-of-the-art, fully modular Neovim (`nvim`) configuration in Lua, supporting `lazy.nvim`, native LSP configurations for Neovim 0.11/0.12+, Telescope, Treesitter, Lualine, and Gitsigns.
-- Modularize Neovim setup into distinct, logically isolated components in `lua/config/` and `lua/plugins/`.
-- Add specific overrides for Forza Horizon 6 in `steam-optimize` ([12ad469](https://gitlab.com/pad92/dotfiles/-/commit/12ad469))
-- Integrate UWSM for session start and environment variables ([8819620](https://gitlab.com/pad92/dotfiles/-/commit/8819620), [fe97725](https://gitlab.com/pad92/dotfiles/-/commit/fe97725))
-- Update Hyprland keybindings and configuration references ([3c9561f](https://gitlab.com/pad92/dotfiles/-/commit/3c9561f), [b276f51](https://gitlab.com/pad92/dotfiles/-/commit/b276f51))
-- Implement automated release workflows and GitLab/GitHub Pages integration ([8a781e2](https://gitlab.com/pad92/dotfiles/-/commit/8a781e2), [ee26a9f](https://gitlab.com/pad92/dotfiles/-/commit/ee26a9f))
-- Add GitHub Actions workflow for CI pipeline ([1271fb2](https://gitlab.com/pad92/dotfiles/-/commit/1271fb2))
-- Add UWSM Systemd startup and GNOME Keyring PAM setup documentation to Arch Linux installation guide
-- Implement a new `shelly-notifications` Systemd user service to receive dynamic system notifications ([8268536](https://gitlab.com/pad92/dotfiles/-/commit/8268536))
-- Enable tearing support in Hyprland configuration for low-latency gaming ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
-- Implement environment-based configuration loading for Hyprland and update documentation for system personalization ([466809c](https://gitlab.com/pad92/dotfiles/-/commit/466809c))
-- Decouple hardware-specific monitor layouts and static workspace mappings out of global `conf/monitors.lua` and `conf/workspaces.lua` configurations, moving them to modular hosts configurations (`hosts/PadsTower.lua` and `hosts/PadsP5560.lua`).
+- **Neovim & Editors**: Implement a fully modular Lua-based Neovim configuration (`lazy.nvim`, Telescope, Treesitter, Lualine) and add native Wayland support configurations for Antigravity IDE.
+- **Hyprland & Display**: Refactor monitor/workspace setups to host-specific modular configurations (`hosts/PadsTower.lua`, `hosts/PadsP5560.lua`), update keybindings, and enable tearing support for low-latency gaming.
+- **UWSM & Session Startup**: Integrate UWSM for session management, centralize environment variables, and document systemd startup/GNOME Keyring PAM setup in the Arch Linux install guide.
+- **Audio & Services**: Implement a `shelly-notifications` user service, migrate Bluetooth configuration to Wireplumber (`50-bluez-config.conf`), and improve `awww` service reliability with dynamic Wayland socket checks.
+- **CI/CD & Docs**: Implement GitHub Actions pipelines for pages deployment/Vim packaging, and add an automated page generator (`gen_pages.py`) with table of contents support.
 
 ### Changed
-- Clean up deprecated, performance-degraded and warning-inducing CLI flags from `electron-flags.conf` to enable full GPU hardware acceleration on Radeon/modern GPUs ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
-- Refactor `awww` wallpaper systemd services to leverage unified `graphical-session.target` and improve reliability ([93b6dac](https://gitlab.com/pad92/dotfiles/-/commit/93b6dac))
-- Clean up Git configuration (`.gitconfig`) by pruning stale aliases, updating push defaults, and standardizing overall structure ([c79080c](https://gitlab.com/pad92/dotfiles/-/commit/c79080c))
-- Migrate global VS Code Lua language server configuration to project-specific `.luarc.json` configuration file ([0179db0](https://gitlab.com/pad92/dotfiles/-/commit/0179db0))
-- Optimize Lua language server settings, correct Hyprland workspace rules syntax, and enhance hardware/host detection routines ([6295db2](https://gitlab.com/pad92/dotfiles/-/commit/6295db2))
-- Rewrite `steam-optimize` wrapper from Bash to Python 3, refactoring monitor and game-specific override logic to use native JSON parsing and direct command execution ([b505840](https://gitlab.com/pad92/dotfiles/-/commit/b505840))
-- Improve `awww.sh` reliability by adding error checking, safety flags (`set -uo pipefail`), daemon connectivity polling, and safe array processing with `mapfile` and null-terminated strings for wallpaper randomization ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
-- Optimize Steam client window behavior and clean up duplicate startup autostart entries ([44f5c3c](https://gitlab.com/pad92/dotfiles/-/commit/44f5c3c))
-- Add bootstrap-toc support to pages generator and update styling for build outputs ([8268536](https://gitlab.com/pad92/dotfiles/-/commit/8268536))
-- Streamline `uwsm/env` environment configurations by removing redundant GNOME Keyring and SSH socket variable exports ([c3a2195](https://gitlab.com/pad92/dotfiles/-/commit/c3a2195))
-- Update theme, colors, and typography to official Catppuccin Mocha palette and refine overall aesthetics ([3579885](https://gitlab.com/pad92/dotfiles/-/commit/3579885), [a07eb9b](https://gitlab.com/pad92/dotfiles/-/commit/a07eb9b), [4fc7843](https://gitlab.com/pad92/dotfiles/-/commit/4fc7843), [0a92290](https://gitlab.com/pad92/dotfiles/-/commit/0a92290), [ecac0b9](https://gitlab.com/pad92/dotfiles/-/commit/ecac0b9), [7798b53](https://gitlab.com/pad92/dotfiles/-/commit/7798b53))
-- Modernize Hyprland autostart using UWSM ([333c239](https://gitlab.com/pad92/dotfiles/-/commit/333c239), [20a9a24](https://gitlab.com/pad92/dotfiles/-/commit/20a9a24))
-- Optimize CI/CD pipelines, documentation build process and Pages deployment ([4a27841](https://gitlab.com/pad92/dotfiles/-/commit/4a27841), [7dd08e3](https://gitlab.com/pad92/dotfiles/-/commit/7dd08e3), [b307628](https://gitlab.com/pad92/dotfiles/-/commit/b307628), [931deb5](https://gitlab.com/pad92/dotfiles/-/commit/931deb5), [8cca767](https://gitlab.com/pad92/dotfiles/-/commit/8cca767), [15f832c](https://gitlab.com/pad92/dotfiles/-/commit/15f832c), [fe30ba8](https://gitlab.com/pad92/dotfiles/-/commit/fe30ba8), [f41022b](https://gitlab.com/pad92/dotfiles/-/commit/f41022b), [3a9915a](https://gitlab.com/pad92/dotfiles/-/commit/3a9915a), [2727ee2](https://gitlab.com/pad92/dotfiles/-/commit/2727ee2), [dd1ac7b](https://gitlab.com/pad92/dotfiles/-/commit/dd1ac7b), [9d2eba6](https://gitlab.com/pad92/dotfiles/-/commit/9d2eba6), [0152e05](https://gitlab.com/pad92/dotfiles/-/commit/0152e05))
-- Enhance monitor selection and command handling in steam-optimize ([507e071](https://gitlab.com/pad92/dotfiles/-/commit/507e071))
-- Update README with editor installation details and Vim config quick links ([8736a1a](https://gitlab.com/pad92/dotfiles/-/commit/8736a1a), [330e5fd](https://gitlab.com/pad92/dotfiles/-/commit/330e5fd))
-- Update http_crawler to remove xml2 dependency ([6bbf271](https://gitlab.com/pad92/dotfiles/-/commit/6bbf2711eaf107bb9d0c6e8d613fcec84274f47b))
+- **Gaming & Scripting**: Rewrite `steam-optimize` from Bash to Python 3 (adding JSON parsing, monitor detection, and Forza Horizon 6 overrides), and refactor `awww.sh` wallpaper script with robust error handling and array safety.
+- **Modernization & Cleanup**: Clean up `.gitconfig` structure, migrate global VS Code Lua LSP settings to a project-specific `.luarc.json`, and remove `xml2` dependency from `http_crawler.zsh`.
+- **Aesthetics & UI**: Update desktop component styling (Waybar, Wofi, Mako, wlogout) to the official **Catppuccin Mocha** palette.
 
 ### Removed
-- Remove GDM from the system configuration
+- **Legacy Components**: Remove GDM display manager, old `kitty` theme configuration files, legacy helper scripts (`SystemControl.sh`, `power-profiles`, `xrandr.sh`), and the precompiled `greenclip-v4.2` binary.
+- **Redundant Configs**: Streamline environments by removing obsolete GNOME Keyring/SSH socket environment variables.
 
 ### Fixed
-- Update Electron/Chromium flags with optimized GPU flags (`--disable-gpu-rasterization`, `--disable-gpu-compositing`, `--no-sandbox`) ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
-- Improve `steam-optimize` refresh rate detection and RADV stability under AMD graphics drivers ([338c8e7](https://gitlab.com/pad92/dotfiles/-/commit/338c8e7))
-- Fix Gamescope mouse cursor escaping/leaking to secondary displays on multi-monitor setups by setting `no_hardware_cursors = true` in `conf/input.lua` (forcing software rendering to respect compositor pointer confinement).
+- **Compositor & Display**: Resolve Gamescope mouse containment issues on multi-monitor setups using software rendering (`no_hardware_cursors = true`).
+- **Drivers & Stability**: Fix AMD RADV driver stability, refresh rate detection in `steam-optimize`, and correct QT QPA platform separator format compatibility.
+- **Sandbox**: Correct Electron feature flags and sandbox configurations.
 
 ## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
 
 ### Changed
-- Cleaned up `waybar` configuration by removing unused modules ([e396f61](https://gitlab.com/pad92/dotfiles/-/commit/e396f61))
-- Merged and preserved essential packages (like `alacritty` and GNOME utilities) into `11_hyprland.txt` and `20_apps.txt` ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
-- Updated `install.md` to fix the package installation path ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
-- Updated `README.md` to reflect the archiving of legacy environments ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
+- **Status Bar & Packages**: Clean up Waybar configuration by removing unused modules, and consolidate essential package lists (Alacritty, GNOME utilities) into `11_hyprland.txt` and `20_apps.txt`.
+- **Documentation**: Update installation guide package paths and README.md to reflect archiving of legacy setups.
 
 ### Removed
-- Archived legacy X11, Sway, and Dunst configurations to `.config-archive/` ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
-- Cleaned up `dist/arch` by removing old package diffs and legacy screenshots ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
-- Removed obsolete package lists (`10_i3.txt`, `11_sway.txt`, `11_gnome.txt`) ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
-- Removed legacy Nitrogen configuration from `install.md` ([c965323](https://gitlab.com/pad92/dotfiles/-/commit/c965323))
+- **Legacy Configs**: Archive legacy X11, Sway, and Dunst configurations to `.config-archive/`, and prune obsolete package lists, old package diffs, screenshots, and Nitrogen setup instructions.
 
 ### Fixed
-- Fixed Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line ([6a2de32](https://gitlab.com/pad92/dotfiles/-/commit/6a2de32))
+- **Electron**: Fix Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line.
 
 ## [v5.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.0)
 
 ### Added
-- Update monitor module and consolidate startup notifications ([ef8b516](https://gitlab.com/pad92/dotfiles/-/commit/ef8b516))
-- Upgrade Hyprland configuration to 0.55 ([b62490a](https://gitlab.com/pad92/dotfiles/-/commit/b62490a))
-- Implement central configuration module for Hyprland ([a6dba06](https://gitlab.com/pad92/dotfiles/-/commit/a6dba06))
-- Add standard coding rules and guidelines ([f198f5a](https://gitlab.com/pad92/dotfiles/-/commit/f198f5a))
-- Enhance Hyprland keybindings for screenshots, session menu, and lock commands ([c059ed2](https://gitlab.com/pad92/dotfiles/-/commit/c059ed2), [0530cb2](https://gitlab.com/pad92/dotfiles/-/commit/0530cb2), [566d28c](https://gitlab.com/pad92/dotfiles/-/commit/566d28c))
-- Add DOOM (2016) optimizations and Gamescope fixes to steam-optimize ([280b982](https://gitlab.com/pad92/dotfiles/-/commit/280b982))
-- Set workspace 1 as default monitor ([040cd11](https://gitlab.com/pad92/dotfiles/-/commit/040cd11))
+- **Hyprland Upgrades**: Upgrade Hyprland configuration to 0.55, introduce a centralized configuration module, define standard coding guidelines, and set default workspaces.
+- **Gaming & Keybindings**: Add custom Doom (2016) optimizations and Gamescope fixes in `steam-optimize`, and enhance shortcut bindings for screenshots, lock, and session controls.
 
 ### Changed
-- Update monitor configurations ([a806f18](https://gitlab.com/pad92/dotfiles/-/commit/a806f18))
-- Add indentation rules for lua files in .editorconfig ([00607a5](https://gitlab.com/pad92/dotfiles/-/commit/00607a5))
-- Refactor steam-optimize with helper functions and standard coding rules ([a6142b1](https://gitlab.com/pad92/dotfiles/-/commit/a6142b1), [6ed6765](https://gitlab.com/pad92/dotfiles/-/commit/6ed6765), [78e8421](https://gitlab.com/pad92/dotfiles/-/commit/78e8421), [d29728c](https://gitlab.com/pad92/dotfiles/-/commit/d29728c))
-- Optimize backup script by porting to POSIX sh and improving rsync ([4024cfe](https://gitlab.com/pad92/dotfiles/-/commit/4024cfe))
-- Switch notification system from dunst to mako ([54a1a7a](https://gitlab.com/pad92/dotfiles/-/commit/54a1a7a))
-- Migrate wallpaper daemon from swww to awww ([c1570cc](https://gitlab.com/pad92/dotfiles/-/commit/c1570cc))
-- Refine Hyprland animations and autostart configurations ([630eff0](https://gitlab.com/pad92/dotfiles/-/commit/630eff0), [9b995ee](https://gitlab.com/pad92/dotfiles/-/commit/9b995ee), [ce361ea](https://gitlab.com/pad92/dotfiles/-/commit/ce361ea))
-- Update README maintenance and maintainer information ([f8f49aa](https://gitlab.com/pad92/dotfiles/-/commit/f8f49aa), [12c5527](https://gitlab.com/pad92/dotfiles/-/commit/12c5527), [9f19255](https://gitlab.com/pad92/dotfiles/-/commit/9f19255))
+- **Desktop Daemons**: Migrate wallpaper daemon from swww to awww, switch notification system from Dunst to Mako, and refine Hyprland animations/autostart.
+- **Refactoring**: Rewrite system backup utility to POSIX shell with improved rsync arguments, and optimize `steam-optimize` with helper functions.
 
 ### Fixed
-- Resolve blackscreen issue on fullscreen mode ([ee2bca1](https://gitlab.com/pad92/dotfiles/-/commit/ee2bca1))
-- Fix Steam overlay functionality ([54e3093](https://gitlab.com/pad92/dotfiles/-/commit/54e3093))
+- **Stability**: Resolve fullscreen blackscreen issues and restore Steam overlay functionality.
 
 ## [v5.1.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.1)
 
 ### Added
-- Gamemode support ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Firmware update capabilities to arch_update function ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Vimdiff guidance for .pacnew files in clean_arch function ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Hyprland host specific configuration ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
+- **Arch & System**: Add native Gamemode support, integrate firmware updates into the arch upgrade function, and add vimdiff instructions for `.pacnew` files.
+- **Hyprland**: Add initial host-specific configuration override support.
 
 ### Changed
-- Optimized pre-commit hooks to better respect .editorconfig settings ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Enhanced security leak detection in pre-commit configuration ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Improved error handling and validation in shell aliases ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Updated arch_update function to include firmware updates ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Updated applications packages list ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Updated Arch Linux installation guide with modern practices and archinstall recommendations ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Enhanced pre-commit configuration with improved leak detection and editorconfig integration ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
-- Expanded .gitignore patterns for comprehensive file exclusion ([14104d55](https://gitlab.com/pad92/dotfiles/-/commit/14104d55))
+- **CI & Aliases**: Optimize pre-commit hooks to respect `.editorconfig` settings, enhance pre-commit leak detection, and refine shell alias error checking/validation.
+- **Docs & Packages**: Update Arch installation guide with modern practices (archinstall) and refresh the applications package list.
 
 ## [v5.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.0)
 
 ### Added
-- Changelog generation functionality ([f78b794](https://gitlab.com/pad92/dotfiles/-/commit/f78b794))
-- Wlogout configuration ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
-- New package management features ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
-- Support for newer Hyprland features ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
+- **Features**: Implement automated changelog generation, add wlogout configuration, expand package manager utilities, and support newer Hyprland features.
 
 ### Changed
-- Update submodule, add missing fonts ([3934888](https://gitlab.com/pad92/dotfiles/-/commit/3934888))
-- Update extension list ([406d7b9](https://gitlab.com/pad92/dotfiles/-/commit/406d7b9))
-- Backup symlink and ignore WebStorage directory ([e07edff](https://gitlab.com/pad92/dotfiles/-/commit/e07edff))
-- Updated to latest configuration ([f78b794](https://gitlab.com/pad92/dotfiles/-/commit/f78b794))
-- Enhanced Waybar and status bar configurations ([0a39607](https://gitlab.com/pad92/dotfiles/-/commit/0a39607))
-- Improved package installation scripts ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
-- Updated keybinding configurations ([d5fcda1](https://gitlab.com/pad92/dotfiles/-/commit/d5fcda1))
-- Updated font settings ([038cb43](https://gitlab.com/pad92/dotfiles/-/commit/038cb43))
-- Improved themes and color schemes ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
+- **Aesthetics & UI**: Refine Waybar status layouts, keybindings, fonts, system themes, and add missing system fonts.
+- **Backup & Editor**: Update VS Code extension lists and configure backup scripts to ignore WebStorage directories.
 
 ### Fixed
-- Fix flags ([a399fa3](https://gitlab.com/pad92/dotfiles/-/commit/a399fa3))
-- Waybar temperature display ([11e7a22](https://gitlab.com/pad92/dotfiles/-/commit/11e7a22))
-- Resolved network status formatting issues ([6a094de](https://gitlab.com/pad92/dotfiles/-/commit/6a094de))
-- Various stability issues ([25f0cad](https://gitlab.com/pad92/dotfiles/-/commit/25f0cad))
-- Configuration bugs in status bars ([06a3557](https://gitlab.com/pad92/dotfiles/-/commit/06a3557))
-- Package installation inconsistencies ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- DST-related issues ([4de5dcd](https://gitlab.com/pad92/dotfiles/-/commit/4de5dcd))
-- Wallpaper rotation and display issues ([608fd5e](https://gitlab.com/pad92/dotfiles/-/commit/608fd5e))
+- **Status & Wallpaper**: Fix temperature display, network formatting, wallpaper rotation rules, and DST-related bugs in status bars.
+- **System**: Fix Electron flags and resolve package installation inconsistencies.
 
 ## [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0)
 
 ### Changed
-- Updated to latest configuration ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
-- Major updates to Hyprland and Sway configurations ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
-- Enhanced Waybar and status bar configurations ([8422c78](https://gitlab.com/pad92/dotfiles/-/commit/8422c78))
+- **Compositor Sync**: Major overhaul and synchronization of Hyprland, Sway, and Waybar configurations.
 
 ## [v4.4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.1)
 
-### Fixed
-- Minor issues with configurations ([d5fcda1](https://gitlab.com/pad92/dotfiles/-/commit/d5fcda1))
-- Waybar temperature display ([11e7a22](https://gitlab.com/pad92/dotfiles/-/commit/11e7a22))
-- Resolved network status formatting issues ([6a094de](https://gitlab.com/pad92/dotfiles/-/commit/6a094de))
-
 ### Changed
-- Updated themes and color schemes ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
-- Improved package management configurations ([0e73433](https://gitlab.com/pad92/dotfiles/-/commit/0e73433))
+- **Themes & Packages**: Update visual themes, system color schemes, and package management helpers.
+
+### Fixed
+- **Status Bar**: Correct Waybar temperature readings and network status formatting bugs.
 
 ## [v4.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.0)
 
 ### Added
-- New configuration options for Hyprland ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
-- Enhanced package installation scripts ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
-- Additional status bar modules ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
+- **Compositor & UI**: Introduce new Hyprland configuration options, add new status bar modules, and enhance package installation scripts.
 
 ### Changed
-- Updated to newer versions of configuration files ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
-- Improved keybinding configurations ([4bb4afa](https://gitlab.com/pad92/dotfiles/-/commit/4bb4afa))
-- Updated font settings ([038cb43](https://gitlab.com/pad92/dotfiles/-/commit/038cb43))
+- **Keybinds & Fonts**: Update config files, modernize keyboard shortcuts, and refine typography.
 
 ## [v4.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.3.0)
 
 ### Added
-- Support for new Hyprland features ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
-- Enhanced i3 and Sway configurations ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
-- Better package management support ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
+- **Desktop Environments**: Support new Hyprland features, enhance dual i3/Sway configurations, and improve package management wrappers.
 
 ### Changed
-- Refactored configuration structures ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
-- Updated module configurations ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
-- Improved installation process ([b540b0f](https://gitlab.com/pad92/dotfiles/-/commit/b540b0f))
+- **Structure**: Refactor layout organization, update module setups, and simplify the installation flow.
 
 ## [v4.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.2.1)
 
 ### Fixed
-- Various stability issues ([25f0cad](https://gitlab.com/pad92/dotfiles/-/commit/25f0cad))
-- Configuration bugs in status bars ([06a3557](https://gitlab.com/pad92/dotfiles/-/commit/06a3557))
-- Package installation inconsistencies ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
+- **Stability**: Resolve core stability issues, fix status bar layout bugs, and correct package installation mismatches.
 
 ## [v4.2](https://gitlab.com/pad92/dotfiles/-/releases/v4.2)
 
 ### Added
-- New configuration templates ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
-- Enhanced package management capabilities ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
-- Improved documentation ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
+- **Structure**: Add new configuration templates, optimize package management systems, and expand documentation.
 
 ### Changed
-- Major restructuring of configuration files ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
-- Updated dependency management ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
-- Improved installation scripts ([2308e30](https://gitlab.com/pad92/dotfiles/-/commit/2308e30))
+- **Architectural Overhaul**: Restructure file layouts, update system dependencies, and rewrite installer scripts.
 
 ## [v4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.1)
 
 ### Added
-- New themes and visual enhancements ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Additional configuration options ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Improved package installation support ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
+- **Visuals**: Add new themes, layout configurations, and improve package installation helpers.
 
 ### Changed
-- Refined keybinding configurations ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Updated status bar modules ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Improved overall stability ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
+- **Polish**: Refine keybindings, status bar modules, and enhance overall stability.
 
 ## [v4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.0)
 
 ### Added
-- Complete overhaul of configuration system ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- New Hyprland support ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- Enhanced Sway configurations ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- Modernized i3 configurations ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
+- **Multi-Compositor**: Complete overhaul of the configuration system, adding initial Hyprland support alongside modernized Sway and i3 setups.
 
 ### Changed
-- Major architectural changes ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- Updated to latest software versions ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
-- Restructured file organization ([f8199c6](https://gitlab.com/pad92/dotfiles/-/commit/f8199c6))
+- **Architecture**: Redesign file structures and update configurations to support latest upstream software versions.
 
 ## [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1)
 
 ### Added
-- Additional configuration files ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Enhanced package management ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- New visual themes ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
+- **Templates**: Add additional package configs, visual themes, and package management helpers.
 
 ### Changed
-- Improved configuration consistency ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Updated installation scripts ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
-- Refined status bar layouts ([a62c196](https://gitlab.com/pad92/dotfiles/-/commit/a62c196))
+- **Consistency**: Refine status bar layouts, improve installer script reliability, and standardize settings.
 
 ## [v2.0](https://gitlab.com/pad92/dotfiles/-/releases/v2.0)
 
 ### Added
-- Transparency support ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
-- Cleaned up configurations ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
-- Initial commit improvements ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
+- **Visuals**: Add window transparency support and initial setup templates.
 
 ### Changed
-- Major cleanup and reorganization ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
-- Updated keybindings ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
-- Improved module configurations ([75a8716](https://gitlab.com/pad92/dotfiles/-/commit/75a8716))
+- **Cleanup**: Reorganize system modules, update core keybinds, and clean up initial files.
 
 ## [v1.0](https://gitlab.com/pad92/dotfiles/-/releases/v1.0)
 
 ### Added
-- Initial release with Zsh configuration, themes, and utility functions ([8009759](https://gitlab.com/pad92/dotfiles/-/commit/8009759))
+- **Initial Release**: Core Zsh configurations, visual themes, and baseline system utilities.

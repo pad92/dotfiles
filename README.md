@@ -173,6 +173,11 @@ My current primary Window Manager configuration.
     ```sh
     exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
     ```
+*   **Wallpaper Daemon (`awww`)**: Wallpaper loading and randomization are fully managed via standard Systemd user services under `graphical-session.target`:
+    *   **`awww.service`**: Systemd user service wrapper for the `awww-daemon`. It is robustly configured to prevent startup race conditions in Wayland by waiting for the `$WAYLAND_DISPLAY` socket (`ExecStartPre`) and clearing stale sockets, running with `--no-cache` to prevent BrokenPipe and SIGABRT crashes.
+    *   **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 15 minutes to automatically rotate the wallpapers across all connected monitors.
+    *   **Manual Trigger**: Force wallpaper randomization at any time with `systemctl --user start awww_random.service`, or use the `SUPER + ALT + Right` keyboard shortcut.
+
 
 ### 🔑 TTY Launch & Session Integration
 
