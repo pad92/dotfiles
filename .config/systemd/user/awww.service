@@ -1,12 +1,15 @@
 [Unit]
 Description=Start AWWW for Hyprland
-After=hyprland.service
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
 
 [Service]
 Environment=RUST_BACKTRACE=1
+ExecCondition=/bin/sh -c '[ -n "$WAYLAND_DISPLAY" ]'
 ExecStart=/usr/bin/awww-daemon -f xrgb
 Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

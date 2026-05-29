@@ -1,5 +1,6 @@
 [Unit]
 Description=Timer to change wallpapers every 15 minutes
+PartOf=graphical-session.target
 
 [Timer]
 OnCalendar=*:0/15

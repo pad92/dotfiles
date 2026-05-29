@@ -19,7 +19,16 @@ if ! command -v awww >/dev/null 2>&1; then
     exit 1
 fi
 
-# 3. Wait for daemon to respond (Actual 10-second timeout)
+# 3. Ensure daemon is running, start it if not responding
+if ! awww query >/dev/null 2>&1; then
+    if systemctl --user list-unit-files awww.service >/dev/null 2>&1; then
+        systemctl --user start awww.service >/dev/null 2>&1
+    else
+        awww-daemon -f xrgb >/dev/null 2>&1 &
+    fi
+fi
+
+# Wait for daemon to respond (Actual 10-second timeout)
 TIMEOUT_ATTEMPTS=50  # 50 * 0.2s = 10s
 while ! awww query >/dev/null 2>&1; do
     sleep 0.2
