@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Add dynamic Wayland socket initialization check (`ExecStartPre`) to `awww.service` Systemd user unit to prevent startup SIGABRT race conditions ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
+- Add native Wayland flags support for Antigravity IDE and link to unified Electron configuration ([c69fc15](https://gitlab.com/pad92/dotfiles/-/commit/c69fc15))
 - Add a modern, state-of-the-art, fully modular Neovim (`nvim`) configuration in Lua, supporting `lazy.nvim`, native LSP configurations for Neovim 0.11/0.12+, Telescope, Treesitter, Lualine, and Gitsigns.
 - Modularize Neovim setup into distinct, logically isolated components in `lua/config/` and `lua/plugins/`.
 - Add specific overrides for Forza Horizon 6 in `steam-optimize` ([12ad469](https://gitlab.com/pad92/dotfiles/-/commit/12ad469))
@@ -19,6 +21,11 @@ All notable changes to this project will be documented in this file.
 - Decouple hardware-specific monitor layouts and static workspace mappings out of global `conf/monitors.lua` and `conf/workspaces.lua` configurations, moving them to modular hosts configurations (`hosts/PadsTower.lua` and `hosts/PadsP5560.lua`).
 
 ### Changed
+- Clean up deprecated, performance-degraded and warning-inducing CLI flags from `electron-flags.conf` to enable full GPU hardware acceleration on Radeon/modern GPUs ([1d1ee19](https://gitlab.com/pad92/dotfiles/-/commit/1d1ee19))
+- Refactor `awww` wallpaper systemd services to leverage unified `graphical-session.target` and improve reliability ([93b6dac](https://gitlab.com/pad92/dotfiles/-/commit/93b6dac))
+- Clean up Git configuration (`.gitconfig`) by pruning stale aliases, updating push defaults, and standardizing overall structure ([c79080c](https://gitlab.com/pad92/dotfiles/-/commit/c79080c))
+- Migrate global VS Code Lua language server configuration to project-specific `.luarc.json` configuration file ([0179db0](https://gitlab.com/pad92/dotfiles/-/commit/0179db0))
+- Optimize Lua language server settings, correct Hyprland workspace rules syntax, and enhance hardware/host detection routines ([6295db2](https://gitlab.com/pad92/dotfiles/-/commit/6295db2))
 - Rewrite `steam-optimize` wrapper from Bash to Python 3, refactoring monitor and game-specific override logic to use native JSON parsing and direct command execution ([b505840](https://gitlab.com/pad92/dotfiles/-/commit/b505840))
 - Improve `awww.sh` reliability by adding error checking, safety flags (`set -uo pipefail`), daemon connectivity polling, and safe array processing with `mapfile` and null-terminated strings for wallpaper randomization ([88f4853](https://gitlab.com/pad92/dotfiles/-/commit/88f4853))
 - Optimize Steam client window behavior and clean up duplicate startup autostart entries ([44f5c3c](https://gitlab.com/pad92/dotfiles/-/commit/44f5c3c))

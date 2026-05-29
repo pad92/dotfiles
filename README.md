@@ -50,6 +50,9 @@ To customize and adapt this dotfiles collection to your own system and identity,
 *   **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
 *   **[`.config/nvim/`](./.config/nvim/)**: Curated, modern, and modular **Neovim** configuration written from scratch in Lua.
 *   **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core legacy Vim editor.
+*   **`~/.config/electron-flags.conf`**: Consolidated configuration for all Electron-based editors (VS Code, Codium, and Antigravity IDE) to ensure optimal Wayland compatibility and native GPU acceleration across all hosts.
+*   **`~/.dotfiles/.luarc.json`**: Project-specific Lua environment settings optimized for standard workspace validation and seamless autocompletion.
+
 
 ## 🛠️ Core Tooling
 
