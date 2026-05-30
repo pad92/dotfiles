@@ -365,8 +365,6 @@ def hyprland_start():
         log_warn("Failed to apply Hyprland rendering optimizations (hl.config unavailable?)")
         collector.hyprland = "Optimized (DND active, rendering tweaks failed)"
 
-    run_silent(["systemctl", "--user", "stop", "hypridle.service"])
-
 def hyprland_end():
     run_silent(["razer-cli", "-d", "1600"])
     success = True
@@ -377,14 +375,6 @@ def hyprland_end():
             log_msg("ERROR", None, "Failed to reload Hyprland configuration")
             success = False
         run_silent(["makoctl", "mode", "-s", "default"])
-
-    try:
-        res = subprocess.run(["systemctl", "--user", "is-active", "hypridle.service"], capture_output=True, text=True)
-        if "active" not in res.stdout:
-            run_silent(["systemctl", "--user", "reset-failed", "hypridle.service"])
-            run_silent(["systemctl", "--user", "start", "hypridle.service"])
-    except Exception:
-        pass
 
     return success
 
@@ -939,7 +929,7 @@ def main():
     start_time = int(time.time())
     hypr_success = True
     try:
-        subprocess.run(["game-performance"] + cmd)
+        subprocess.run(["systemd-inhibit", "--what=idle", "--who=steam-optimize", "--why=Steam game running", "game-performance"] + cmd)
     finally:
         hypr_success = hyprland_end()
         
