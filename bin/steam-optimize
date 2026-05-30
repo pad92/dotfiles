@@ -49,6 +49,71 @@ NVIDIA_ENV_VARS = {
     "__GL_SYNC_TO_VBLANK": "0",                   # Disables VSync for OpenGL applications.
 }
 
+# --- Game Profiles (Declarative Overrides Registry) ---
+
+GAME_PROFILES = {
+    "1808500": {
+        "name": "Arc Raiders",
+        "wayland": True,
+        "dpi": 800,
+    },
+    "526870": {
+        "name": "Satisfactory",
+        "wayland": True,
+    },
+    "552990": {
+        "name": "World of Warships",
+        "wayland": True,
+        "keep_steaminput": True,
+    },
+    "271590": {
+        "name": "Grand Theft Auto V",
+        "dpi": 800,
+        "battleye": True,
+        "no_steaminput": True,
+    },
+    "3240220": {
+        "name": "Grand Theft Auto V Enhanced",
+        "dpi": 800,
+        "battleye": True,
+        "no_steaminput": True,
+    },
+    "899770": {
+        "name": "Last Epoch",
+        "wayland": True,
+        "env": {"RADV_PERFTEST": "nggc,gpl"},
+    },
+    "412020": {
+        "name": "Metro Exodus",
+        "wayland": True,
+    },
+    "1449560": {
+        "name": "Metro Exodus",
+        "wayland": True,
+    },
+    "379720": {
+        "name": "DOOM",
+        "env": {"mesa_glthread": "true"},
+        "pop_env": ["PROTON_ENABLE_WAYLAND"],
+        "cmd_args": ["+com_skipIntroVideo", "1", "+set", "m_smooth", "0"],
+        "override_label": "GLThread, Skip intro, VSync off"
+    },
+    "13240": {
+        "name": "Unreal Tournament GOTY",
+        "wayland": True,
+    },
+    "2483190": {
+        "name": "Forza Horizon 6",
+        "env": {
+            "VKD3D_CONFIG": "no_upload_hvv,single_queue",
+            "PROTON_SET_GAME_DRIVE": "1",
+            "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
+            "SDL_VIDEODRIVER": "x11"
+        },
+        "override_label": "VKD3D tweaks, Game drive, X11 fallback"
+    }
+}
+
 # --- Helpers ---
 
 def run_silent(cmd):
@@ -58,6 +123,69 @@ def run_silent(cmd):
         return True
     except Exception:
         return False
+
+# --- Notification Collector ---
+
+class NotificationCollector:
+    def __init__(self):
+        self.collecting = False
+        self.gpu = None
+        self.hyprland = None
+        self.overrides = None
+        self.gamescope = None
+        self.mangohud = False
+        self.warnings = []
+        self.errors = []
+        self.game_name = "Game"
+
+    def start(self, game_name="Game"):
+        self.collecting = True
+        self.game_name = game_name
+        self.gpu = None
+        self.hyprland = None
+        self.overrides = None
+        self.gamescope = None
+        self.mangohud = False
+        self.warnings = []
+        self.errors = []
+
+    def add_warning(self, msg):
+        if msg not in self.warnings:
+            self.warnings.append(msg)
+
+    def add_error(self, msg):
+        if msg not in self.errors:
+            self.errors.append(msg)
+
+    def get_startup_message(self):
+        lines = [f"🎮 Steam Optimize: {self.game_name}", ""]
+        
+        bullets = []
+        if self.gpu:
+            bullets.append(f"  • GPU: {self.gpu}")
+        if self.gamescope:
+            bullets.append(f"  • Gamescope: {self.gamescope}")
+        if self.hyprland:
+            bullets.append(f"  • Hyprland: {self.hyprland}")
+        if self.overrides:
+            bullets.append(f"  • Overrides: {self.overrides}")
+        if self.mangohud:
+            bullets.append("  • HUD: MangoHud (horizontal top bar)")
+        
+        lines.extend(bullets)
+            
+        if self.warnings or self.errors:
+            lines.append("")
+            if self.warnings:
+                warn_msg = "; ".join(self.warnings)
+                lines.append(f"  ⚠️ Warning: {warn_msg}")
+            if self.errors:
+                err_msg = "; ".join(self.errors)
+                lines.append(f"  ❌ Error: {err_msg}")
+            
+        return "\n".join(lines)
+
+collector = NotificationCollector()
 
 # --- Logging ---
 
@@ -71,9 +199,12 @@ def log_msg(level, icon, msg):
     if icon is None:
         return
         
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        if run_silent(["hyprctl", "notify", str(icon), "5000", "0", msg]):
-            return
+    if collector.collecting:
+        if level == "WARN":
+            collector.add_warning(msg)
+        elif level == "ERROR":
+            collector.add_error(msg)
+        return
             
     run_silent(["notify-send", msg])
 
@@ -111,14 +242,17 @@ def setup_global_env():
         log_info("AMD GPU detected (amdgpu module loaded) — applying RADV optimizations")
         os.environ.update(AMD_ENV_VARS)
         gpu_detected = True
+        collector.gpu = "AMD (RADV driver)"
 
     if os.path.isdir("/sys/module/nvidia"):
         log_info("NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations")
         os.environ.update(NVIDIA_ENV_VARS)
         gpu_detected = True
+        collector.gpu = "NVIDIA (Proprietary driver)"
 
     if not gpu_detected:
         log_warn("No specific GPU module (amdgpu/nvidia) detected — using common defaults")
+        collector.gpu = "Generic (Common defaults)"
 
     gamescope_supports_output = check_gamescope_supports_output()
     if not gamescope_supports_output:
@@ -148,15 +282,18 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     args = ["-f", "--force-grab-cursor"]
     
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        collector.gamescope = "Enabled (Default settings)"
         return args
 
     try:
         res = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True)
         if res.returncode != 0 or not res.stdout:
+            collector.gamescope = "Enabled (Default, query failed)"
             return args
         monitors = json.loads(res.stdout)
     except Exception as e:
         log_warn(f"Failed to query hyprctl: {e}")
+        collector.gamescope = "Enabled (Default, query error)"
         return args
 
     target_monitor = None
@@ -173,6 +310,7 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
 
     if not target_monitor:
         log_warn(f"Monitor '{monitor_selector}' not found; using default Gamescope settings.")
+        collector.gamescope = "Enabled (Default, monitor not found)"
         return args
 
     w = target_monitor.get("width")
@@ -183,6 +321,7 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     if w and h:
         args = ["-W", str(w), "-H", str(h), "-w", str(w), "-h", str(h)] + args
 
+    r_rate = 0
     if refresh:
         r_rate = int(round(refresh))
         if r_rate > 0:
@@ -192,6 +331,12 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     if name and gamescope_supports_output:
         args.append("-O")
         args.append(name)
+
+    # Format gamescope info cleanly
+    res_str = f"{w}x{h}" if (w and h) else "auto"
+    ref_str = f" @ {r_rate}Hz" if r_rate > 0 else ""
+    out_str = f" on {name}" if name and gamescope_supports_output else ""
+    collector.gamescope = f"Enabled ({res_str}{ref_str}{out_str})"
 
     return args
 
@@ -214,18 +359,23 @@ def hyprland_start():
         }
       })
     """
-    if not run_silent(["hyprctl", "eval", eval_cmd]):
+    if run_silent(["hyprctl", "eval", eval_cmd]):
+        collector.hyprland = "Optimized (DND, animations/blur disabled)"
+    else:
         log_warn("Failed to apply Hyprland rendering optimizations (hl.config unavailable?)")
+        collector.hyprland = "Optimized (DND active, rendering tweaks failed)"
 
     run_silent(["systemctl", "--user", "stop", "hypridle.service"])
 
 def hyprland_end():
     run_silent(["razer-cli", "-d", "1600"])
+    success = True
 
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        log_info("Restoring Hyprland configuration")
+        log_info_silent("Restoring Hyprland configuration")
         if not run_silent(["hyprctl", "reload"]):
-            log_error("Failed to reload Hyprland configuration")
+            log_msg("ERROR", None, "Failed to reload Hyprland configuration")
+            success = False
         run_silent(["makoctl", "mode", "-s", "default"])
 
     try:
@@ -236,13 +386,37 @@ def hyprland_end():
     except Exception:
         pass
 
+    return success
+
 # --- Game Configuration Helpers & Overrides ---
 
 def apply_game_overrides(steam_app_id, game_cmd):
-    game_name = f"AppID:{steam_app_id}" if steam_app_id else "UnknownGame"
     cmd = list(game_cmd)
+    profile = GAME_PROFILES.get(steam_app_id)
 
-    def enable_battleye():
+    if not profile:
+        game_name = f"AppID:{steam_app_id}" if steam_app_id else "UnknownGame"
+        log_info("No game-specific overrides; using default settings")
+        collector.overrides = "None (Defaults)"
+        return game_name, cmd
+
+    game_name = profile.get("name", "UnknownGame")
+    
+    # Apply mouse DPI
+    dpi = profile.get("dpi")
+    if dpi:
+        run_silent(["razer-cli", "-d", str(dpi)])
+
+    # Apply wayland
+    if profile.get("wayland"):
+        os.environ.pop("SDL_VIDEODRIVER", None)
+        os.environ.pop("__GLX_VENDOR_LIBRARY_NAME", None)
+        if not profile.get("keep_steaminput"):
+            os.environ["PROTON_NO_STEAMINPUT"] = "1"
+        log_info(f"Applying native Wayland optimizations for {game_name}")
+
+    # Apply BattlEye
+    if profile.get("battleye"):
         be_path = find_battleye_runtime()
         if not be_path:
             steam_root = find_steam_root()
@@ -252,58 +426,41 @@ def apply_game_overrides(steam_app_id, game_cmd):
         os.environ["PROTON_BATTLEYE_RUNTIME"] = be_path
         os.environ["PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY"] = "1"
         os.environ["PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC"] = "1"
-
-    def use_native_wayland(keep_steaminput=False):
-        os.environ.pop("SDL_VIDEODRIVER", None)
-        os.environ.pop("__GLX_VENDOR_LIBRARY_NAME", None)
-        if not keep_steaminput:
-            os.environ["PROTON_NO_STEAMINPUT"] = "1"
-        log_info(f"Applying native Wayland optimizations for {game_name}")
-
-    def set_mouse_dpi(dpi):
-        run_silent(["razer-cli", "-d", str(dpi)])
-
-    if steam_app_id == "1808500":
-        game_name = "Arc Raiders"
-        set_mouse_dpi(800)
-        use_native_wayland()
-    elif steam_app_id == "526870":
-        game_name = "Satisfactory"
-        use_native_wayland()
-    elif steam_app_id == "552990":
-        game_name = "World of Warships"
-        use_native_wayland(keep_steaminput=True)
-    elif steam_app_id in ("271590", "3240220"):
-        game_name = "Grand Theft Auto V"
-        if steam_app_id == "3240220":
-            game_name = "Grand Theft Auto V Enhanced"
-        set_mouse_dpi(800)
-        enable_battleye()
-        os.environ["PROTON_NO_STEAMINPUT"] = "1"
         log_info(f"Applying BattlEye overrides for {game_name}")
-    elif steam_app_id == "899770":
-        game_name = "Last Epoch"
-        os.environ["RADV_PERFTEST"] = "nggc,gpl"
-        use_native_wayland()
-    elif steam_app_id in ("412020", "1449560"):
-        game_name = "Metro Exodus"
-        use_native_wayland()
-    elif steam_app_id == "379720":
-        game_name = "DOOM"
-        os.environ["mesa_glthread"] = "true"
-        os.environ.pop("PROTON_ENABLE_WAYLAND", None)
-        cmd.extend(["+com_skipIntroVideo", "1", "+set", "m_smooth", "0"])
-    elif steam_app_id == "13240":
-        game_name = "Unreal Tournament GOTY"
-        use_native_wayland()
-    elif steam_app_id == "2483190":
-        game_name = "Forza Horizon 6"
-        os.environ["VKD3D_CONFIG"] = "no_upload_hvv,single_queue"
-        os.environ["PROTON_SET_GAME_DRIVE"] = "1"
-        os.environ["WINEDLLOVERRIDES"] = "winmm=n,b;steam_api64=n,b;version=n,b"
-        os.environ["SDL_VIDEODRIVER"] = "x11"
+
+    if profile.get("no_steaminput"):
+         os.environ["PROTON_NO_STEAMINPUT"] = "1"
+
+    # Environment variables
+    env_vars = profile.get("env")
+    if env_vars:
+        os.environ.update(env_vars)
+
+    pop_env = profile.get("pop_env")
+    if pop_env:
+        for key in pop_env:
+            os.environ.pop(key, None)
+
+    # Command line args
+    cmd_args = profile.get("cmd_args")
+    if cmd_args:
+        cmd.extend(cmd_args)
+
+    # Format notification message
+    if "override_label" in profile:
+        collector.overrides = profile["override_label"]
+    elif profile.get("wayland"):
+        keep_str = " (SteamInput kept)" if profile.get("keep_steaminput") else ""
+        dpi_str = f", mouse DPI {dpi}" if dpi else ""
+        collector.overrides = f"Wayland{keep_str}{dpi_str}"
+    elif profile.get("battleye"):
+        dpi_str = f", mouse DPI {dpi}" if dpi else ""
+        collector.overrides = f"BattlEye{dpi_str}"
+    elif env_vars:
+        env_keys = ", ".join(env_vars.keys())
+        collector.overrides = f"Env: {env_keys}"
     else:
-        log_info("No game-specific overrides; using default settings")
+        collector.overrides = "Custom config"
 
     return game_name, cmd
 
@@ -470,7 +627,8 @@ def run_installer(script_path):
         print("Please install it with: pip install vdf", file=sys.stderr)
         sys.exit(1)
 
-    target_option = f"{script_path} -- %command%"
+    target_option_no_hud = f"{script_path} -- %command%"
+    target_option_hud = f"{script_path} --mangohud -- %command%"
 
     steam_root = find_steam_root()
     if not steam_root:
@@ -533,8 +691,10 @@ def run_installer(script_path):
 
         for idx, (appid, name) in enumerate(games_list, 1):
             current_options = launch_options_by_app.get(appid, "")
-            if current_options == target_option:
+            if current_options == target_option_no_hud:
                 status = f"\033[92m[Optimized (steam-optimize)]\033[0m"
+            elif current_options == target_option_hud:
+                status = f"\033[92m[Optimized + MangoHud]\033[0m"
             elif current_options:
                 status = f"\033[93m[Other: {current_options}]\033[0m"
             else:
@@ -544,9 +704,10 @@ def run_installer(script_path):
 
         print("-" * 85)
         print("\033[1mOptions:\033[0m")
-        print("  \033[96m[t]\033[0m     Toggle optimization for a specific game")
+        print("  \033[96m[t]\033[0m     Toggle optimization for a specific game (Cycles: Off -> On -> On + MangoHud)")
         print("  \033[96m[e]\033[0m     Enable optimization for ALL games")
         print("  \033[96m[d]\033[0m     Disable/Remove optimization for ALL games")
+        print("  \033[96m[m]\033[0m     Toggle MangoHud for all currently optimized games")
         print("  \033[96m[s]\033[0m     Save changes and exit")
         print("  \033[96m[c]\033[0m     Cancel and exit without saving")
         print("=" * 85)
@@ -576,21 +737,41 @@ def run_installer(script_path):
             break
 
         elif choice == "e":
+            # Prompt the user to choose if they want to enable MangoHud for all games
+            mango_choice = input("\nEnable MangoHud for these optimizations? (y/n) [y]: ").strip().lower()
+            target_to_use = target_option_no_hud if mango_choice == "n" else target_option_hud
             for appid, _ in games_list:
                 for path, config in vdf_configs.items():
-                    get_app_entry(config, appid)["LaunchOptions"] = target_option
+                    get_app_entry(config, appid)["LaunchOptions"] = target_to_use
             dirty = True
-            print("\nEnabled for all games.")
+            hud_status = "with MangoHud" if target_to_use == target_option_hud else "without MangoHud"
+            print(f"\nEnabled for all games ({hud_status}).")
             time.sleep(1)
 
         elif choice == "d":
             for appid, _ in games_list:
                 for path, config in vdf_configs.items():
                     entry = get_app_entry_safe(config, appid)
-                    if entry and entry.get("LaunchOptions") == target_option:
+                    if entry and entry.get("LaunchOptions") in (target_option_no_hud, target_option_hud):
                         entry.pop("LaunchOptions", None)
             dirty = True
             print("\nDisabled for all games.")
+            time.sleep(1)
+
+        elif choice == "m":
+            any_changed = False
+            for appid, _ in games_list:
+                current_opts = launch_options_by_app.get(appid, "")
+                if current_opts in (target_option_no_hud, target_option_hud):
+                    new_opt = target_option_hud if current_opts == target_option_no_hud else target_option_no_hud
+                    for path, config in vdf_configs.items():
+                        get_app_entry(config, appid)["LaunchOptions"] = new_opt
+                    any_changed = True
+            if any_changed:
+                dirty = True
+                print("\nToggled MangoHud for all optimized games.")
+            else:
+                print("\nNo optimized games found to toggle.")
             time.sleep(1)
 
         elif choice == "t" or choice.isdigit():
@@ -606,15 +787,19 @@ def run_installer(script_path):
                     current_opts = launch_options_by_app.get(appid, "")
 
                     for path, config in vdf_configs.items():
-                        if current_opts == target_option:
+                        if current_opts == target_option_no_hud:
+                            get_app_entry(config, appid)["LaunchOptions"] = target_option_hud
+                            action = "Enabled with MangoHud"
+                        elif current_opts == target_option_hud:
                             entry = get_app_entry_safe(config, appid)
                             if entry:
                                 entry.pop("LaunchOptions", None)
+                            action = "Disabled"
                         else:
-                            get_app_entry(config, appid)["LaunchOptions"] = target_option
+                            get_app_entry(config, appid)["LaunchOptions"] = target_option_no_hud
+                            action = "Enabled without MangoHud"
 
                     dirty = True
-                    action = "Disabled" if current_opts == target_option else "Enabled"
                     print(f"\n{action} for {name}.")
                     time.sleep(1)
                 else:
@@ -642,8 +827,9 @@ Options:
                               workspace:<N>   Monitor hosting workspace N (default: workspace:1)
                               focused         Currently focused monitor
                               <name>          Monitor name, e.g. DP-1, HDMI-A-1
-  -i, --install             Run the interactive installer to list and configure
-                            steam-optimize for your games.
+  -i, --install, --setup    Run the interactive installer to list and configure
+                            steam-optimize (and MangoHud) for your games.
+  --mangohud                Enable MangoHud with a discrete horizontal top bar.
   -h, --help                Show this help message and exit
 
 Examples:
@@ -653,11 +839,14 @@ Examples:
   # Use the currently focused monitor
   {script_name} --monitor focused -- %command%
 
+  # Launch with MangoHud enabled
+  {script_name} --mangohud -- %command%
+
   # Use workspace 2's monitor
   {script_name} --monitor workspace:2 -- %command%
 
-  # Use a specific output by name
-  {script_name} --monitor DP-1 -- %command%
+  # Use a specific output by name with MangoHud
+  {script_name} --monitor DP-1 --mangohud -- %command%
 
 Steam launch option (add before %command%):
   {script_name} -- %command%
@@ -670,6 +859,7 @@ def parse_args():
     argv = sys.argv[1:]
     monitor_selector = "workspace:1"
     install_mode = False
+    mangohud = False
     game_cmd = []
     
     idx = 0
@@ -678,8 +868,11 @@ def parse_args():
         if arg in ("-h", "--help"):
             usage()
             sys.exit(0)
-        elif arg in ("-i", "--install"):
+        elif arg in ("-i", "--install", "--setup"):
             install_mode = True
+            idx += 1
+        elif arg == "--mangohud":
+            mangohud = True
             idx += 1
         elif arg in ("-m", "--monitor"):
             if idx + 1 >= len(argv):
@@ -699,10 +892,10 @@ def parse_args():
             game_cmd = argv[idx:]
             break
             
-    return install_mode, monitor_selector, game_cmd
+    return install_mode, monitor_selector, mangohud, game_cmd
 
 def main():
-    install_mode, monitor_selector, game_cmd = parse_args()
+    install_mode, monitor_selector, mangohud, game_cmd = parse_args()
     
     script_abs_path = os.path.abspath(sys.argv[0])
     
@@ -715,32 +908,58 @@ def main():
         usage()
         sys.exit(1)
 
+    collector.start()
+
     gamescope_supports_output = setup_global_env()
     setup_hyprland_env()
     
+    if mangohud:
+        os.environ["MANGOHUD"] = "1"
+        os.environ["MANGOHUD_CONFIG"] = "horizontal,legacy_layout=0,hud_no_margin,font_size=15,background_alpha=0.4,gpu_stats,gpu_temp,cpu_stats,cpu_temp,ram,fps,frame_timing=0,position=top-center"
+        log_info("MangoHud enabled with a discrete horizontal top-center layout")
+        collector.mangohud = True
+        
     steam_app_id = os.environ.get("SteamAppId", "")
     game_name, cmd = apply_game_overrides(steam_app_id, game_cmd)
+    collector.game_name = game_name
     
     if cmd and cmd[0] != "gamescope":
         gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
         cmd = ["gamescope"] + gs_args + ["--"] + cmd
         log_info(f"Applying Gamescope wrapper for {game_name}")
+    else:
+        collector.gamescope = "Disabled"
         
     log_info_silent(f"Launching: game-performance {' '.join(cmd)}")
     hyprland_start()
     
+    collector.collecting = False
+    log_info(collector.get_startup_message())
+    
     start_time = int(time.time())
+    hypr_success = True
     try:
         subprocess.run(["game-performance"] + cmd)
     finally:
-        hyprland_end()
+        hypr_success = hyprland_end()
         
     elapsed = int(time.time()) - start_time
     hours, remainder = divmod(elapsed, 3600)
     minutes, seconds = divmod(remainder, 60)
     duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     
-    log_info(f"{game_name} — session ended, play time: {duration}")
+    end_lines = [
+        f"🎮 Steam Optimize: {game_name}",
+        "",
+        f"  • Session ended (play time: {duration})"
+    ]
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        if hypr_success:
+            end_lines.append("  • Hyprland configuration restored")
+        else:
+            end_lines.append("  ⚠️ Hyprland configuration restore failed")
+            
+    log_info("\n".join(end_lines))
 
 if __name__ == "__main__":
     main()
