@@ -54,7 +54,9 @@ noise-suppression-for-voice
 ntfs-3g
 pacman-contrib
 pipewire
+pipewire-alsa
 pipewire-audio
+pipewire-jack
 pipewire-pulse
 powertop
 realtime-privileges
@@ -71,7 +73,7 @@ uwsm
 usbutils
 vim-spell-en
 vim-spell-fr
-webrtc-audio-processing-0.3
+webrtc-audio-processing
 wireless-regdb
 wireplumber
 xarchiver
