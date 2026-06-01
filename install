@@ -98,12 +98,263 @@ install_vim_plugins() {
     fi
 }
 
+# --- Arch Linux / CachyOS Packages Installation ---
+
+is_arch_or_cachyos() {
+    if [[ -f /etc/os-release ]]; then
+        local ID="" ID_LIKE=""
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^ID= ]]; then
+                ID=$(echo "${line#*=}" | tr -d '"' | tr -d "'")
+            elif [[ "$line" =~ ^ID_LIKE= ]]; then
+                ID_LIKE=$(echo "${line#*=}" | tr -d '"' | tr -d "'")
+            fi
+        done < /etc/os-release
+        
+        if [[ "$ID" == "arch" || "$ID" == "cachyos" || "$ID_LIKE" =~ "arch" ]]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# --- Interactive Menu Helpers ---
+ESC=$(printf '\033')
+cursor_up() { printf "\033[%dA" "$1" >&2; }
+hide_cursor() { printf "\033[?25l" >&2; }
+show_cursor() { printf "\033[?25h" >&2; }
+
+read_key() {
+    local key
+    IFS= read -r -s -n 1 key
+    if [[ "$key" == "$ESC" ]]; then
+        read -r -s -n 2 key
+        if [[ "$key" == "[A" ]]; then
+            echo "UP"
+        elif [[ "$key" == "[B" ]]; then
+            echo "DOWN"
+        fi
+    elif [[ "$key" == " " ]]; then
+        echo "SPACE"
+    elif [[ "$key" == "" || "$key" == $'\r' || "$key" == $'\n' ]]; then
+        echo "ENTER"
+    fi
+}
+
+draw_menu() {
+    local active_idx=$1
+    for i in "${!options[@]}"; do
+        local prefix="  "
+        if (( i == active_idx )); then
+            prefix="${BLUE}➔${NC} "
+        fi
+        
+        local check="[ ]"
+        if [[ "${selected[i]}" == "1" ]]; then
+            check="[${GREEN}*${NC}]"
+        fi
+        
+        if (( i == active_idx )); then
+            printf "%b%b %b\n" "$prefix" "$check" "${BLUE}${options[i]}${NC}" >&2
+        else
+            printf "%b%b %b\n" "$prefix" "$check" "${options[i]}" >&2
+        fi
+    done
+}
+
+show_multi_select() {
+    local -a options=("${@}")
+    local -a selected=()
+    for i in "${!options[@]}"; do
+        selected[i]=1
+    done
+    
+    local active=0
+    local num_options=${#options[@]}
+    
+    hide_cursor
+    draw_menu "$active"
+    
+    while true; do
+        local key
+        key=$(read_key)
+        
+        case "$key" in
+            UP)
+                if (( active > 0 )); then
+                    active=$((active - 1))
+                else
+                    active=$((num_options - 1))
+                fi
+                ;;
+            DOWN)
+                if (( active < num_options - 1 )); then
+                    active=$((active + 1))
+                else
+                    active=0
+                fi
+                ;;
+            SPACE)
+                if [[ "${selected[active]}" == "1" ]]; then
+                    selected[active]=0
+                else
+                    selected[active]=1
+                fi
+                ;;
+            ENTER)
+                break
+                ;;
+        esac
+        
+        cursor_up "$num_options"
+        draw_menu "$active"
+    done
+    
+    show_cursor
+    
+    local results=()
+    for i in "${!options[@]}"; do
+        if [[ "${selected[i]}" == "1" ]]; then
+            results+=("$i")
+        fi
+    done
+    echo "${results[@]}"
+}
+
+ensure_aur_helper() {
+    if command -v paru &> /dev/null; then
+        AUR_HELPER="paru"
+    elif command -v yay &> /dev/null; then
+        AUR_HELPER="yay"
+    else
+        log_info "No AUR helper (paru or yay) found, which is needed to install AUR packages."
+        local choice
+        read -rp "Would you like to install yay? [Y/n] " choice < /dev/tty
+        if [[ "$choice" =~ ^[Nn]$ ]]; then
+            log_warn "Skipping AUR helper installation. AUR packages might fail to install."
+            AUR_HELPER="sudo pacman"
+        else
+            log_info "Installing yay..."
+            local tmpdir
+            tmpdir=$(mktemp -d)
+            if git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" &>/dev/null; then
+                (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm)
+                AUR_HELPER="yay"
+                log_success "yay installed successfully!"
+            else
+                log_error "Failed to clone yay-bin. Falling back to sudo pacman."
+                AUR_HELPER="sudo pacman"
+            fi
+            rm -rf "$tmpdir"
+        fi
+    fi
+}
+
+install_arch_packages() {
+    if ! is_arch_or_cachyos; then
+        return 0
+    fi
+    
+    log_info "Detected Arch Linux or CachyOS system."
+    
+    local packages_dir="${BASEDIR}/dist/arch/packages"
+    if [[ ! -d "$packages_dir" ]]; then
+        log_warn "Packages directory not found at $packages_dir. Skipping package installation."
+        return 0
+    fi
+    
+    # Find all package files (*.txt)
+    local files=()
+    while IFS= read -r -d '' file; do
+        files+=("$file")
+    done < <(find "$packages_dir" -maxdepth 1 -name "*.txt" -print0 | sort -z)
+    
+    if (( ${#files[@]} == 0 )); then
+        log_warn "No package files (*.txt) found in $packages_dir."
+        return 0
+    fi
+    
+    # Prepare display options
+    local options=()
+    for file in "${files[@]}"; do
+        options+=("$(basename "$file" .txt)")
+    done
+    
+    log_info "Select the package categories you would like to install."
+    echo -e "Use ${BLUE}Up/Down Arrow${NC} keys to navigate, ${BLUE}Space${NC} to toggle, and ${BLUE}Enter${NC} to confirm:\n" >&2
+    
+    # Set up exit trap for cursor restoration
+    trap show_cursor EXIT
+    
+    local selected_idxs=()
+    selected_idxs=($(show_multi_select "${options[@]}"))
+    
+    if (( ${#selected_idxs[@]} == 0 )); then
+        log_warn "No categories selected. Skipping package installation."
+        return 0
+    fi
+    
+    # Read packages from selected files
+    local all_pkgs=()
+    for idx in "${selected_idxs[@]}"; do
+        local file="${files[idx]}"
+        log_info "Reading packages from $(basename "$file")..."
+        
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            line=$(echo "$line" | xargs) # trim whitespace
+            if [[ -n "$line" && ! "$line" =~ ^# ]]; then
+                all_pkgs+=("$line")
+            fi
+        done < "$file"
+    done
+    
+    if (( ${#all_pkgs[@]} == 0 )); then
+        log_warn "No packages found in selected categories."
+        return 0
+    fi
+    
+    # Filter out already installed packages
+    local to_install=()
+    local installed_count=0
+    for pkg in "${all_pkgs[@]}"; do
+        if pacman -Q "$pkg" &>/dev/null; then
+            installed_count=$((installed_count + 1))
+        else
+            to_install+=("$pkg")
+        fi
+    done
+    
+    log_info "Package status: ${installed_count} already installed, ${#to_install[@]} to install."
+    
+    if (( ${#to_install[@]} == 0 )); then
+        log_success "All selected packages are already installed!"
+        return 0
+    fi
+    
+    log_info "Packages to install: ${to_install[*]}"
+    
+    # Ensure AUR helper is available
+    local AUR_HELPER=""
+    ensure_aur_helper
+    
+    log_info "Installing packages using $AUR_HELPER..."
+    if [[ "$AUR_HELPER" == "sudo pacman" ]]; then
+        sudo pacman -S --needed "${to_install[@]}"
+    else
+        $AUR_HELPER -S --needed "${to_install[@]}"
+    fi
+    
+    log_success "Package installation completed successfully!"
+}
+
 main() {
     log_info "Starting dotfiles installation..."
 
     check_dependencies
+    install_arch_packages
     backup_existing_files
     setup_dotbot
+
     run_dotbot "$@"
     install_vim_plugins
 

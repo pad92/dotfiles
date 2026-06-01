@@ -3,16 +3,12 @@ ansible-core
 discord
 docker
 docker-compose
-eog
-evince
-file-roller
 firefox-i18n-en-us
 firefox-i18n-fr
 fwupd
 gnome-calculator
 gnome-disk-utility
 gnome-keyring
-gnome-system-monitor
 gst-libav
 gst-plugin-pipewire
 gst-plugins-bad
@@ -20,7 +16,6 @@ gst-plugins-base
 gst-plugins-good
 gst-plugins-ugly
 gstreamer
-gstreamer-vaapi
 nautilus
 p7zip
 pavucontrol

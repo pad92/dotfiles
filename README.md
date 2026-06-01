@@ -15,6 +15,10 @@ cd ~/.dotfiles
 ./install
 ```
 
+> [!TIP]
+> **Arch Linux & CachyOS Users**: The installer detects your environment and presents a high-fidelity interactive package selector. You can choose which package suites to install (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). The script automatically skips already installed packages and ensures an AUR helper (`yay` or `paru`) is configured for AUR packages.
+
+
 ### Editor Only
 *   To set up the editor configuration without installing the full suite:
 ```sh

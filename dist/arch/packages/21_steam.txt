@@ -1,5 +1,4 @@
 ludusavi
 power-profiles-daemon
-proton-cachyos
 proton-cachyos-slr
 steam

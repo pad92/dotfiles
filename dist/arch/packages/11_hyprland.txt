@@ -2,7 +2,6 @@ awww
 blueman
 brightnessctl
 cliphist
-dex
 fastfetch
 grim
 hyprcursor
@@ -29,5 +28,4 @@ wl-clipboard
 wlogout
 woff2-font-awesome
 wofi
-wttrbar
 xdg-desktop-portal-hyprland

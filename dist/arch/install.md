@@ -388,9 +388,20 @@ rm -fr yay
 
 ### WM and softs
 
-```
-yay -S --needed $(cat ~/.dotfiles/dist/arch/packages/*.txt)
+The system packages and software environment are automatically installed during the dotfiles setup script (`~/.dotfiles/install`) via an interactive, high-fidelity menu.
 
+However, if you wish to manually install or re-install the packages later, you can run:
+
+```bash
+yay -S --needed $(cat ~/.dotfiles/dist/arch/packages/*.txt)
+```
+
+Alternatively, you can re-run the dotfiles installer at any time:
+```bash
+~/.dotfiles/install
+```
+
+```bash
 exit
 ```
 
