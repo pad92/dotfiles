@@ -176,7 +176,7 @@ My original editor configuration built with `vundle`.
 | `SUPER + ALT + Right`               | Change wallpaper         |
 | `Print` / `SUPER + P`               | Screenshot               |
 
-### Hyprland (Primary)
+### Hyprland
 My current primary Window Manager configuration.
 > [!WARNING]
 > **Breaking Change**: The Hyprland configuration has migrated to Lua. These files are compatible with **Hyprland v0.55 and above**.
