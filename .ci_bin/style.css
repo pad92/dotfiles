@@ -181,3 +181,80 @@ nav[data-toggle="toc"] .nav .nav {
 #table-of-contents {
     display: none !important;
 }
+
+/* GitLab-like Alerts/Admonitions styled for Catppuccin Macchiato theme */
+.markdown-alert {
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border-left: 4px solid var(--border-color);
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.markdown-alert-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-top: 0 !important;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.markdown-alert-title svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.markdown-alert p:last-child {
+    margin-bottom: 0;
+}
+
+/* Specific styles for note */
+.markdown-alert-note {
+    border-left-color: #89b4fa; /* Catppuccin Blue */
+    background-color: rgba(137, 180, 250, 0.08);
+}
+.markdown-alert-note .markdown-alert-title {
+    color: #89b4fa;
+}
+
+/* Specific styles for tip */
+.markdown-alert-tip {
+    border-left-color: #a6e3a1; /* Catppuccin Green */
+    background-color: rgba(166, 227, 161, 0.08);
+}
+.markdown-alert-tip .markdown-alert-title {
+    color: #a6e3a1;
+}
+
+/* Specific styles for important */
+.markdown-alert-important {
+    border-left-color: #cba6f7; /* Catppuccin Mauve */
+    background-color: rgba(203, 166, 247, 0.08);
+}
+.markdown-alert-important .markdown-alert-title {
+    color: #cba6f7;
+}
+
+/* Specific styles for warning */
+.markdown-alert-warning {
+    border-left-color: #f9e2af; /* Catppuccin Yellow */
+    background-color: rgba(249, 226, 175, 0.08);
+}
+.markdown-alert-warning .markdown-alert-title {
+    color: #f9e2af;
+}
+
+/* Specific styles for caution */
+.markdown-alert-caution {
+    border-left-color: #f38ba8; /* Catppuccin Red */
+    background-color: rgba(243, 139, 168, 0.08);
+}
+.markdown-alert-caution .markdown-alert-title {
+    color: #f38ba8;
+}
