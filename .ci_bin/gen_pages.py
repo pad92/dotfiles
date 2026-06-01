@@ -40,6 +40,27 @@ def get_alert_resources(alert_type):
     }
     return icons.get(alert_type, (None, alert_type))
 
+def preprocess_markdown(text):
+    # Regex to find fenced code blocks that may be indented (e.g. inside list items)
+    pattern = re.compile(r'^(\s*)```([a-zA-Z0-9_+-]+)[ \t]*\n(.*?)\n\1```[ \t]*$', re.MULTILINE | re.DOTALL)
+    
+    def replace_fenced_code(match):
+        indent = match.group(1)
+        lang = match.group(2)
+        code = match.group(3)
+        
+        if not indent:
+            return match.group(0)
+            
+        lines = code.split('\n')
+        # Prepend 4 extra spaces of indentation to make it a standard indented code block
+        indented_lines = ["    " + line for line in lines]
+        # Prepend 4 spaces of indentation and ::: to specify the language for codehilite
+        header = indent + "    " + f":::{lang}"
+        return f"\n{header}\n" + "\n".join(indented_lines) + "\n"
+        
+    return pattern.sub(replace_fenced_code, text)
+
 def parse_alerts(text):
     lines = text.split('\n')
     new_lines = []
@@ -68,7 +89,7 @@ def parse_alerts(text):
                 else:
                     break
             
-            alert_content = '\n'.join(alert_lines)
+            alert_content = preprocess_markdown('\n'.join(alert_lines))
             compiled_content = markdown.markdown(alert_content, extensions=['extra', 'codehilite', 'toc'])
             
             icon_svg, title_text = get_alert_resources(alert_type)
@@ -106,7 +127,7 @@ def generate_html(input_file, output_file, title):
     text = parse_alerts(text)
 
     # Convert markdown to html
-    html_content = markdown.markdown(text, extensions=['extra', 'codehilite', 'toc'])
+    html_content = markdown.markdown(preprocess_markdown(text), extensions=['extra', 'codehilite', 'toc'])
 
     # Determine CSS path relative to the output file
     # The output files are in public/index.html, public/CHANGELOG.md/index.html, etc.
