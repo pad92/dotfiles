@@ -8,15 +8,25 @@ For the latest updates, check the [Changelog](./CHANGELOG.md).
 You can also download the current version directly from [here](https://gitlab.com/pad92/dotfiles/-/releases).
 
 ### Full Setup
-This script performs a full setup, applying all configurations and managing necessary installations.
-```sh
-git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
-./install
-```
+This repository provides automated installation workflows tailored per operating system:
 
-> [!TIP]
-> **Arch Linux & CachyOS Users**: The installer detects your environment and presents a high-fidelity interactive package selector. You can choose which package suites to install (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). The script automatically skips already installed packages and ensures an AUR helper (`yay` or `paru`) is configured for AUR packages.
+*   **Arch Linux & CachyOS (Primary)**: Runs the interactive setup manager.
+    ```sh
+    git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
+    cd ~/.dotfiles
+    ./install
+    ```
+    > [!TIP]
+    > **High-Fidelity Installer**: The interactive manager presents a clean menu to select package suites (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). It automatically skips already installed packages and configures `yay` or `paru` for AUR dependencies.
+
+*   **Ubuntu (Noble 24.04+)**: Run the dedicated automated setup script:
+    ```sh
+    git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
+    cd ~/.dotfiles
+    bash dist/ubuntu/install.sh
+    ```
+    > [!IMPORTANT]
+    > **Snap & Flatpak-Free**: The Ubuntu installer is fully compliant with a Snap-free and Flatpak-free configuration, utilizing official scoped GPG keyrings and native APT repositories to establish package parity with the Arch environment.
 
 
 ### Editor Only
@@ -213,7 +223,9 @@ A collection of highly optimized Python, Bash, and shell scripts located in the 
 *   **Arch Linux (Primary)**:
     *   Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
     *   Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
-*   **Ubuntu**: Compatible configurations provided.
+*   **Ubuntu (Noble 24.04+)**:
+    *   Setup Script: [dist/ubuntu/install.sh](./dist/ubuntu/install.sh) - Modern, idempotent, secure, and Snap-free.
+    *   Provides complete bootstrapping, registers scoped GPG repositories (Docker, VS Codium, Spotify, Hashicorp, 1Password), and enables `universe` to establish package parity with the Arch Linux Hyprland 0.55+ ecosystem.
 
 ## 📋 Application Ecosystem Summary
 
