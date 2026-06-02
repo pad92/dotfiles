@@ -35,6 +35,14 @@ for _, monitor in ipairs(monitors) do
 end
 
 hl.config({
+  -- Enable hardware cursors locally for this host (very smooth on Intel iGPU)
+  cursor = {
+    no_hardware_cursors = false,
+  },
+  -- Rendering optimizations for professional applications in fullscreen mode
+  render = {
+    direct_scanout = true,
+  },
   decoration = {
     blur = {
       enabled = false,
