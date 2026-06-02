@@ -3,24 +3,29 @@ youtubeEncode() {
         echo "Usage : youtubeEncode file_2_encode.mov"
         return 2
     fi
-    INPUT=$1
-    OUTPUT=$(echo $INPUT | sed 's/ /_/g')
+    local INPUT="$1"
+    local OUTPUT="${INPUT// /_}"
+    local OUTPUTFN
     OUTPUTFN=$(basename "$OUTPUT")
-    OUTPUT_OK="${OUTPUTFN%.*}.mp4"
+    local OUTPUT_OK="${OUTPUTFN%.*}.mp4"
+    local CLEAN
 
     if [ -f "$OUTPUT_OK" ]; then
         OUTPUT="tmp_$OUTPUT_OK"
         CLEAN="true"
     else
-        OUTPUT=$OUTPUT_OK
+        OUTPUT="$OUTPUT_OK"
         CLEAN="false"
     fi
 
-    ffmpeg -i $INPUT -c:v libx264 -preset slow -crf 25 -pix_fmt yuv420p $OUTPUT || return 1
+    ffmpeg -i "$INPUT" \
+        -c:v libx264 -preset slow -crf 18 -profile:v high -pix_fmt yuv420p \
+        -c:a aac -b:a 384k \
+        -movflags +faststart \
+        "$OUTPUT" || return 1
 
     if [[ "$CLEAN" == "true" ]]; then
-         mv $OUTPUT $OUTPUT_OK
-     else
+         mv "$OUTPUT" "$OUTPUT_OK"
     fi
     return 0
 }
