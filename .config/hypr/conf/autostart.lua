@@ -18,7 +18,7 @@ hl.on("hyprland.start", function()
   end
 
   -- Set system-wide mouse cursor theme and size using hyprctl
-  hl.exec_cmd("hyprctl setcursor Adwaita 24")
+  hl.exec_cmd("hyprctl setcursor " .. config.visuals.cursor_theme .. " " .. tostring(config.visuals.cursor_size))
 
   -- 2. System Core & Authentication Setup
   -- Launch Polkit authentication agent via UWSM 

@@ -247,6 +247,8 @@ def setup_global_env():
     if os.path.isdir("/sys/module/nvidia"):
         log_info("NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations")
         os.environ.update(NVIDIA_ENV_VARS)
+        # Remove Intel Vulkan driver restrictions inherited from UWSM
+        os.environ.pop("VK_DRIVER_FILES", None)
         gpu_detected = True
         collector.gpu = "NVIDIA (Proprietary driver)"
 
