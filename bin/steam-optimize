@@ -83,6 +83,11 @@ GAME_PROFILES = {
         "wayland": True,
         "env": {"RADV_PERFTEST": "nggc,gpl"},
     },
+    "2694490": {
+        "name": "Path of Exile 2",
+        "wayland": True,
+        "env": {"LD_PRELOAD": ""},
+    },
     "412020": {
         "name": "Metro Exodus",
         "wayland": True,
@@ -101,6 +106,16 @@ GAME_PROFILES = {
     "13240": {
         "name": "Unreal Tournament GOTY",
         "wayland": True,
+    },
+    "1551360": {
+        "name": "Forza Horizon 5",
+        "env": {
+            "VKD3D_CONFIG": "no_upload_hvv,single_queue",
+            "PROTON_SET_GAME_DRIVE": "1",
+            "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
+            "SDL_VIDEODRIVER": "x11"
+        },
+        "override_label": "VKD3D tweaks, Game drive, X11 fallback"
     },
     "2483190": {
         "name": "Forza Horizon 6",
