@@ -39,10 +39,6 @@ hl.config({
   cursor = {
     no_hardware_cursors = false,
   },
-  -- Rendering optimizations for professional applications in fullscreen mode
-  render = {
-    direct_scanout = true,
-  },
   decoration = {
     blur = {
       enabled = false,
