@@ -104,8 +104,6 @@ A set of highly optimized aliases and shell functions defined in `zsh/init/alias
 | `mediasync` | `~/.../tools/mediasync.py` | Sync home media server repository |
 | `backup` | `~/.dotfiles/bin/backup.sh` | Trigger complete system backup script |
 | `steam-opt` | `steam-optimize` | Launch Steam with performance/GPU optimizations |
-| `ggc` | `git-gen-commit` | Automatically generate semantic git commit messages |
-| `volmute` / `volinc` / `voldec` | `ManageSound.sh` | Convenient system audio/volume control aliases |
 | `mirrord` / `mirrors` / `mirrora` | `mirror [delay/score/age]` | Quick sorting alternatives for Arch mirrorlist optimization |
 
 ##### 🛠️ Custom Shell Functions
@@ -119,6 +117,9 @@ Organized by functional modules for clean management:
 ###### 📁 Archives & Crypto (`zsh/functions/archive.zsh`, `crypt.zsh`)
 *   **`extract <file>`**: Extract-all wrapper that intelligently decompresses any archive format (`.tar.bz2`, `.tgz`, `.zip`, `.rar`, `.7z`, etc.).
 *   **`md5` / `sha1` / `sha256` / `sha512` `<string>`**: Instant, pipeline-friendly string hashing using `openssl`.
+*   **`gpg-encrypt <file/dir>`** (alias: **`gpge`**): Recursively encrypts files inside directories or a single file using GPG. Prompts for the GPG email and encrypts batch files with `--trust-model always`, preserving file modification times (`mtime`) and offering option to delete original files.
+*   **`gpg-decrypt <file/dir>`** (alias: **`gpgd`**): Recursively decrypts `.gpg` files inside directories or single files. Intelligently extracts `.tar.gz.gpg` / `.tgz.gpg` archives, restores file modification times (`mtime`), and offers option to delete source encrypted files.
+
 
 ###### 🌐 Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`)
 *   **`ip_a` / `ip_l` / `ip_p`**: Show network info (All, Local, or Public IP address).
@@ -212,11 +213,9 @@ Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Uti
 ### 🔧 Custom Scripts
 A collection of highly optimized Python, Bash, and shell scripts located in the [`bin/`](./bin/) directory:
 *   **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, and dynamic Gamescope integration.
-*   **[`git-gen-commit`](./bin/git-gen-commit)**: Intelligent, AI-powered git helper that generates high-quality semantic commit messages automatically.
 *   **[`awww.sh`](./bin/awww.sh)**: A robust wallpaper randomizer script that integrates seamlessly with the `awww` daemon, utilizing `shuf -z` and `mapfile` to safely load distinct wallpapers per monitor.
 *   **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync`.
 *   **[`razer_dpi.py`](./bin/razer_dpi.py)**: Convenient Razer peripherals DPI management tool.
-*   **[`ManageSound.sh`](./bin/ManageSound.sh)**: Handy script for volume control and dynamic audio output switching.
 *   **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
 
 ### 🐧 OS Maintenance
