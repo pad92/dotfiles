@@ -1,11 +1,11 @@
 export ZSH=${HOME}/.dotfiles/zsh
 
-# Create cache dir if not exist
+# Create cache dir and completions subdir if not exist
 ZSH_CACHE_DIR="${HOME}/.zcache"
-[[ -d ${ZSH_CACHE_DIR} ]] || mkdir ${ZSH_CACHE_DIR}
+[[ -d ${ZSH_CACHE_DIR}/completions ]] || mkdir -p ${ZSH_CACHE_DIR}/completions
 
 # add a function path for completion
-fpath=($ZSH/completions $fpath)
+fpath=($ZSH_CACHE_DIR/completions $ZSH/completions $fpath)
 
 # Load all of the config init files that end in .zsh
 for config_file ($ZSH/init/*.zsh); do
