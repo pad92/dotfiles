@@ -224,7 +224,7 @@ A collection of highly optimized Python, Bash, and shell scripts located in the 
     *   Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
 *   **Ubuntu (Noble 24.04+)**:
     *   Setup Script: [dist/ubuntu/install.sh](./dist/ubuntu/install.sh) - Modern, idempotent, secure, and Snap-free.
-    *   Provides complete bootstrapping, registers scoped GPG repositories (Docker, VS Codium, Spotify, Hashicorp, 1Password), and enables `universe` to establish package parity with the Arch Linux Hyprland 0.55+ ecosystem.
+    *   Provides complete bootstrapping, registers scoped GPG repositories (Docker, VS Codium, Spotify, Hashicorp) and installs Proton Pass CLI, and enables `universe` to establish package parity with the Arch Linux Hyprland 0.55+ ecosystem.
 
 ## 📋 Application Ecosystem Summary
 

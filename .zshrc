@@ -18,7 +18,7 @@ fi
 ZSH_THEME="pad"
 
 plugins=(
-  1password           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/1password/README.md
+  proton-pass
   ansible
   archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
   command-not-found

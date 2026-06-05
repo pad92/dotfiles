@@ -19,6 +19,7 @@ gstreamer
 nautilus
 p7zip
 pavucontrol
+proton-pass-cli
 seahorse
 spotify-launcher
 telegram-desktop

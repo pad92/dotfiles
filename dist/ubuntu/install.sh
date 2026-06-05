@@ -80,14 +80,10 @@ if [ ! -f "/etc/apt/sources.list.d/hashicorp.list" ]; then
     | sudo tee /etc/apt/sources.list.d/hashicorp.list
 fi
 
-# 1Password
-if [ ! -f "/etc/apt/sources.list.d/1password.list" ]; then
-  log_info "Adding 1Password repository..."
-  curl -sS https://downloads.1password.com/linux/keys/1password.asc \
-    | gpg --dearmor \
-    | sudo tee /usr/share/keyrings/1password-archive-keyring.gpg > /dev/null
-  echo "deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main" \
-    | sudo tee /etc/apt/sources.list.d/1password.list
+# Proton Pass CLI
+if ! command -v pass-cli >/dev/null 2>&1; then
+  log_info "Installing Proton Pass CLI..."
+  curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 fi
 
 # --- 4. Register Community PPAs for Hyprland 0.55+ ---
@@ -182,7 +178,6 @@ sudo apt-get install -y \
   terraform \
   vlc \
   codium \
-  1password \
   zsh
 
 # --- 6. Hyprland 0.55+ Core & Desktop Environment Packages ---
