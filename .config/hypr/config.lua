@@ -15,7 +15,7 @@ local config = {
         file             = uwsm .. "nautilus",
         browser          = uwsm .. (os.getenv("BROWSER") or "firefox"),
         music            = uwsm .. "spotify-launcher",
-        password_manager = uwsm .. "1Password",
+        password_manager = uwsm .. "proton-pass",
         menu             = "wofi -s ~/.config/wofi/menu.css",
     },
 

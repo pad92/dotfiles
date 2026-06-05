@@ -34,7 +34,7 @@ hl.window_rule({
 
 -- 3. Audio & Password Manager tools (Custom floating/size/placement)
 hl.window_rule({ match = { class = "^(?i)(pavucontrol|org.pulseaudio.pavucontrol|pavucontrol-qt)$" }, float = true, size = { 900, 600 }, rounding = 12 })
-hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC|Bitwarden|1Password)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC|Bitwarden|1Password|Proton Pass)$" }, float = true, center = true })
 hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC)$" }, size = { 900, 500 } })
 hl.window_rule({ match = { class = "^(?i)(org.keepassxc.KeePassXC)$", title = "^(?i)(Unlock Database)$" }, float = true })
 hl.window_rule({ match = { class = "^(?i)(Bitwarden)$" }, size = { 800, 600 } })

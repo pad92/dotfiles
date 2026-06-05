@@ -67,8 +67,8 @@ tlp
 traceroute
 tumbler
 unarj
-uwsm
 usbutils
+uwsm
 vim-spell-en
 vim-spell-fr
 webrtc-audio-processing

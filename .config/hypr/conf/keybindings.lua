@@ -53,7 +53,7 @@ hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { descript
 -- Toggle the Wofi application launcher menu
 hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " --show drun"), { description = "Application menu" })
 
--- Open 1Password password manager
+-- Open password manager
 hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.apps.password_manager), { description = "Password Manager" })
 
 -- =============================================================================
