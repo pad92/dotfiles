@@ -9,7 +9,6 @@
     ~/.tmux: .tmux
     ~/.vim: .vim
     ~/.vimrc: .vimrc
-    ~/.xinitrc: .xinitrc
     ~/.zshenv: .zshenv
     ~/.zshrc: .zshrc
     ~/.gitconfig: .gitconfig

@@ -121,7 +121,8 @@ Organized by functional modules for clean management:
 *   **`gpg-decrypt <file/dir>`** (alias: **`gpgd`**): Recursively decrypts `.gpg` files inside directories or single files. Intelligently extracts `.tar.gz.gpg` / `.tgz.gpg` archives, restores file modification times (`mtime`), and offers option to delete source encrypted files.
 
 
-###### 🌐 Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`)
+###### 🌐 Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`, `ssh.zsh`)
+*   **`ssh-copy-agent-keys [user@host]`**: Interactive shell function to copy selected SSH public keys from your local `ssh-agent` to a remote server's `authorized_keys`, preventing duplicates.
 *   **`ip_a` / `ip_l` / `ip_p`**: Show network info (All, Local, or Public IP address).
 *   **`meteo`**: Instant graphical terminal-based weather forecast using `wttr.in`.
 *   **`transfer <file>`**: Fast upload of any file to `transfer.sh` and returns a direct shareable URL.
