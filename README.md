@@ -215,7 +215,7 @@ Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Uti
 A collection of highly optimized Python, Bash, and shell scripts located in the [`bin/`](./bin/) directory:
 *   **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, and dynamic Gamescope integration.
 *   **[`awww.sh`](./bin/awww.sh)**: A robust wallpaper randomizer script that integrates seamlessly with the `awww` daemon, utilizing `shuf -z` and `mapfile` to safely load distinct wallpapers per monitor.
-*   **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync`.
+*   **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync` (fully integrated with `ssh-agent`, no hardcoded local keys required).
 *   **[`razer_dpi.py`](./bin/razer_dpi.py)**: Convenient Razer peripherals DPI management tool.
 *   **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
 

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Backup Utility**: Refactor `backup.sh` to dynamically query `ssh-agent` via `ssh-add -l` rather than using hardcoded private key files (`id_rsa` or `id_ed25519`).
+
 ## [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
 
 ### Added

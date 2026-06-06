@@ -17,13 +17,9 @@ REMOTE_HOST="pads918.home.lan"
 REMOTE_USER="$(id -un)"
 REMOTE_BASE_PATH="/volume1/NetBackup/${CURRENT_HOSTNAME}"
 
-# SSH key selection — fail early if neither key exists
-SSH_KEY="${HOME}/.ssh/id_rsa"
-if [ ! -f "$SSH_KEY" ]; then
-    SSH_KEY="${HOME}/.ssh/id_ed25519"
-fi
-if [ ! -f "$SSH_KEY" ]; then
-    printf '\033[0;31mERROR: No SSH key found.\033[0m\n' >&2
+# Ensure SSH keys are loaded in the agent
+if ! ssh-add -l >/dev/null 2>&1; then
+    printf '\033[0;31mERROR: No SSH keys loaded in agent.\033[0m\n' >&2
     exit 1
 fi
 
@@ -33,8 +29,7 @@ SSH_CONTROL_SOCKET="/tmp/backup-ssh-${REMOTE_HOST}-$$"
 
 # Wrapper: run ssh with consistent options
 run_ssh() {
-    ssh -i "$SSH_KEY" \
-        -o StrictHostKeyChecking=accept-new \
+    ssh -o StrictHostKeyChecking=accept-new \
         -o ControlMaster=auto \
         -o "ControlPath=${SSH_CONTROL_SOCKET}" \
         -o ControlPersist=60 \
@@ -59,7 +54,7 @@ PKGLIST_OLD="$(ls -1 "${DIST_DIR}"/pkglist-*.txt 2>/dev/null | tail -1 || true)"
 PKGLIST_CURRENT="${DIST_DIR}/pkglist-${TIMESTAMP}-${ID}.txt"
 
 # Rsync SSH command string (no arrays in POSIX sh)
-RSYNC_SSH="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new \
+RSYNC_SSH="ssh -o StrictHostKeyChecking=accept-new \
     -o ControlMaster=auto -o ControlPath=${SSH_CONTROL_SOCKET} \
     -o ControlPersist=60"
 
