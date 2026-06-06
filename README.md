@@ -238,6 +238,7 @@ A comprehensive list of configured tools across the stack:
 | **Terminal** | Alacritty |
 | **Multiplexer** | Tmux |
 | **UI/UX** | Waybar, Wofi, Mako |
+| **Security** | Proton Pass CLI |
 | **System** | Fastfetch, Htop |
 
 ---

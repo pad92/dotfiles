@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Security & Passwords**: Migrate from 1Password to **Proton Pass** as the default password manager.
+- **Security & Passwords**: Add `proton-pass-ssh-agent.service` systemd user service to manage the Proton Pass SSH agent.
+- **Security & Passwords**: Add `pass-cli` Zsh autocomplete plugin.
+- **Security & Passwords**: Add a centralized SSH agent initialization script (`zsh/init/ssh-agent.zsh`) to automatically detect and export the active SSH socket.
 - **Zsh & Utilities**: Add a custom `ssh-copy-agent-keys` function in `zsh/functions/ssh.zsh` to interactively select public keys loaded in the local `ssh-agent` and copy them to a remote server while avoiding duplicates.
 - **Neovim & Editors**: Implement a fully modular Lua-based Neovim configuration (`lazy.nvim`, Telescope, Treesitter, Lualine) and add native Wayland support configurations for Antigravity IDE.
 - **Hyprland & Display**: Refactor monitor/workspace setups to host-specific modular configurations (`hosts/PadsTower.lua`, `hosts/PadsP5560.lua`), update keybindings, and enable tearing support for low-latency gaming.
@@ -13,11 +17,15 @@ All notable changes to this project will be documented in this file.
 - **CI/CD & Docs**: Implement GitHub Actions pipelines for pages deployment/Vim packaging, and add an automated page generator (`gen_pages.py`) with table of contents support.
 
 ### Changed
+- **Hyprland & Keybindings**: Update applications launcher, keybindings, and window rules to run Proton Pass instead of 1Password.
+- **Ubuntu & OS Packages**: Update Ubuntu setup installer and Arch Linux package lists to install Proton Pass CLI instead of 1Password.
 - **Gaming & Scripting**: Rewrite `steam-optimize` from Bash to Python 3 (adding JSON parsing, monitor detection, and Forza Horizon 6 overrides), and refactor `awww.sh` wallpaper script with robust error handling and array safety.
 - **Modernization & Cleanup**: Clean up `.gitconfig` structure, migrate global VS Code Lua LSP settings to a project-specific `.luarc.json`, and remove `xml2` dependency from `http_crawler.zsh`.
 - **Aesthetics & UI**: Update desktop component styling (Waybar, Wofi, Mako, wlogout) to the official **Catppuccin Mocha** palette.
 
 ### Removed
+- **Legacy Components**: Remove legacy `1password` Zsh plugin, including the helper function `opswd`.
+- **Legacy Components**: Remove legacy `~/.xinitrc` configuration and its installer symlink.
 - **Legacy Components**: Remove GDM display manager, old `kitty` theme configuration files, legacy helper scripts (`SystemControl.sh`, `power-profiles`, `xrandr.sh`), and the precompiled `greenclip-v4.2` binary.
 - **Redundant Configs**: Streamline environments by removing obsolete GNOME Keyring/SSH socket environment variables.
 
