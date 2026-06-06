@@ -119,6 +119,7 @@
 .local/share/gvfs-metadata
 .local/share/klipper
 .local/share/lbry/lbrynet
+.local/share/lutris/runners
 .local/share/okular/docdata
 .local/share/org.kde.gwenview/recentfolders
 .local/share/RecentDocuments
@@ -129,7 +130,6 @@
 .local/share/Trash
 .local/share/zeitgeist
 .local/state
-.localised
 .LSOverride
 .macromedia
 .mozilla/firefox/*/.parentlock
