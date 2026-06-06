@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
+
 ### Added
 - **Security & Passwords**: Migrate from 1Password to **Proton Pass** as the default password manager.
 - **Security & Passwords**: Add `proton-pass-ssh-agent.service` systemd user service to manage the Proton Pass SSH agent.
