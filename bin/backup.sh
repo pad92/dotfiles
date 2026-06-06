@@ -72,17 +72,48 @@ C_NC='\033[0m'
 
 log() { printf "${2:-${C_NC}}%s${C_NC}\n" "$1"; }
 
+# --- Remote size & formatting ---
+get_remote_size() {
+    local size
+    size="$(run_ssh "${REMOTE_USER}@${REMOTE_HOST}" "du -s \"${REMOTE_BASE_PATH}\" 2>/dev/null" 2>/dev/null || true)"
+    if [ -n "$size" ]; then
+        printf '%s\n' "$size" | awk '{print $1}'
+    else
+        echo "0"
+    fi
+}
+
+format_size() {
+    local size_kb="$1"
+    local prefix=""
+    local abs_size_kb="$size_kb"
+    if [ "$size_kb" -lt 0 ]; then
+        abs_size_kb=$(( -size_kb ))
+        prefix="-"
+    else
+        prefix="+"
+    fi
+
+    if [ "$abs_size_kb" -lt 1024 ]; then
+        printf '%s%s KB\n' "$prefix" "$abs_size_kb"
+    elif [ "$abs_size_kb" -lt 1048576 ]; then
+        printf '%s%.2f MB\n' "$prefix" "$(echo "$abs_size_kb" | awk '{print $1 / 1024}')"
+    else
+        printf '%s%.2f GB\n' "$prefix" "$(echo "$abs_size_kb" | awk '{print $1 / 1048576}')"
+    fi
+}
+
 # --- OS maintenance ---
 manage_packages() {
     local id_check="${ID_LIKE:-$ID}"
-    log "Vérification des paquets ($id_check)..." "$C_ORANGE"
+    log "Checking packages ($id_check)..." "$C_ORANGE"
 
     case "$id_check" in
         *arch*)
             # pacman -Qtdq exits 1 when no orphans — suppress with || true
             orphans="$(pacman -Qtdq 2>/dev/null || true)"
             if [ -n "$orphans" ]; then
-                log "Suppression des orphelins..." "$C_ORANGE"
+                log "Removing orphans..." "$C_ORANGE"
                 printf '%s\n' "$orphans" | xargs yay -Rns --noconfirm
             fi
             yay -Scc --noconfirm
@@ -100,7 +131,7 @@ manage_diffs() {
         local diff_file="${DIST_DIR}/pkglist-${TIMESTAMP}.diff"
         diff -U 0 "${PKGLIST_OLD}" "${PKGLIST_CURRENT}" > "${diff_file}" || true
         if [ -s "${diff_file}" ]; then
-            log "Changements paquets :" "$C_ORANGE"
+            log "Package list changes:" "$C_ORANGE"
             cat "${diff_file}"
         else
             rm -f "${diff_file}"
@@ -145,7 +176,7 @@ perform_rsync() {
 
 # --- Execution ---
 if ! ping -c 1 -W 2 "$REMOTE_HOST" > /dev/null 2>&1; then
-    log "ERREUR: $REMOTE_HOST injoignable." "$C_RED"
+    log "ERROR: $REMOTE_HOST is unreachable." "$C_RED"
     exit 1
 fi
 
@@ -153,9 +184,14 @@ manage_packages
 manage_diffs
 
 START="$(date +%s)"
+SIZE_BEFORE="$(get_remote_size)"
 
 perform_rsync "${HOME}/" "home/${REMOTE_USER}"
 perform_rsync "/etc/" "etc"
 
+SIZE_AFTER="$(get_remote_size)"
+DELTA=$(( SIZE_AFTER - SIZE_BEFORE ))
+
 FINISH="$(date +%s)"
-log "Backup terminé en $(( (FINISH - START) / 60 ))m $(( (FINISH - START) % 60 ))s" "$C_GREEN"
+log "Backup completed in $(( (FINISH - START) / 60 ))m $(( (FINISH - START) % 60 ))s" "$C_GREEN"
+log "Disk space delta: $(format_size "$DELTA")" "$C_GREEN"
