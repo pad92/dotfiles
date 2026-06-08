@@ -4,8 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.3.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.1)
+
+### Added
+- **Backup Utility**: Introduce remote disk space delta calculation and log file size changes upon backup completion.
+- **Installer**: Add post-installation hook (`apply_live_changes`) to dynamically rebuild font cache, reload X resources (`xrdb`), and refresh desktop environments (Mako, Waybar).
+
 ### Changed
-- **Backup Utility**: Refactor `backup.sh` to dynamically query `ssh-agent` via `ssh-add -l` rather than using hardcoded private key files (`id_rsa` or `id_ed25519`).
+- **System Fonts**: Standardize system-wide body and desktop environment UI fonts (GTK, Hyprland, Mako, wlogout, wofi) to **DejaVu Sans** and terminal/code blocks to **JetBrainsMono Nerd Font**.
+- **Hyprland**: Unify and centralize font and cursor configurations using dynamic Lua variables in compositor configurations.
+- **Backup Utility**: Refactor `backup.sh` to query loaded keys via `ssh-agent` rather than relying on hardcoded private key paths, exclude Lutris runner files, prune deprecated `.localised` exclude pattern, and translate logs from French to English.
+
+### Removed
+- **Legacy OS Support**: Drop Ubuntu-specific bootstrap installer script (`dist/ubuntu/install.sh`) and related documentation.
+- **Zsh & Utilities**: Remove deprecated `command-not-found` shell plugin and its assets from `.zshrc` and plugin directory.
 
 ## [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
 
