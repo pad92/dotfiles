@@ -20,7 +20,7 @@
 }
 
 body {
-    font-family: "JetBrainsMono Nerd Font", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "DejaVu Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--bg-color);
@@ -82,8 +82,11 @@ a:hover {
     text-decoration: underline;
 }
 
+code, pre {
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DejaVu Sans Mono", monospace;
+}
+
 code {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     background-color: var(--code-bg);
     color: #f5e0dc;
     /* Rosewater */
