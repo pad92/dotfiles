@@ -1,6 +1,6 @@
 * {
 	background-image: none;
-	font-family: "Inter";
+	font-family: "DejaVu Sans";
 }
 
 @import '../waybar/style.css';

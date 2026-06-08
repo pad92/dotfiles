@@ -1,4 +1,5 @@
 local uwsm = "uwsm app -- "
+local font_name = "DejaVu Sans"
 
 local config = {
     -- =============================================================================
@@ -28,7 +29,7 @@ local config = {
         rounding         = 10,
         rounding_power   = 2.5,
         border_size      = 2,
-        font             = "Inter",
+        font             = font_name,
         font_size        = 12,
         cursor_theme     = os.getenv("XCURSOR_THEME") or "Adwaita",
         cursor_size      = tonumber(os.getenv("XCURSOR_SIZE")) or 24,
@@ -160,8 +161,8 @@ local config = {
         { key = "org.gnome.desktop.interface font-antialiasing",   value = "'rgba'" },
         { key = "org.gnome.desktop.interface font-hinting",        value = "'full'" },
         { key = "org.gnome.desktop.interface monospace-font-name", value = "'JetBrainsMono Nerd Font 10'" },
-        { key = "org.gnome.desktop.interface font-name",           value = "'Inter 10'" },
-        { key = "org.gnome.desktop.interface document-font-name",  value = "'Inter 10'" },
+        { key = "org.gnome.desktop.interface font-name",           value = "'" .. font_name .. " 10'" },
+        { key = "org.gnome.desktop.interface document-font-name",  value = "'" .. font_name .. " 10'" },
     },
 }
 
