@@ -3,11 +3,12 @@
 -- =============================================================================
 -- Configures properties for the Dwindle tiling layout.
 
+local config = require("config")
+
 hl.config({ 
-  dwindle = {
-    preserve_split = true,       -- Keeps split orientation constant when moving/removing windows
-    smart_split = false,         -- Auto-determines window splitting direction based on cursor position
-    smart_resizing = false,      -- Dynamic proportional window resizing
-    -- precise_mouse_move = true, -- Precision window positioning when dragging
-  }
+  general = {
+    layout = config.layout.active_layout,
+    resize_on_border = config.layout.resize_on_border,
+  },
+  dwindle = config.layout.dwindle,
 })

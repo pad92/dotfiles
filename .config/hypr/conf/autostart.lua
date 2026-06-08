@@ -5,11 +5,7 @@
 
 hl.on("hyprland.start", function()
   local config = require("config")
-
-  -- Helper to launch apps via UWSM
-  local function uwsm_app(cmd)
-    hl.exec_cmd("uwsm app -- " .. cmd)
-  end
+  local utils = require("include.utils")
 
   -- 1. Environment & Theme settings
   -- Applies GTK/GNOME theme settings stored in config.lua via gsettings
@@ -27,11 +23,11 @@ hl.on("hyprland.start", function()
   -- 3. Core Desktop Services & Applets
   -- Starts background components such as waybar, blueman, network indicators, etc.
   for _, app in ipairs(config.autostart) do
-    uwsm_app(app)
+    utils.uwsm_app(app)
   end
 
   -- 4. Clipboard History Management
   -- Uses cliphist to automatically track and cache copied text and images
-  uwsm_app("wl-paste --type text --watch cliphist store")
-  uwsm_app("wl-paste --type image --watch cliphist store")
+  utils.uwsm_app("wl-paste --type text --watch cliphist store")
+  utils.uwsm_app("wl-paste --type image --watch cliphist store")
 end)

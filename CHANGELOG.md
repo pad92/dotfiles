@@ -8,9 +8,12 @@ All notable changes to this project will be documented in this file.
 - **Hyprland**: Add `hyprlauncher` support as the primary desktop application launcher and clipboard history picker.
 - **Theming**: Add `hyprtoolkit.conf` to configure global `hyprtoolkit` aesthetics matching the Gruvbox colorscheme (using `0xAARRGGBB` hex color format).
 - **Neovim**: Add StyLua configuration file `stylua.toml` to support local code validation.
+- **Hyprland**: Add modular helper scripts in `.config/hypr/include/` to encapsulate configuration loading (`toolkit.lua`), host configuration loading (`host.lua`), and core layout/utility helpers (`utils.lua`).
 
 ### Changed
 - **Hyprland**: Refactor Lua configurations to dynamically parse and source appearance, typography, and color settings from `hyprtoolkit.conf` with automatic hex format translation and fallbacks.
+- **Hyprland**: Modularize and factorize main entrypoint and component sub-configurations (`.config/hypr/conf/input.lua`, `.config/hypr/conf/layout.lua`, `.config/hypr/conf/appearance.lua`) to eliminate duplicate config parameters and structural redundancy.
+- **Hyprland**: Optimize workspace bindings in `.config/hypr/conf/keybindings.lua` by lifting hardware keycode allocations out of loops and extending support to a 10th workspace mapped to key `0` and numpad `0`.
 
 ### Removed
 - **Wofi**: Clean up and remove all wofi configuration files (`.config/wofi`) and package installer entries.

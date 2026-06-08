@@ -3,13 +3,7 @@
 -- =============================================================================
 -- Configures customized rules for floating, size, placement, and transparency of apps.
 
--- Utility helper to enforce floating behavior on multiple window classes
-local function set_float(classes)
-  if type(classes) == "string" then classes = { classes } end
-  for _, class in ipairs(classes) do
-    hl.window_rule({ match = { class = "^(" .. class .. ")$" }, float = true })
-  end
-end
+local utils = require("include.utils")
 
 -- 1. Polkit Authentication Agents
 -- Enforces center alignment, floating status, and round corners for password prompters
@@ -49,7 +43,7 @@ local float_apps = {
   "io.gitlab.theevilskeleton.Upscaler", "io.missioncenter.MissionCenter",
   "net.davidotek.pupgui2", "org.telegram.desktop", "Plexamp", "Signal", "yad"
 }
-set_float(float_apps)
+utils.set_float(float_apps)
 
 -- 5. Special Case Title Matches (Float specific windows/dialogs inside tiled apps)
 hl.window_rule({ match = { class = "^(codium)$", title = "^(Save Workspace)$" }, float = true })

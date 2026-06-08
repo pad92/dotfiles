@@ -153,31 +153,27 @@ hl.bind(
 -- WORKSPACE MANAGEMENT BINDINGS
 -- =============================================================================
 
--- Move active window to a workspace SILENTLY (focus does not follow to destination workspace)
--- Mapped to number keys 1 through 9 using hardware keycodes
-for i = 1, 9 do
-  local numberkey = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
-  hl.bind(config.mainMod .. " + ALT + code:" .. numberkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
-end
+-- Hardware keycodes for number keys (1 to 9, then 0) and numpad keys (1 to 9, then 0)
+local NUMBER_KEYS = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
+local NUMPAD_KEYS = { 87, 88, 89, 83, 84, 85, 79, 80, 81, 90 }
 
--- Move active window to a workspace SILENTLY using hardware Numpad keycodes
-for i = 1, 9 do
-  local numpadkey = { 87, 88, 89, 83, 84, 85, 79, 80, 81, 90 }
-  hl.bind(config.mainMod .. " + ALT + code:" .. numpadkey[i], hl.dsp.window.move({ workspace = i, follow = false }))
+-- Silent workspace movement (active window moves, focus stays)
+for i = 1, 10 do
+  hl.bind(config.mainMod .. " + ALT + code:" .. NUMBER_KEYS[i], hl.dsp.window.move({ workspace = i, follow = false }))
+  hl.bind(config.mainMod .. " + ALT + code:" .. NUMPAD_KEYS[i], hl.dsp.window.move({ workspace = i, follow = false }))
 end
 
 -- Relative navigation: Switch focus to adjacent workspace (Left or Right)
 hl.bind("CTRL + SUPER + Right", hl.dsp.focus({ workspace = "r+1" }))
 hl.bind("CTRL + SUPER + Left", hl.dsp.focus({ workspace = "r-1" }))
 
--- Absolute navigation: Focus workspaces 1 through 9
-for i = 1, 9 do
-  hl.bind(config.mainMod .. " + " .. i, hl.dsp.focus({ workspace = i }))
-end
-
--- Move active window to workspace and FOLLOW focus to destination workspace (workspaces 1 to 9)
-for i = 1, 9 do
-  hl.bind(config.mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i, follow = true }))
+-- Absolute navigation and window movement with follow (workspaces 1 through 10)
+for i = 1, 10 do
+  local key = i == 10 and "0" or tostring(i)
+  -- Focus workspace i
+  hl.bind(config.mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
+  -- Move active window to workspace i and FOLLOW focus
+  hl.bind(config.mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i, follow = true }))
 end
 
 -- =============================================================================
