@@ -1,5 +1,8 @@
 local uwsm = "uwsm app -- "
 local font_name = "DejaVu Sans"
+local font_size = 10
+local cursor_theme = os.getenv("XCURSOR_THEME") or "Adwaita"
+local cursor_size = tonumber(os.getenv("XCURSOR_SIZE")) or 24
 
 local config = {
     -- =============================================================================
@@ -30,9 +33,9 @@ local config = {
         rounding_power   = 2.5,
         border_size      = 2,
         font             = font_name,
-        font_size        = 12,
-        cursor_theme     = os.getenv("XCURSOR_THEME") or "Adwaita",
-        cursor_size      = tonumber(os.getenv("XCURSOR_SIZE")) or 24,
+        font_size        = font_size + 2,
+        cursor_theme     = cursor_theme,
+        cursor_size      = cursor_size,
 
         blur = {
             enabled = true,
@@ -137,7 +140,7 @@ local config = {
     -- =============================================================================
     notifications = {
         duration   = 3000,
-        font_size  = 12,
+        font_size  = font_size + 2,
     },
 
     -- =============================================================================
@@ -156,13 +159,13 @@ local config = {
         { key = "org.gnome.desktop.interface icon-theme",          value = "'Papirus-Dark'" },
         { key = "org.gnome.desktop.interface gtk-theme",           value = "'Materia-dark-compact'" },
         { key = "org.gnome.desktop.interface color-scheme",        value = "'prefer-dark'" },
-        { key = "org.gnome.desktop.interface cursor-theme",        value = "'Adwaita'" },
-        { key = "org.gnome.desktop.interface cursor-size",         value = "24" },
+        { key = "org.gnome.desktop.interface cursor-theme",        value = "'" .. cursor_theme .. "'" },
+        { key = "org.gnome.desktop.interface cursor-size",         value = tostring(cursor_size) },
         { key = "org.gnome.desktop.interface font-antialiasing",   value = "'rgba'" },
         { key = "org.gnome.desktop.interface font-hinting",        value = "'full'" },
         { key = "org.gnome.desktop.interface monospace-font-name", value = "'JetBrainsMono Nerd Font 10'" },
-        { key = "org.gnome.desktop.interface font-name",           value = "'" .. font_name .. " 10'" },
-        { key = "org.gnome.desktop.interface document-font-name",  value = "'" .. font_name .. " 10'" },
+        { key = "org.gnome.desktop.interface font-name",           value = "'" .. font_name .. " " .. font_size .. "'" },
+        { key = "org.gnome.desktop.interface document-font-name",  value = "'" .. font_name .. " " .. font_size .. "'" },
     },
 }
 
