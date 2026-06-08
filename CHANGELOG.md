@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Hyprland**: Add `hyprlauncher` support as the primary desktop application launcher and clipboard history picker.
+- **Theming**: Add `hyprtoolkit.conf` to configure global `hyprtoolkit` aesthetics matching the Gruvbox colorscheme (using `0xAARRGGBB` hex color format).
+- **Neovim**: Add StyLua configuration file `stylua.toml` to support local code validation.
+
+### Changed
+- **Hyprland**: Refactor Lua configurations to dynamically parse and source appearance, typography, and color settings from `hyprtoolkit.conf` with automatic hex format translation and fallbacks.
+
+### Removed
+- **Wofi**: Clean up and remove all wofi configuration files (`.config/wofi`) and package installer entries.
+
 ## [v5.3.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.1)
 
 ### Added

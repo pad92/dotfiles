@@ -225,7 +225,7 @@ A comprehensive list of configured tools across the stack:
 | **Editor** | Vim, VSCode |
 | **Terminal** | Alacritty |
 | **Multiplexer** | Tmux |
-| **UI/UX** | Waybar, Wofi, Mako |
+| **UI/UX** | Waybar, hyprlauncher, Mako |
 | **Security** | Proton Pass CLI |
 | **System** | Fastfetch, Htop |
 

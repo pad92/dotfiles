@@ -50,11 +50,15 @@ hl.bind(config.mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle
 -- Launch default music player (Spotify)
 hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { description = "Music Player" })
 
--- Toggle the Wofi application launcher menu
-hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " --show drun"), { description = "Application menu" })
+-- Toggle the hyprlauncher application menu
+hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " -t"), { description = "Application menu" })
 
 -- Open password manager
-hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.apps.password_manager), { description = "Password Manager" })
+hl.bind(
+  config.mainMod .. " + SHIFT + Return",
+  hl.dsp.exec_cmd(config.apps.password_manager),
+  { description = "Password Manager" }
+)
 
 -- =============================================================================
 -- NAVIGATION & DÉPLACEMENT (FOCUS & MOVE)
@@ -62,8 +66,12 @@ hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.apps.passw
 
 -- Focus adjacent window (supports Arrow keys, l/r/u/d keys, and Bracket Left/Right)
 local focus_map = {
-  { "Left",        "l" }, { "Right", "r" }, { "Up", "u" }, { "Down", "d" },
-  { "BracketLeft", "l" }, { "BracketRight", "r" }
+  { "Left", "l" },
+  { "Right", "r" },
+  { "Up", "u" },
+  { "Down", "d" },
+  { "BracketLeft", "l" },
+  { "BracketRight", "r" },
 }
 for _, pair in ipairs(focus_map) do
   hl.bind(config.mainMod .. " + " .. pair[1], hl.dsp.focus({ direction = pair[2] }))
@@ -71,7 +79,10 @@ end
 
 -- Move focused window within active workspace (supports Arrow keys or l/r/u/d keys)
 local move_map = {
-  { "Left", "l" }, { "Right", "r" }, { "Up", "u" }, { "Down", "d" }
+  { "Left", "l" },
+  { "Right", "r" },
+  { "Up", "u" },
+  { "Down", "d" },
 }
 for _, pair in ipairs(move_map) do
   hl.bind(config.mainMod .. " + SHIFT + " .. pair[1], hl.dsp.window.move({ direction = pair[2] }))
@@ -88,12 +99,10 @@ hl.bind("XF86AudioMute", hl.dsp.exec_cmd(config.utils.vol_mute), { locked = true
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(config.utils.mic_mute), { locked = true })
 
 -- Raise system audio volume (repeats on hold, locked when display is locked)
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(config.utils.vol_up),
-  { locked = true, repeating = true })
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(config.utils.vol_up), { locked = true, repeating = true })
 
 -- Lower system audio volume (repeats on hold, locked when display is locked)
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(config.utils.vol_down),
-  { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(config.utils.vol_down), { locked = true, repeating = true })
 
 -- Media playback controls using playerctl daemon
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(config.utils.media_play_pause), { locked = true })
@@ -109,8 +118,7 @@ hl.bind("XF86AudioPrev", hl.dsp.exec_cmd(config.utils.media_prev), { locked = tr
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(config.utils.bright_up), { locked = true, repeating = true })
 
 -- Decrease monitor brightness using SwayOSD
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(config.utils.bright_down),
-  { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(config.utils.bright_down), { locked = true, repeating = true })
 
 -- Toggle Caps Lock state with an overlay notification
 hl.bind("CAPS", hl.dsp.exec_cmd(config.utils.caps_lock), { description = "Caps Lock" })
@@ -128,11 +136,18 @@ hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(config.utils.screenshot), { lo
 -- =============================================================================
 
 -- Cycle desktop wallpaper using swww daemon script
-hl.bind(config.mainMod .. " + ALT + Right", hl.dsp.exec_cmd(config.utils.wallpaper), { description = "Change wallpaper" })
+hl.bind(
+  config.mainMod .. " + ALT + Right",
+  hl.dsp.exec_cmd(config.utils.wallpaper),
+  { description = "Change wallpaper" }
+)
 
--- Query and decode clipboard history via wofi selection and paste it to wl-copy
-hl.bind(config.mainMod .. " + SHIFT + V", hl.dsp.exec_cmd(string.format(config.utils.clipboard, config.apps.menu)),
-  { description = "Clipboard history" })
+-- Query and decode clipboard history via hyprlauncher selection and paste it to wl-copy
+hl.bind(
+  config.mainMod .. " + SHIFT + V",
+  hl.dsp.exec_cmd(string.format(config.utils.clipboard, config.apps.menu)),
+  { description = "Clipboard history" }
+)
 
 -- =============================================================================
 -- WORKSPACE MANAGEMENT BINDINGS

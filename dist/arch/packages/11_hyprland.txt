@@ -8,8 +8,11 @@ hyprcursor
 hypridle
 hyprland
 hyprlang
+hyprlauncher
 hyprlock
 hyprpicker
+hyprpwcenter
+hyprsysteminfo
 hyprutils
 hyprwayland-scanner
 noto-fonts-emoji
@@ -27,5 +30,4 @@ waybar
 wl-clipboard
 wlogout
 woff2-font-awesome
-wofi
 xdg-desktop-portal-hyprland
