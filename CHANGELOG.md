@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Hyprland & Keybindings**: Update applications launcher, keybindings, and window rules to run Proton Pass instead of 1Password.
-- **Ubuntu & OS Packages**: Update Ubuntu setup installer and Arch Linux package lists to install Proton Pass CLI instead of 1Password.
+- **OS Packages**: Update Arch Linux package lists to install Proton Pass CLI instead of 1Password.
 - **Gaming & Scripting**: Rewrite `steam-optimize` from Bash to Python 3 (adding JSON parsing, monitor detection, and Forza Horizon 6 overrides), and refactor `awww.sh` wallpaper script with robust error handling and array safety.
 - **Modernization & Cleanup**: Clean up `.gitconfig` structure, migrate global VS Code Lua LSP settings to a project-specific `.luarc.json`, and remove `xml2` dependency from `http_crawler.zsh`.
 - **Aesthetics & UI**: Update desktop component styling (Waybar, Wofi, Mako, wlogout) to the official **Catppuccin Mocha** palette.

@@ -28,7 +28,7 @@ local config = {
         rounding         = 10,
         rounding_power   = 2.5,
         border_size      = 2,
-        font             = "JetBrainsMono Nerd Font",
+        font             = "Inter",
         font_size        = 12,
         cursor_theme     = os.getenv("XCURSOR_THEME") or "Adwaita",
         cursor_size      = tonumber(os.getenv("XCURSOR_SIZE")) or 24,
@@ -159,9 +159,9 @@ local config = {
         { key = "org.gnome.desktop.interface cursor-size",         value = "24" },
         { key = "org.gnome.desktop.interface font-antialiasing",   value = "'rgba'" },
         { key = "org.gnome.desktop.interface font-hinting",        value = "'full'" },
-        { key = "org.gnome.desktop.interface monospace-font-name", value = "'SauceCodePro Nerd Font 14'" },
-        { key = "org.gnome.desktop.interface font-name",           value = "'Cantarell 10'" },
-        { key = "org.gnome.desktop.interface document-font-name",  value = "'Cantarell 10'" },
+        { key = "org.gnome.desktop.interface monospace-font-name", value = "'JetBrainsMono Nerd Font 10'" },
+        { key = "org.gnome.desktop.interface font-name",           value = "'Inter 10'" },
+        { key = "org.gnome.desktop.interface document-font-name",  value = "'Inter 10'" },
     },
 }
 

@@ -19,15 +19,6 @@ This repository provides automated installation workflows tailored per operating
     > [!TIP]
     > **High-Fidelity Installer**: The interactive manager presents a clean menu to select package suites (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). It automatically skips already installed packages and configures `yay` or `paru` for AUR dependencies.
 
-*   **Ubuntu (Noble 24.04+)**: Run the dedicated automated setup script:
-    ```sh
-    git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
-    cd ~/.dotfiles
-    bash dist/ubuntu/install.sh
-    ```
-    > [!IMPORTANT]
-    > **Snap & Flatpak-Free**: The Ubuntu installer is fully compliant with a Snap-free and Flatpak-free configuration, utilizing official scoped GPG keyrings and native APT repositories to establish package parity with the Arch environment.
-
 
 ### Editor Only
 *   To set up the editor configuration without installing the full suite:
@@ -220,12 +211,9 @@ A collection of highly optimized Python, Bash, and shell scripts located in the 
 *   **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
 
 ### 🐧 OS Maintenance
-*   **Arch Linux (Primary)**:
+*   **Arch Linux**:
     *   Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
     *   Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
-*   **Ubuntu (Noble 24.04+)**:
-    *   Setup Script: [dist/ubuntu/install.sh](./dist/ubuntu/install.sh) - Modern, idempotent, secure, and Snap-free.
-    *   Provides complete bootstrapping, registers scoped GPG repositories (Docker, VS Codium, Spotify, Hashicorp) and installs Proton Pass CLI, and enables `universe` to establish package parity with the Arch Linux Hyprland 0.55+ ecosystem.
 
 ## 📋 Application Ecosystem Summary
 

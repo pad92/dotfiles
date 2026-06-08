@@ -347,6 +347,34 @@ install_arch_packages() {
     log_success "Package installation completed successfully!"
 }
 
+apply_live_changes() {
+    log_info "Applying system and desktop configuration changes..."
+
+    # Rebuild font cache
+    if command -v fc-cache &> /dev/null; then
+        log_info "Rebuilding font cache..."
+        fc-cache -f || log_warn "Failed to rebuild font cache"
+    fi
+
+    # Merge Xresources
+    if command -v xrdb &> /dev/null && [[ -f "$HOME/.Xresources" ]]; then
+        log_info "Reloading X resources..."
+        xrdb -merge "$HOME/.Xresources" || log_warn "Failed to reload X resources"
+    fi
+
+    # Reload Mako notification daemon
+    if command -v makoctl &> /dev/null && pgrep -x mako &> /dev/null; then
+        log_info "Reloading Mako configuration..."
+        makoctl reload || log_warn "Failed to reload Mako"
+    fi
+
+    # Reload Waybar
+    if pgrep -x waybar &> /dev/null; then
+        log_info "Reloading Waybar..."
+        pkill -USR2 waybar || log_warn "Failed to signal Waybar to reload"
+    fi
+}
+
 main() {
     log_info "Starting dotfiles installation..."
 
@@ -357,6 +385,7 @@ main() {
 
     run_dotbot "$@"
     install_vim_plugins
+    apply_live_changes
 
     log_success "Dotfiles installation completed successfully!"
 }

@@ -1,6 +1,6 @@
 * {
 	background-image: none;
-	font-family: "JetBrains Mono NFM";
+	font-family: "Inter";
 }
 
 @import '../waybar/style.css';

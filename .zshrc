@@ -21,7 +21,6 @@ plugins=(
   pass-cli
   ansible
   archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
-  command-not-found
   docker
   docker-compose
   extract
