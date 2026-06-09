@@ -159,14 +159,14 @@ local config = {
   -- GTK & THEME SETTINGS (GSETTINGS OVERRIDES)
   -- =============================================================================
   theme = {
-    { key = "org.gnome.desktop.interface icon-theme", value = "'Papirus-Dark'" },
+    { key = "org.gnome.desktop.interface icon-theme", value = "'" .. (tk.icon_theme or "Papirus-Dark") .. "'" },
     { key = "org.gnome.desktop.interface gtk-theme", value = "'Materia-dark-compact'" },
     { key = "org.gnome.desktop.interface color-scheme", value = "'prefer-dark'" },
     { key = "org.gnome.desktop.interface cursor-theme", value = "'" .. cursor_theme .. "'" },
     { key = "org.gnome.desktop.interface cursor-size", value = tostring(cursor_size) },
     { key = "org.gnome.desktop.interface font-antialiasing", value = "'rgba'" },
     { key = "org.gnome.desktop.interface font-hinting", value = "'full'" },
-    { key = "org.gnome.desktop.interface monospace-font-name", value = "'JetBrainsMono Nerd Font 10'" },
+    { key = "org.gnome.desktop.interface monospace-font-name", value = "'" .. (tk.font_family_monospace or "JetBrainsMono Nerd Font") .. " " .. (tk.small_font_size or 10) .. "'" },
     { key = "org.gnome.desktop.interface font-name", value = "'" .. font_name .. " " .. font_size .. "'" },
     { key = "org.gnome.desktop.interface document-font-name", value = "'" .. font_name .. " " .. font_size .. "'" },
   },
