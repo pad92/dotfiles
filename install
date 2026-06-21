@@ -31,13 +31,9 @@ backup_existing_files() {
 
     # Extract target paths from the config file
     # We look for lines containing '~/' and a ':'
-    local targets
-    targets=$(grep '~/' "${BASEDIR}/${CONFIG}" | grep ':' | sed 's/ *:.*//' | sed 's/^ *//')
-
-    for target in $targets; do
-        # Expand ~ to home directory
-        local full_path
-        full_path=$(eval echo "$target")
+    grep '~/' "${BASEDIR}/${CONFIG}" | grep ':' | sed 's/ *:.*//' | sed 's/^ *//' \
+    | while IFS= read -r target; do
+        local full_path="${target/#\~/$HOME}"
 
         if [[ -f "$full_path" && ! -L "$full_path" ]]; then
             local backup_path="${full_path}.bak"
@@ -62,11 +58,10 @@ check_dependencies() {
 
 setup_dotbot() {
     log_info "Updating dotbot submodule..."
-    cd "${BASEDIR}"
 
-    # Sync and update submodules recursively
-    git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-    git submodule update --init --recursive "${DOTBOT_DIR}"
+    # Init first (required on fresh clones), then sync nested submodules
+    git -C "${BASEDIR}" submodule update --init --recursive "${DOTBOT_DIR}"
+    git -C "${BASEDIR}/${DOTBOT_DIR}" submodule sync --quiet --recursive
 
     log_success "Dotbot submodule updated."
 }
@@ -88,34 +83,28 @@ run_dotbot() {
 }
 
 install_vim_plugins() {
-    if command -v vim &> /dev/null; then
-        log_info "Installing and updating Vim plugins..."
-        # Run vim in headless mode to install and update plugins
-        vim +PluginInstall +PluginUpdate +qall
-        log_success "Vim plugins updated."
-    else
+    if ! command -v vim &> /dev/null; then
         log_warn "Vim not found, skipping plugin installation."
+        return 0
     fi
+    if [[ ! -t 0 ]]; then
+        log_warn "No TTY available, skipping Vim plugin installation."
+        return 0
+    fi
+    log_info "Installing and updating Vim plugins..."
+    vim +PluginInstall +PluginUpdate +qall
+    log_success "Vim plugins updated."
 }
 
 # --- Arch Linux / CachyOS Packages Installation ---
 
 is_arch_or_cachyos() {
-    if [[ -f /etc/os-release ]]; then
-        local ID="" ID_LIKE=""
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^ID= ]]; then
-                ID=$(echo "${line#*=}" | tr -d '"' | tr -d "'")
-            elif [[ "$line" =~ ^ID_LIKE= ]]; then
-                ID_LIKE=$(echo "${line#*=}" | tr -d '"' | tr -d "'")
-            fi
-        done < /etc/os-release
-        
-        if [[ "$ID" == "arch" || "$ID" == "cachyos" || "$ID_LIKE" =~ "arch" ]]; then
-            return 0
-        fi
+    if [[ ! -f /etc/os-release ]]; then
+        return 1
     fi
-    return 1
+    local ID="" ID_LIKE=""
+    . /etc/os-release
+    [[ "$ID" == "arch" || "$ID" == "cachyos" || "$ID_LIKE" =~ arch ]]
 }
 
 # --- Interactive Menu Helpers ---
@@ -218,7 +207,9 @@ show_multi_select() {
             results+=("$i")
         fi
     done
-    echo "${results[@]}"
+    if (( ${#results[@]} > 0 )); then
+        echo "${results[@]}"
+    fi
 }
 
 ensure_aur_helper() {
@@ -237,6 +228,7 @@ ensure_aur_helper() {
             log_info "Installing yay..."
             local tmpdir
             tmpdir=$(mktemp -d)
+            trap "rm -rf '$tmpdir'" EXIT
             if git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" &>/dev/null; then
                 (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm)
                 AUR_HELPER="yay"
@@ -246,6 +238,7 @@ ensure_aur_helper() {
                 AUR_HELPER="sudo pacman"
             fi
             rm -rf "$tmpdir"
+            trap - EXIT
         fi
     fi
 }
@@ -301,7 +294,8 @@ install_arch_packages() {
         log_info "Reading packages from $(basename "$file")..."
         
         while IFS= read -r line || [[ -n "$line" ]]; do
-            line=$(echo "$line" | xargs) # trim whitespace
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
             if [[ -n "$line" && ! "$line" =~ ^# ]]; then
                 all_pkgs+=("$line")
             fi
@@ -316,8 +310,12 @@ install_arch_packages() {
     # Filter out already installed packages
     local to_install=()
     local installed_count=0
+    local -A installed_pkgs
+    while IFS= read -r pkg; do
+        installed_pkgs["$pkg"]=1
+    done < <(pacman -Qq 2>/dev/null)
     for pkg in "${all_pkgs[@]}"; do
-        if pacman -Q "$pkg" &>/dev/null; then
+        if [[ -n "${installed_pkgs[$pkg]+x}" ]]; then
             installed_count=$((installed_count + 1))
         else
             to_install+=("$pkg")

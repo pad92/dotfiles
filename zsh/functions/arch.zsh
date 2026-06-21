@@ -79,40 +79,28 @@ fi
 
 ## Update
 function arch_update {
-    # Validate that required command exists
     if ! command -v yay &> /dev/null; then
       echo "Error: yay could not be found"
       return 1
     fi
 
     echo "Updating system..."
-    yay -Syu --devel
+    yay -Syu || { echo "Yay update failed, skipping subsequent steps"; return 1; }
 
-    # Check if yay command succeeded before continuing
-    if [ $? -eq 0 ]; then
-        echo "Yay update completed successfully"
-        clean_arch
+    clean_arch
 
-        # Update firmware if fwupdmgr is available
-        if command -v fwupdmgr &> /dev/null; then
-            echo "Checking for firmware updates..."
-            fwupdmgr refresh
-            if [ $? -eq 0 ]; then
-                echo "Firmware refresh completed successfully"
-                fwupdmgr update -y
-            else
-                echo "Warning: Firmware refresh failed"
-            fi
+    if command -v fwupdmgr &> /dev/null; then
+        echo "Checking for firmware updates..."
+        if fwupdmgr refresh; then
+            fwupdmgr update -y
         else
-          echo 'fwupdmgr not found'
+            echo "Warning: Firmware refresh failed"
         fi
+    fi
 
-        if [ $(command -v flatpak) ]; then
-            echo "Updating flatpak packages..."
-            flatpak update -y
-            flatpak uninstall --unused -y
-        fi
-    else
-        echo "Yay update failed, skipping subsequent steps"
+    if command -v flatpak &> /dev/null; then
+        echo "Updating flatpak packages..."
+        flatpak update -y
+        flatpak uninstall --unused -y
     fi
 }
