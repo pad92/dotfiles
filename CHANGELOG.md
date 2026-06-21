@@ -4,12 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
+
 ### Added
 - **Hyprland**: Add `hyprlauncher` support as the primary desktop application launcher and clipboard history picker.
 - **Theming**: Add `hyprtoolkit.conf` to configure global `hyprtoolkit` aesthetics matching the Gruvbox colorscheme (using `0xAARRGGBB` hex color format).
 - **Neovim**: Add StyLua configuration file `stylua.toml` to support local code validation.
 - **Hyprland**: Add modular helper scripts in `.config/hypr/include/` to encapsulate configuration loading (`toolkit.lua`), host configuration loading (`host.lua`), and core layout/utility helpers (`utils.lua`).
 - **Alacritty**: Add `Shift+Return` keyboard binding to send escape sequence for improved terminal compatibility.
+- **yay**: Add Lua-based configuration system with automated AUR safety hooks, including validation checks for suspicious PKGBUILD patterns, orphan packages, and maintainer changes.
+- **yay**: Add update cooldown hook to automatically defer upgrading packages updated less than 48 hours ago.
 
 ### Changed
 - **Hyprland**: Refactor Lua configurations to dynamically parse and source appearance, typography, and color settings from `hyprtoolkit.conf` with automatic hex format translation and fallbacks.
@@ -27,6 +31,8 @@ All notable changes to this project will be documented in this file.
 - **Backup Utility**: Switch shebang to `bash`, use `$XDG_RUNTIME_DIR` for SSH control socket, and change `yay -Scc` to `yay -Sc` to preserve non-package caches.
 - **Scripts**: Fix shell quoting and test syntax in `comcut`, replace `eval` with safer `bash -c` in `diff-cmd`, and simplify DPI logic in `razer_dpi.py`.
 - **Steam-Optimize**: Add signal handling (`SIGTERM`/`SIGHUP`) and `atexit` cleanup for robust session teardown, propagate game exit code, track mouse DPI changes, add `gamescope`/`game-performance` availability checks, factor shared Forza Horizon profile, defer DND activation until after startup, create `.bak` backups before writing VDF configs, and specify `utf-8` encoding on all file operations.
+- **Installer**: Refactor `install` script for improved reliability, safer path expansion, headless TTY checking, and optimized package installation caching.
+- **Zsh / Arch Update**: Refactor and simplify system update function in `arch.zsh` to improve error handling and command checks.
 
 ### Removed
 - **Wofi**: Clean up and remove all wofi configuration files (`.config/wofi`) and package installer entries.
