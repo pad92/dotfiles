@@ -235,7 +235,7 @@ if $deletetxt; then
   fi
 fi
 
-if [ ! -z $ldPath ]; then
+if [ -n "$ldPath" ]; then
   #re-set LD_LIBRARY_PATH
   export LD_LIBRARY_PATH="$ldPath"
 fi

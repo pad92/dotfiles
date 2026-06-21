@@ -17,12 +17,9 @@ def set_dpi(dpi_value):
 
   for mouse in mice:
     try:
-      # Assurez-vous que dpi_value est un tuple de deux entiers
-      if isinstance(dpi_value, int):
-        print(f"{mouse.name} {dpi_value} DPI")
-        dpi_value = (dpi_value, dpi_value)
-        mouse.dpi = dpi_value
-    except Exception as e:  # Capture toutes les exceptions
+      print(f"{mouse.name} {dpi_value} DPI")
+      mouse.dpi = (dpi_value, dpi_value)
+    except Exception as e:
       print(f"Erreur lors de la définition de la résolution DPI de la souris {mouse.name} : {e}")
 
 if __name__ == "__main__":

@@ -9,7 +9,10 @@ import os
 import sys
 import time
 import json
+import signal
+import atexit
 import subprocess
+import contextlib
 import shutil
 
 # --- Configuration ---
@@ -51,6 +54,16 @@ NVIDIA_ENV_VARS = {
 
 # --- Game Profiles (Declarative Overrides Registry) ---
 
+_FORZA_PROFILE = {
+    "env": {
+        "VKD3D_CONFIG": "no_upload_hvv,single_queue",
+        "PROTON_SET_GAME_DRIVE": "1",
+        "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
+        "SDL_VIDEODRIVER": "x11"
+    },
+    "override_label": "VKD3D tweaks, Game drive, X11 fallback"
+}
+
 GAME_PROFILES = {
     "1808500": {
         "name": "Arc Raiders",
@@ -81,7 +94,6 @@ GAME_PROFILES = {
     "899770": {
         "name": "Last Epoch",
         "wayland": True,
-        "env": {"RADV_PERFTEST": "nggc,gpl"},
     },
     "2694490": {
         "name": "Path of Exile 2",
@@ -93,7 +105,7 @@ GAME_PROFILES = {
         "wayland": True,
     },
     "1449560": {
-        "name": "Metro Exodus",
+        "name": "Metro Exodus Enhanced Edition",
         "wayland": True,
     },
     "379720": {
@@ -109,25 +121,17 @@ GAME_PROFILES = {
     },
     "1551360": {
         "name": "Forza Horizon 5",
-        "env": {
-            "VKD3D_CONFIG": "no_upload_hvv,single_queue",
-            "PROTON_SET_GAME_DRIVE": "1",
-            "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
-            "SDL_VIDEODRIVER": "x11"
-        },
-        "override_label": "VKD3D tweaks, Game drive, X11 fallback"
+        **_FORZA_PROFILE,
     },
     "2483190": {
         "name": "Forza Horizon 6",
-        "env": {
-            "VKD3D_CONFIG": "no_upload_hvv,single_queue",
-            "PROTON_SET_GAME_DRIVE": "1",
-            "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
-            "SDL_VIDEODRIVER": "x11"
-        },
-        "override_label": "VKD3D tweaks, Game drive, X11 fallback"
+        **_FORZA_PROFILE,
     }
 }
+
+# --- Mouse DPI Tracking ---
+DEFAULT_MOUSE_DPI = 1600
+_dpi_changed = False
 
 # --- Helpers ---
 
@@ -221,7 +225,7 @@ def log_msg(level, icon, msg):
             collector.add_error(msg)
         return
             
-    run_silent(["notify-send", msg])
+    run_silent(["notify-send", "--app-name=steam-optimize", msg])
 
 def log_info_silent(msg): log_msg("INFO", None, msg)
 def log_info(msg):        log_msg("INFO", 1, msg)
@@ -231,10 +235,12 @@ def log_error(msg):       log_msg("ERROR", 3, msg)
 # --- Global Environment Setup ---
 
 def check_gamescope_supports_output():
+    if not shutil.which("gamescope"):
+        return False
     try:
         res = subprocess.run(["gamescope", "--help"], capture_output=True, text=True)
         help_text = res.stdout + res.stderr
-        return "--prefer-output" in help_text
+        return "--prefer-output" in help_text or " -O" in help_text
     except Exception:
         return False
 
@@ -362,7 +368,6 @@ def hyprland_start():
         return
 
     log_info("Optimizing Hyprland for gaming")
-    run_silent(["makoctl", "mode", "-s", "dnd"])
 
     eval_cmd = """
       hl.config({
@@ -383,7 +388,8 @@ def hyprland_start():
         collector.hyprland = "Optimized (DND active, rendering tweaks failed)"
 
 def hyprland_end():
-    run_silent(["razer-cli", "-d", "1600"])
+    if _dpi_changed:
+        run_silent(["razer-cli", "-d", str(DEFAULT_MOUSE_DPI)])
     success = True
 
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -412,7 +418,9 @@ def apply_game_overrides(steam_app_id, game_cmd):
     # Apply mouse DPI
     dpi = profile.get("dpi")
     if dpi:
-        run_silent(["razer-cli", "-d", str(dpi)])
+        if run_silent(["razer-cli", "-d", str(dpi)]):
+            global _dpi_changed
+            _dpi_changed = True
 
     # Apply wayland
     if profile.get("wayland"):
@@ -492,7 +500,7 @@ def find_library_folders(steam_root, vdf_module=None):
     folders = []
     if vdf_module:
         try:
-            with open(lib_vdf, "r") as f:
+            with open(lib_vdf, "r", encoding="utf-8") as f:
                 data = vdf_module.load(f)
             for k, v in data.get("libraryfolders", {}).items():
                 if "path" in v:
@@ -502,7 +510,7 @@ def find_library_folders(steam_root, vdf_module=None):
             
     if not folders:
         try:
-            with open(lib_vdf, "r") as f:
+            with open(lib_vdf, "r", encoding="utf-8") as f:
                 for line in f:
                     if '"path"' in line:
                         parts = line.split('"')
@@ -546,7 +554,7 @@ def get_installed_games(library_folders, vdf_module):
             if filename.startswith("appmanifest_") and filename.endswith(".acf"):
                 acf_path = os.path.join(steamapps_dir, filename)
                 try:
-                    with open(acf_path, "r") as f:
+                    with open(acf_path, "r", encoding="utf-8") as f:
                         manifest = vdf_module.load(f)
                     app_state = manifest.get("AppState", {})
                     appid = app_state.get("appid")
@@ -653,7 +661,7 @@ def run_installer(script_path):
     vdf_configs = {}
     for path in localconfig_paths:
         try:
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 vdf_configs[path] = vdf_module.load(f)
         except Exception as e:
             print(f"\033[91m❌ Unable to read {path}: {e}\033[0m", file=sys.stderr)
@@ -689,7 +697,7 @@ def run_installer(script_path):
             else:
                 launch_options_by_app[appid] = opts[0] if opts else ""
 
-        os.system("clear")
+        print("\033[2J\033[H", end="", flush=True)
         print("=" * 85)
         print(f"\033[1;96m{'STEAM-OPTIMIZE INTERACTIVE CONFIGURATOR':^85}\033[0m")
         print("=" * 85)
@@ -729,7 +737,8 @@ def run_installer(script_path):
                 print("\nSaving configurations...")
                 for path, config in vdf_configs.items():
                     try:
-                        with open(path, "w") as f:
+                        shutil.copy2(path, path + ".bak")
+                        with open(path, "w", encoding="utf-8") as f:
                             vdf_module.dump(config, f, pretty=True)
                         print(f"\033[92m✓ Saved: {path}\033[0m")
                     except Exception as e:
@@ -793,18 +802,23 @@ def run_installer(script_path):
                     appid, name = games_list[idx - 1]
                     current_opts = launch_options_by_app.get(appid, "")
 
+                    if current_opts == target_option_no_hud:
+                        new_opt = target_option_hud
+                        action = "Enabled with MangoHud"
+                    elif current_opts == target_option_hud:
+                        new_opt = None
+                        action = "Disabled"
+                    else:
+                        new_opt = target_option_no_hud
+                        action = "Enabled without MangoHud"
+
                     for path, config in vdf_configs.items():
-                        if current_opts == target_option_no_hud:
-                            get_app_entry(config, appid)["LaunchOptions"] = target_option_hud
-                            action = "Enabled with MangoHud"
-                        elif current_opts == target_option_hud:
+                        if new_opt is None:
                             entry = get_app_entry_safe(config, appid)
                             if entry:
                                 entry.pop("LaunchOptions", None)
-                            action = "Disabled"
                         else:
-                            get_app_entry(config, appid)["LaunchOptions"] = target_option_no_hud
-                            action = "Enabled without MangoHud"
+                            get_app_entry(config, appid)["LaunchOptions"] = new_opt
 
                     dirty = True
                     print(f"\n{action} for {name}.")
@@ -930,43 +944,72 @@ def main():
     game_name, cmd = apply_game_overrides(steam_app_id, game_cmd)
     collector.game_name = game_name
     
-    if cmd and cmd[0] != "gamescope":
-        gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
-        cmd = ["gamescope"] + gs_args + ["--"] + cmd
-        log_info(f"Applying Gamescope wrapper for {game_name}")
+    if cmd and os.path.basename(cmd[0]) != "gamescope":
+        if shutil.which("gamescope"):
+            gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
+            cmd = ["gamescope"] + gs_args + ["--"] + cmd
+            log_info(f"Applying Gamescope wrapper for {game_name}")
+        else:
+            log_warn("gamescope not found in PATH; launching without wrapper")
+            collector.gamescope = "Unavailable (not in PATH)"
     else:
         collector.gamescope = "Disabled"
         
+    if not shutil.which("game-performance"):
+        log_error("game-performance not found in PATH")
+        sys.exit(1)
+
+    _game_proc = None
+
+    def _signal_handler(sig, frame):
+        if _game_proc and _game_proc.poll() is None:
+            with contextlib.suppress(OSError):
+                _game_proc.terminate()
+            _game_proc.wait()
+        sys.exit(128 + sig)
+
+    atexit.register(hyprland_end)
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGHUP, _signal_handler)
+
     log_info_silent(f"Launching: game-performance {' '.join(cmd)}")
     hyprland_start()
-    
+
     collector.collecting = False
     log_info(collector.get_startup_message())
-    
+
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        run_silent(["makoctl", "mode", "-s", "dnd"])
+
     start_time = int(time.time())
     hypr_success = True
+    game_rc = 1
     try:
-        subprocess.run(["systemd-inhibit", "--what=idle", "--who=steam-optimize", "--why=Steam game running", "game-performance"] + cmd)
+        _game_proc = subprocess.Popen(["systemd-inhibit", "--what=idle", "--who=steam-optimize", "--why=Steam game running", "game-performance"] + cmd)
+        game_rc = _game_proc.wait()
     finally:
         hypr_success = hyprland_end()
-        
-    elapsed = int(time.time()) - start_time
-    hours, remainder = divmod(elapsed, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    
-    end_lines = [
-        f"🎮 Steam Optimize: {game_name}",
-        "",
-        f"  • Session ended (play time: {duration})"
-    ]
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        if hypr_success:
-            end_lines.append("  • Hyprland configuration restored")
-        else:
-            end_lines.append("  ⚠️ Hyprland configuration restore failed")
-            
-    log_info("\n".join(end_lines))
+        atexit.unregister(hyprland_end)
+
+        elapsed = int(time.time()) - start_time
+        hours, remainder = divmod(elapsed, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        end_lines = [
+            f"🎮 Steam Optimize: {game_name}",
+            "",
+            f"  • Session ended (play time: {duration})"
+        ]
+        if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            if hypr_success:
+                end_lines.append("  • Hyprland configuration restored")
+            else:
+                end_lines.append("  ⚠️ Hyprland configuration restore failed")
+
+        log_info("\n".join(end_lines))
+
+    sys.exit(game_rc)
 
 if __name__ == "__main__":
     main()

@@ -27,8 +27,6 @@ opt.smartindent = true          -- Indentation intelligente
 opt.mouse = "a"                 -- Active pleinement la souris
 opt.clipboard = "unnamedplus"   -- Synchronise le presse-papiers système
 opt.swapfile = false            -- Désactive les fichiers swap obsolètes
-opt.backup = true               -- Conserve les backups
-opt.writebackup = true
 opt.undofile = true             -- Historique persistant des modifications
 opt.updatetime = 250            -- Rafraîchissement plus rapide (pour Git / LSP)
 opt.timeoutlen = 300            -- Temps de réponse aux touches combinées
@@ -57,21 +55,16 @@ vim.g.netrw_winsize = 25
 -- ========================================================================== --
 local state_dir = vim.fn.stdpath("state")
 local backup_dir = state_dir .. "/backup"
-local swap_dir = state_dir .. "/swap"
 
--- Crée automatiquement les répertoires s'ils n'existent pas
-for _, dir in ipairs({ backup_dir, swap_dir }) do
-  if vim.fn.isdirectory(dir) == 0 then
-    vim.fn.mkdir(dir, "p")
-  end
+if vim.fn.isdirectory(backup_dir) == 0 then
+  vim.fn.mkdir(backup_dir, "p")
 end
 
 opt.backup = true
+opt.writebackup = true
 opt.backupskip = "/tmp/*"
 opt.backupext = ".bak"
-opt.directory = swap_dir
 opt.backupdir = backup_dir
-opt.writebackup = true
 
 -- ========================================================================== --
 -- AUTOMATIONS & COMPORTEMENTS SPÉCIFIQUES                                    --

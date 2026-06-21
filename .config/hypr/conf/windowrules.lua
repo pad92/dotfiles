@@ -36,7 +36,7 @@ hl.window_rule({ match = { class = "^(?i)(Bitwarden)$" }, size = { 800, 600 } })
 -- 4. Simple Floating Applications
 -- Array of application class names that must float by default
 local float_apps = {
-  "Rofi", "blueman-manager", "com.github.wwmm.easyeffects", "kvantummanager",
+  "blueman-manager", "com.github.wwmm.easyeffects", "kvantummanager",
   "nm-applet", "nm-connection-editor", "nwg-look", "org.kde.ark", "qt5ct", "qt6ct",
   "vlc", "app.drey.Warp", "com.github.rafostar.Clapper", "com.github.unrud.VideoDownloader",
   "eog", "io.github.alainm23.planify", "io.gitlab.adhami3310.Impression",
@@ -54,7 +54,7 @@ hl.window_rule({ match = { title = "^(About Mozilla Firefox|Picture-in-Picture)$
 -- 6. Desktop UI Overlay Layer Rules
 -- Enables backdrop blur and overrides transparency settings for select components
 local blur_layers = {
-  "logout_dialog", "notifications", "rofi",
+  "logout_dialog", "notifications",
   "swaync-control-center", "swaync-notification-window"
 }
 for _, ns in ipairs(blur_layers) do

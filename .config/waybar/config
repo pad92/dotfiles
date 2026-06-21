@@ -3,9 +3,7 @@
   "height": 24,
   "reload_style_on_change": true,
   "modules-left": [
-    "sway/workspaces",
-    "hyprland/workspaces",
-    "sway/mode"
+    "hyprland/workspaces"
   ],
   "modules-center": [
     "clock"

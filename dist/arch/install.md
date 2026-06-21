@@ -145,7 +145,7 @@ pacstrap /mnt \
   irqbalance \
   linux-firmware \
   lvm2 \
-  neofetch \
+  fastfetch \
   network-manager-applet \
   networkmanager \
   openssh \
@@ -520,7 +520,7 @@ fi
 Launch graphical applications as Systemd scopes:
 
 ```bash
-uwsm app -- kitty
+uwsm app -- alacritty
 ```
 
 ### Autostart

@@ -25,4 +25,6 @@ hl.config({
 
 -- Device-specific overrides (for mice, keyboards, touchpads, etc.)
 -- Reference: https://wiki.hypr.land/Configuring/Advanced-and-Cool/Devices/
-hl.device(config.input.device_overrides)
+if config.input.device_overrides.name then
+  hl.device(config.input.device_overrides)
+end

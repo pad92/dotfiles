@@ -20,7 +20,7 @@ hl.bind("ALT + Tab", hl.dsp.window.bring_to_top(), { repeating = true, descripti
 hl.bind(config.mainMod .. " + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Float/Tile" })
 
 -- Toggle active window to fullscreen mode
-hl.bind(config.mainMod .. " + F", hl.dsp.window.fullscreen({ "fullscreen" }, { description = "Fullscreen" }))
+hl.bind(config.mainMod .. " + F", hl.dsp.window.fullscreen({ "fullscreen" }), { description = "Fullscreen" })
 
 -- Lock the display session using hyprlock
 hl.bind(config.mainMod .. " + L", hl.dsp.exec_cmd(config.utils.lock), { description = "Lock" })

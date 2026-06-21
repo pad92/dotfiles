@@ -136,3 +136,8 @@ import = ["~/.config/alacritty/base16/colors/base16-material-darker-256.toml"]
 [terminal]
 
 shell = { program = "/bin/zsh", args = ["-l"] }
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"

@@ -93,7 +93,7 @@ case "$1" in
         else
             status=$(playerctl status 2> /dev/null)
             if [[ -n $status ]]; then
-                echo "Not album"
+                echo "No album"
             else
                 echo ""
             fi
@@ -104,7 +104,7 @@ case "$1" in
         ;;
     *)
         echo "Invalid option: $1"
-        echo "Usage: $0 --title | --url | --artist | --length | --album | --source"
+        echo "Usage: $0 --title | --arturl | --artist | --length | --album | --source"
         exit 1
         ;;
 esac

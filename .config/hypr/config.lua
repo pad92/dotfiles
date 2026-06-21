@@ -98,10 +98,7 @@ local config = {
       workspace_swipe_create_new = true,
       workspace_swipe_forever = true,
     },
-    device_overrides = {
-      name = "epic mouse V1",
-      sensitivity = -0.5,
-    },
+    device_overrides = {},
   },
 
   -- =============================================================================

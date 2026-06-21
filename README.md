@@ -150,8 +150,8 @@ My original editor configuration built with `vundle`.
 | :---------------------------------- | :----------------------- |
 | `SUPER + Return`                    | Terminal                 |
 | `SUPER + Shift + Q`                 | Close window             |
-| `SUPER + [1-9]`                     | Focus workspace          |
-| `SUPER + Shift + [1-9]`             | Move window to workspace |
+| `SUPER + [0-9]`                     | Focus workspace          |
+| `SUPER + Shift + [0-9]`             | Move window to workspace |
 | `SUPER + [Arrows/Vim keys]`         | Focus window             |
 | `SUPER + Shift + [Arrows/Vim keys]` | Move window              |
 | `SUPER + F`                         | Fullscreen toggle        |
@@ -204,7 +204,7 @@ Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Uti
 
 ### 🔧 Custom Scripts
 A collection of highly optimized Python, Bash, and shell scripts located in the [`bin/`](./bin/) directory:
-*   **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, and dynamic Gamescope integration.
+*   **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, dynamic Gamescope integration, and robust signal handling with automatic session cleanup.
 *   **[`awww.sh`](./bin/awww.sh)**: A robust wallpaper randomizer script that integrates seamlessly with the `awww` daemon, utilizing `shuf -z` and `mapfile` to safely load distinct wallpapers per monitor.
 *   **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync` (fully integrated with `ssh-agent`, no hardcoded local keys required).
 *   **[`razer_dpi.py`](./bin/razer_dpi.py)**: Convenient Razer peripherals DPI management tool.
@@ -222,7 +222,7 @@ A comprehensive list of configured tools across the stack:
 | Category | Tools |
 | :--- | :--- |
 | **Shell** | Zsh |
-| **Editor** | Vim, VSCode |
+| **Editor** | Neovim, Vim, VSCode |
 | **Terminal** | Alacritty |
 | **Multiplexer** | Tmux |
 | **UI/UX** | Waybar, hyprlauncher, Mako |

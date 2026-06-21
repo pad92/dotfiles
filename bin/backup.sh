@@ -1,5 +1,5 @@
-#!/bin/sh
-# POSIX-compliant backup script
+#!/bin/bash
+# Backup script for rsync-over-SSH remote backups
 set -eu
 
 # --- Verbose option ---
@@ -25,7 +25,7 @@ fi
 
 # SSH ControlMaster — reuses a single authenticated connection
 # across all ssh/rsync calls, avoiding repeated handshakes.
-SSH_CONTROL_SOCKET="/tmp/backup-ssh-${REMOTE_HOST}-$$"
+SSH_CONTROL_SOCKET="${XDG_RUNTIME_DIR:-/tmp}/backup-ssh-${REMOTE_HOST}-$$"
 
 # Wrapper: run ssh with consistent options
 run_ssh() {
@@ -116,7 +116,7 @@ manage_packages() {
                 log "Removing orphans..." "$C_ORANGE"
                 printf '%s\n' "$orphans" | xargs yay -Rns --noconfirm
             fi
-            yay -Scc --noconfirm
+            yay -Sc --noconfirm
             pacman -Qqe | awk '{print $1}' > "${PKGLIST_CURRENT}"
             ;;
         *debian*)
