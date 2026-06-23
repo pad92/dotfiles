@@ -1,3 +1,1 @@
--- Default host-specific configuration
--- Used as a fallback when no specific host config exists.
--- You can place generic or fallback device-specific settings here.
+-- Fallback host configuration (no-op)

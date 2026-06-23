@@ -7,14 +7,8 @@ local cursor_theme = os.getenv("XCURSOR_THEME") or "Adwaita"
 local cursor_size = tonumber(os.getenv("XCURSOR_SIZE")) or 24
 
 local config = {
-  -- =============================================================================
-  -- GENERAL
-  -- =============================================================================
   mainMod = "SUPER",
 
-  -- =============================================================================
-  -- APPLICATION DEFAULTS
-  -- =============================================================================
   apps = {
     term = uwsm .. (os.getenv("TERMINAL") or "alacritty"),
     editor = uwsm .. "vscodium",
@@ -25,9 +19,6 @@ local config = {
     menu = "hyprlauncher",
   },
 
-  -- =============================================================================
-  -- INTERFACE & VISUALS
-  -- =============================================================================
   visuals = {
     gaps_in = 2,
     gaps_out = 2,
@@ -38,26 +29,22 @@ local config = {
     font_size = font_size + 2,
     cursor_theme = cursor_theme,
     cursor_size = cursor_size,
-
     blur = {
       enabled = true,
       size = 6,
-      passes = 2,
+      passes = 1,
       new_optimizations = true,
-      ignore_opacity = true,
-      xray = true,
+      ignore_opacity = false,
+      xray = false,
     },
     shadow = {
       enabled = true,
-      range = 20,
+      range = 12,
       offset = { 0, 2 },
-      render_power = 10,
+      render_power = 3,
     },
   },
 
-  -- =============================================================================
-  -- LAYOUT CONFIGURATIONS
-  -- =============================================================================
   layout = {
     active_layout = "dwindle",
     resize_on_border = true,
@@ -68,16 +55,12 @@ local config = {
     },
   },
 
-  -- =============================================================================
-  -- INPUT SETTINGS (KEYBOARD, MOUSE, TOUCHPAD, GESTURES)
-  -- =============================================================================
   input = {
     kb_layout = "us",
     kb_variant = "intl",
     follow_mouse = 1,
     numlock_by_default = true,
     sensitivity = 0,
-
     touchpad = {
       natural_scroll = false,
       tap_to_click = true,
@@ -101,21 +84,15 @@ local config = {
     device_overrides = {},
   },
 
-  -- =============================================================================
-  -- COLORS (GRUVBOX HARMONIOUS ACCENTS)
-  -- =============================================================================
   colors = {
-    accent = tk.accent or "#83a598", -- bright_blue
-    background = tk.background or "#1d2021", -- bg
-    foreground = tk.text or "#ebdbb2", -- light1
-    active_border = tk.accent and (tk.accent .. "cc") or "#83a598cc", -- bright_blue
-    inactive_border = tk.alternate_base and (tk.alternate_base .. "cc") or "#928374cc", -- gray
-    shadow = tk.background and (tk.background .. "20") or "#1d202120", -- bg
+    accent = tk.accent or "#83a598",
+    background = tk.background or "#1d2021",
+    foreground = tk.text or "#ebdbb2",
+    active_border = tk.accent and (tk.accent .. "cc") or "#83a598cc",
+    inactive_border = tk.alternate_base and (tk.alternate_base .. "cc") or "#928374cc",
+    shadow = tk.background and (tk.background .. "20") or "#1d202120",
   },
 
-  -- =============================================================================
-  -- SYSTEM UTILITIES, AUTHENTICATION & COMMANDS
-  -- =============================================================================
   utils = {
     screenshot = 'grim -g "$(slurp -d)" - | swappy -f -',
     lock = "hyprlock -c ~/.config/hypr/hyprlock.conf",
@@ -134,17 +111,11 @@ local config = {
     clipboard = "cliphist list | %s -m | cliphist decode | wl-copy",
   },
 
-  -- =============================================================================
-  -- NOTIFICATIONS
-  -- =============================================================================
   notifications = {
     duration = 3000,
     font_size = font_size + 2,
   },
 
-  -- =============================================================================
-  -- AUTOSTART APPLICATIONS
-  -- =============================================================================
   autostart = {
     "blueman-applet",
     "nm-applet --indicator",
@@ -152,9 +123,6 @@ local config = {
     "hyprlauncher -d",
   },
 
-  -- =============================================================================
-  -- GTK & THEME SETTINGS (GSETTINGS OVERRIDES)
-  -- =============================================================================
   theme = {
     { key = "org.gnome.desktop.interface icon-theme", value = "'" .. (tk.icon_theme or "Papirus-Dark") .. "'" },
     { key = "org.gnome.desktop.interface gtk-theme", value = "'Materia-dark-compact'" },

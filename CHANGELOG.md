@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Hyprland**: Increase animation speeds for windows, borders, fades, and workspaces for snappier UI transitions, and remove unused `borderangle` animation.
+- **Hyprland**: Tone down blur and shadow effects — reduce blur passes, disable opacity ignore and xray, and lower shadow range and render power.
+- **Hyprland**: Cap ASUS XG32WCS monitor at 60 Hz for productivity use on PadsP5560.
+- **Hyprland**: Remove hardware cursor override from PadsP5560 host config (use global default).
+- **Hyprland**: Simplify window rules — remove legacy KeePassXC, Bitwarden, and Dolphin rules, keep only Proton Pass for password manager.
+- **Hyprland**: Trim blur layer rules to `logout_dialog` only, removing unused swaync entries.
+- **Hyprland**: Launch `hyprlauncher` in daemon mode (`-d`) at autostart for instant toggle via keybind.
+- **Hyprland**: Simplify Lua configuration — merge `layout.lua` into `appearance.lua`, inline `utils.lua` helpers, delete empty `workspaces.lua`, and remove verbose comment banners across all files (~75% noise reduction).
+- **Hyprlock**: Reduce playerctl widget update frequency from 1s/2s to 3s/5s to lower lock screen resource usage.
+- **PipeWire**: Enable WebRTC voice activity detection (VAD) and lazy activation (`node.passive`) on echo-cancel module to reduce CPU usage when mic is idle.
+- **PipeWire**: Compact voice effects configuration, removing redundant comments and whitespace.
+- **Waybar**: Split config into per-host files (`config.PadsTower`, `config.PadsP5560`) — desktop omits battery, backlight, and Intel temperature modules.
+- **Waybar**: Remove unused weather module (`custom/weather`) configuration.
+- **GTK**: Fix `gtk-application-prefer-dark-theme` to `true`, align icon theme to `Papirus-Dark` and cursor to `Adwaita` to match Hyprland settings.
+- **GTK**: Remove stale Breeze Light `colors.css` that conflicted with the dark theme.
+- **Systemd**: Remove redundant `awww.service` enablement in `default.target.wants` (already in `graphical-session.target.wants`).
+- **Systemd**: Change wallpaper rotation interval from 15 minutes to 30 minutes.
+- **Installer**: Add automatic hostname-based Waybar config symlink creation in `install.conf.yaml`.
+- **XDG**: Move `xdg-dirs/` files to standard `.config/` root location for `xdg-user-dirs-update` compatibility.
+
+### Removed
+- **neofetch**: Remove deprecated neofetch configuration (743 lines) — replaced by fastfetch.
+- **ashell**, **noctalia**: Remove empty unused configuration directories.
+- **Alacritty**: Remove stale base16 auto-backup file.
+
 ## [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
 
 ### Added

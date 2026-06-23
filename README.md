@@ -47,7 +47,7 @@ To customize and adapt this dotfiles collection to your own system and identity,
 
 ### 🖥️ Wayland & Hyprland Session
 *   **[`.config/uwsm/env`](./.config/uwsm/env)**: Manage global environment variables for the Wayland session (e.g., default browser `BROWSER`, default terminal `TERMINAL`, and default cursor theme `XCURSOR_THEME`) and set hostname-specific GPU/driver optimizations (such as `AQ_DRM_DEVICES` or Vulkan driver settings).
-*   **`.config/hypr/`**: Adjust window manager bindings, window rules, workspaces, and look-and-feel preferences (now migrated to Lua). Host-specific hardware layouts (such as monitor outputs and static workspace mappings) are modularly loaded from `hosts/<hostname>.lua` to maintain clean dotfiles portability.
+*   **`.config/hypr/`**: Adjust window manager bindings, window rules, and look-and-feel preferences (Lua). Host-specific hardware layouts (monitors, workspace mappings, GPU overrides) are loaded from `hosts/<hostname>.lua`. Waybar also uses per-host configs (`config.PadsTower`, `config.PadsP5560`) to adapt modules to available hardware.
 *   **`~/.local/share/backgrounds/`**: Add your custom wallpaper image files here to integrate with desktop slideshow/randomizer scripts.
 
 ### 💻 Terminals & Tools
@@ -55,7 +55,7 @@ To customize and adapt this dotfiles collection to your own system and identity,
 *   **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
 *   **[`.config/nvim/`](./.config/nvim/)**: Curated, modern, and modular **Neovim** configuration written from scratch in Lua.
 *   **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core legacy Vim editor.
-*   **`~/.config/electron-flags.conf`**: Consolidated configuration for all Electron-based editors (VS Code, Codium, and Antigravity IDE) to ensure optimal Wayland compatibility and native GPU acceleration across all hosts.
+*   **`~/.config/electron-flags.conf`**: Placeholder for Electron-based editors (VS Code, Codium, Antigravity IDE). Under UWSM, `ELECTRON_OZONE_PLATFORM_HINT=auto` is exported globally so no flags are needed.
 *   **`~/.dotfiles/.luarc.json`**: Project-specific Lua environment settings optimized for standard workspace validation and seamless autocompletion.
 
 
@@ -182,7 +182,7 @@ My current primary Window Manager configuration.
     ```
 *   **Wallpaper Daemon (`awww`)**: Wallpaper loading and randomization are fully managed via standard Systemd user services under `graphical-session.target`:
     *   **`awww.service`**: Systemd user service wrapper for the `awww-daemon`. It is robustly configured to prevent startup race conditions in Wayland by waiting for the `$WAYLAND_DISPLAY` socket (`ExecStartPre`) and clearing stale sockets, running with `--no-cache` to prevent BrokenPipe and SIGABRT crashes.
-    *   **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 15 minutes to automatically rotate the wallpapers across all connected monitors.
+    *   **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 30 minutes to automatically rotate the wallpapers across all connected monitors.
     *   **Manual Trigger**: Force wallpaper randomization at any time with `systemctl --user start awww_random.service`, or use the `SUPER + ALT + Right` keyboard shortcut.
 
 

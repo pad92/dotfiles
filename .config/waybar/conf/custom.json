@@ -1,9 +1,0 @@
-{
-  "custom/weather": {
-    "format": "{}°",
-    "tooltip": true,
-    "interval": 3600,
-    "exec": "wttrbar --date-format \"%m/%d\" --lang fr --location Aubenas --hide-conditions",
-    "return-type": "json"
-  }
-}

@@ -1,13 +1,9 @@
--- =============================================================================
--- HYPRLAND APPEARANCE CONFIGURATION (GENERAL, DECORATION, SHADOWS)
--- =============================================================================
--- Configures colors, margins, rounding, borders, blur effects, and drop shadows.
-
 local config = require("config")
 
 hl.config({
-  -- Core layout, borders, and margins
   general = {
+    layout = config.layout.active_layout,
+    resize_on_border = config.layout.resize_on_border,
     col = {
       active_border = config.colors.active_border,
       inactive_border = config.colors.inactive_border,
@@ -18,7 +14,8 @@ hl.config({
     allow_tearing = true,
   },
 
-  -- Window decorations (Rounding, Blur, Shadows)
+  dwindle = config.layout.dwindle,
+
   decoration = {
     rounding_power = config.visuals.rounding_power,
     rounding = config.visuals.rounding,

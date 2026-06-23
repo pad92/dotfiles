@@ -12,10 +12,7 @@
     "pulseaudio",
     "bluetooth",
     "cpu",
-    "temperature",
     "memory",
-    "backlight",
-    "battery",
     "custom/headsetcontrol",
     "tray"
   ],
@@ -23,7 +20,6 @@
     "~/.config/waybar/conf/system.json",
     "~/.config/waybar/conf/network.json",
     "~/.config/waybar/conf/audio.json",
-    "~/.config/waybar/conf/workspaces.json",
-    "~/.config/waybar/conf/custom.json"
+    "~/.config/waybar/conf/workspaces.json"
   ]
 }

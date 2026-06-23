@@ -1,0 +1,28 @@
+{
+  "layer": "top",
+  "height": 24,
+  "reload_style_on_change": true,
+  "modules-left": [
+    "hyprland/workspaces"
+  ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "pulseaudio",
+    "bluetooth",
+    "cpu",
+    "temperature",
+    "memory",
+    "backlight",
+    "battery",
+    "custom/headsetcontrol",
+    "tray"
+  ],
+  "include": [
+    "~/.config/waybar/conf/system.json",
+    "~/.config/waybar/conf/network.json",
+    "~/.config/waybar/conf/audio.json",
+    "~/.config/waybar/conf/workspaces.json"
+  ]
+}

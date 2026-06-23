@@ -80,6 +80,7 @@ build
 # Dotfiles specific
 .config/hypr/*.cache
 .config/hypr/*.log
+.config/waybar/config
 .config/waybar/state
 .config/waybar/*.cache
 .config/wlogout/*.cache

@@ -17,5 +17,7 @@
       glob: true
       path: .config/*
       force: true
+
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
+    - ["ln -sf config.$(hostname) ~/.config/waybar/config", Setting up Waybar host config]
