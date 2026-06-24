@@ -59,3 +59,5 @@
 
 [include]
   path = ~/.gitconfig.local
+[safe]
+	directory = /home/pascal/Documents/git/git.home.lan/pascal/llm_photos/data/sd-webui/stable-diffusion-webui

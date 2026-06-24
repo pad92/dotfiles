@@ -12,7 +12,9 @@
     "pulseaudio",
     "bluetooth",
     "cpu",
+    "temperature#cpu",
     "memory",
+    "temperature#gpu",
     "custom/headsetcontrol",
     "tray"
   ],
