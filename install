@@ -117,8 +117,10 @@ read_key() {
     local key
     IFS= read -r -s -n 1 key
     if [[ "$key" == "$ESC" ]]; then
-        read -r -s -n 2 key
-        if [[ "$key" == "[A" ]]; then
+        read -r -s -n 2 -t 0.1 key
+        if [[ -z "$key" ]]; then
+            echo "ESCAPE"
+        elif [[ "$key" == "[A" ]]; then
             echo "UP"
         elif [[ "$key" == "[B" ]]; then
             echo "DOWN"
@@ -191,6 +193,12 @@ show_multi_select() {
                 fi
                 ;;
             ENTER)
+                break
+                ;;
+            ESCAPE)
+                for i in "${!selected[@]}"; do
+                    selected[i]=0
+                done
                 break
                 ;;
         esac
@@ -274,7 +282,7 @@ install_arch_packages() {
     done
     
     log_info "Select the package categories you would like to install."
-    echo -e "Use ${BLUE}Up/Down Arrow${NC} keys to navigate, ${BLUE}Space${NC} to toggle, and ${BLUE}Enter${NC} to confirm:\n" >&2
+    echo -e "Use ${BLUE}Up/Down Arrow${NC} keys to navigate, ${BLUE}Space${NC} to toggle, ${BLUE}Enter${NC} to confirm, ${BLUE}Escape${NC} to skip:\n" >&2
     
     # Set up exit trap for cursor restoration
     trap show_cursor EXIT
