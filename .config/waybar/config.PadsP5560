@@ -12,8 +12,9 @@
     "pulseaudio",
     "bluetooth",
     "cpu",
-    "temperature",
+    "temperature#cpu",
     "memory",
+    "temperature#gpu",
     "backlight",
     "battery",
     "custom/headsetcontrol",
@@ -21,8 +22,9 @@
   ],
   "include": [
     "~/.config/waybar/conf/system.json",
-    "~/.config/waybar/conf/network.json",
+    "~/.config/waybar/conf/connectivity.json",
     "~/.config/waybar/conf/audio.json",
-    "~/.config/waybar/conf/workspaces.json"
+    "~/.config/waybar/conf/workspaces.json",
+    "~/.config/waybar/conf/temperature.PadsP5560.json"
   ]
 }
