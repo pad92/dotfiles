@@ -185,7 +185,7 @@ My original editor configuration built with `vundle`.
 | `SUPER + Delete`                    | Logout menu                |
 | `SUPER + ALT + Space`               | Float/Tile                 |
 | `SUPER + ALT + Right`               | Change wallpaper           |
-| `SUPER + Scroll` / `Middle-click`   | Screen zoom in/out / reset |
+| `SUPER + PgUp/PgDn` / `Home`        | Screen zoom in/out / reset |
 | `Print` / `SUPER + P`               | Screenshot                 |
 
 ### Hyprland

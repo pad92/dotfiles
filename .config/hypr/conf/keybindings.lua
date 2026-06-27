@@ -89,19 +89,15 @@ hl.bind("CTRL + SUPER + Left", hl.dsp.focus({ workspace = "r-1" }))
 hl.bind(config.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Move window" })
 hl.bind(config.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })
 
--- Screen zoom (SUPER + scroll, middle-click resets)
+-- Screen zoom (SUPER + PgUp/PgDn, Home resets)
 hl.bind(
-  config.mainMod .. " + mouse_up",
+  config.mainMod .. " + Page_Up",
   hl.dsp.exec_cmd(config.utils.zoom_in),
-  { mouse = true, description = "Zoom in" }
+  { repeating = true, description = "Zoom in" }
 )
 hl.bind(
-  config.mainMod .. " + mouse_down",
+  config.mainMod .. " + Page_Down",
   hl.dsp.exec_cmd(config.utils.zoom_out),
-  { mouse = true, description = "Zoom out" }
+  { repeating = true, description = "Zoom out" }
 )
-hl.bind(
-  config.mainMod .. " + mouse:274",
-  hl.dsp.exec_cmd(config.utils.zoom_reset),
-  { mouse = true, description = "Reset zoom" }
-)
+hl.bind(config.mainMod .. " + Home", hl.dsp.exec_cmd(config.utils.zoom_reset), { description = "Reset zoom" })
