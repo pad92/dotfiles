@@ -1,10 +1,17 @@
 # Load and initialize the completion system ignoring insecure directories.
-autoload -Uz compinit && compinit -i
+# Rebuild the dump (and run the security check) at most once a day; otherwise
+# reuse the cached dump with -C to skip the slow per-startup scan.
+autoload -Uz compinit
+if [[ -n ${ZDOTDIR:-${HOME}}/.zcompdump(#qN.mh+24) ]]; then
+  compinit -i
+else
+  compinit -C -i
+fi
 
 setopt COMPLETE_IN_WORD # Complete from both ends of a word.
 setopt ALWAYS_TO_END # Move cursor to the end of a completed word.
 setopt PATH_DIRS # Perform path search even on command names with slashes.
-setopt AUTO_MENU # Show completion menu on a succesive tab press.
+setopt AUTO_MENU # Show completion menu on a successive tab press.
 setopt AUTO_LIST # Automatically list choices on ambiguous completion.
 setopt AUTO_PARAM_SLASH # If completed parameter is a directory, add a trailing slash.
 unsetopt MENU_COMPLETE # Do not autoselect the first completion entry.
@@ -17,7 +24,7 @@ colors
 WORDCHARS='*?_-.[]~&;!#$%^(){}<>'
 #WORDCHARS=''
 
-# Use caching to make completion for cammands such as dpkg and apt usable.
+# Use caching to make completion for commands such as dpkg and apt usable.
 zstyle ':completion:*' accept-exact '*(N)'
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${ZSH_CACHE_DIR}"
@@ -128,9 +135,6 @@ zstyle ':completion:*:telnet:*' group-order hosts-domain hosts-host users hosts-
 zstyle ':completion:*:telnet:*:hosts-host' ignored-patterns '*(.|:)*' loopback ip6-loopback localhost ip6-localhost broadcasthost
 zstyle ':completion:*:telnet:*:hosts-domain' ignored-patterns '<->.<->.<->.<->' '^[-[:alnum:]]##(.[-[:alnum:]]##)##' '*@*'
 zstyle ':completion:*:telnet:*:hosts-ipaddr' ignored-patterns '^(<->.<->.<->.<->|(|::)([[:xdigit:].]##:(#c,2))##(|%*))' '127.0.0.<->' '255.255.255.255' '::1' 'fe80::*'
-
-# ... unless we really want to.
-zstyle '*' single-ignored show
 
 # Ping/Traceroute
 compdef ping6=ping

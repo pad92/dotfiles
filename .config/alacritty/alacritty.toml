@@ -131,7 +131,7 @@ thickness = 0.25
 [general]
 
 live_config_reload = true
-import = ["~/.config/alacritty/base16/colors/base16-material-darker-256.toml"]
+import = ["~/.config/alacritty/themes/base16-material-darker-256.toml"]
 
 [terminal]
 

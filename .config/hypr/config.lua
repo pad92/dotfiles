@@ -96,7 +96,7 @@ local config = {
   utils = {
     screenshot = 'grim -g "$(slurp -d)" - | swappy -f -',
     lock = "hyprlock -c ~/.config/hypr/hyprlock.conf",
-    logout = "qs -c $qsConfig ipc call TEST_ALIVE || pkill wlogout || wlogout -p layer-shell",
+    logout = "pkill wlogout || wlogout -p layer-shell",
     vol_mute = "swayosd-client --output-volume mute-toggle",
     mic_mute = "swayosd-client --input-volume mute-toggle",
     vol_up = "swayosd-client --output-volume raise",
@@ -131,7 +131,14 @@ local config = {
     { key = "org.gnome.desktop.interface cursor-size", value = tostring(cursor_size) },
     { key = "org.gnome.desktop.interface font-antialiasing", value = "'rgba'" },
     { key = "org.gnome.desktop.interface font-hinting", value = "'full'" },
-    { key = "org.gnome.desktop.interface monospace-font-name", value = "'" .. (tk.font_family_monospace or "JetBrainsMono Nerd Font") .. " " .. (tk.small_font_size or 10) .. "'" },
+    {
+      key = "org.gnome.desktop.interface monospace-font-name",
+      value = "'"
+        .. (tk.font_family_monospace or "JetBrainsMono Nerd Font")
+        .. " "
+        .. (tk.small_font_size or 10)
+        .. "'",
+    },
     { key = "org.gnome.desktop.interface font-name", value = "'" .. font_name .. " " .. font_size .. "'" },
     { key = "org.gnome.desktop.interface document-font-name", value = "'" .. font_name .. " " .. font_size .. "'" },
   },

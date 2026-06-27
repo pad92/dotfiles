@@ -6,7 +6,6 @@ hl.bind("ALT + Tab", hl.dsp.focus({ window = "next" }), { repeating = true, desc
 hl.bind("ALT + Tab", hl.dsp.window.bring_to_top(), { repeating = true, description = "Bring active to top" })
 hl.bind(config.mainMod .. " + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Float/Tile" })
 hl.bind(config.mainMod .. " + F", hl.dsp.window.fullscreen({ "fullscreen" }), { description = "Fullscreen" })
-hl.bind(config.mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle Float" })
 hl.bind(config.mainMod .. " + L", hl.dsp.exec_cmd(config.utils.lock), { description = "Lock" })
 hl.bind(config.mainMod .. " + Delete", hl.dsp.exec_cmd(config.utils.logout))
 
@@ -17,12 +16,20 @@ hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.apps.editor), { descrip
 hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.apps.browser), { description = "Browser" })
 hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { description = "Music Player" })
 hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " -t"), { description = "Application menu" })
-hl.bind(config.mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(config.apps.password_manager), { description = "Password Manager" })
+hl.bind(
+  config.mainMod .. " + SHIFT + Return",
+  hl.dsp.exec_cmd(config.apps.password_manager),
+  { description = "Password Manager" }
+)
 
 -- Focus & move
 local focus_map = {
-  { "Left", "l" }, { "Right", "r" }, { "Up", "u" }, { "Down", "d" },
-  { "BracketLeft", "l" }, { "BracketRight", "r" },
+  { "Left", "l" },
+  { "Right", "r" },
+  { "Up", "u" },
+  { "Down", "d" },
+  { "BracketLeft", "l" },
+  { "BracketRight", "r" },
 }
 for _, pair in ipairs(focus_map) do
   hl.bind(config.mainMod .. " + " .. pair[1], hl.dsp.focus({ direction = pair[2] }))
@@ -52,8 +59,16 @@ hl.bind("Print", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
 hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
 
 -- Wallpaper & clipboard
-hl.bind(config.mainMod .. " + ALT + Right", hl.dsp.exec_cmd(config.utils.wallpaper), { description = "Change wallpaper" })
-hl.bind(config.mainMod .. " + SHIFT + V", hl.dsp.exec_cmd(string.format(config.utils.clipboard, config.apps.menu)), { description = "Clipboard history" })
+hl.bind(
+  config.mainMod .. " + ALT + Right",
+  hl.dsp.exec_cmd(config.utils.wallpaper),
+  { description = "Change wallpaper" }
+)
+hl.bind(
+  config.mainMod .. " + SHIFT + V",
+  hl.dsp.exec_cmd(string.format(config.utils.clipboard, config.apps.menu)),
+  { description = "Clipboard history" }
+)
 
 -- Workspace management
 local NUMBER_KEYS = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }

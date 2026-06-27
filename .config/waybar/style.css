@@ -55,7 +55,9 @@
 * {
   border: none;
   border-radius: 0px;
-  font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free", FontAwesome, Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    'JetBrainsMono Nerd Font', 'Font Awesome 6 Free', FontAwesome, Roboto,
+    Helvetica, Arial, sans-serif;
   font-size: 10px;
   /* Slightly smaller font size */
   font-weight: 900;
@@ -85,9 +87,8 @@ window#waybar {
   padding-left: 5px;
   padding-right: 5px;
   animation: ws_active 20s ease-in-out 1;
-  transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
+  transition: all 0.4s cubic-bezier(0.55, -0.68, 0.48, 1.682);
 }
-
 
 #workspaces button.focused {
   border-bottom: 3px solid @lavender;
@@ -96,21 +97,19 @@ window#waybar {
 #workspaces button.hover {
   border-bottom: 3px solid @yellow;
   animation: ws_hover 20s ease-in-out 1;
-  transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
+  transition: all 0.3s cubic-bezier(0.55, -0.68, 0.48, 1.682);
 }
 
 #workspaces button.urgent {
   border-bottom: 3px solid @peach;
 }
 
-
-
 #tray menu * {
-  min-height: 16px
+  min-height: 16px;
 }
 
 #tray menu separator {
-  min-height: 10px
+  min-height: 10px;
 }
 
 #clock,
@@ -119,10 +118,7 @@ window#waybar {
 #memory,
 #temperature,
 #backlight,
-#network,
 #pulseaudio,
-#custom-spotify,
-#custom-weather,
 #custom-headsetcontrol,
 #tray,
 #mode,

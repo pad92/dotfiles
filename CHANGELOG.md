@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
+
+### Added
+
+- **CI / Pages**: Add a `post-commit` hook (via `pre-commit`) that regenerates the local `public/` documentation preview after each commit, backed by a reusable `.ci_bin/build_pages.sh` script also usable in CI.
+
 ### Changed
+
 - **Hyprland**: Increase animation speeds for windows, borders, fades, and workspaces for snappier UI transitions, and remove unused `borderangle` animation.
 - **Hyprland**: Tone down blur and shadow effects — reduce blur passes, disable opacity ignore and xray, and lower shadow range and render power.
 - **Hyprland**: Cap ASUS XG32WCS monitor at 60 Hz for productivity use on PadsP5560.
@@ -23,16 +30,33 @@ All notable changes to this project will be documented in this file.
 - **Systemd**: Remove redundant `awww.service` enablement in `default.target.wants` (already in `graphical-session.target.wants`).
 - **Systemd**: Change wallpaper rotation interval from 15 minutes to 30 minutes.
 - **Installer**: Add automatic hostname-based Waybar config symlink creation in `install.conf.yaml`.
+- **Installer**: Restore the terminal cursor on exit in the AUR-helper bootstrap (`trap '… show_cursor' EXIT`) and drop the obsolete `xrdb`/`.Xresources` reload step from `apply_live_changes`.
 - **XDG**: Move `xdg-dirs/` files to standard `.config/` root location for `xdg-user-dirs-update` compatibility.
+- **Zsh**: Cache the `compinit` dump and only rebuild it (with the security audit) once a day, reusing it with `-C` otherwise to speed up shell startup; remove a duplicate `single-ignored` completion zstyle.
+- **Hyprland**: Simplify the logout command to `pkill wlogout || wlogout` by removing the dead Quickshell (`qs`/`$qsConfig`) branch, since Quickshell is not installed.
+- **Hyprland**: Remove the redundant `SUPER+SHIFT+F` float-toggle binding (kept on `SUPER+ALT+Space`).
+- **Alacritty**: Vendor the single in-use `base16-material-darker-256` theme under `themes/` and drop the 2 MB `base16-alacritty` submodule.
+- **Waybar**: Remove dead `#custom-spotify`/`#custom-weather` CSS selectors.
+- **Scripts**: Modernize the empty-argument test in `diff-cmd` (`[ -z "$3" ]`) and remove a dead `meld` comment line.
+- **CI / Pages**: Simplify the CSS-path logic in `gen_pages.py` by removing redundant `public/`-prefixed branches that duplicated the generic depth-based formula.
+- **CI / Pages**: Make the generated documentation pages responsive — wide tables now scroll horizontally on small screens instead of overflowing the layout, with adapted heading sizes and container padding on mobile; widen the main content block to the standard Bootstrap `1140px` container; remove a stray non-project comment block from `style.css`.
+- **CI / Pages**: Minify the generated HTML and the copied `style.css` in `gen_pages.py` — collapse inter-tag whitespace (preserving `<pre>`/`<code>`/`<script>` content) and strip CSS comments/whitespace (~36% smaller CSS); drop the now-unused `shutil` import.
 
 ### Removed
+
 - **neofetch**: Remove deprecated neofetch configuration (743 lines) — replaced by fastfetch.
 - **ashell**, **noctalia**: Remove empty unused configuration directories.
 - **Alacritty**: Remove stale base16 auto-backup file.
+- **Submodules**: Prune five stale `.gitmodules` entries left over from the i3/X11 era — `zsh-notify`, `i3blocks-contrib`, `i3spotifystatus`, `gruvbox-rofi`, and `base16-alacritty`.
+- **X11**: Remove vestigial `.Xresources` and `.screenrc` (byobu/screen) leftovers on the all-Wayland setup.
+- **Hyprland**: Remove the orphan `hyprpaper.conf` (wallpapers are handled by `awww`).
+- **Waybar**: Remove three unused module scripts (`modules/headsetcontrol`, `modules/spotify`, `modules/mediaplayer.py`) — `headsetcontrol` is superseded by the inline `exec` in `audio.json`.
+- **Waybar**: Remove the unused `network` module config from `conf/network.json` and its CSS — it duplicated the `nm-applet` tray indicator.
 
 ## [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
 
 ### Added
+
 - **Hyprland**: Add `hyprlauncher` support as the primary desktop application launcher and clipboard history picker.
 - **Theming**: Add `hyprtoolkit.conf` to configure global `hyprtoolkit` aesthetics matching the Gruvbox colorscheme (using `0xAARRGGBB` hex color format).
 - **Neovim**: Add StyLua configuration file `stylua.toml` to support local code validation.
@@ -42,6 +66,7 @@ All notable changes to this project will be documented in this file.
 - **yay**: Add update cooldown hook to automatically defer upgrading packages updated less than 48 hours ago.
 
 ### Changed
+
 - **Hyprland**: Refactor Lua configurations to dynamically parse and source appearance, typography, and color settings from `hyprtoolkit.conf` with automatic hex format translation and fallbacks.
 - **Hyprland**: Modularize and factorize main entrypoint and component sub-configurations (`.config/hypr/conf/input.lua`, `.config/hypr/conf/layout.lua`, `.config/hypr/conf/appearance.lua`) to eliminate duplicate config parameters and structural redundancy.
 - **Hyprland**: Optimize workspace bindings in `.config/hypr/conf/keybindings.lua` by lifting hardware keycode allocations out of loops and extending support to a 10th workspace mapped to key `0` and numpad `0`.
@@ -61,6 +86,7 @@ All notable changes to this project will be documented in this file.
 - **Zsh / Arch Update**: Refactor and simplify system update function in `arch.zsh` to improve error handling and command checks.
 
 ### Removed
+
 - **Wofi**: Clean up and remove all wofi configuration files (`.config/wofi`) and package installer entries.
 - **Kanshi**: Remove legacy Sway/Kanshi monitor profile configuration (`.config/kanshi/config`).
 - **Systemd**: Remove legacy X11 `xautolock.service` unit file.
@@ -69,21 +95,25 @@ All notable changes to this project will be documented in this file.
 ## [v5.3.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.1)
 
 ### Added
+
 - **Backup Utility**: Introduce remote disk space delta calculation and log file size changes upon backup completion.
 - **Installer**: Add post-installation hook (`apply_live_changes`) to dynamically rebuild font cache, reload X resources (`xrdb`), and refresh desktop environments (Mako, Waybar).
 
 ### Changed
+
 - **System Fonts**: Standardize system-wide body and desktop environment UI fonts (GTK, Hyprland, Mako, wlogout, wofi) to **DejaVu Sans** and terminal/code blocks to **JetBrainsMono Nerd Font**.
 - **Hyprland**: Unify and centralize font and cursor configurations using dynamic Lua variables in compositor configurations.
 - **Backup Utility**: Refactor `backup.sh` to query loaded keys via `ssh-agent` rather than relying on hardcoded private key paths, exclude Lutris runner files, prune deprecated `.localised` exclude pattern, and translate logs from French to English.
 
 ### Removed
+
 - **Legacy OS Support**: Drop Ubuntu-specific bootstrap installer script (`dist/ubuntu/install.sh`) and related documentation.
 - **Zsh & Utilities**: Remove deprecated `command-not-found` shell plugin and its assets from `.zshrc` and plugin directory.
 
 ## [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
 
 ### Added
+
 - **Security & Passwords**: Migrate from 1Password to **Proton Pass** as the default password manager.
 - **Security & Passwords**: Add `proton-pass-ssh-agent.service` systemd user service to manage the Proton Pass SSH agent.
 - **Security & Passwords**: Add `pass-cli` Zsh autocomplete plugin.
@@ -96,6 +126,7 @@ All notable changes to this project will be documented in this file.
 - **CI/CD & Docs**: Implement GitHub Actions pipelines for pages deployment/Vim packaging, and add an automated page generator (`gen_pages.py`) with table of contents support.
 
 ### Changed
+
 - **Hyprland & Keybindings**: Update applications launcher, keybindings, and window rules to run Proton Pass instead of 1Password.
 - **OS Packages**: Update Arch Linux package lists to install Proton Pass CLI instead of 1Password.
 - **Gaming & Scripting**: Rewrite `steam-optimize` from Bash to Python 3 (adding JSON parsing, monitor detection, and Forza Horizon 6 overrides), and refactor `awww.sh` wallpaper script with robust error handling and array safety.
@@ -103,12 +134,14 @@ All notable changes to this project will be documented in this file.
 - **Aesthetics & UI**: Update desktop component styling (Waybar, Wofi, Mako, wlogout) to the official **Catppuccin Mocha** palette.
 
 ### Removed
+
 - **Legacy Components**: Remove legacy `1password` Zsh plugin, including the helper function `opswd`.
 - **Legacy Components**: Remove legacy `~/.xinitrc` configuration and its installer symlink.
 - **Legacy Components**: Remove GDM display manager, old `kitty` theme configuration files, legacy helper scripts (`SystemControl.sh`, `power-profiles`, `xrandr.sh`), and the precompiled `greenclip-v4.2` binary.
 - **Redundant Configs**: Streamline environments by removing obsolete GNOME Keyring/SSH socket environment variables.
 
 ### Fixed
+
 - **Compositor & Display**: Resolve Gamescope mouse containment issues on multi-monitor setups using software rendering (`no_hardware_cursors = true`).
 - **Drivers & Stability**: Fix AMD RADV driver stability, refresh rate detection in `steam-optimize`, and correct QT QPA platform separator format compatibility.
 - **Sandbox**: Correct Electron feature flags and sandbox configurations.
@@ -116,126 +149,156 @@ All notable changes to this project will be documented in this file.
 ## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
 
 ### Changed
+
 - **Status Bar & Packages**: Clean up Waybar configuration by removing unused modules, and consolidate essential package lists (Alacritty, GNOME utilities) into `11_hyprland.txt` and `20_apps.txt`.
 - **Documentation**: Update installation guide package paths and README.md to reflect archiving of legacy setups.
 
 ### Removed
+
 - **Legacy Configs**: Archive legacy X11, Sway, and Dunst configurations to `.config-archive/`, and prune obsolete package lists, old package diffs, screenshots, and Nitrogen setup instructions.
 
 ### Fixed
+
 - **Electron**: Fix Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line.
 
 ## [v5.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.0)
 
 ### Added
+
 - **Hyprland Upgrades**: Upgrade Hyprland configuration to 0.55, introduce a centralized configuration module, define standard coding guidelines, and set default workspaces.
 - **Gaming & Keybindings**: Add custom Doom (2016) optimizations and Gamescope fixes in `steam-optimize`, and enhance shortcut bindings for screenshots, lock, and session controls.
 
 ### Changed
+
 - **Desktop Daemons**: Migrate wallpaper daemon from swww to awww, switch notification system from Dunst to Mako, and refine Hyprland animations/autostart.
 - **Refactoring**: Rewrite system backup utility to POSIX shell with improved rsync arguments, and optimize `steam-optimize` with helper functions.
 
 ### Fixed
+
 - **Stability**: Resolve fullscreen blackscreen issues and restore Steam overlay functionality.
 
 ## [v5.1.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.1)
 
 ### Added
+
 - **Arch & System**: Add native Gamemode support, integrate firmware updates into the arch upgrade function, and add vimdiff instructions for `.pacnew` files.
 - **Hyprland**: Add initial host-specific configuration override support.
 
 ### Changed
+
 - **CI & Aliases**: Optimize pre-commit hooks to respect `.editorconfig` settings, enhance pre-commit leak detection, and refine shell alias error checking/validation.
 - **Docs & Packages**: Update Arch installation guide with modern practices (archinstall) and refresh the applications package list.
 
 ## [v5.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.0)
 
 ### Added
+
 - **Features**: Implement automated changelog generation, add wlogout configuration, expand package manager utilities, and support newer Hyprland features.
 
 ### Changed
+
 - **Aesthetics & UI**: Refine Waybar status layouts, keybindings, fonts, system themes, and add missing system fonts.
 - **Backup & Editor**: Update VS Code extension lists and configure backup scripts to ignore WebStorage directories.
 
 ### Fixed
+
 - **Status & Wallpaper**: Fix temperature display, network formatting, wallpaper rotation rules, and DST-related bugs in status bars.
 - **System**: Fix Electron flags and resolve package installation inconsistencies.
 
 ## [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0)
 
 ### Changed
+
 - **Compositor Sync**: Major overhaul and synchronization of Hyprland, Sway, and Waybar configurations.
 
 ## [v4.4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.1)
 
 ### Changed
+
 - **Themes & Packages**: Update visual themes, system color schemes, and package management helpers.
 
 ### Fixed
+
 - **Status Bar**: Correct Waybar temperature readings and network status formatting bugs.
 
 ## [v4.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.0)
 
 ### Added
+
 - **Compositor & UI**: Introduce new Hyprland configuration options, add new status bar modules, and enhance package installation scripts.
 
 ### Changed
+
 - **Keybinds & Fonts**: Update config files, modernize keyboard shortcuts, and refine typography.
 
 ## [v4.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.3.0)
 
 ### Added
+
 - **Desktop Environments**: Support new Hyprland features, enhance dual i3/Sway configurations, and improve package management wrappers.
 
 ### Changed
+
 - **Structure**: Refactor layout organization, update module setups, and simplify the installation flow.
 
 ## [v4.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.2.1)
 
 ### Fixed
+
 - **Stability**: Resolve core stability issues, fix status bar layout bugs, and correct package installation mismatches.
 
 ## [v4.2](https://gitlab.com/pad92/dotfiles/-/releases/v4.2)
 
 ### Added
+
 - **Structure**: Add new configuration templates, optimize package management systems, and expand documentation.
 
 ### Changed
+
 - **Architectural Overhaul**: Restructure file layouts, update system dependencies, and rewrite installer scripts.
 
 ## [v4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.1)
 
 ### Added
+
 - **Visuals**: Add new themes, layout configurations, and improve package installation helpers.
 
 ### Changed
+
 - **Polish**: Refine keybindings, status bar modules, and enhance overall stability.
 
 ## [v4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.0)
 
 ### Added
+
 - **Multi-Compositor**: Complete overhaul of the configuration system, adding initial Hyprland support alongside modernized Sway and i3 setups.
 
 ### Changed
+
 - **Architecture**: Redesign file structures and update configurations to support latest upstream software versions.
 
 ## [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1)
 
 ### Added
+
 - **Templates**: Add additional package configs, visual themes, and package management helpers.
 
 ### Changed
+
 - **Consistency**: Refine status bar layouts, improve installer script reliability, and standardize settings.
 
 ## [v2.0](https://gitlab.com/pad92/dotfiles/-/releases/v2.0)
 
 ### Added
+
 - **Visuals**: Add window transparency support and initial setup templates.
 
 ### Changed
+
 - **Cleanup**: Reorganize system modules, update core keybinds, and clean up initial files.
 
 ## [v1.0](https://gitlab.com/pad92/dotfiles/-/releases/v1.0)
 
 ### Added
+
 - **Initial Release**: Core Zsh configurations, visual themes, and baseline system utilities.

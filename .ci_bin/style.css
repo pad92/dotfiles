@@ -1,33 +1,38 @@
-/* PRIME DIRECTIVE REMINDER
-   Always update the memory bank after tasks and consult critical learnings
-   See .clinerules/default.md for full PRIME DIRECTIVE
-*/
+/* Catppuccin Mocha theme for the generated documentation pages. */
 :root {
-    --bg-color: #1e1e2e;
-    /* Base */
-    --text-color: #cdd6f4;
-    /* Text */
-    --accent-color: #cba6f7;
-    /* Mauve */
-    --code-bg: #313244;
-    /* Surface0 */
-    --border-color: #45475a;
-    /* Surface1 */
-    --link-color: #89b4fa;
-    /* Blue */
-    --highlight-bg: #313244;
-    /* Surface0 */
+  --bg-color: #1e1e2e;
+  /* Base */
+  --text-color: #cdd6f4;
+  /* Text */
+  --accent-color: #cba6f7;
+  /* Mauve */
+  --code-bg: #313244;
+  /* Surface0 */
+  --border-color: #45475a;
+  /* Surface1 */
+  --link-color: #89b4fa;
+  /* Blue */
+  --highlight-bg: #313244;
+  /* Surface0 */
 }
 
 body {
-    font-family: "DejaVu Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: var(--text-color);
-    background-color: var(--bg-color);
+  font-family:
+    'DejaVu Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--bg-color);
 }
 
 .container {
-    max-width: 900px;
+  max-width: 1140px;
 }
 
 h1,
@@ -36,228 +41,258 @@ h3,
 h4,
 h5,
 h6 {
-    color: var(--accent-color);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.3em;
-    font-weight: 600;
+  color: var(--accent-color);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+  font-weight: 600;
 }
 
 h1 {
-    font-size: 1.8rem;
-    margin-top: 1.6rem;
-    margin-bottom: 1rem;
+  font-size: 1.8rem;
+  margin-top: 1.6rem;
+  margin-bottom: 1rem;
 }
 
 h2 {
-    font-size: 1.4rem;
-    margin-top: 1.4rem;
-    margin-bottom: 0.8rem;
+  font-size: 1.4rem;
+  margin-top: 1.4rem;
+  margin-bottom: 0.8rem;
 }
 
 h3 {
-    font-size: 1.2rem;
-    margin-top: 1.2rem;
-    margin-bottom: 0.6rem;
+  font-size: 1.2rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
 }
 
 h4 {
-    font-size: 1.05rem;
-    margin-top: 1rem;
+  font-size: 1.05rem;
+  margin-top: 1rem;
 }
 
 h5 {
-    font-size: 0.95rem;
+  font-size: 0.95rem;
 }
 
 h6 {
-    font-size: 0.85rem;
+  font-size: 0.85rem;
 }
 
 a {
-    color: var(--link-color);
-    text-decoration: none;
+  color: var(--link-color);
+  text-decoration: none;
 }
 
 a:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
-code, pre {
-    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DejaVu Sans Mono", monospace;
+code,
+pre {
+  font-family:
+    'JetBrainsMono Nerd Font', 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
 }
 
 code {
-    background-color: var(--code-bg);
-    color: #f5e0dc;
-    /* Rosewater */
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 85%;
+  background-color: var(--code-bg);
+  color: #f5e0dc;
+  /* Rosewater */
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 85%;
 }
 
 pre {
-    background-color: var(--code-bg);
-    padding: 16px;
-    overflow: auto;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    color: #cdd6f4;
+  background-color: var(--code-bg);
+  padding: 16px;
+  overflow: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  color: #cdd6f4;
 }
 
 pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: 100%;
-    color: inherit;
+  background-color: transparent;
+  padding: 0;
+  font-size: 100%;
+  color: inherit;
 }
 
 blockquote {
-    margin: 1rem 0;
-    padding: 0 0 0 1em;
-    color: #bac2de;
-    /* Subtext1 */
-    border-left: 0.25em solid var(--border-color);
+  margin: 1rem 0;
+  padding: 0 0 0 1em;
+  color: #bac2de;
+  /* Subtext1 */
+  border-left: 0.25em solid var(--border-color);
 }
 
 table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 16px;
-    color: var(--text-color);
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+  color: var(--text-color);
 }
 
 table th,
 table td {
-    border: 1px solid var(--border-color);
-    padding: 6px 13px;
+  border: 1px solid var(--border-color);
+  padding: 6px 13px;
 }
 
 table tr:nth-child(even) {
-    background-color: var(--highlight-bg);
+  background-color: var(--highlight-bg);
 }
 
 img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 6px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
 }
 
 /* Custom styling for bootstrap-toc in Catppuccin theme */
-nav[data-toggle="toc"] {
-    margin-top: 2rem;
-    background-color: var(--code-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    font-size: 0.9rem;
+nav[data-toggle='toc'] {
+  margin-top: 2rem;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.9rem;
 }
 
-nav[data-toggle="toc"] .nav-link {
-    color: rgba(205, 214, 244, 0.7);
-    padding: 0.25rem 0.75rem;
-    border-left: 2px solid transparent;
-    transition: all 0.2s ease-in-out;
+nav[data-toggle='toc'] .nav-link {
+  color: rgba(205, 214, 244, 0.7);
+  padding: 0.25rem 0.75rem;
+  border-left: 2px solid transparent;
+  transition: all 0.2s ease-in-out;
 }
 
-nav[data-toggle="toc"] .nav-link:hover,
-nav[data-toggle="toc"] .nav-link:focus {
-    color: var(--accent-color);
-    border-left-color: var(--accent-color);
-    padding-left: 0.9rem;
-    background-color: rgba(203, 166, 247, 0.05);
-    text-decoration: none;
+nav[data-toggle='toc'] .nav-link:hover,
+nav[data-toggle='toc'] .nav-link:focus {
+  color: var(--accent-color);
+  border-left-color: var(--accent-color);
+  padding-left: 0.9rem;
+  background-color: rgba(203, 166, 247, 0.05);
+  text-decoration: none;
 }
 
-nav[data-toggle="toc"] .nav-link.active {
-    color: var(--accent-color);
-    font-weight: 600;
-    border-left-color: var(--accent-color);
-    background-color: rgba(203, 166, 247, 0.1);
+nav[data-toggle='toc'] .nav-link.active {
+  color: var(--accent-color);
+  font-weight: 600;
+  border-left-color: var(--accent-color);
+  background-color: rgba(203, 166, 247, 0.1);
 }
 
-nav[data-toggle="toc"] .nav .nav {
-    padding-left: 1rem;
+nav[data-toggle='toc'] .nav .nav {
+  padding-left: 1rem;
 }
 
 /* Hide standard inline markdown TOC and the "Table of contents" header */
 .toc,
 #table-of-contents {
-    display: none !important;
+  display: none !important;
 }
 
 /* GitLab-like Alerts/Admonitions styled for Catppuccin Macchiato theme */
 .markdown-alert {
-    margin: 1.5rem 0;
-    padding: 1rem 1.25rem;
-    border-left: 4px solid var(--border-color);
-    background-color: rgba(255, 255, 255, 0.02);
-    border-radius: 6px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .markdown-alert-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-top: 0 !important;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .markdown-alert-title svg {
-    width: 16px;
-    height: 16px;
-    fill: currentColor;
-    flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
 }
 
 .markdown-alert p:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 /* Specific styles for note */
 .markdown-alert-note {
-    border-left-color: #89b4fa; /* Catppuccin Blue */
-    background-color: rgba(137, 180, 250, 0.08);
+  border-left-color: #89b4fa; /* Catppuccin Blue */
+  background-color: rgba(137, 180, 250, 0.08);
 }
 .markdown-alert-note .markdown-alert-title {
-    color: #89b4fa;
+  color: #89b4fa;
 }
 
 /* Specific styles for tip */
 .markdown-alert-tip {
-    border-left-color: #a6e3a1; /* Catppuccin Green */
-    background-color: rgba(166, 227, 161, 0.08);
+  border-left-color: #a6e3a1; /* Catppuccin Green */
+  background-color: rgba(166, 227, 161, 0.08);
 }
 .markdown-alert-tip .markdown-alert-title {
-    color: #a6e3a1;
+  color: #a6e3a1;
 }
 
 /* Specific styles for important */
 .markdown-alert-important {
-    border-left-color: #cba6f7; /* Catppuccin Mauve */
-    background-color: rgba(203, 166, 247, 0.08);
+  border-left-color: #cba6f7; /* Catppuccin Mauve */
+  background-color: rgba(203, 166, 247, 0.08);
 }
 .markdown-alert-important .markdown-alert-title {
-    color: #cba6f7;
+  color: #cba6f7;
 }
 
 /* Specific styles for warning */
 .markdown-alert-warning {
-    border-left-color: #f9e2af; /* Catppuccin Yellow */
-    background-color: rgba(249, 226, 175, 0.08);
+  border-left-color: #f9e2af; /* Catppuccin Yellow */
+  background-color: rgba(249, 226, 175, 0.08);
 }
 .markdown-alert-warning .markdown-alert-title {
-    color: #f9e2af;
+  color: #f9e2af;
 }
 
 /* Specific styles for caution */
 .markdown-alert-caution {
-    border-left-color: #f38ba8; /* Catppuccin Red */
-    background-color: rgba(243, 139, 168, 0.08);
+  border-left-color: #f38ba8; /* Catppuccin Red */
+  background-color: rgba(243, 139, 168, 0.08);
 }
 .markdown-alert-caution .markdown-alert-title {
-    color: #f38ba8;
+  color: #f38ba8;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive — keep documentation pages readable on small screens
+   --------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Wide tables (e.g. the keybindings list) scroll horizontally instead of
+       forcing the whole page to overflow sideways. */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
 }

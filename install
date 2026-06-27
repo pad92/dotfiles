@@ -30,7 +30,8 @@ backup_existing_files() {
     log_info "Backing up existing regular files that should be symlinks..."
 
     # Extract target paths from the config file
-    # We look for lines containing '~/' and a ':'
+    # We look for lines containing '~/' and a ':' (literal tilde search, not expansion)
+    # shellcheck disable=SC2088
     grep '~/' "${BASEDIR}/${CONFIG}" | grep ':' | sed 's/ *:.*//' | sed 's/^ *//' \
     | while IFS= read -r target; do
         local full_path="${target/#\~/$HOME}"
@@ -137,12 +138,12 @@ draw_menu() {
         if (( i == active_idx )); then
             prefix="${BLUE}➔${NC} "
         fi
-        
+
         local check="[ ]"
         if [[ "${selected[i]}" == "1" ]]; then
             check="[${GREEN}*${NC}]"
         fi
-        
+
         if (( i == active_idx )); then
             printf "%b%b %b\n" "$prefix" "$check" "${BLUE}${options[i]}${NC}" >&2
         else
@@ -157,17 +158,17 @@ show_multi_select() {
     for i in "${!options[@]}"; do
         selected[i]=1
     done
-    
+
     local active=0
     local num_options=${#options[@]}
-    
+
     hide_cursor
     draw_menu "$active"
-    
+
     while true; do
         local key
         key=$(read_key)
-        
+
         case "$key" in
             UP)
                 if (( active > 0 )); then
@@ -194,13 +195,13 @@ show_multi_select() {
                 break
                 ;;
         esac
-        
+
         cursor_up "$num_options"
         draw_menu "$active"
     done
-    
+
     show_cursor
-    
+
     local results=()
     for i in "${!options[@]}"; do
         if [[ "${selected[i]}" == "1" ]]; then
@@ -228,7 +229,9 @@ ensure_aur_helper() {
             log_info "Installing yay..."
             local tmpdir
             tmpdir=$(mktemp -d)
-            trap "rm -rf '$tmpdir'" EXIT
+            # Expand $tmpdir now (it is local and gone by the time EXIT fires)
+            # shellcheck disable=SC2064
+            trap "rm -rf '$tmpdir'; show_cursor" EXIT
             if git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" &>/dev/null; then
                 (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm)
                 AUR_HELPER="yay"
@@ -238,7 +241,7 @@ ensure_aur_helper() {
                 AUR_HELPER="sudo pacman"
             fi
             rm -rf "$tmpdir"
-            trap - EXIT
+            trap show_cursor EXIT
         fi
     fi
 }
@@ -247,52 +250,52 @@ install_arch_packages() {
     if ! is_arch_or_cachyos; then
         return 0
     fi
-    
+
     log_info "Detected Arch Linux or CachyOS system."
-    
+
     local packages_dir="${BASEDIR}/dist/arch/packages"
     if [[ ! -d "$packages_dir" ]]; then
         log_warn "Packages directory not found at $packages_dir. Skipping package installation."
         return 0
     fi
-    
+
     # Find all package files (*.txt)
     local files=()
     while IFS= read -r -d '' file; do
         files+=("$file")
     done < <(find "$packages_dir" -maxdepth 1 -name "*.txt" -print0 | sort -z)
-    
+
     if (( ${#files[@]} == 0 )); then
         log_warn "No package files (*.txt) found in $packages_dir."
         return 0
     fi
-    
+
     # Prepare display options
     local options=()
     for file in "${files[@]}"; do
         options+=("$(basename "$file" .txt)")
     done
-    
+
     log_info "Select the package categories you would like to install."
     echo -e "Use ${BLUE}Up/Down Arrow${NC} keys to navigate, ${BLUE}Space${NC} to toggle, and ${BLUE}Enter${NC} to confirm:\n" >&2
-    
+
     # Set up exit trap for cursor restoration
     trap show_cursor EXIT
-    
+
     local selected_idxs=()
     selected_idxs=($(show_multi_select "${options[@]}"))
-    
+
     if (( ${#selected_idxs[@]} == 0 )); then
         log_warn "No categories selected. Skipping package installation."
         return 0
     fi
-    
+
     # Read packages from selected files
     local all_pkgs=()
     for idx in "${selected_idxs[@]}"; do
         local file="${files[idx]}"
         log_info "Reading packages from $(basename "$file")..."
-        
+
         while IFS= read -r line || [[ -n "$line" ]]; do
             line="${line#"${line%%[![:space:]]*}"}"
             line="${line%"${line##*[![:space:]]}"}"
@@ -301,12 +304,12 @@ install_arch_packages() {
             fi
         done < "$file"
     done
-    
+
     if (( ${#all_pkgs[@]} == 0 )); then
         log_warn "No packages found in selected categories."
         return 0
     fi
-    
+
     # Filter out already installed packages
     local to_install=()
     local installed_count=0
@@ -321,27 +324,27 @@ install_arch_packages() {
             to_install+=("$pkg")
         fi
     done
-    
+
     log_info "Package status: ${installed_count} already installed, ${#to_install[@]} to install."
-    
+
     if (( ${#to_install[@]} == 0 )); then
         log_success "All selected packages are already installed!"
         return 0
     fi
-    
+
     log_info "Packages to install: ${to_install[*]}"
-    
+
     # Ensure AUR helper is available
     local AUR_HELPER=""
     ensure_aur_helper
-    
+
     log_info "Installing packages using $AUR_HELPER..."
     if [[ "$AUR_HELPER" == "sudo pacman" ]]; then
         sudo pacman -S --needed "${to_install[@]}"
     else
         $AUR_HELPER -S --needed "${to_install[@]}"
     fi
-    
+
     log_success "Package installation completed successfully!"
 }
 
@@ -352,12 +355,6 @@ apply_live_changes() {
     if command -v fc-cache &> /dev/null; then
         log_info "Rebuilding font cache..."
         fc-cache -f || log_warn "Failed to rebuild font cache"
-    fi
-
-    # Merge Xresources
-    if command -v xrdb &> /dev/null && [[ -f "$HOME/.Xresources" ]]; then
-        log_info "Reloading X resources..."
-        xrdb -merge "$HOME/.Xresources" || log_warn "Failed to reload X resources"
     fi
 
     # Reload Mako notification daemon
