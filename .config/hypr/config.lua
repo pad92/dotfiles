@@ -125,7 +125,7 @@ local config = {
 
   theme = {
     { key = "org.gnome.desktop.interface icon-theme", value = "'" .. (tk.icon_theme or "Papirus-Dark") .. "'" },
-    { key = "org.gnome.desktop.interface gtk-theme", value = "'Materia-dark-compact'" },
+    { key = "org.gnome.desktop.interface gtk-theme", value = "'" .. (tk.gtk_theme or "Materia-dark-compact") .. "'" },
     { key = "org.gnome.desktop.interface color-scheme", value = "'prefer-dark'" },
     { key = "org.gnome.desktop.interface cursor-theme", value = "'" .. cursor_theme .. "'" },
     { key = "org.gnome.desktop.interface cursor-size", value = tostring(cursor_size) },

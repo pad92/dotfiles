@@ -195,6 +195,7 @@ My current primary Window Manager configuration.
 > **Breaking Change**: The Hyprland configuration has migrated to Lua. These files are compatible with **Hyprland v0.55 and above**.
 
 - **Configuration**: Located in `.config/hypr`
+- **Theming**: [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf) is the single source of truth for colors, fonts, icon/GTK theme, and geometry. It is parsed by `include/toolkit.lua` and consumed by `config.lua`, which pushes the values to GTK/libadwaita apps via `gsettings` at session start (`conf/autostart.lua`). Change the theme there — no value is hardcoded in the Lua configs.
 - **Wallpapers**: Place images into `~/.local/share/backgrounds`
 - **Batch upload tip**:
   ```sh
