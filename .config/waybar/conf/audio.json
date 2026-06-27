@@ -20,7 +20,7 @@
   },
   "custom/headsetcontrol": {
     "format": "{}",
-    "exec": "headsetcontrol -b 2>/dev/null | awk -F'Level:' '/Level/ {gsub(/[^0-9]/,\"\",$2); print $2\"% \"; exit}'",
+    "exec": "~/.config/waybar/modules/headsetcontrol",
     "tooltip": false,
     "interval": 3600
   }

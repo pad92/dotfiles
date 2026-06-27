@@ -20,8 +20,9 @@
   ],
   "include": [
     "~/.config/waybar/conf/system.json",
-    "~/.config/waybar/conf/network.json",
+    "~/.config/waybar/conf/connectivity.json",
     "~/.config/waybar/conf/audio.json",
-    "~/.config/waybar/conf/workspaces.json"
+    "~/.config/waybar/conf/workspaces.json",
+    "~/.config/waybar/conf/temperature.PadsTower.json"
   ]
 }
