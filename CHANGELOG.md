@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Hyprland**:
+  - Add screen zoom on `SUPER + scroll` (middle-click resets), driven via `hyprctl eval` + `hl.config` since the Lua parser disables `hyprctl keyword`, with an animated `zoomFactor`.
+
 ### Changed
 
 - **Hyprland**:
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
+  - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.
 
 ## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
 

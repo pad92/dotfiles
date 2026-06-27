@@ -109,6 +109,10 @@ local config = {
     caps_lock = "swayosd-client --caps-lock",
     wallpaper = "~/.dotfiles/bin/awww.sh",
     clipboard = "cliphist list | %s -m | cliphist decode | wl-copy",
+    -- Lua parser disables `hyprctl keyword`, so push zoom via `hyprctl eval` + hl.config (partial merge).
+    zoom_in = "hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor -j | jq '.float * 1.3')}})\"",
+    zoom_out = "hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor -j | jq 'if .float / 1.3 < 1 then 1 else .float / 1.3 end')}})\"",
+    zoom_reset = 'hyprctl eval "hl.config({cursor={zoom_factor=1}})"',
   },
 
   notifications = {

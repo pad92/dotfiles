@@ -165,27 +165,28 @@ My original editor configuration built with `vundle`.
 
 ### ⌨️ Unified Keybindings
 
-| Shortcut                            | Action                   |
-| :---------------------------------- | :----------------------- |
-| `SUPER + Return`                    | Terminal                 |
-| `SUPER + Shift + Q`                 | Close window             |
-| `SUPER + [0-9]`                     | Focus workspace          |
-| `SUPER + Shift + [0-9]`             | Move window to workspace |
-| `SUPER + [Arrows/Vim keys]`         | Focus window             |
-| `SUPER + Shift + [Arrows/Vim keys]` | Move window              |
-| `SUPER + F`                         | Fullscreen toggle        |
-| `XF86Audio...`                      | Audio Controls           |
-| `XF86Mon...`                        | Brightness Controls      |
-| `SUPER + E`                         | File manager             |
-| `SUPER + C`                         | Code editor              |
-| `SUPER + W`                         | Browser                  |
-| `SUPER + M`                         | Music Player             |
-| `SUPER + Shift + Return`            | Password Manager         |
-| `SUPER + L`                         | Lock                     |
-| `SUPER + Delete`                    | Logout menu              |
-| `SUPER + ALT + Space`               | Float/Tile               |
-| `SUPER + ALT + Right`               | Change wallpaper         |
-| `Print` / `SUPER + P`               | Screenshot               |
+| Shortcut                            | Action                     |
+| :---------------------------------- | :------------------------- |
+| `SUPER + Return`                    | Terminal                   |
+| `SUPER + Shift + Q`                 | Close window               |
+| `SUPER + [0-9]`                     | Focus workspace            |
+| `SUPER + Shift + [0-9]`             | Move window to workspace   |
+| `SUPER + [Arrows/Vim keys]`         | Focus window               |
+| `SUPER + Shift + [Arrows/Vim keys]` | Move window                |
+| `SUPER + F`                         | Fullscreen toggle          |
+| `XF86Audio...`                      | Audio Controls             |
+| `XF86Mon...`                        | Brightness Controls        |
+| `SUPER + E`                         | File manager               |
+| `SUPER + C`                         | Code editor                |
+| `SUPER + W`                         | Browser                    |
+| `SUPER + M`                         | Music Player               |
+| `SUPER + Shift + Return`            | Password Manager           |
+| `SUPER + L`                         | Lock                       |
+| `SUPER + Delete`                    | Logout menu                |
+| `SUPER + ALT + Space`               | Float/Tile                 |
+| `SUPER + ALT + Right`               | Change wallpaper           |
+| `SUPER + Scroll` / `Middle-click`   | Screen zoom in/out / reset |
+| `Print` / `SUPER + P`               | Screenshot                 |
 
 ### Hyprland
 
