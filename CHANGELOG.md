@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - **Hyprland**:
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
   - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.
+  - Drop the 10-bit `bitdepth` override on the ASUS XG32WCS monitor (PadsTower), reverting to the default depth.
 
 ### Fixed
 
