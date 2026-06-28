@@ -35,6 +35,8 @@ All notable changes to this project will be documented in this file.
   - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet — code blocks were emitting token spans with no matching CSS, so they rendered monochrome.
   - Fix the custom table-of-contents styling never applying: the rules targeted `nav[data-toggle='toc']` but the element is `<nav id="toc">`, so they are now keyed on `#toc`.
   - Keep the sticky table of contents below the navbar (offset + higher navbar `z-index`) so it no longer slides over the menu when scrolling.
+- **Docs**:
+  - Annotate the code fences in `dist/arch/install.md` with languages (`sh`, `text`, `ini`) so they get syntax highlighting, and wrap the previously unfenced shell snippet in the Sound section in a fenced block.
 
 ## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
 

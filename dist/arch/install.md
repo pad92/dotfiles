@@ -22,7 +22,7 @@ Modern Arch Linux installations often use the `archinstall` tool for streamlined
 
 - Download ISO From [https://archlinux.org/download/](http://archlinux.mirrors.ovh.net/archlinux/iso/latest/)
 
-```
+```sh
 wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso
 wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso.sig
 
@@ -45,7 +45,7 @@ where `/dev/sda` is your usb key
 
 ### Create
 
-```
+```text
 gdisk /dev/nvme0n1
 o
 n
@@ -68,14 +68,14 @@ w
 
 ### luks
 
-```
+```sh
 cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
 ### lvm
 
-```
+```sh
 RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
 
 pvcreate /dev/mapper/cryptlvm
@@ -90,7 +90,7 @@ lvcreate -l 100%FREE archlvm -n home
 
 ### Format
 
-```
+```sh
 mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
 mkfs.ext4     /dev/mapper/archlvm-slash          -L slash
 mkfs.ext4     /dev/mapper/archlvm-home           -L home
@@ -102,7 +102,7 @@ swapon        /dev/mapper/archlvm-swap
 
 ### Mount
 
-```
+```sh
 mount /dev/mapper/archlvm-slash /mnt
 mkdir /mnt/efi /mnt/home /mnt/var/lib/docker /mnt/opt -p
 mount /dev/nvme0n1p2                     /mnt/efi
@@ -116,7 +116,7 @@ chmod 700 /boot
 
 ### Install base
 
-```
+```sh
 # Available kernel options:
 # KERNEL='linux'     # Vanilla Linux kernel and modules, with a few patches applied.
 # KERNEL='linux-lts' # Long-term support (LTS) Linux kernel and modules.
@@ -161,14 +161,14 @@ pacstrap /mnt \
 
 ### Configure resolv.conf
 
-```
+```sh
 echo '[main]
 rc-manager=resolvconf' > /mnt/etc/NetworkManager/conf.d/rc-manager.conf
 ```
 
 ### Configure wifi
 
-```
+```sh
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
 echo "options iwlwifi power_save=1"     > /mnt/etc/modprobe.d/iwlwifi.conf
 echo "options iwlwifi uapsd_disable=0" >> /mnt/etc/modprobe.d/iwlwifi.conf
@@ -181,15 +181,17 @@ fi
 
 ### Sound
 
+```sh
 if grep -wq '^snd_had_intel' /proc/modules; then
 echo "options snd_had_intel power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
 elif grep -wq '^snd_ac97_codec' /proc/modules; then
 echo "options snd_ac97_codec power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
 fi
+```
 
 ### Create fstab
 
-```
+```sh
 genfstab -U /mnt                                           >> /mnt/etc/fstab
 echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
 sed -i 's/relatime/noatime/g' /mnt/etc/fstab
@@ -197,7 +199,7 @@ sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 
 # From chroot
 
-```
+```sh
 arch-chroot /mnt
 ```
 
@@ -221,7 +223,7 @@ At this point you should have the following partitions and logical volumes:
 
 use all core for builds
 
-```
+```sh
 sed -i 's/^CXXFLAGS.*/CXXFLAGS="-march=native -mtune=native -O2 -pipe -fstack-protector-strong --param=ssp-buffer-size=4 -fno-plt"/' /etc/makepkg.conf && \
 sed -i 's/^#RUSTFLAGS.*/RUSTFLAGS="-C opt-level=2 -C target-cpu=native"/' /etc/makepkg.conf && \
 sed -i 's/^#BUILDDIR.*/BUILDDIR=\/tmp\/makepkg/' /etc/makepkg.conf && \
@@ -239,7 +241,7 @@ sed -i 's/^COMPRESSLZ4.*/COMPRESSLZ4=(lz4 -q --best)/' /etc/makepkg.conf
 
 ## Time zone
 
-```
+```sh
 timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
 timedatectl set-ntp true
 timedatectl
@@ -248,7 +250,7 @@ hwclock --systohc
 
 ## locales
 
-```
+```sh
 sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
 sed -i 's/^#en_US/en_US/g' /etc/locale.gen
 locale-gen
@@ -257,7 +259,7 @@ echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 
 ## keymap
 
-```
+```sh
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
 echo 'FONT=ter-116n'    >> /etc/vconsole.conf
 
@@ -276,7 +278,7 @@ EOF
 
 ## hostname
 
-```
+```sh
 myhostname='MyArch'
 echo "${myhostname}" > /etc/hostname
 cat <<EOF>> /etc/hosts
@@ -292,7 +294,7 @@ EOF
 
 ### Grub
 
-```
+```sh
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
 sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin\""  /etc/default/grub
@@ -305,7 +307,7 @@ grub-mkconfig -o /boot/grub/grub.cfg
 
 ### initramfs
 
-```
+```sh
 mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
 head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
 # Note: -i 1 sets the PBKDF iterations time to 1ms for faster boot. Increase for stronger security.
@@ -320,14 +322,14 @@ mkinitcpio -P
 
 ## services
 
-```
+```sh
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
 ```
 
 ## user
 
-```
+```sh
 MYUSER='MyUser'
 useradd -m -s /bin/zsh -G network,users,storage,lp,input,audio,wheel ${MYUSER}
 echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
@@ -336,7 +338,7 @@ passwd ${MYUSER}
 
 ### dotfiles
 
-```
+```sh
 # Run setup commands in user context without blocking shell execution
 sudo -u ${MYUSER} -i bash -c '
   git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
@@ -349,7 +351,7 @@ sudo -u ${MYUSER} -i bash -c '
 
 ### Packages manager
 
-```
+```sh
 # Enable color, checksum, and verbose output in pacman
 sed -i 's/#Color/Color/' /etc/pacman.conf && \
 sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf && \
@@ -368,7 +370,7 @@ sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
 
 ### aur
 
-```
+```sh
 # Modern archinstall typically handles AUR package management automatically
 # For manual installation, 'yay' is a popular choice for AUR packages
 
@@ -392,20 +394,21 @@ The system packages and software environment are automatically installed during 
 
 However, if you wish to manually install or re-install the packages later, you can run:
 
-```bash
+```sh
 yay -S --needed $(cat ~/.dotfiles/dist/arch/packages/*.txt)
 ```
 
 Alternatively, you can re-run the dotfiles installer at any time:
-```bash
+
+```sh
 ~/.dotfiles/install
 ```
 
-```bash
+```sh
 exit
 ```
 
-```
+```sh
 sync
 exit
 umount -R /mnt
@@ -416,20 +419,20 @@ reboot
 
 ## Auto CPUfreq
 
-```
+```sh
 sudo systemctl enable --now auto-cpufreq
 ```
 
 ## SSD Trim
 
-```
+```sh
 sudo pacman -S util-linux
 sudo systemctl enable fstrim.timer
 ```
 
 ## USBGuard
 
-```
+```sh
 yay -S usbguard usbguard-applet-qt
 sudo usbguard generate-policy | sudo tee /etc/usbguard/rules.conf
 sudo systemctl start usbguard.service
@@ -438,14 +441,14 @@ sudo systemctl enable usbguard.service
 
 ## Docker
 
-```
+```sh
 yay -S docker docker-compose
 usermod -a -G docker MyUser
 ```
 
 ## Nvidia
 
-```
+```sh
 sed -i '/^MODULES/c\MODULES=(nvidia)' /etc/mkinitcpio.conf
 yay -S nvidia-dkms nvidia-utils
 sudo mkinitcpio -P
@@ -454,7 +457,7 @@ sudo mkinitcpio -P
 
 ## Nvidia Prime
 
-```
+```sh
 yay -S nvidia-dkms nvidia-utils nvidia-prime
 ```
 
@@ -462,7 +465,7 @@ yay -S nvidia-dkms nvidia-utils nvidia-prime
 
 Remove notification
 
-```
+```sh
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
 
@@ -491,7 +494,7 @@ For complete documentation, see [Hyprland Wiki](https://wiki.hypr.land/Useful-Ut
 
 ### Installation
 
-```bash
+```sh
 sudo pacman -S uwsm libnewt
 ```
 
@@ -500,6 +503,7 @@ sudo pacman -S uwsm libnewt
 Add to your shell configuration (note that this is already integrated at the bottom of `~/.zshrc` in this dotfiles setup, but you can use `~/.zprofile` instead if you prefer to create and configure one):
 
 #### Option A: Interactive selection menu at login
+
 ```zsh
 if uwsm check may-start && uwsm select; then
     exec uwsm start default
@@ -507,19 +511,20 @@ fi
 ```
 
 #### Option B: Direct launch
+
 ```zsh
 if uwsm check may-start; then
     exec uwsm start hyprland.desktop
 fi
 ```
 
-*Note: For display managers, select `Hyprland (uwsm-managed)`.*
+_Note: For display managers, select `Hyprland (uwsm-managed)`._
 
 ### Application Launching
 
 Launch graphical applications as Systemd scopes:
 
-```bash
+```sh
 uwsm app -- alacritty
 ```
 
@@ -527,7 +532,7 @@ uwsm app -- alacritty
 
 - **XDG Autostart**: Handled automatically by the Systemd session target.
 - **Native User Services**:
-  ```bash
+  ```sh
   systemctl --user enable <service>
   # If the service lacks an [Install] section:
   systemctl --user add-wants graphical-session.target <service>
@@ -539,17 +544,17 @@ To allow PipeWire and WirePlumber to run with real-time scheduling (preventing a
 
 1. Install the `realtime-privileges` package, which configures the necessary PAM limits and creates the `realtime` group:
 
-```bash
+```sh
 sudo pacman -S realtime-privileges
 ```
 
 2. Add your user to the `realtime` group:
 
-```bash
+```sh
 sudo usermod -aG realtime MyUser
 ```
 
-*Note: You must log out and log back in (or reboot) for the group membership to take effect. If you don't do this, PipeWire logs will show `mod.rt: could not set nice-level to -11: Permission denied`.*
+_Note: You must log out and log back in (or reboot) for the group membership to take effect. If you don't do this, PipeWire logs will show `mod.rt: could not set nice-level to -11: Permission denied`._
 
 ## Modern Security Practices
 
