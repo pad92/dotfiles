@@ -6,11 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CI / Pages**:
+  - Add `.github/workflows/README.md` documenting the workflows, the shared `.ci_bin/` scripts, and the multi-forge (GitHub/GitLab/Gitea) setup, and publish it to the docs site at `/ci/` via `build_pages.sh`.
+  - Add `.gitlab/README.md` documenting the GitLab CI pipeline (stages, jobs, the `pages` build-vs-deploy rules, and the shared `.ci_bin/` scripts), and publish it to the docs site at `/gitlab-ci/` via `build_pages.sh`.
+  - Add a **Continuous Integration** section to the main `README.md` summarising the multi-forge (GitHub/GitLab/Gitea) setup and linking to both CI READMEs.
+  - Document the variables/secrets in both CI READMEs — all tokens (`GITHUB_TOKEN`, OIDC, `CI_JOB_TOKEN`) are auto-provided, so no manual secrets are required; note the GitHub Pages / Gitea Actions one-time setup prerequisites.
 - **Hyprland**:
   - Add screen zoom on `SUPER + PgUp`/`PgDn` (`Home` resets), driven via `hyprctl eval` + `hl.config` since the Lua parser disables `hyprctl keyword`, with an animated `zoomFactor`. Keyboard binds are used because Hyprland scroll binds leak the scroll event to the focused window ([#9319](https://github.com/hyprwm/Hyprland/issues/9319)).
 
 ### Changed
 
+- **CI / Pages**:
+  - Generate the Pages site in both `deploy-pages.yml` (GitHub) and the `pages` job (GitLab) by calling the reusable `.ci_bin/build_pages.sh` script instead of duplicating the `gen_pages.py` invocations, keeping the page list in a single source of truth. Made `build_pages.sh` POSIX `sh` and git-optional so it runs on minimal CI images (GitLab alpine).
+  - Factor the CHANGELOG release-notes extraction shared by the GitHub and GitLab release jobs into a single POSIX `.ci_bin/extract_release_notes.sh` script, removing the duplicated `sed` logic.
+  - Make `release.yml` forge-agnostic — create the release through the REST API (`POST /repos/{owner}/{repo}/releases` via `jq`/`curl`) instead of the `gh` CLI, so the same workflow runs on both GitHub and the Gitea runner (which also scans `.github/workflows`).
+  - Guard the GitHub-Pages (`deploy-pages.yml`) and Vim-package (`package-vim.yml`) workflows with `if: github.server_url == 'https://github.com'` so they don't run on the Gitea runner.
 - **Hyprland**:
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
   - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.

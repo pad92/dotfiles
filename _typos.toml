@@ -1,0 +1,6 @@
+# typos configuration — https://github.com/crate-ci/typos
+# Allow French words used in code comments (e.g. .gitlab-ci.yml) that typos
+# otherwise mistakes for English typos.
+[default.extend-words]
+sur = "sur"
+branche = "branche"

@@ -240,6 +240,19 @@ A collection of highly optimized Python, Bash, and shell scripts located in the 
   - Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
   - Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
 
+## 🔄 Continuous Integration
+
+This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **Gitea** instance. The CI keeps forge-specific configuration thin and delegates the real work to reusable scripts in [`.ci_bin/`](./.ci_bin/), so the same logic builds the documentation site and cuts releases on every forge.
+
+| Forge      | Pipeline                                     | Documentation                                     |
+| :--------- | :------------------------------------------- | :------------------------------------------------ |
+| **GitHub** | [`.github/workflows/`](./.github/workflows/) | [Workflows README](./.github/workflows/README.md) |
+| **GitLab** | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
+| **Gitea**  | reuses `.github/workflows/` (forge-agnostic) | see the Workflows README                          |
+
+- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/ci/` (GitHub) and `/gitlab-ci/` (GitLab). The same script backs the local `post-commit` preview hook.
+- **Releases**: tagging `v*` extracts the matching section from [`CHANGELOG.md`](./CHANGELOG.md) via [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh) and publishes a release.
+
 ## 📋 Application Ecosystem Summary
 
 A comprehensive list of configured tools across the stack:

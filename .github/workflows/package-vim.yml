@@ -2,18 +2,18 @@ name: Package Vim Configuration
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
     paths:
-      - ".vimrc"
-      - ".vim/**"
-      - "vim.sh"
-      - ".github/workflows/package-vim.yml"
+      - '.vimrc'
+      - '.vim/**'
+      - 'vim.sh'
+      - '.github/workflows/package-vim.yml'
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
     paths:
-      - ".vimrc"
-      - ".vim/**"
-      - "vim.sh"
+      - '.vimrc'
+      - '.vim/**'
+      - 'vim.sh'
 
 concurrency:
   group: vim-${{ github.workflow }}-${{ github.ref }}
@@ -24,6 +24,8 @@ permissions:
 
 jobs:
   package:
+    # Skip on non-GitHub forges (e.g. Gitea, which also scans .github/workflows).
+    if: ${{ github.server_url == 'https://github.com' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

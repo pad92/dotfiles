@@ -2,22 +2,28 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
     paths:
-      - "README.md"
-      - "CHANGELOG.md"
-      - "dist/arch/install.md"
-      - ".ci_bin/style.css"
-      - ".ci_bin/gen_pages.py"
-      - ".github/workflows/deploy-pages.yml"
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'dist/arch/install.md'
+      - '.ci_bin/style.css'
+      - '.ci_bin/gen_pages.py'
+      - '.ci_bin/build_pages.sh'
+      - '.github/workflows/README.md'
+      - '.gitlab/README.md'
+      - '.github/workflows/deploy-pages.yml'
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
     paths:
-      - "README.md"
-      - "CHANGELOG.md"
-      - "dist/arch/install.md"
-      - ".ci_bin/style.css"
-      - ".ci_bin/gen_pages.py"
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'dist/arch/install.md'
+      - '.ci_bin/style.css'
+      - '.ci_bin/gen_pages.py'
+      - '.ci_bin/build_pages.sh'
+      - '.github/workflows/README.md'
+      - '.gitlab/README.md'
 
 concurrency:
   group: pages-${{ github.workflow }}-${{ github.ref }}
@@ -28,6 +34,8 @@ permissions:
 
 jobs:
   build-and-deploy:
+    # Skip on non-GitHub forges (e.g. Gitea, which also scans .github/workflows).
+    if: ${{ github.server_url == 'https://github.com' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,12 +48,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate HTML from README
+      - name: Generate HTML pages
         run: |
-          pip install markdown
-          python3 .ci_bin/gen_pages.py README.md public/index.html "Pad's Dotfiles"
-          python3 .ci_bin/gen_pages.py CHANGELOG.md public/CHANGELOG.md/index.html "Changelog"
-          python3 .ci_bin/gen_pages.py dist/arch/install.md public/dist/arch/install.md/index.html "Installation"
+          pip install --quiet markdown
+          sh .ci_bin/build_pages.sh
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
