@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **CI / Pages**:
-  - Add `.github/workflows/README.md` documenting the workflows, the shared `.ci_bin/` scripts, and the multi-forge (GitHub/GitLab/Gitea) setup, and publish it to the docs site at `/ci/` via `build_pages.sh`.
-  - Add `.gitlab/README.md` documenting the GitLab CI pipeline (stages, jobs, the `pages` build-vs-deploy rules, and the shared `.ci_bin/` scripts), and publish it to the docs site at `/gitlab-ci/` via `build_pages.sh`.
+  - Add a sticky navigation menu to every generated documentation page (`gen_pages.py`) linking Home / Changelog / Installation / CI Workflows / GitLab CI, with the current page highlighted and links resolved relatively so the site works under a subpath.
+  - Strip emoji/icons from headings when rendering the documentation pages (`gen_pages.py`), keeping the source Markdown's emoji intact for the repo view.
+  - Add `.github/workflows/README.md` documenting the workflows, the shared `.ci_bin/` scripts, and the multi-forge (GitHub/GitLab/Gitea) setup, and publish it to the docs site (mirroring its source path) via `build_pages.sh`.
+  - Add `.gitlab/README.md` documenting the GitLab CI pipeline (stages, jobs, the `pages` build-vs-deploy rules, and the shared `.ci_bin/` scripts), and publish it to the docs site (mirroring its source path) via `build_pages.sh`. `build_pages.sh` also writes a `.nojekyll` marker so GitHub Pages serves the dot-directory pages verbatim.
   - Add a **Continuous Integration** section to the main `README.md` summarising the multi-forge (GitHub/GitLab/Gitea) setup and linking to both CI READMEs.
   - Document the variables/secrets in both CI READMEs — all tokens (`GITHUB_TOKEN`, OIDC, `CI_JOB_TOKEN`) are auto-provided, so no manual secrets are required; note the GitHub Pages / Gitea Actions one-time setup prerequisites.
 - **Hyprland**:
@@ -21,9 +23,18 @@ All notable changes to this project will be documented in this file.
   - Factor the CHANGELOG release-notes extraction shared by the GitHub and GitLab release jobs into a single POSIX `.ci_bin/extract_release_notes.sh` script, removing the duplicated `sed` logic.
   - Make `release.yml` forge-agnostic — create the release through the REST API (`POST /repos/{owner}/{repo}/releases` via `jq`/`curl`) instead of the `gh` CLI, so the same workflow runs on both GitHub and the Gitea runner (which also scans `.github/workflows`).
   - Guard the GitHub-Pages (`deploy-pages.yml`) and Vim-package (`package-vim.yml`) workflows with `if: github.server_url == 'https://github.com'` so they don't run on the Gitea runner.
+  - Theme the documentation-site navbar with the Catppuccin palette (Mantle background, Mauve brand/active link) instead of Bootstrap's default `bg-dark`, and limit heading dividers to `h1`/`h2` to reduce visual clutter.
 - **Hyprland**:
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
   - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.
+
+### Fixed
+
+- **CI / Pages**:
+  - Fix fenced code blocks nested inside list items rendering as a plain paragraph (e.g. the `git clone … ./install` install snippet leaking `:::sh`) — `gen_pages.py` now extracts every fenced block, dedents it, and renders it with Pygments before Markdown conversion, so in-list code blocks display correctly with highlighting.
+  - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet — code blocks were emitting token spans with no matching CSS, so they rendered monochrome.
+  - Fix the custom table-of-contents styling never applying: the rules targeted `nav[data-toggle='toc']` but the element is `<nav id="toc">`, so they are now keyed on `#toc`.
+  - Keep the sticky table of contents below the navbar (offset + higher navbar `z-index`) so it no longer slides over the menu when scrolling.
 
 ## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
 

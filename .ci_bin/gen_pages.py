@@ -1,7 +1,83 @@
 import sys
 import os
 import re
+import html as _html
+import posixpath
 import markdown
+
+try:
+    from pygments import highlight as _pyg_highlight
+    from pygments.formatters import HtmlFormatter as _PygHtmlFormatter
+    from pygments.lexers import get_lexer_by_name as _pyg_lexer
+    from pygments.util import ClassNotFound as _PygClassNotFound
+
+    _HAVE_PYGMENTS = True
+except Exception:  # pragma: no cover - pygments is optional
+    _HAVE_PYGMENTS = False
+
+# Site navigation menu: (label, target page relative to the public/ root).
+# Links are resolved relative to each page so the site works under a subpath
+# (e.g. project GitHub/GitLab Pages served from /<repo>/).
+SITE_NAV = [
+    ("Home", "index.html"),
+    ("Changelog", "CHANGELOG.md/index.html"),
+    ("Installation", "dist/arch/install.md/index.html"),
+    ("CI Workflows", ".github/workflows/README.md/index.html"),
+    ("GitLab CI", ".gitlab/README.md/index.html"),
+]
+
+
+# Emoji / pictographic symbol ranges plus variation selectors and ZWJ.
+EMOJI_RE = re.compile(
+    "["
+    "\U0001f000-\U0001faff"  # symbols, emoticons, transport, supplemental, etc.
+    "\U00002600-\U000027bf"  # misc symbols & dingbats
+    "\U00002b00-\U00002bff"  # misc symbols and arrows
+    "\U00002300-\U000023ff"  # misc technical (e.g. ⌨ keyboard, ⏰ clock)
+    "\U00002190-\U000021ff"  # arrows
+    "️‍"  # variation selector-16 and zero-width joiner
+    "]+"
+)
+
+
+def strip_heading_icons(text):
+    """Remove emoji/icons from Markdown headings (outside fenced code blocks)."""
+    lines = text.split("\n")
+    in_code = False
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*```", line):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
+        m = re.match(r"^(\s*#{1,6}\s+)(.*)$", line)
+        if m:
+            content = re.sub(r"\s{2,}", " ", EMOJI_RE.sub("", m.group(2))).strip()
+            lines[i] = m.group(1) + content
+    return "\n".join(lines)
+
+
+def build_nav(output_file):
+    """Return (brand_href, nav_items_html) with links relative to output_file."""
+    # Drop the leading 'public/' segment to get the path relative to the site root.
+    root_rel = "/".join(output_file.replace(os.sep, "/").split("/")[1:])
+    cur_dir = posixpath.dirname(root_rel) or "."
+
+    items = []
+    for label, target in SITE_NAV:
+        href = posixpath.relpath(target, cur_dir)
+        if target == root_rel:
+            items.append(
+                f'<li class="nav-item"><a class="nav-link active" '
+                f'aria-current="page" href="{href}">{label}</a></li>'
+            )
+        else:
+            items.append(
+                f'<li class="nav-item"><a class="nav-link" href="{href}">{label}</a></li>'
+            )
+
+    brand_href = posixpath.relpath("index.html", cur_dir)
+    return brand_href, "\n".join(items)
 
 
 def minify_css(css):
@@ -71,6 +147,59 @@ def get_alert_resources(alert_type):
         ),
     }
     return icons.get(alert_type, (None, alert_type))
+
+
+def pygments_css():
+    """Syntax-highlighting colours for `.codehilite`, themed for the dark pages.
+
+    Returns an empty string when Pygments is unavailable (code still renders,
+    just without colours). The code box background is left to the themed `pre`
+    rule, so only the token colours come from the Pygments style.
+    """
+    if not _HAVE_PYGMENTS:
+        return ""
+    defs = _PygHtmlFormatter(style="dracula").get_style_defs(".codehilite")
+    return "\n" + defs + "\n.codehilite{background:transparent}\n"
+
+
+def render_code_block(code, lang):
+    """Render a fenced code block to HTML matching codehilite's `.codehilite`."""
+    if _HAVE_PYGMENTS and lang:
+        try:
+            return _pyg_highlight(
+                code, _pyg_lexer(lang), _PygHtmlFormatter(cssclass="codehilite")
+            )
+        except _PygClassNotFound:
+            pass
+    cls = f' class="language-{lang}"' if lang else ""
+    return f'<div class="codehilite"><pre><code{cls}>{_html.escape(code)}</code></pre></div>'
+
+
+def stash_code_blocks(text, store):
+    """Replace fenced code blocks with placeholders and render them ourselves.
+
+    python-markdown's `fenced_code` does not recognise fences nested inside list
+    items (it turns them into inline code), so we extract every fenced block
+    here — dedenting by the opening fence's indentation — render it, and reinsert
+    the HTML after Markdown conversion. The placeholder keeps the fence's indent
+    so it stays within its list item.
+    """
+    pattern = re.compile(
+        r"^([ \t]*)```([\w+-]*)[ \t]*\n(.*?)\n[ \t]*```[ \t]*$",
+        re.MULTILINE | re.DOTALL,
+    )
+
+    def repl(match):
+        indent, lang, body = match.group(1), match.group(2), match.group(3)
+        n = len(indent)
+        code = "\n".join(
+            line[n:] if line[:n].strip() == "" else line for line in body.split("\n")
+        )
+        token = f"xxcodeblock{len(store)}xx"
+        store.append(render_code_block(code, lang))
+        return indent + token
+
+    return pattern.sub(repl, text)
 
 
 def preprocess_markdown(text):
@@ -164,6 +293,14 @@ def generate_html(input_file, output_file, title):
     with open(input_file, "r", encoding="utf-8") as f:
         text = f.read()
 
+    # Pull fenced code blocks out before any other processing (handles fences
+    # nested in list items, which python-markdown mishandles).
+    code_blocks = []
+    text = stash_code_blocks(text, code_blocks)
+
+    # Strip emoji/icons from headings (kept in the source for the repo view).
+    text = strip_heading_icons(text)
+
     # Replace [[TOC]] and [[_TOC_]] with [TOC] so python-markdown's toc extension recognizes them
     text = text.replace("[[TOC]]", "[TOC]").replace("[[_TOC_]]", "[TOC]")
 
@@ -174,6 +311,13 @@ def generate_html(input_file, output_file, title):
     html_content = markdown.markdown(
         preprocess_markdown(text), extensions=["extra", "codehilite", "toc"]
     )
+
+    # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
+    for i, block in enumerate(code_blocks):
+        token = f"xxcodeblock{i}xx"
+        html_content = html_content.replace(f"<p>{token}</p>", block).replace(
+            token, block
+        )
 
     # CSS lives at the public/ root; link to it with a relative path based on
     # how deep the output file sits (e.g. public/index.html -> style.css,
@@ -194,9 +338,11 @@ def generate_html(input_file, output_file, title):
         if css_dest_dir:
             os.makedirs(css_dest_dir, exist_ok=True)
         with open(css_source, "r", encoding="utf-8") as src:
-            minified_css = minify_css(src.read())
+            minified_css = minify_css(src.read() + pygments_css())
         with open(css_dest, "w", encoding="utf-8") as dst:
             dst.write(minified_css)
+
+    brand_href, nav_items = build_nav(output_file)
 
     template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -209,6 +355,19 @@ def generate_html(input_file, output_file, title):
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="{brand_href}">Pad's Dotfiles</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav" aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="site-nav">
+                <ul class="navbar-nav ms-auto">
+                    {nav_items}
+                </ul>
+            </div>
+        </div>
+    </nav>
     <div class="container py-5">
         <div class="row">
             <div class="col-xl-9 col-lg-8 col-12">

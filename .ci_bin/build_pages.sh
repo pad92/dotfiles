@@ -13,10 +13,14 @@ if ! python3 -c 'import markdown' >/dev/null 2>&1; then
     exit 0
 fi
 
-python3 .ci_bin/gen_pages.py README.md                    public/index.html                       "Pad's Dotfiles"
-python3 .ci_bin/gen_pages.py CHANGELOG.md                 public/CHANGELOG.md/index.html          "Changelog"
-python3 .ci_bin/gen_pages.py dist/arch/install.md         public/dist/arch/install.md/index.html  "Installation"
-python3 .ci_bin/gen_pages.py .github/workflows/README.md  public/ci/index.html                    "CI Workflows"
-python3 .ci_bin/gen_pages.py .gitlab/README.md            public/gitlab-ci/index.html             "GitLab CI"
+# Output paths mirror each source path under public/.
+python3 .ci_bin/gen_pages.py README.md                    public/index.html                              "Pad's Dotfiles"
+python3 .ci_bin/gen_pages.py CHANGELOG.md                 public/CHANGELOG.md/index.html                 "Changelog"
+python3 .ci_bin/gen_pages.py dist/arch/install.md         public/dist/arch/install.md/index.html         "Installation"
+python3 .ci_bin/gen_pages.py .github/workflows/README.md  public/.github/workflows/README.md/index.html  "CI Workflows"
+python3 .ci_bin/gen_pages.py .gitlab/README.md            public/.gitlab/README.md/index.html            "GitLab CI"
+
+# Serve dot-directories (e.g. .github/) verbatim on GitHub Pages (no Jekyll).
+touch public/.nojekyll
 
 echo "build_pages: regenerated public/"

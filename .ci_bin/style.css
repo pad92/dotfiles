@@ -1,4 +1,37 @@
 /* Catppuccin Mocha theme for the generated documentation pages. */
+
+/* Offset anchor jumps so headings aren't hidden behind the sticky navbar. */
+html {
+  scroll-padding-top: 4rem;
+}
+
+/* Keep the navbar above the sticky TOC, and stick the TOC below the navbar
+   (not at the very top) so it no longer slides over the menu when scrolling. */
+.navbar.sticky-top {
+  z-index: 1030;
+}
+
+/* Theme the top navigation menu to match the Catppuccin palette. */
+.navbar.bg-dark {
+  background-color: #181825 !important; /* Catppuccin Mantle */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.navbar .navbar-brand {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.navbar .nav-link.active {
+  color: var(--accent-color);
+}
+
+#toc.sticky-top {
+  top: 4.5rem;
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+}
+
 :root {
   --bg-color: #1e1e2e;
   /* Base */
@@ -42,9 +75,14 @@ h4,
 h5,
 h6 {
   color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* Only the top two levels get a divider, like GitHub, to avoid clutter. */
+h1,
+h2 {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.3em;
-  font-weight: 600;
 }
 
 h1 {
@@ -150,7 +188,7 @@ img {
 }
 
 /* Custom styling for bootstrap-toc in Catppuccin theme */
-nav[data-toggle='toc'] {
+#toc {
   margin-top: 2rem;
   background-color: var(--code-bg);
   border: 1px solid var(--border-color);
@@ -159,15 +197,15 @@ nav[data-toggle='toc'] {
   font-size: 0.9rem;
 }
 
-nav[data-toggle='toc'] .nav-link {
+#toc .nav-link {
   color: rgba(205, 214, 244, 0.7);
   padding: 0.25rem 0.75rem;
   border-left: 2px solid transparent;
   transition: all 0.2s ease-in-out;
 }
 
-nav[data-toggle='toc'] .nav-link:hover,
-nav[data-toggle='toc'] .nav-link:focus {
+#toc .nav-link:hover,
+#toc .nav-link:focus {
   color: var(--accent-color);
   border-left-color: var(--accent-color);
   padding-left: 0.9rem;
@@ -175,14 +213,14 @@ nav[data-toggle='toc'] .nav-link:focus {
   text-decoration: none;
 }
 
-nav[data-toggle='toc'] .nav-link.active {
+#toc .nav-link.active {
   color: var(--accent-color);
   font-weight: 600;
   border-left-color: var(--accent-color);
   background-color: rgba(203, 166, 247, 0.1);
 }
 
-nav[data-toggle='toc'] .nav .nav {
+#toc .nav .nav {
   padding-left: 1rem;
 }
 

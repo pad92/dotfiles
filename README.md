@@ -250,7 +250,7 @@ This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **G
 | **GitLab** | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
 | **Gitea**  | reuses `.github/workflows/` (forge-agnostic) | see the Workflows README                          |
 
-- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/ci/` (GitHub) and `/gitlab-ci/` (GitLab). The same script backs the local `post-commit` preview hook.
+- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/.github/workflows/README.md/` and `/.gitlab/README.md/`, mirroring their source paths. The same script backs the local `post-commit` preview hook.
 - **Releases**: tagging `v*` extracts the matching section from [`CHANGELOG.md`](./CHANGELOG.md) via [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh) and publishes a release.
 
 ## 📋 Application Ecosystem Summary
