@@ -2,6 +2,8 @@
 
 This repository contains my curated personal configuration files (dotfiles) for various operating systems and environments. It aims to provide a robust, reliable, and highly customized foundation for modern Linux desktop usage.
 
+![Hyprland desktop showcase — Neovim, Waybar & Fastfetch on CachyOS](./dist/hyprland.webp)
+
 ## 🚀 Installation & Quick Start
 
 For the latest updates, check the [Changelog](./CHANGELOG.md).
@@ -145,9 +147,9 @@ A state-of-the-art configuration written completely in Lua from scratch, designe
 - **Key Features**:
   - **Plugin Manager**: Managed by `lazy.nvim` for fast startup and lazy loading.
   - **Fuzzy Finder**: Built with `telescope.nvim` for rapid interactive file/buffer/symbol searching.
-  - **Syntax & AST**: Powered by `nvim-treesitter` for beautiful, precise, and fast syntax highlighting.
-  - **Native LSP**: Utilizes the modern native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for rich IDE autocompletions and go-to-definitions.
-  - **Git Integration**: Realtime changes displayed in the margin by `gitsigns.nvim`.
+  - **Syntax & AST**: Powered by `nvim-treesitter` (`main` branch, Neovim 0.12+) for beautiful, precise, and fast syntax highlighting, indentation, and folding.
+  - **Native LSP**: Utilizes the modern native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for rich IDE autocompletions, with `LspAttach` keymaps for go-to-definition, diagnostics, and formatting.
+  - **Git Integration**: Realtime changes displayed in the margin by `gitsigns.nvim`, with hunk navigation, staging, and blame keymaps.
   - **Aesthetics**: Sleek `gruvbox` colorscheme coupled with `lualine.nvim` statusline and vertical indentation guides.
 
 #### 📖 Legacy Vim
@@ -250,7 +252,7 @@ This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **G
 | **GitLab** | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
 | **Gitea**  | reuses `.github/workflows/` (forge-agnostic) | see the Workflows README                          |
 
-- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/.github/workflows/README.md/` and `/.gitlab/README.md/`, mirroring their source paths. The same script backs the local `post-commit` preview hook.
+- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/github/workflows/README.md/` and `/.gitlab/README.md/` (the GitHub one drops the leading dot because `actions/upload-pages-artifact` strips `.github` from the deployed tarball). The same script backs the local `post-commit` preview hook.
 - **Releases**: tagging `v*` extracts the matching section from [`CHANGELOG.md`](./CHANGELOG.md) via [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh) and publishes a release.
 
 ## 📋 Application Ecosystem Summary

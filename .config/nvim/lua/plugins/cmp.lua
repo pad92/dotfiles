@@ -1,5 +1,5 @@
 return {
-  -- [ AUTOCOMPLÉTION & SNIPPETS ]
+  -- [ AUTOCOMPLETION & SNIPPETS ]
   {
     "hrsh7th/nvim-cmp",
     dependencies = {

@@ -13,21 +13,35 @@ All notable changes to this project will be documented in this file.
   - Add `.gitlab/README.md` documenting the GitLab CI pipeline (stages, jobs, the `pages` build-vs-deploy rules, and the shared `.ci_bin/` scripts), and publish it to the docs site (mirroring its source path) via `build_pages.sh`. `build_pages.sh` also writes a `.nojekyll` marker so GitHub Pages serves the dot-directory pages verbatim.
   - Add a **Continuous Integration** section to the main `README.md` summarising the multi-forge (GitHub/GitLab/Gitea) setup and linking to both CI READMEs.
   - Document the variables/secrets in both CI READMEs — all tokens (`GITHUB_TOKEN`, OIDC, `CI_JOB_TOKEN`) are auto-provided, so no manual secrets are required; note the GitHub Pages / Gitea Actions one-time setup prerequisites.
+- **Docs**:
+  - Add a Hyprland desktop showcase screenshot (`dist/hyprland.webp`) as a hero illustration at the top of `README.md`, and refresh the Neovim feature list (treesitter `main`/Neovim 0.12, LSP `LspAttach` keymaps, gitsigns hunk/blame keymaps).
 - **Hyprland**:
   - Add screen zoom on `SUPER + PgUp`/`PgDn` (`Home` resets), driven via `hyprctl eval` + `hl.config` since the Lua parser disables `hyprctl keyword`, with an animated `zoomFactor`. Keyboard binds are used because Hyprland scroll binds leak the scroll event to the focused window ([#9319](https://github.com/hyprwm/Hyprland/issues/9319)).
+- **Neovim**:
+  - Add `neovim` and `tree-sitter-cli` to the Arch package list (`dist/arch/packages/20_apps.txt`) — `neovim` was missing from the curated lists, and the nvim-treesitter `main` branch compiles parsers through the `tree-sitter` CLI (the `master` branch built them directly with `cc`).
+  - Add LSP keymaps via an `LspAttach` autocmd (`lsp.lua`) — `gd`/`gD`/`gi` (definition/declaration/implementation), `<leader>e` (diagnostic float) and `<leader>lf` (format), complementing Neovim 0.11's built-in `grn`/`gra`/`grr`/`K`. The LSP was previously configured but had no bindings.
+  - Add gitsigns hunk keymaps via `on_attach` (`editor.lua`) — `]c`/`[c` to navigate hunks, `<leader>gs`/`gr`/`gp`/`gd` to stage/reset/preview/diff, and `<leader>gb` to toggle inline blame.
 
 ### Changed
 
 - **CI / Pages**:
   - Generate the Pages site in both `deploy-pages.yml` (GitHub) and the `pages` job (GitLab) by calling the reusable `.ci_bin/build_pages.sh` script instead of duplicating the `gen_pages.py` invocations, keeping the page list in a single source of truth. Made `build_pages.sh` POSIX `sh` and git-optional so it runs on minimal CI images (GitLab alpine).
+  - Copy static assets referenced by the docs (the `dist/hyprland.webp` README showcase image) into `public/`, mirroring their source path, so relative `src` links resolve on both GitHub Pages and GitLab Pages (`build_pages.sh`).
   - Factor the CHANGELOG release-notes extraction shared by the GitHub and GitLab release jobs into a single POSIX `.ci_bin/extract_release_notes.sh` script, removing the duplicated `sed` logic.
   - Make `release.yml` forge-agnostic — create the release through the REST API (`POST /repos/{owner}/{repo}/releases` via `jq`/`curl`) instead of the `gh` CLI, so the same workflow runs on both GitHub and the Gitea runner (which also scans `.github/workflows`).
   - Guard the GitHub-Pages (`deploy-pages.yml`) and Vim-package (`package-vim.yml`) workflows with `if: github.server_url == 'https://github.com'` so they don't run on the Gitea runner.
   - Theme the documentation-site navbar with the Catppuccin palette (Mantle background, Mauve brand/active link) instead of Bootstrap's default `bg-dark`, and limit heading dividers to `h1`/`h2` to reduce visual clutter.
 - **Hyprland**:
+  - Output the isolated showcase capture (`bin/hypr-screenshot.sh`) as a web-optimised WebP (lossy, q80 via `WEBP_QUALITY`, max compression effort) instead of PNG — `grim` writes a temporary PNG that is re-encoded with the first available encoder (`cwebp`/`magick`/`convert`/`ffmpeg`).
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
   - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.
   - Drop the 10-bit `bitdepth` override on the ASUS XG32WCS monitor (PadsTower), reverting to the default depth.
+- **Neovim**:
+  - Lazy-load Telescope (`cmd = "Telescope"`) and gitsigns (`event = "VeryLazy"`) instead of loading them at startup (`editor.lua`).
+  - Move the Treesitter `foldmethod`/`foldexpr` out of the global `options.lua` into the per-filetype `FileType` autocmd in `treesitter.lua`, so folding is only set where a parser is actually started (alongside highlight/indent).
+  - Point the Mason dependencies at `mason-org/mason.nvim` and `mason-org/mason-lspconfig.nvim` (the repos moved org), and drop the redundant manual `vim.lsp.enable("lua_ls")` now that mason-lspconfig's `automatic_enable` handles it (`lsp.lua`).
+  - Default gitsigns `current_line_blame` to off (toggle via `<leader>gb`) instead of always-on inline blame (`editor.lua`).
+  - Translate all configuration comments to English across the `nvim` config.
 
 ### Fixed
 
@@ -36,8 +50,11 @@ All notable changes to this project will be documented in this file.
   - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet — code blocks were emitting token spans with no matching CSS, so they rendered monochrome.
   - Fix the custom table-of-contents styling never applying: the rules targeted `nav[data-toggle='toc']` but the element is `<nav id="toc">`, so they are now keyed on `#toc`.
   - Keep the sticky table of contents below the navbar (offset + higher navbar `z-index`) so it no longer slides over the menu when scrolling.
+  - Fix the 404 on the CI Workflows page on GitHub Pages — `actions/upload-pages-artifact` strips `.git`/`.github` from the deployed tarball, so the page generated under `public/.github/workflows/README.md/` was never published. It is now published under `public/github/workflows/README.md/` (leading dot dropped), with the site nav (`gen_pages.py`) and README updated to match.
 - **Docs**:
   - Annotate the code fences in `dist/arch/install.md` with languages (`sh`, `text`, `ini`) so they get syntax highlighting, and wrap the previously unfenced shell snippet in the Sound section in a fenced block.
+- **Neovim**:
+  - Fix the treesitter highlighter crashing on Markdown (`README.md`) under Neovim 0.12 — `Decoration provider "start" … attempt to call method 'range' (a nil value)`. The pinned nvim-treesitter `master` branch is frozen at Neovim 0.10/0.11 support; migrate `treesitter.lua` to the `main` branch (`require('nvim-treesitter').install()` + `vim.treesitter.start()` via a `FileType` autocmd) which supports Neovim 0.12, restoring Markdown highlighting.
 
 ## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
 

@@ -17,8 +17,20 @@ fi
 python3 .ci_bin/gen_pages.py README.md                    public/index.html                              "Pad's Dotfiles"
 python3 .ci_bin/gen_pages.py CHANGELOG.md                 public/CHANGELOG.md/index.html                 "Changelog"
 python3 .ci_bin/gen_pages.py dist/arch/install.md         public/dist/arch/install.md/index.html         "Installation"
-python3 .ci_bin/gen_pages.py .github/workflows/README.md  public/.github/workflows/README.md/index.html  "CI Workflows"
+# Publish under github/ (no leading dot): actions/upload-pages-artifact strips
+# .git and .github from the deployed tarball, which would 404 the page.
+python3 .ci_bin/gen_pages.py .github/workflows/README.md  public/github/workflows/README.md/index.html  "CI Workflows"
 python3 .ci_bin/gen_pages.py .gitlab/README.md            public/.gitlab/README.md/index.html            "GitLab CI"
+
+# Copy static assets referenced by the rendered docs into public/, mirroring
+# their source path so relative links (e.g. the README showcase image) resolve
+# correctly on both GitHub Pages and GitLab Pages.
+for asset in dist/hyprland.webp; do
+    if [ -f "$asset" ]; then
+        mkdir -p "public/$(dirname "$asset")"
+        cp "$asset" "public/$asset"
+    fi
+done
 
 # Serve dot-directories (e.g. .github/) verbatim on GitHub Pages (no Jekyll).
 touch public/.nojekyll

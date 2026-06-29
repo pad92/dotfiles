@@ -1,20 +1,20 @@
 return {
-  -- [ THÈME GRUVBOX MODERNISÉ ]
+  -- [ MODERNIZED GRUVBOX THEME ]
   {
     "ellisonleao/gruvbox.nvim",
-    priority = 1000, -- Charge le thème en premier
+    priority = 1000, -- Load the theme first
     config = function()
       require("gruvbox").setup({
         contrast = "hard",
         palette_overrides = {
           dark0_hard = "#1d2021",
-        }
+        },
       })
       vim.cmd("colorscheme gruvbox")
     end,
   },
 
-  -- [ BARRE DE STATUT (Lualine) ]
+  -- [ STATUS LINE (Lualine) ]
   {
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
@@ -24,12 +24,12 @@ return {
           theme = "gruvbox",
           component_separators = { left = "│", right = "│" },
           section_separators = { left = "", right = "" },
-        }
+        },
       })
     end,
   },
 
-  -- [ GUIDES VERTICAUX D'INDENTATION ]
+  -- [ VERTICAL INDENTATION GUIDES ]
   {
     "lukas-reineke/indent-blankline.nvim",
     main = "ibl",
@@ -41,7 +41,7 @@ return {
     end,
   },
 
-  -- [ COLORISEUR DE CODES CSS/HEX ]
+  -- [ CSS/HEX COLOR HIGHLIGHTER ]
   {
     "NvChad/nvim-colorizer.lua",
     config = function()

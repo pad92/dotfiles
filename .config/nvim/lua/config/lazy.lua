@@ -1,5 +1,5 @@
 -- ========================================================================== --
---                    AMORÇAGE DE LAZY.NVIM (lazy.lua)                        --
+--                    LAZY.NVIM BOOTSTRAP (lazy.lua)                          --
 -- ========================================================================== --
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -15,11 +15,11 @@ if not vim.uv.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- Charge tous les plugins configurés dans le dossier 'lua/plugins/'
+-- Load every plugin spec from the 'lua/plugins/' directory
 require("lazy").setup({
   spec = {
     { import = "plugins" },
   },
   install = { colorscheme = { "gruvbox" } },
-  checker = { enabled = false }, -- Désactive les vérifications automatiques lentes au démarrage
+  checker = { enabled = false }, -- Disable slow automatic update checks at startup
 })

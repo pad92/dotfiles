@@ -17,6 +17,7 @@ gst-plugins-good
 gst-plugins-ugly
 gstreamer
 nautilus
+neovim
 p7zip
 pavucontrol
 proton-pass-cli-bin
@@ -24,6 +25,7 @@ seahorse
 spotify-launcher
 telegram-desktop
 terraform
+tree-sitter-cli
 vlc
 vscodium-bin
 vscodium-bin-marketplace

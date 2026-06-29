@@ -22,7 +22,9 @@ SITE_NAV = [
     ("Home", "index.html"),
     ("Changelog", "CHANGELOG.md/index.html"),
     ("Installation", "dist/arch/install.md/index.html"),
-    ("CI Workflows", ".github/workflows/README.md/index.html"),
+    # Published under github/ (not .github/): actions/upload-pages-artifact
+    # excludes .git and .github from the deployed tarball (would 404 otherwise).
+    ("CI Workflows", "github/workflows/README.md/index.html"),
     ("GitLab CI", ".gitlab/README.md/index.html"),
 ]
 

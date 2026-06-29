@@ -1,57 +1,57 @@
 -- ========================================================================== --
---                  PARAMÈTRES ET OPTIONS GLOBALES (options.lua)               --
+--                  GLOBAL SETTINGS & OPTIONS (options.lua)                    --
 -- ========================================================================== --
 
 local opt = vim.opt
 
--- Affichage & Rapprochement visuel
-opt.number = true               -- Affiche les numéros de ligne
-opt.relativenumber = true       -- Numéros de ligne relatifs
-opt.signcolumn = "yes"          -- Laisse la colonne de gauche ouverte
-opt.termguicolors = true        -- True Colors (couleurs 24-bits modernes)
-opt.cursorline = true           -- Met en surbrillance la ligne courante
+-- Display & visual aids
+opt.number = true -- Show line numbers
+opt.relativenumber = true -- Relative line numbers
+opt.signcolumn = "yes" -- Keep the sign column always open
+opt.termguicolors = true -- True color (modern 24-bit colors)
+opt.cursorline = true -- Highlight the current line
 
--- Recherche
-opt.ignorecase = true           -- Insensible à la casse par défaut
-opt.smartcase = true            -- Sensible à la casse si on tape une majuscule
-opt.incsearch = true            -- Recherche dynamique en cours de frappe
-opt.hlsearch = true             -- Surligne les résultats de recherche
+-- Search
+opt.ignorecase = true -- Case-insensitive by default
+opt.smartcase = true -- Case-sensitive when an uppercase letter is typed
+opt.incsearch = true -- Incremental search while typing
+opt.hlsearch = true -- Highlight search matches
 
--- Indentation & Tabulations
-opt.tabstop = 4                 -- Largeur d'une tabulation
-opt.shiftwidth = 4              -- Largeur de l'indentation
-opt.expandtab = true            -- Convertit les tabulations en espaces
-opt.smartindent = true          -- Indentation intelligente
+-- Indentation & tabs
+opt.tabstop = 4 -- Width of a tab
+opt.shiftwidth = 4 -- Indentation width
+opt.expandtab = true -- Expand tabs into spaces
+opt.smartindent = true -- Smart auto-indentation
 
--- Comportement & Système
-opt.mouse = "a"                 -- Active pleinement la souris
-opt.clipboard = "unnamedplus"   -- Synchronise le presse-papiers système
-opt.swapfile = false            -- Désactive les fichiers swap obsolètes
-opt.undofile = true             -- Historique persistant des modifications
-opt.updatetime = 250            -- Rafraîchissement plus rapide (pour Git / LSP)
-opt.timeoutlen = 300            -- Temps de réponse aux touches combinées
-opt.scrolloff = 8               -- Conserve toujours 8 lignes de visibilité sous/sur le curseur
+-- Behavior & system
+opt.mouse = "a" -- Enable the mouse in all modes
+opt.clipboard = "unnamedplus" -- Sync with the system clipboard
+opt.swapfile = false -- Disable legacy swap files
+opt.undofile = true -- Persistent undo history
+opt.updatetime = 250 -- Faster refresh (for Git / LSP)
+opt.timeoutlen = 300 -- Timeout for mapped key sequences
+opt.scrolloff = 8 -- Keep 8 lines visible above/below the cursor
 
--- Disposition des fenêtres
-opt.splitright = true           -- Les splits verticaux s'ouvrent à droite
-opt.splitbelow = true           -- Les splits horizontaux s'ouvrent en bas
+-- Window layout
+opt.splitright = true -- Vertical splits open on the right
+opt.splitbelow = true -- Horizontal splits open below
 
--- Caractères invisibles
+-- Invisible characters
 opt.list = true
 opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 
--- Pliage (Folding) moderne via Treesitter
-opt.foldmethod = "expr"
-opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-opt.foldenable = false          -- N'ouvre pas le fichier avec les plis fermés par défaut
+-- Folding: foldmethod/foldexpr (Treesitter) are set per filetype in
+-- plugins/treesitter.lua (where a parser is started); here we only keep the
+-- global behavior: do not open a file with folds closed.
+opt.foldenable = false
 
--- Configuration Netrw (explorateur natif)
+-- Netrw (built-in file explorer) configuration
 vim.g.netrw_banner = 0
 vim.g.netrw_liststyle = 3
 vim.g.netrw_winsize = 25
 
 -- ========================================================================== --
--- REPERTOIRES DE SAUVEGARDE & BACKUP                                         --
+-- BACKUP DIRECTORIES                                                          --
 -- ========================================================================== --
 local state_dir = vim.fn.stdpath("state")
 local backup_dir = state_dir .. "/backup"
@@ -67,9 +67,9 @@ opt.backupext = ".bak"
 opt.backupdir = backup_dir
 
 -- ========================================================================== --
--- AUTOMATIONS & COMPORTEMENTS SPÉCIFIQUES                                    --
+-- AUTOCOMMANDS & SPECIFIC BEHAVIORS                                          --
 -- ========================================================================== --
--- Restauration automatique de la position du curseur
+-- Automatically restore the last cursor position
 vim.api.nvim_create_autocmd("BufReadPost", {
   callback = function()
     local mark = vim.api.nvim_buf_get_mark(0, '"')

@@ -6,12 +6,16 @@
 # loads ~/.config/hypr (this repo), opens a few neutral example windows + Waybar,
 # is captured, then torn down.
 #
+# The capture is encoded as a web-optimised WebP (lossy, q80, max effort) so it
+# drops straight into docs/README without a heavy PNG.
+#
 # Usage:
-#   bin/hypr-screenshot.sh [output.png]
+#   bin/hypr-screenshot.sh [output.webp]
 #
 # Env overrides:
-#   OUT     output PNG path (default: ./hyprland-showcase.png)
-#   EDITOR_FILE  file shown in the editor pane (default: hypr config.lua)
+#   OUT      output WebP path (default: ./hyprland-showcase.webp)
+#   WEBP_QUALITY  WebP quality 0-100 (default: 80)
+#   EDITOR_FILE   file shown in the editor pane (default: hypr config.lua)
 
 # Safety flags
 set -uo pipefail
@@ -20,8 +24,9 @@ set -uo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-${OUT:-$REPO/hyprland-showcase.png}}"
-EDITOR_FILE="${EDITOR_FILE:-$REPO/.config/hypr/config.lua}"
+OUT="${1:-${OUT:-$REPO/dist/hyprland.webp}}"
+WEBP_QUALITY="${WEBP_QUALITY:-80}"
+EDITOR_FILE="${EDITOR_FILE:-$REPO/README.md}"
 TERM_EMU="${TERMINAL:-alacritty}"
 
 # Children we spawn against the nested instance, killed on exit
@@ -48,6 +53,28 @@ for bin in Hyprland hyprctl grim "$TERM_EMU"; do
         exit 1
     fi
 done
+
+# Pick a WebP encoder (cwebp gives the best size/quality, magick & ffmpeg fall back).
+WEBP_ENCODER=""
+for bin in cwebp magick convert ffmpeg; do
+    command -v "$bin" >/dev/null 2>&1 && { WEBP_ENCODER="$bin"; break; }
+done
+if [ -z "$WEBP_ENCODER" ]; then
+    echo "Error: no WebP encoder found (need one of: cwebp, magick, convert, ffmpeg)." >&2
+    exit 1
+fi
+
+# Encode a PNG to a web-optimised WebP. $1=src png, $2=dst webp
+encode_webp() {
+    local src="$1" dst="$2"
+    case "$WEBP_ENCODER" in
+        cwebp)   cwebp -quiet -q "$WEBP_QUALITY" -m 6 "$src" -o "$dst" ;;
+        magick)  magick "$src" -strip -quality "$WEBP_QUALITY" -define webp:method=6 "$dst" ;;
+        convert) convert "$src" -strip -quality "$WEBP_QUALITY" -define webp:method=6 "$dst" ;;
+        ffmpeg)  ffmpeg -loglevel error -y -i "$src" -c:v libwebp \
+                     -compression_level 6 -quality "$WEBP_QUALITY" "$dst" ;;
+    esac
+}
 
 # ---------------------------------------------------------------------------
 # Launch an isolated Hyprland (nested Wayland window, no real input devices)
@@ -130,12 +157,17 @@ hyprctl -i "$SIG" dismissnotify >/dev/null 2>&1
 hyprctl -i "$SIG" notify 1 8000 "rgb(89b4fa)" "Hello, world!                      " >/dev/null 2>&1
 
 # ---------------------------------------------------------------------------
-# Capture
+# Capture (grim → PNG) then encode to a web-optimised WebP
 # ---------------------------------------------------------------------------
 mkdir -p "$(dirname "$OUT")"
-if grim -o "$OUTPUT" "$OUT"; then
-    echo "Saved showcase screenshot -> $OUT"
-else
+RAW_PNG="$TMPDIR/capture.png"
+if ! grim -o "$OUTPUT" "$RAW_PNG"; then
     echo "Error: grim capture failed." >&2
+    exit 1
+fi
+if encode_webp "$RAW_PNG" "$OUT"; then
+    echo "Saved showcase screenshot ($WEBP_ENCODER, WebP q$WEBP_QUALITY) -> $OUT"
+else
+    echo "Error: WebP encoding with '$WEBP_ENCODER' failed." >&2
     exit 1
 fi
