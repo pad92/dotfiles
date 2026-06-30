@@ -9,7 +9,7 @@ under [`.ci_bin/`](../../.ci_bin).
 > A Gitea Actions runner also scans `.github/workflows`, so these files run on
 > Gitea too unless explicitly scoped. See [Multi-forge notes](#multi-forge-notes).
 
-## Workflows
+## 🔄 Workflows
 
 | File                                   | Trigger                       | Purpose                                                          |
 | -------------------------------------- | ----------------------------- | ---------------------------------------------------------------- |
@@ -17,7 +17,7 @@ under [`.ci_bin/`](../../.ci_bin).
 | [`package-vim.yml`](package-vim.yml)   | push/PR to `main` (Vim paths) | Package `.vim`/`.vimrc` into a `vim.tar.gz` artifact.            |
 | [`release.yml`](release.yml)           | push tag `v*`                 | Publish a release whose notes are extracted from `CHANGELOG.md`. |
 
-### `deploy-pages.yml`
+### 🚀 `deploy-pages.yml`
 
 Installs `markdown` and runs [`.ci_bin/build_pages.sh`](../../.ci_bin/build_pages.sh),
 which renders `README.md`, `CHANGELOG.md`, and `dist/arch/install.md` into
@@ -28,12 +28,12 @@ The page list lives **only** in `build_pages.sh` — the same script backs the
 local `post-commit` preview hook (see `.pre-commit-config.yaml`) and the GitLab
 `pages` job, so all three stay in sync.
 
-### `package-vim.yml`
+### 📦 `package-vim.yml`
 
 Checks out submodules recursively and tars the Vim configuration into a
 `vim-package` artifact.
 
-### `release.yml`
+### 🏷️ `release.yml`
 
 On a `v*` tag it:
 
@@ -51,7 +51,7 @@ endpoint and both inject `GITHUB_API_URL`, `GITHUB_REPOSITORY`, and
 > Make sure the `## [vX.Y.Z]` section exists before pushing the tag, otherwise
 > the release gets a "No specific notes found" placeholder.
 
-## Shared scripts (`.ci_bin/`)
+## 🔧 Shared scripts (`.ci_bin/`)
 
 | Script                     | Used by                                                      |
 | -------------------------- | ------------------------------------------------------------ |
@@ -62,7 +62,7 @@ endpoint and both inject `GITHUB_API_URL`, `GITHUB_REPOSITORY`, and
 Both shell scripts are **POSIX `sh`** (no Bash-isms) so they run on minimal CI
 images such as the GitLab `alpine` job.
 
-## Variables & secrets
+## 🔐 Variables & secrets
 
 No custom secrets or variables need to be configured — every token used is
 provided automatically by the runner.
@@ -86,7 +86,7 @@ One-time setup prerequisites (not variables):
   `GITHUB_TOKEN` automatically with write access to the current repo (enough to
   create releases) — no secret to add.
 
-## Multi-forge notes
+## 🍴 Multi-forge notes
 
 Because Gitea's runner also picks up `.github/workflows`:
 

@@ -29,36 +29,6 @@ SITE_NAV = [
 ]
 
 
-# Emoji / pictographic symbol ranges plus variation selectors and ZWJ.
-EMOJI_RE = re.compile(
-    "["
-    "\U0001f000-\U0001faff"  # symbols, emoticons, transport, supplemental, etc.
-    "\U00002600-\U000027bf"  # misc symbols & dingbats
-    "\U00002b00-\U00002bff"  # misc symbols and arrows
-    "\U00002300-\U000023ff"  # misc technical (e.g. ⌨ keyboard, ⏰ clock)
-    "\U00002190-\U000021ff"  # arrows
-    "️‍"  # variation selector-16 and zero-width joiner
-    "]+"
-)
-
-
-def strip_heading_icons(text):
-    """Remove emoji/icons from Markdown headings (outside fenced code blocks)."""
-    lines = text.split("\n")
-    in_code = False
-    for i, line in enumerate(lines):
-        if re.match(r"^\s*```", line):
-            in_code = not in_code
-            continue
-        if in_code:
-            continue
-        m = re.match(r"^(\s*#{1,6}\s+)(.*)$", line)
-        if m:
-            content = re.sub(r"\s{2,}", " ", EMOJI_RE.sub("", m.group(2))).strip()
-            lines[i] = m.group(1) + content
-    return "\n".join(lines)
-
-
 def build_nav(output_file):
     """Return (brand_href, nav_items_html) with links relative to output_file."""
     # Drop the leading 'public/' segment to get the path relative to the site root.
@@ -299,9 +269,6 @@ def generate_html(input_file, output_file, title):
     # nested in list items, which python-markdown mishandles).
     code_blocks = []
     text = stash_code_blocks(text, code_blocks)
-
-    # Strip emoji/icons from headings (kept in the source for the repo view).
-    text = strip_heading_icons(text)
 
     # Replace [[TOC]] and [[_TOC_]] with [TOC] so python-markdown's toc extension recognizes them
     text = text.replace("[[TOC]]", "[TOC]").replace("[[_TOC_]]", "[TOC]")

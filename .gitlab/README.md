@@ -5,20 +5,20 @@ repo is also hosted on **GitHub** ([`.github/workflows/`](../.github/workflows))
 and a self-hosted **Gitea** instance; the forge-specific config stays thin and
 the real work lives in reusable scripts under [`.ci_bin/`](../.ci_bin).
 
-## Stages
+## 🪜 Stages
 
 ```
 test → package → pages → release
 ```
 
-## Included templates
+## 📋 Included templates
 
 | Template                                  | Provides                             |
 | ----------------------------------------- | ------------------------------------ |
 | `Security/Secret-Detection.gitlab-ci.yml` | Scans commits for leaked secrets.    |
 | `Security/SAST.gitlab-ci.yml`             | Static application security testing. |
 
-## Jobs
+## 🧰 Jobs
 
 | Job              | Stage   | Runs when                          | Purpose                                                                           |
 | ---------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------- |
@@ -27,7 +27,7 @@ test → package → pages → release
 | `pages`          | pages   | doc files change                   | Build the static docs site into `public/`.                                        |
 | `create_release` | release | a tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`.                                 |
 
-### `pages`
+### 📄 `pages`
 
 Runs on `alpine:latest`, installs `python3`/`py3-markdown`, then calls
 [`.ci_bin/build_pages.sh`](../.ci_bin/build_pages.sh) — the same script used by
@@ -46,7 +46,7 @@ default branch:
 > `build_pages.sh` is POSIX `sh` and git-optional, so it runs on the minimal
 > `alpine` image without extra packages.
 
-### `create_release`
+### 🏷️ `create_release`
 
 On a `v*` tag it runs
 [`.ci_bin/extract_release_notes.sh`](../.ci_bin/extract_release_notes.sh) to pull
@@ -58,7 +58,7 @@ that version's section out of `CHANGELOG.md`, then hands the notes to
 > the `## [vX.Y.Z]` section exists before pushing the tag, otherwise the release
 > gets a "No specific notes found" placeholder.
 
-## Shared scripts (`.ci_bin/`)
+## 🔧 Shared scripts (`.ci_bin/`)
 
 | Script                     | Used by                                                             |
 | -------------------------- | ------------------------------------------------------------------- |
@@ -69,7 +69,7 @@ that version's section out of `CHANGELOG.md`, then hands the notes to
 Both shell scripts are **POSIX `sh`** (no Bash-isms) so they run on minimal CI
 images such as this `alpine` job.
 
-## Variables & secrets
+## 🔐 Variables & secrets
 
 No custom CI/CD variables need to be configured — the pipeline relies only on
 GitLab's predefined variables.

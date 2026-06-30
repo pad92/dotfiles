@@ -4,7 +4,7 @@ This guide provides instructions for an Arch Linux installation featuring full-d
 
 For advanced security, the system can be further hardened against Evil Maid attacks using UEFI Secure Boot with custom enrolled keys and a self-signed kernel/bootloader.
 
-## Preface
+## 📖 Preface
 
 You will find most of this information pulled from the [Arch Wiki](<https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)>) and other resources linked thereof.
 
@@ -14,11 +14,11 @@ _Note:_ The system was installed on an NVMe SSD, substitute `/dev/nvme0nX` with 
 
 Modern Arch Linux installations often use the `archinstall` tool for streamlined setup. This guide represents a manual approach to achieve the same result, which can be useful for understanding the underlying process or for systems where automated tools aren't available.
 
-## Table of contents
+## 🗂️ Table of contents
 
 [[_TOC_]]
 
-# Create USB stick
+# 💿 Create USB stick
 
 - Download ISO From [https://archlinux.org/download/](http://archlinux.mirrors.ovh.net/archlinux/iso/latest/)
 
@@ -33,7 +33,7 @@ sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
 
 where `/dev/sda` is your usb key
 
-# From live
+# 🐧 From live
 
 | Number | Start (sector) | End (sector) | Size       | Code | Name                |
 | ------ | -------------- | ------------ | ---------- | ---- | ------------------- |
@@ -41,9 +41,9 @@ where `/dev/sda` is your usb key
 | 2      | 4096           | 1130495      | 550.0 MiB  | EF00 | EFI System          |
 | 3      | 1130496        | 976773134    | 465.2 GiB  | 8309 | Linux LUKS          |
 
-## Partitions
+## 💽 Partitions
 
-### Create
+### ➕ Create
 
 ```text
 gdisk /dev/nvme0n1
@@ -66,14 +66,14 @@ n
 w
 ```
 
-### luks
+### 🔒 luks
 
 ```sh
 cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
-### lvm
+### 🧱 lvm
 
 ```sh
 RAM_SIZE=$(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))
@@ -88,7 +88,7 @@ lvcreate -L "${RAM_SIZE}M" archlvm -n swap
 lvcreate -l 100%FREE archlvm -n home
 ```
 
-### Format
+### 🗄️ Format
 
 ```sh
 mkfs.fat -F32 /dev/nvme0n1p2                     -n EFI
@@ -100,7 +100,7 @@ mkswap        /dev/mapper/archlvm-swap           -L swap
 swapon        /dev/mapper/archlvm-swap
 ```
 
-### Mount
+### 📂 Mount
 
 ```sh
 mount /dev/mapper/archlvm-slash /mnt
@@ -112,9 +112,9 @@ mount /dev/mapper/archlvm-opt            /mnt/opt
 chmod 700 /boot
 ```
 
-## System
+## ⚙️ System
 
-### Install base
+### 📦 Install base
 
 ```sh
 # Available kernel options:
@@ -159,14 +159,14 @@ pacstrap /mnt \
   zsh
 ```
 
-### Configure resolv.conf
+### 🌐 Configure resolv.conf
 
 ```sh
 echo '[main]
 rc-manager=resolvconf' > /mnt/etc/NetworkManager/conf.d/rc-manager.conf
 ```
 
-### Configure wifi
+### 📶 Configure wifi
 
 ```sh
 echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
@@ -179,7 +179,7 @@ elif grep -wq '^iwldvm' /proc/modules; then
 fi
 ```
 
-### Sound
+### 🔊 Sound
 
 ```sh
 if grep -wq '^snd_had_intel' /proc/modules; then
@@ -189,7 +189,7 @@ echo "options snd_ac97_codec power_save=1" > /mnt/etc/modprobe.d/audio_powersave
 fi
 ```
 
-### Create fstab
+### 🗃️ Create fstab
 
 ```sh
 genfstab -U /mnt                                           >> /mnt/etc/fstab
@@ -197,7 +197,7 @@ echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
 sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 ```
 
-# From chroot
+# 📦 From chroot
 
 ```sh
 arch-chroot /mnt
@@ -219,7 +219,7 @@ At this point you should have the following partitions and logical volumes:
 | ....└─archlvm-opt            | 254:4   | 0   | 30G    | 0   | lvm   | /opt            |
 | ....└─archlvm-var_lib_docker | 254:5   | 0   | 10G    | 0   | lvm   | /var/lib/docker |
 
-## makeflags
+## 🛠️ makeflags
 
 use all core for builds
 
@@ -239,7 +239,7 @@ sed -i 's/^COMPRESSZ.*/COMPRESSZ=(compress -c -f)/' /etc/makepkg.conf && \
 sed -i 's/^COMPRESSLZ4.*/COMPRESSLZ4=(lz4 -q --best)/' /etc/makepkg.conf
 ```
 
-## Time zone
+## 🕐 Time zone
 
 ```sh
 timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
@@ -248,7 +248,7 @@ timedatectl
 hwclock --systohc
 ```
 
-## locales
+## 🌍 locales
 
 ```sh
 sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
@@ -257,7 +257,7 @@ locale-gen
 echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 ```
 
-## keymap
+## ⌨️ keymap
 
 ```sh
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
@@ -276,7 +276,7 @@ EndSection
 EOF
 ```
 
-## hostname
+## 🏷️ hostname
 
 ```sh
 myhostname='MyArch'
@@ -290,9 +290,9 @@ ff02::2    ip6-allrouters
 EOF
 ```
 
-## boot
+## 🥾 boot
 
-### Grub
+### 🧰 Grub
 
 ```sh
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
@@ -305,7 +305,7 @@ grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ArchLinux
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
-### initramfs
+### 🧬 initramfs
 
 ```sh
 mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
@@ -320,14 +320,14 @@ sed -i '/^HOOKS/c\HOOKS=(base udev autodetect modconf block keyboard keymap cons
 mkinitcpio -P
 ```
 
-## services
+## 🛎️ services
 
 ```sh
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd.service
 ```
 
-## user
+## 👤 user
 
 ```sh
 MYUSER='MyUser'
@@ -336,7 +336,7 @@ echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
 passwd ${MYUSER}
 ```
 
-### dotfiles
+### 📁 dotfiles
 
 ```sh
 # Run setup commands in user context without blocking shell execution
@@ -349,7 +349,7 @@ sudo -u ${MYUSER} -i bash -c '
 
 ```
 
-### Packages manager
+### 📦 Packages manager
 
 ```sh
 # Enable color, checksum, and verbose output in pacman
@@ -368,7 +368,7 @@ sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
 # Uncomment the multilib section manually if needed
 ```
 
-### aur
+### 🏗️ aur
 
 ```sh
 # Modern archinstall typically handles AUR package management automatically
@@ -388,7 +388,7 @@ rm -fr yay
 # - pamac (GUI-based, if using a desktop environment)
 ```
 
-### WM and softs
+### 🪟 WM and softs
 
 The system packages and software environment are automatically installed during the dotfiles setup script (`~/.dotfiles/install`) via an interactive, high-fidelity menu.
 
@@ -415,22 +415,22 @@ umount -R /mnt
 reboot
 ```
 
-# Optional
+# ✨ Optional
 
-## Auto CPUfreq
+## ⚡ Auto CPUfreq
 
 ```sh
 sudo systemctl enable --now auto-cpufreq
 ```
 
-## SSD Trim
+## ✂️ SSD Trim
 
 ```sh
 sudo pacman -S util-linux
 sudo systemctl enable fstrim.timer
 ```
 
-## USBGuard
+## 🛡️ USBGuard
 
 ```sh
 yay -S usbguard usbguard-applet-qt
@@ -439,14 +439,14 @@ sudo systemctl start usbguard.service
 sudo systemctl enable usbguard.service
 ```
 
-## Docker
+## 🐳 Docker
 
 ```sh
 yay -S docker docker-compose
 usermod -a -G docker MyUser
 ```
 
-## Nvidia
+## 🎮 Nvidia
 
 ```sh
 sed -i '/^MODULES/c\MODULES=(nvidia)' /etc/mkinitcpio.conf
@@ -455,13 +455,13 @@ sudo mkinitcpio -P
 
 ```
 
-## Nvidia Prime
+## 🔀 Nvidia Prime
 
 ```sh
 yay -S nvidia-dkms nvidia-utils nvidia-prime
 ```
 
-## Spotify
+## 🎵 Spotify
 
 Remove notification
 
@@ -469,7 +469,7 @@ Remove notification
 echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
 ```
 
-## GNOME Keyring PAM Setup
+## 🔑 GNOME Keyring PAM Setup
 
 Add `pam_gnome_keyring.so` to `/etc/pam.d/login` to automatically unlock GNOME Keyring on TTY login:
 
@@ -486,23 +486,23 @@ session    include      system-local-login
 -session   optional     pam_gnome_keyring.so    auto_start
 ```
 
-## Systemd Startup (UWSM)
+## 🚀 Systemd Startup (UWSM)
 
 For complete documentation, see [Hyprland Wiki](https://wiki.hypr.land/Useful-Utilities/Systemd-start/).
 
 [UWSM](https://github.com/Vladimir-csp/uwsm) (Universal Wayland Session Manager) wraps the compositor in Systemd units for robust environment, application, and session management.
 
-### Installation
+### 📥 Installation
 
 ```sh
 sudo pacman -S uwsm libnewt
 ```
 
-### Launch from TTY
+### 🖥️ Launch from TTY
 
 Add to your shell configuration (note that this is already integrated at the bottom of `~/.zshrc` in this dotfiles setup, but you can use `~/.zprofile` instead if you prefer to create and configure one):
 
-#### Option A: Interactive selection menu at login
+#### 🅰️ Option A: Interactive selection menu at login
 
 ```zsh
 if uwsm check may-start && uwsm select; then
@@ -510,7 +510,7 @@ if uwsm check may-start && uwsm select; then
 fi
 ```
 
-#### Option B: Direct launch
+#### 🅱️ Option B: Direct launch
 
 ```zsh
 if uwsm check may-start; then
@@ -520,7 +520,7 @@ fi
 
 _Note: For display managers, select `Hyprland (uwsm-managed)`._
 
-### Application Launching
+### ▶️ Application Launching
 
 Launch graphical applications as Systemd scopes:
 
@@ -528,7 +528,7 @@ Launch graphical applications as Systemd scopes:
 uwsm app -- alacritty
 ```
 
-### Autostart
+### 🔄 Autostart
 
 - **XDG Autostart**: Handled automatically by the Systemd session target.
 - **Native User Services**:
@@ -538,7 +538,7 @@ uwsm app -- alacritty
   systemctl --user add-wants graphical-session.target <service>
   ```
 
-## Real-time Audio & Latency (Gaming/Work/VoIP)
+## 🎧 Real-time Audio & Latency (Gaming/Work/VoIP)
 
 To allow PipeWire and WirePlumber to run with real-time scheduling (preventing audio stuttering, clicks, and dropouts under heavy CPU load, such as in games or during compilation on a work machine):
 
@@ -556,7 +556,7 @@ sudo usermod -aG realtime MyUser
 
 _Note: You must log out and log back in (or reboot) for the group membership to take effect. If you don't do this, PipeWire logs will show `mod.rt: could not set nice-level to -11: Permission denied`._
 
-## Modern Security Practices
+## 🔐 Modern Security Practices
 
 Modern Arch Linux installations using tools like `archinstall` typically include additional security measures:
 
