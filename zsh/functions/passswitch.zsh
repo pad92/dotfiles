@@ -1,5 +1,3 @@
-#!/bin/bash
-
 ####################################################################
 ##
 ##  This script help you manage switching beetween multiple

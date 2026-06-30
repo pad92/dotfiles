@@ -24,7 +24,8 @@ test → package → pages → release
 | ---------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------- |
 | `sast`           | test    | every commit                       | Static security analysis (from the SAST template).                                |
 | `package_vim`    | package | always                             | Tar `.vim`/`.vimrc` into a `vim.tar.gz` artifact (submodules pulled recursively). |
-| `pages`          | pages   | doc files change                   | Build the static docs site into `public/`.                                        |
+| `pages`          | pages   | default branch + doc files change  | Build and deploy the static docs site into `public/`.                             |
+| `build_pages_review` | pages | non-default branch + doc files change | Build the static docs site for validation without deploying it.                 |
 | `create_release` | release | a tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`.                                 |
 
 ### 📄 `pages`
@@ -34,13 +35,12 @@ Runs on `alpine:latest`, installs `python3`/`py3-markdown`, then calls
 the GitHub `deploy-pages.yml` workflow and the local `post-commit` hook, so the
 page list stays in one place.
 
-The job uses two `rules` so it can build everywhere but only **deploy** from the
-default branch:
+The pipeline uses two jobs so documentation can be built everywhere but only
+**deployed** from the default branch:
 
-1. On the default branch → runs as the official `pages` deployment.
-2. On other branches / merge requests → builds for validation only. Setting
-   `CI_JOB_NAME: "build_pages_review"` renames the job so GitLab does **not**
-   treat its artifact as a Pages deployment.
+1. `pages` runs on the default branch and is the official Pages deployment.
+2. `build_pages_review` runs on other branches / merge requests and uploads a
+   short-lived `public/` artifact for validation only.
 
 > [!NOTE]
 > `build_pages.sh` is POSIX `sh` and git-optional, so it runs on the minimal

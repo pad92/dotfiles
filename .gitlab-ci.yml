@@ -25,12 +25,20 @@ package_vim:
     paths:
       - vim.tar.gz
 
-# Job Pages : Génère et déploie la documentation
-pages:
+.pages_build:
   stage: pages
   image: alpine:latest
+  script:
+    - apk add --no-cache python3 py3-markdown
+    - sh .ci_bin/build_pages.sh
+  artifacts:
+    paths:
+      - public
+
+# Job Pages : Génère et déploie la documentation sur la branche par défaut
+pages:
+  extends: .pages_build
   rules:
-    # 1. Déploiement officiel uniquement sur la branche par défaut si les fichiers changent
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - 'README.md'
@@ -42,7 +50,11 @@ pages:
         - '.github/workflows/README.md'
         - '.gitlab/README.md'
         - '.gitlab-ci.yml'
-    # 2. Permet de tester la compilation sure les autres branches (Merge Requests), mais sans déployer
+
+# Job de validation Pages : construit les docs sur les branches non-déployées
+build_pages_review:
+  extends: .pages_build
+  rules:
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       changes:
         - 'README.md'
@@ -53,15 +65,10 @@ pages:
         - '.ci_bin/build_pages.sh'
         - '.github/workflows/README.md'
         - '.gitlab/README.md'
-      variables:
-        # En changeant le nom du job, GitLab ne le traitera pas comme le déploiement "pages" officiel
-        CI_JOB_NAME: 'build_pages_review'
-  script:
-    - apk add --no-cache python3 py3-markdown
-    - sh .ci_bin/build_pages.sh
   artifacts:
     paths:
       - public
+    expire_in: 1 week
 
 create_release:
   stage: release

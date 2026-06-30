@@ -45,6 +45,18 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Fixed
 
+- **Installer**:
+  - Make Dotbot linking non-destructive for existing `~/.config/*` entries by enabling backups and directory creation instead of forcing removal.
+- **CI / Releases**:
+  - Fix release-note extraction for changelog headings that include an emoji and release link, and match tag names literally instead of interpolating them into `sed` regexes.
+  - Split GitLab Pages validation into a real `build_pages_review` job so non-default branches build docs without using the special `pages` deployment job.
+- **Desktop**:
+  - Remove forced Hyprland client killing from `wlogout` reboot/shutdown/logout actions to avoid bypassing application save prompts.
+  - Store Hyprlock MPRIS artwork under the user runtime directory instead of fixed `/tmp` paths.
+  - Add the missing Waybar `headsetcontrol` helper referenced by the audio module.
+- **Docs & Shell**:
+  - Fix the Vim-only bootstrap command to pipe into `bash`, and remove shebangs from sourced/non-executable shell files so pre-commit executable checks pass.
+  - Guard `uwsm` startup in `.zshrc` and avoid running `tty` from `.zshenv` for non-interactive shells.
 - **CI / Pages**:
   - Fix fenced code blocks nested inside list items rendering as a plain paragraph (e.g. the `git clone … ./install` install snippet leaking `:::sh`) — `gen_pages.py` now extracts every fenced block, dedents it, and renders it with Pygments before Markdown conversion, so in-list code blocks display correctly with highlighting.
   - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet — code blocks were emitting token spans with no matching CSS, so they rendered monochrome.

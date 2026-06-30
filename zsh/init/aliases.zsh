@@ -5,7 +5,9 @@ if [ $(command -v tofu) ]; then
 fi
 
 ## Medias Sync
-alias mediasync="${HOME}/Documents/git/git.home.lan/pascal/tools/mediasync.py"
+_mediasync="${HOME}/Documents/git/git.home.lan/pascal/tools/mediasync.py"
+[ -x "$_mediasync" ] && alias mediasync="$_mediasync"
+unset _mediasync
 
 ## Backup
 [ -f "${HOME}/.dotfiles/bin/backup.sh" ] && \

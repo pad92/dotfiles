@@ -86,6 +86,6 @@ fi
 [ -f "${HOME}/.dir_colors" ]            && eval "$(dircolors "${HOME}/.dir_colors")"
 command -v fastfetch >/dev/null 2>&1    && fastfetch
 
-if uwsm check may-start && uwsm select; then
-	exec uwsm start default
+if command -v uwsm >/dev/null 2>&1 && uwsm check may-start && uwsm select; then
+  exec uwsm start default
 fi

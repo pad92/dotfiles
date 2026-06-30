@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 # This script installs vim configuration and plugins from my dotfiles
 # Usage: curl -sL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
 # or: wget -qO- https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
@@ -42,7 +42,7 @@ install_git_if_needed() {
 main() {
     # Check if vim files already exist
     if [[ -e ~/.vim || -e ~/.vimrc ]]; then
-        die "~/.vim or ~/.vimrc already exists."
+        die "$HOME/.vim or $HOME/.vimrc already exists."
     fi
 
     # Git is needed by Vundle to install plugins

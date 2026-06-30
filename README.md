@@ -27,7 +27,7 @@ This repository provides automated installation workflows tailored per operating
 - To set up the editor configuration without installing the full suite:
 
 ```sh
-curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | sh
+curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
 ```
 
 - **Quick Install**: You can download the pre-packaged configuration from the [Artifacts](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim).
@@ -64,7 +64,7 @@ To customize and adapt this dotfiles collection to your own system and identity,
 - **[`.config/nvim/`](./.config/nvim/)**: Curated, modern, and modular **Neovim** configuration written from scratch in Lua.
 - **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core legacy Vim editor.
 - **`~/.config/electron-flags.conf`**: Placeholder for Electron-based editors (VS Code, Codium, Antigravity IDE). Under UWSM, `ELECTRON_OZONE_PLATFORM_HINT=auto` is exported globally so no flags are needed.
-- **`~/.dotfiles/.luarc.json`**: Project-specific Lua environment settings optimized for standard workspace validation and seamless autocompletion.
+- **`.config/hypr/.luarc.json`**: Project-specific Lua environment settings optimized for Hyprland Lua validation and seamless autocompletion.
 
 ## 🛠️ Core Tooling
 

@@ -5,6 +5,16 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    ART_DIR="$XDG_RUNTIME_DIR"
+else
+    ART_DIR="${TMPDIR:-/tmp}/hyprlock-mpris-${UID:-$(id -u)}"
+    mkdir -p "$ART_DIR"
+    chmod 700 "$ART_DIR"
+fi
+ART_FILE="$ART_DIR/mpris_artUrl"
+RESIZED_ART_FILE="$ART_DIR/mpris_artUrl_resized"
+
 # Function to get metadata using playerctl
 get_metadata()
 {
@@ -41,19 +51,23 @@ case "$1" in
         url=$(get_metadata "mpris:artUrl")
         if [ -z "$url" ]; then
             echo ""
-            [ -f "/tmp/mpris_artUrl" ] && rm -f /tmp/mpris_artUrl
+            [ -f "$ART_FILE" ] && rm -f "$ART_FILE"
+            [ -f "$RESIZED_ART_FILE" ] && rm -f "$RESIZED_ART_FILE"
         else
             if [[ "$url" == file://* ]]; then
                 url=${url#file://}
             elif [[ "$url" == https://* ]]; then
-                curl -s "${url}" -o /tmp/mpris_artUrl
-                url=/tmp/mpris_artUrl
+                if curl -fsSL --max-time 5 "${url}" -o "$ART_FILE"; then
+                    url="$ART_FILE"
+                else
+                    echo ""
+                    exit 0
+                fi
             fi
 
             # Resize image to fit hyprlock display requirements (110px smallest dimension)
             if command -v convert >/dev/null 2>&1; then
-                temp_resized="/tmp/mpris_artUrl_resized"
-                convert "$url" -resize 110x110^ -gravity center -crop 110x110+0+0 "$temp_resized" 2>/dev/null && url="$temp_resized"
+                convert "$url" -resize 110x110^ -gravity center -crop 110x110+0+0 "$RESIZED_ART_FILE" 2>/dev/null && url="$RESIZED_ART_FILE"
             fi
 
             echo "$url"

@@ -6,19 +6,19 @@
 }
 {
     "label": "reboot",
-    "action": "hyprctl clients -j | jq -r '.[].pid' | xargs -r kill; systemctl reboot || loginctl reboot",
+    "action": "systemctl reboot || loginctl reboot",
     "text": "Ṟeboot",
     "keybind": "r"
 }
 {
     "label": "shutdown",
-    "action": "hyprctl clients -j | jq -r '.[].pid' | xargs -r kill; systemctl poweroff || loginctl poweroff",
+    "action": "systemctl poweroff || loginctl poweroff",
     "text": "S̱hutdown",
     "keybind": "s"
 }
 {
     "label": "logout",
-    "action": "hyprctl clients -j | jq -r '.[].pid' | xargs -r kill; pkill Hyprland || pkill sway || pkill niri || loginctl terminate-user $USER",
+    "action": "uwsm stop || hyprctl dispatch exit || pkill Hyprland || pkill sway || pkill niri || loginctl terminate-user $USER",
     "text": "Logouṯ",
     "keybind": "t"
 }
