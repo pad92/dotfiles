@@ -45,6 +45,8 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Fixed
 
+- **Hyprland**:
+  - Fix hypridle no longer turning displays off (and waybar workspace scrolling) after the migration to the Lua config: with `hyprland.lua`, `hyprctl dispatch` evaluates its arguments as Lua (`hl.dispatch(...)`), so the legacy `dpms off` / `workspace e+1` syntax failed with a parse error. `hypridle.conf` now dispatches `hl.dsp.dpms("off"/"on")` and `waybar/conf/workspaces.json` uses `hl.dsp.focus({ workspace = "e±1" })`.
 - **Installer**:
   - Make Dotbot linking non-destructive for existing `~/.config/*` entries by enabling backups and directory creation instead of forcing removal.
 - **CI / Releases**:
