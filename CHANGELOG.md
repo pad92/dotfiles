@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## 🚧 [Unreleased]
 
+## 🏷️ [v5.5.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.0)
+
 ### ✨ Added
 
 - **CI / Pages**:
