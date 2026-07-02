@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - **Docs**:
   - Add a Hyprland desktop showcase screenshot (`dist/hyprland.webp`) as a hero illustration at the top of `README.md`, and refresh the Neovim feature list (treesitter `main`/Neovim 0.12, LSP `LspAttach` keymaps, gitsigns hunk/blame keymaps).
 - **Hyprland**:
+  - Suspend the machine after 1h of inactivity on PadsTower only (`hypridle.conf`) — hypridle has no per-host mechanism, so the listener guards on the hostname; the laptop keeps its lock/DPMS-only behaviour.
   - Add screen zoom on `SUPER + PgUp`/`PgDn` (`Home` resets), driven via `hyprctl eval` + `hl.config` since the Lua parser disables `hyprctl keyword`, with an animated `zoomFactor`. Keyboard binds are used because Hyprland scroll binds leak the scroll event to the focused window ([#9319](https://github.com/hyprwm/Hyprland/issues/9319)).
 - **Neovim**:
   - Add `neovim` and `tree-sitter-cli` to the Arch package list (`dist/arch/packages/20_apps.txt`) — `neovim` was missing from the curated lists, and the nvim-treesitter `main` branch compiles parsers through the `tree-sitter` CLI (the `master` branch built them directly with `cc`).
@@ -24,6 +25,8 @@ All notable changes to this project will be documented in this file.
 
 ### ♻️ Changed
 
+- **Tmux**:
+  - Theme the status bar, panes, messages and copy mode with the Gruvbox Dark palette (`.tmux.conf`), aligned with waybar, gruvbox.nvim and hyprtoolkit, replacing the solarized plugin (`seebi/tmux-colors-solarized`) and a dead powerline include (hardcoded `python3.7` path, powerline not installed). Also enable true color (`tmux-256color` + `RGB` terminal override).
 - **CI / Pages**:
   - Generate the Pages site in both `deploy-pages.yml` (GitHub) and the `pages` job (GitLab) by calling the reusable `.ci_bin/build_pages.sh` script instead of duplicating the `gen_pages.py` invocations, keeping the page list in a single source of truth. Made `build_pages.sh` POSIX `sh` and git-optional so it runs on minimal CI images (GitLab alpine).
   - Copy static assets referenced by the docs (the `dist/hyprland.webp` README showcase image) into `public/`, mirroring their source path, so relative `src` links resolve on both GitHub Pages and GitLab Pages (`build_pages.sh`).
