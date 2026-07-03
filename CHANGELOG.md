@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## 🚧 [Unreleased]
 
+### 🐛 Fixed
+
+- **Hyprland**:
+  - Turn the screens back on when resuming from the 1h-inactivity suspend on PadsTower (`hypridle.conf`) — the suspend listener had no `on-resume`, so the monitors stayed off after wake.
+
 ## 🏷️ [v5.5.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.0)
 
 ### ✨ Added
