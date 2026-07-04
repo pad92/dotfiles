@@ -232,8 +232,12 @@ A collection of highly optimized Python, Bash, and shell scripts located in the 
 
 - **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, dynamic Gamescope integration, and robust signal handling with automatic session cleanup.
 - **[`awww.sh`](./bin/awww.sh)**: A robust wallpaper randomizer script that integrates seamlessly with the `awww` daemon, utilizing `shuf -z` and `mapfile` to safely load distinct wallpapers per monitor.
-- **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync` (fully integrated with `ssh-agent`, no hardcoded local keys required).
+- **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync` (fully integrated with `ssh-agent`, no hardcoded local keys required). Exclude patterns live in [`dist/*_excludes.txt`](./dist/backup_excludes.txt).
 - **[`razer_dpi.py`](./bin/razer_dpi.py)**: Convenient Razer peripherals DPI management tool.
+- **[`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)**: Renders this repo's Hyprland config in an isolated, nested compositor instance and captures it as the WebP showcase image at the top of this README (see `make screenshot`).
+- **[`comcut`](./bin/comcut) / [`comskip.sh`](./bin/comskip.sh)**: Commercial-break detection and removal for recorded video files, based on `comskip`/`ffmpeg` (adapted from [comchap](https://github.com/BrettSheleski/comchap)).
+- **[`diff-cmd`](./bin/diff-cmd)**: Diffs the output of a command run against two different arguments (`IN` placeholder), instead of diffing two files.
+- **[`vscodium_ext.sh`](./bin/vscodium_ext.sh)**: Installs the curated list of VSCodium extensions this setup relies on.
 - **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
 
 ### 🐧 OS Maintenance

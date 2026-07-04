@@ -4,10 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## 🚧 [Unreleased]
 
+### ♻️ Changed
+
+- **Hyprland**:
+  - Factor the duplicated Dell monitor block and its workspace 2 rule, plus the shared ASUS monitor output/position/scale (only the refresh rate differs per host), out of `hosts/PadsTower.lua` and `hosts/PadsP5560.lua` into a new shared `hosts/common.lua`.
+  - Factor the ad-hoc hostname check in the PadsTower suspend listener (`hypridle.conf`) into a shared `is-host.sh` helper, reusable by any future host-conditional listener.
+  - Document the Gruvbox Dark palette duplicated across `hyprtoolkit.conf`, `hyprlock.conf`, `.config/mako/config`, `waybar/style.css` and `.tmux.conf` with cross-referencing comments, so future theme edits don't silently drift out of sync.
+- **Zsh**:
+  - Normalize inconsistent style: `if [ $(command -v x) ]` guards now use `command -v x &>/dev/null` throughout, and mixed `function foo {}` declarations now use `foo() {}` consistently across `zsh/functions/*.zsh`.
+  - Collapse three redundant `rehash` calls in `.zshrc` into one, run once after all `PATH` mutations.
+  - Document the security tradeoff of `gpg --trust-model always` in `crypt.zsh` (kept deliberately; skips the web-of-trust check).
+- **Scripts**:
+  - Add `set -uo pipefail` to `bin/diff-cmd` and `bin/vscodium_ext.sh`.
+- **CI**:
+  - Narrow the flake8/black `bin/` exclusion in `.pre-commit-config.yaml` to just `bin/steam-optimize` (pending a dedicated formatting pass); `bin/razer_dpi.py` is now PEP8/black-compliant and linted.
+- **Docs**:
+  - Document `bin/hypr-screenshot.sh`, `comcut`, `comskip.sh`, `diff-cmd` and `vscodium_ext.sh` in the README's Custom Scripts section, and mention `dist/*_excludes.txt` next to `backup.sh`.
+  - Add the missing `v3.0` release notes to `CHANGELOG.md`, reconstructed from `git log v2.1..v3.0`, and correct/clarify which older entries are retrospective summaries.
+
 ### 🐛 Fixed
 
 - **Hyprland**:
   - Turn the screens back on when resuming from the 1h-inactivity suspend on PadsTower (`hypridle.conf`) — the suspend listener had no `on-resume`, so the monitors stayed off after wake.
+- **Zsh**:
+  - Fix the `history` alias always falling back to the default format (`zsh/init/history.zsh`, `.zshrc`): `HIST_STAMPS` was exported in `.zshrc` _after_ `init.zsh` had already sourced `init/history.zsh` and built the alias from it, and the exported value (a `strftime` pattern) never matched the alias's keyword-based `case`. Export `HIST_STAMPS`/`HISTFILE`/`HISTSIZE`/`SAVEHIST` before sourcing `init.zsh`, and support arbitrary `strftime` patterns via `fc -t`, removing the now-redundant duplicate history block from `.zshrc`.
+  - Merge `http_time` into `curl_time` (`zsh/functions/http_checks.zsh`, `curl.zsh`) — the two were near-identical `CURL_FORMAT` timing helpers, and `http_time` mislabeled curl's `%{time_*}` values (always seconds) as milliseconds. `http_time` is now an alias to the corrected `curl_time`.
+- **Scripts**:
+  - Fix `make screenshot` writing a WebP file named `hyprland-showcase.png` at the repo root instead of `dist/hyprland.webp` (`Makefile`) — the default `SCREENSHOT` path didn't match `hypr-screenshot.sh`'s own default output, which always encodes WebP regardless of the given extension.
+  - Fix `bin/comcut`'s lockfile handling: the acquire loop was check-then-touch (racy under concurrent invocations) and never released the lock on error or signal, permanently deadlocking future runs after a crash. Acquire the lock atomically (`noclobber`) and release it via an `EXIT` trap.
+  - Fix `bin/comcut` silently continuing after a failed `comskip`/`ffmpeg` invocation, which could produce a corrupted or partial output with no error reported — the relevant calls now abort the script on failure.
+  - Fix `bin/comskip.sh` forwarding an unset argument to `comcut` instead of failing with a usage message.
+  - Fix `bin/razer_dpi.py` always exiting `0`, even when no compatible mouse was found or every DPI write failed, hiding failures from callers (e.g. a systemd unit). It now exits `1` when nothing succeeded.
+
+### 🗑️ Removed
+
+- **Zsh**:
+  - Remove `zsh/functions/rambox.zsh` — hardcoded `dnf`/`rpm` for Fedora/CentOS, dead on this Arch-based setup.
 
 ## 🏷️ [v5.5.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.0)
 
@@ -363,6 +395,10 @@ All notable changes to this project will be documented in this file.
 
 ## 🏷️ [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0)
 
+> Entries from here down to v1.0 are retrospective summaries reconstructed
+> after the fact, not detailed at release time — expect them to be broader
+> and less specific than v5.1.0 onward.
+
 ### ♻️ Changed
 
 - **Compositor Sync**:
@@ -446,6 +482,31 @@ All notable changes to this project will be documented in this file.
 
 - **Architecture**:
   - Redesign file structures and update configurations to support latest upstream software versions.
+
+## 🏷️ [v3.0](https://gitlab.com/pad92/dotfiles/-/releases/v3.0)
+
+### ✨ Added
+
+- **Multi-Desktop Setup**:
+  - Introduce Sway alongside i3, and add clipboard (Greenclip), automounting (udiskie), and notification (Mako/twmn) daemons.
+- **macOS Support**:
+  - Add a Homebrew-based bootstrap with dedicated package lists and iTerm2/Atom configuration.
+- **Terminal & Editors**:
+  - Add Kitty and Alacritty terminal configurations, a Vim plugin bundle (Vundle), and expanded Zsh completions/notifications.
+- **Tmux**:
+  - Migrate to TPM, add a solarized theme, and mouse scroll/copy-paste support.
+
+### ♻️ Changed
+
+- **Desktop Environment**:
+  - Iterate through compositor (compton → picom) and terminal (Kitty → Alacritty) choices, switch to a base16/gruvbox color scheme, and rework the i3/Sway status bars (i3blocks, py3status, waybar backlight).
+- **Configuration**:
+  - Merge in the previously separate Manjaro-specific configuration.
+
+### 🗑️ Removed
+
+- **Terminal**:
+  - Prune the superseded Kitty configuration and unused submodules after settling on Alacritty.
 
 ## 🏷️ [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1)
 
