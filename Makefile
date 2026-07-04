@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Output path for the Hyprland showcase screenshot
-SCREENSHOT ?= hyprland-showcase.png
+SCREENSHOT ?= dist/hyprland.webp
 
 .PHONY: help screenshot
 
