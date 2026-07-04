@@ -12,7 +12,7 @@ Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671
 
 _Note:_ The system was installed on an NVMe SSD, substitute `/dev/nvme0nX` with `/dev/sdX` or your device as needed.
 
-Modern Arch Linux installations often use the `archinstall` tool for streamlined setup. This guide represents a manual approach to achieve the same result, which can be useful for understanding the underlying process or for systems where automated tools aren't available.
+Modern Arch Linux installations often use the `archinstall` tool. This guide takes the manual route instead: useful for understanding what's happening under the hood, or on systems where automated tools aren't available.
 
 ## 🗂️ Table of contents
 
@@ -558,14 +558,12 @@ _Note: You must log out and log back in (or reboot) for the group membership to 
 
 ## 🔐 Modern Security Practices
 
-Modern Arch Linux installations using tools like `archinstall` typically include additional security measures:
+`archinstall` bakes some of this in by default; a manual install doesn't, so it's worth adding separately:
 
-- **Enable and configure firewalld** for network protection
-- **Install and configure fail2ban** to prevent brute-force attacks
-- **Set up automatic security updates** using tools like `pacman-contrib` and `reflector`
-- **Configure secure SSH settings** (disable root login, use key-based authentication only)
-- **Enable systemd-boot** as an alternative bootloader to GRUB (though GRUB is still widely used)
-- **Consider using a more secure initramfs configuration** with additional encryption layers
-- **Implement proper backup strategies** for the LUKS keyfiles and critical system data
-
-These practices enhance system security beyond the basic installation and are recommended for production systems.
+- `firewalld` for network filtering
+- `fail2ban` against SSH brute-force attempts
+- automatic security updates via `pacman-contrib` and `reflector`
+- SSH hardened to key-only auth, root login disabled
+- `systemd-boot` instead of GRUB, if you don't need os-prober
+- an extra encryption layer on the initramfs
+- a backup plan for the LUKS keyfiles, not just the data they protect

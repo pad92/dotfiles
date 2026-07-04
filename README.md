@@ -1,6 +1,6 @@
 # My Dotfiles Collection
 
-This repository contains my curated personal configuration files (dotfiles) for various operating systems and environments. It aims to provide a robust, reliable, and highly customized foundation for modern Linux desktop usage.
+This is my personal dotfiles collection: configuration files curated for the operating systems and environments I actually use, tuned for a modern Linux desktop.
 
 ![Hyprland desktop showcase — Neovim, Waybar & Fastfetch on CachyOS](./dist/hyprland.webp)
 
@@ -70,7 +70,7 @@ To customize and adapt this dotfiles collection to your own system and identity,
 
 ### 🐚 Shell (Zsh)
 
-Configured for maximum efficiency with advanced features:
+Zsh, configured for daily use:
 
 - **Plugins**: Powered by `oh-my-zsh` with `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
 - **Customization**: Extensive history management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
@@ -97,7 +97,7 @@ Configured in `zsh/init/key-bindings.zsh` for maximum command line productivity:
 
 #### 🐚 Custom Aliases & Functions
 
-A set of highly optimized aliases and shell functions defined in `zsh/init/aliases.zsh` and autoloaded from `zsh/functions/`:
+Aliases and shell functions defined in `zsh/init/aliases.zsh` and autoloaded from `zsh/functions/`:
 
 ##### 📌 Handy Aliases
 
@@ -142,7 +142,7 @@ Organized by functional modules for clean management:
 
 #### ⚡ Neovim (Modern & Modular)
 
-A state-of-the-art configuration written completely in Lua from scratch, designed to turn Neovim into a blazing-fast, IDE-like developer workspace.
+Written from scratch in Lua, turning Neovim into an IDE-like development environment.
 
 - **Key Features**:
   - **Plugin Manager**: Managed by `lazy.nvim` for fast startup and lazy loading.
@@ -156,7 +156,7 @@ A state-of-the-art configuration written completely in Lua from scratch, designe
 
 My original editor configuration built with `vundle`.
 
-- **Key Features**: Advanced statusline customization, robust filetype detection, and classic plugin support (e.g., `vim-gitgutter`, `vim-fugitive`).
+- **Key Features**: Custom statusline, per-filetype detection, and classic plugins (`vim-gitgutter`, `vim-fugitive`).
 
 ### 💾 Terminal & Session Management
 
@@ -228,12 +228,12 @@ Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Uti
 
 ### 🔧 Custom Scripts
 
-A collection of highly optimized Python, Bash, and shell scripts located in the [`bin/`](./bin/) directory:
+Python, Bash, and shell scripts in [`bin/`](./bin/):
 
-- **[`steam-optimize`](./bin/steam-optimize)**: Advanced, monitor-aware **Python 3** wrapper for launching Steam games with customized environment variables (e.g. RADV, Vulkan ICD, Mesa layers), game-specific overrides, dynamic Gamescope integration, and robust signal handling with automatic session cleanup.
-- **[`awww.sh`](./bin/awww.sh)**: A robust wallpaper randomizer script that integrates seamlessly with the `awww` daemon, utilizing `shuf -z` and `mapfile` to safely load distinct wallpapers per monitor.
-- **[`backup.sh`](./bin/backup.sh)**: Complete, high-performance system and configurations backup utility powered by `rsync` (fully integrated with `ssh-agent`, no hardcoded local keys required). Exclude patterns live in [`dist/*_excludes.txt`](./dist/backup_excludes.txt).
-- **[`razer_dpi.py`](./bin/razer_dpi.py)**: Convenient Razer peripherals DPI management tool.
+- **[`steam-optimize`](./bin/steam-optimize)**: Monitor-aware **Python 3** wrapper for launching Steam games with tuned environment variables (RADV, Vulkan ICD, Mesa layers), game-specific overrides, Gamescope integration, and signal handling with automatic session cleanup.
+- **[`awww.sh`](./bin/awww.sh)**: Wallpaper randomizer script for the `awww` daemon, using `shuf -z` and `mapfile` to load a distinct wallpaper per monitor.
+- **[`backup.sh`](./bin/backup.sh)**: System and configuration backup utility powered by `rsync`, integrated with `ssh-agent` (no hardcoded local keys required). Exclude patterns live in [`dist/*_excludes.txt`](./dist/backup_excludes.txt).
+- **[`razer_dpi.py`](./bin/razer_dpi.py)**: Razer peripherals DPI management tool.
 - **[`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)**: Renders this repo's Hyprland config in an isolated, nested compositor instance and captures it as the WebP showcase image at the top of this README (see `make screenshot`).
 - **[`comcut`](./bin/comcut) / [`comskip.sh`](./bin/comskip.sh)**: Commercial-break detection and removal for recorded video files, based on `comskip`/`ffmpeg` (adapted from [comchap](https://github.com/BrettSheleski/comchap)).
 - **[`diff-cmd`](./bin/diff-cmd)**: Diffs the output of a command run against two different arguments (`IN` placeholder), instead of diffing two files.
@@ -261,7 +261,7 @@ This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **G
 
 ## 📋 Application Ecosystem Summary
 
-A comprehensive list of configured tools across the stack:
+Tools configured across the stack:
 
 | Category        | Tools                      |
 | :-------------- | :------------------------- |
