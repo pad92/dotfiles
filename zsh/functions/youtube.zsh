@@ -31,8 +31,8 @@ youtubeEncode() {
 }
 
 ## youtube-dl
-if [ $(command -v youtube-dl) ]; then
-  function yta() {
+if command -v youtube-dl &>/dev/null; then
+  yta() {
     local format="$1"
     shift
     youtube-dl --extract-audio --audio-format "$format" "$@"

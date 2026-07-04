@@ -1,6 +1,5 @@
 # reload zshrc
-function src()
-{
+src() {
   autoload -U compinit zrecompile
   compinit -i
 

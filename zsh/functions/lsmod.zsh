@@ -1,5 +1,5 @@
 # Lsmod all with params
-function lsmodp {
+lsmodp() {
     cat /proc/modules | cut -f 1 -d " " | while read module; do
         echo "Module: $module"
         if [ -d "/sys/module/$module/parameters" ]; then

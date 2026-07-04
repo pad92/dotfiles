@@ -1,4 +1,4 @@
-function git_prune_r() {
+git_prune_r() {
   for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git remote prune origin 2>&1 )
@@ -13,7 +13,7 @@ function git_prune_r() {
   done
 }
 
-function git_pull_r() {
+git_pull_r() {
   for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
     echo -ne "- ${REPO}"
     RET=$(git --git-dir=${REPO}/.git pull 2>&1 )
@@ -36,6 +36,6 @@ function git_pull_r() {
   done
 }
 
-function gi() {
+gi() {
   curl -sLw \"\\\n\" https://www.toptal.com/developers/gitignore/api/$@
 }

@@ -18,7 +18,7 @@
 # Remove $2 from path with name $1, e.g.
 #   remove_from_path PATH ~/bin
 #   remove_from_path PYTHONPATH ~/lib/python2.7/site-packages
-function remove_from_path() {
+remove_from_path() {
   local a
   local p
   local s
@@ -36,11 +36,11 @@ function remove_from_path() {
   eval $1="$r"
 }
 
-# Add path to start of named path, removing any occurences
+# Add path to start of named path, removing any occurrences
 # already in it, e.g.
 #   prepend_path PATH ~/bin
 #   prepend_path PYTHONPATH ~/my-py-stuff
-function prepend_path() {
+prepend_path() {
   # Exit if directory doesn't exit
   [[ ! -d "$2" ]] && return
   local p
@@ -50,7 +50,7 @@ function prepend_path() {
 }
 
 # As above, but add to end of path
-function append_path() {
+append_path() {
   # Exit if directory doesn't exit
   [[ ! -d "$2" ]] && return
   local p

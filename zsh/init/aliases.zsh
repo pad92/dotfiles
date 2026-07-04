@@ -1,6 +1,6 @@
 # General aliases
 
-if [ $(command -v tofu) ]; then
+if command -v tofu &>/dev/null; then
     alias terraform="tofu"
 fi
 

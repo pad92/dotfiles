@@ -1,5 +1,5 @@
 # Archive extraction
-function extract {
+extract() {
   local remove_archive=false
   if [[ "$1" == "-r" || "$1" == "--remove" ]]; then
     remove_archive=true
@@ -74,4 +74,3 @@ function extract {
     done
   fi
 }
-

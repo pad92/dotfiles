@@ -46,6 +46,10 @@ gpg-encrypt() {
   for file in "${files[@]}"; do
     local output="${file}.gpg"
     echo "Encrypting '$file' to '$output'..."
+    # --trust-model always skips gpg's web-of-trust check, so a mistyped or
+    # unverified recipient email silently succeeds with no trust warning.
+    # Kept deliberately: without it, gpg refuses to encrypt to any key that
+    # isn't already marked trusted in the local keyring.
     gpg --encrypt --trust-model always --recipient "$email" --output "$output" "$file"
     if [ $? -eq 0 ]; then
       touch -r "$file" "$output"
@@ -134,7 +138,3 @@ _gpg_confirm_and_delete() {
   fi
   return 1
 }
-
-
-
-

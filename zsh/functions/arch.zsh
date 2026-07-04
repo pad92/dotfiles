@@ -1,7 +1,7 @@
 # Arch
 ## remove orphans
-if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
-  function clean_arch {
+if command -v pacman &>/dev/null && command -v yay &>/dev/null; then
+  clean_arch() {
     # Validate that required commands exist
     if ! command -v pacman &> /dev/null; then
       echo "Error: pacman could not be found"
@@ -42,8 +42,8 @@ if [ $(command -v pacman) ] && [ $(command -v yay) ]; then
 fi
 
 ## get fastest mirrors
-if [ $(command -v reflector) ]; then
-  function mirror() {
+if command -v reflector &>/dev/null; then
+  mirror() {
     # Validate that required command exists
     if ! command -v reflector &> /dev/null; then
       echo "Error: reflector could not be found"
@@ -78,7 +78,7 @@ if [ $(command -v reflector) ]; then
 fi
 
 ## Update
-function arch_update {
+arch_update() {
     if ! command -v yay &> /dev/null; then
       echo "Error: yay could not be found"
       return 1
