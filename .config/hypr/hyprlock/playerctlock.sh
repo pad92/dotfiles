@@ -27,11 +27,11 @@ get_source_info()
 {
     trackid=$(get_metadata "mpris:trackid")
     if [[ "$trackid" == *"firefox"* ]]; then
-        echo -e "Firefox "
+        echo -e "Firefox  "
     elif [[ "$trackid" == *"spotify"* ]]; then
-        echo -e "Spotify "
+        echo -e "Spotify  "
     elif [[ "$trackid" == *"chromium"* ]]; then
-        echo -e "Chrome "
+        echo -e "Chrome  "
     else
         echo ""
     fi
@@ -65,9 +65,9 @@ case "$1" in
                 fi
             fi
 
-            # Resize image to fit hyprlock display requirements (110px smallest dimension)
+            # Resize image to fit hyprlock display requirements (150px smallest dimension)
             if command -v convert >/dev/null 2>&1; then
-                convert "$url" -resize 110x110^ -gravity center -crop 110x110+0+0 "$RESIZED_ART_FILE" 2>/dev/null && url="$RESIZED_ART_FILE"
+                convert "$url" -resize 150x150^ -gravity center -crop 150x150+0+0 "$RESIZED_ART_FILE" 2>/dev/null && url="$RESIZED_ART_FILE"
             fi
 
             echo "$url"
