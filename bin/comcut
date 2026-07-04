@@ -74,12 +74,15 @@ done
 if [ ! -z "$lockfile" ]; then
 
   echo "lockfile: $lockfile"
-  while [[ -f "$lockfile" ]]; do
+  # Atomic acquire via noclobber: `>` fails if another process already
+  # created the file between our check and our write, closing the
+  # check-then-touch race the previous loop had.
+  until ( set -o noclobber; : >"$lockfile" ) 2>/dev/null; do
     echo "Waiting"
     sleep 5
   done
-
-  touch "$lockfile"
+  # Always release the lock on exit, including on error or signal.
+  trap 'rm -f "$lockfile"' EXIT
 fi
 
 if [ ! -f "$comskipini" ]; then
@@ -120,6 +123,13 @@ txtfile="$workdir${infile%.*}.txt"
 
 if [ ! -f "$edlfile" ]; then
   $comskipPath $comskipoutput --ini="$comskipini" "$infile"
+  comskipexit=$?
+  # comskip exits 1 when it finds no commercials, which is a normal outcome
+  # here (an empty/absent EDL is handled below), so only treat >1 as fatal.
+  if [ "$comskipexit" -gt 1 ]; then
+    echo "Error: comskip failed (exit $comskipexit)" >&2
+    exit 1
+  fi
 fi
 
 start=0
@@ -138,15 +148,15 @@ while IFS=$'\t' read -r -a line; do
   end="${line[0]}"
   startnext="${line[1]}"
 
-  if [ $(echo "$end" | awk '{printf "%i", $0 * 1000}') -gt $(echo "$start" | awk '{printf "%i", $0 * 1000}') ]; then
+  if [ "$(echo "$end" | awk '{printf "%i", $0 * 1000}')" -gt "$(echo "$start" | awk '{printf "%i", $0 * 1000}')" ]; then
     ((i++))
 
     hascommercials=true
 
     echo [CHAPTER] >>"$metafile"
     echo TIMEBASE=1/1000 >>"$metafile"
-    echo START=$(echo "$start  $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}') >>"$metafile"
-    echo END=$(echo "$end $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}') >>"$metafile"
+    echo "START=$(echo "$start  $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}')" >>"$metafile"
+    echo "END=$(echo "$end $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}')" >>"$metafile"
     echo "title=Chapter $i" >>"$metafile"
 
     chapterfile="${infile%.*}.part-$i.ts"
@@ -160,7 +170,8 @@ while IFS=$'\t' read -r -a line; do
     concat="$concat|$chapterfile"
 
     duration=$(echo "$end" "$start" | awk '{printf "%f", $1 - $2}')
-    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile"
+    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile" \
+      || { echo "Error: ffmpeg failed cutting segment to $chapterfile" >&2; exit 1; }
 
     totalcutduration=$(echo "$totalcutduration" "$startnext" "$end" | awk '{print $1 + $2 - $3}')
 
@@ -174,14 +185,14 @@ if $hascommercials; then
   #dont forget to add the final part from last commercial to end of file
   end=$($ffmpegPath -hide_banner -nostdin -i "$infile" 2>&1 | grep Duration | awk '{print $2}' | tr -d , | awk -F: '{ printf "%f", ($1*3600)+($2*60)+$3 }')
 
-  if [ $(echo "$end" | awk '{printf "%i", $0 * 1000}') -gt $(echo "$start" | awk '{printf "%i", $0 * 1000}') ]; then
+  if [ "$(echo "$end" | awk '{printf "%i", $0 * 1000}')" -gt "$(echo "$start" | awk '{printf "%i", $0 * 1000}')" ]; then
 
     ((i++))
 
     echo [CHAPTER] >>"$metafile"
     echo TIMEBASE=1/1000 >>"$metafile"
-    echo START=$(echo "$start  $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}') >>"$metafile"
-    echo END=$(echo "$end $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}') >>"$metafile"
+    echo "START=$(echo "$start  $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}')" >>"$metafile"
+    echo "END=$(echo "$end $totalcutduration" | awk '{printf "%i", ($1 - $2) * 1000}')" >>"$metafile"
     echo "title=Chapter $i" >>"$metafile"
 
     chapterfile="${infile%.*}.part-$i.ts"
@@ -195,10 +206,12 @@ if $hascommercials; then
     concat="$concat|$chapterfile"
 
     duration=$(echo "$end" "$start" | awk '{printf "%f", $1 - $2}')
-    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile"
+    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile" \
+      || { echo "Error: ffmpeg failed cutting segment to $chapterfile" >&2; exit 1; }
   fi
 
-  $ffmpegPath -hide_banner -loglevel error -nostdin -i "$metafile" -i "concat:${concat:1}" -c copy -map_metadata 0 -y "$outfile"
+  $ffmpegPath -hide_banner -loglevel error -nostdin -i "$metafile" -i "concat:${concat:1}" -c copy -map_metadata 0 -y "$outfile" \
+    || { echo "Error: ffmpeg failed concatenating segments into $outfile" >&2; exit 1; }
 fi
 
 for i in "${tempfiles[@]}"; do
@@ -238,8 +251,4 @@ fi
 if [ -n "$ldPath" ]; then
   #re-set LD_LIBRARY_PATH
   export LD_LIBRARY_PATH="$ldPath"
-fi
-
-if [ ! -z "$lockfile" ]; then
-  rm "$lockfile"
 fi
