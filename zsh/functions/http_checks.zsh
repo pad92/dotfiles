@@ -25,7 +25,6 @@ http_check () {
     done
 }
 
-http_time () {
-    CURL_FORMAT='                  http_code:  %{http_code}\n            time_namelookup:  %{time_namelookup} ms\n               time_connect:  %{time_connect} ms\n            time_appconnect:  %{time_appconnect} ms\n           time_pretransfer:  %{time_pretransfer} ms\n              time_redirect:  %{time_redirect} ms\n         time_starttransfer:  %{time_starttransfer} ms\n                            ----------\n                 time_total:  %{time_total} ms\n'
-    curl -w "$CURL_FORMAT" -o /dev/null -s $1
-}
+# Duplicate of curl_time() (zsh/functions/curl.zsh), kept as an alias:
+# it previously mislabeled curl's %{time_*} values (always seconds) as ms.
+alias http_time=curl_time

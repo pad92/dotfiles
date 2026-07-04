@@ -1,4 +1,5 @@
 curl_time() {
+    # curl's time_* variables are always expressed in seconds.
     CURL_FORMAT='                  http_code:  %{http_code}
             time_namelookup:  %{time_namelookup}s
                time_connect:  %{time_connect}s
