@@ -1,4 +1,6 @@
-/* Gruvbox Dark palette */
+/* Gruvbox Dark palette — kept manually in sync with .tmux.conf, gruvbox.nvim,
+   .config/mako/config, .config/hypr/hyprlock.conf and hyprtoolkit.conf (which
+   only carries the 7-color subset used by the hyprtoolkit ecosystem spec). */
 @define-color rosewater #fe8019;
 /* bright_orange */
 @define-color flamingo #d65d0e;

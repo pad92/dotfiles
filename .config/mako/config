@@ -1,6 +1,8 @@
 max-visible=10
 layer=top
 font=DejaVu Sans 10
+# Gruvbox Dark palette, kept manually in sync with waybar/style.css,
+# .tmux.conf, gruvbox.nvim and .config/hypr/hyprlock.conf
 background-color=#1d2021
 text-color=#ebdbb2
 border-color=#83a598
