@@ -1,4 +1,5 @@
 #!/bin/bash
+set -uo pipefail
 
 if [ -z "$3" ]; then
   echo "3 arguments expected." >&2

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# No `-e`: this script is best-effort by design (a failed extension install
+# for one editor must not skip the other editor's install pass below).
+set -uo pipefail
 
 # List of extensions to install (as a space-separated string for sh compatibility)
 extensions="
@@ -44,16 +47,16 @@ install_extensions() {
     echo "-----------------------------------------------------"
     echo "Installing extensions for $editor_cmd..."
     echo "-----------------------------------------------------"
-    
+
     local args=()
     for extension in $extensions; do
         args+=(--install-extension "$extension")
     done
-    
+
     if [ ${#args[@]} -gt 0 ]; then
         "$editor_cmd" "${args[@]}"
     fi
-    
+
     echo "-----------------------------------------------------"
     echo "Installation for $editor_cmd finished."
     echo "-----------------------------------------------------"
