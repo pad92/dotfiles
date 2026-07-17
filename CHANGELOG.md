@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## 🚧 [Unreleased]
+## [Unreleased]
 
-### ♻️ Changed
+### Changed
 
 - **Hyprland**:
   - Factor the duplicated Dell monitor block and its workspace 2 rule, plus the shared ASUS monitor output/position/scale (only the refresh rate differs per host), out of `hosts/PadsTower.lua` and `hosts/PadsP5560.lua` into a new shared `hosts/common.lua`.
@@ -22,28 +22,28 @@ All notable changes to this project will be documented in this file.
   - Document `bin/hypr-screenshot.sh`, `comcut`, `comskip.sh`, `diff-cmd` and `vscodium_ext.sh` in the README's Custom Scripts section, and mention `dist/*_excludes.txt` next to `backup.sh`.
   - Add the missing `v3.0` release notes to `CHANGELOG.md`, reconstructed from `git log v2.1..v3.0`, and correct/clarify which older entries are retrospective summaries.
 
-### 🐛 Fixed
+### Fixed
 
 - **Hyprland**:
-  - Turn the screens back on when resuming from the 1h-inactivity suspend on PadsTower (`hypridle.conf`) — the suspend listener had no `on-resume`, so the monitors stayed off after wake.
+  - Turn the screens back on when resuming from the 1h-inactivity suspend on PadsTower (`hypridle.conf`). The suspend listener had no `on-resume`, so the monitors stayed off after wake.
 - **Zsh**:
   - Fix the `history` alias always falling back to the default format (`zsh/init/history.zsh`, `.zshrc`): `HIST_STAMPS` was exported in `.zshrc` _after_ `init.zsh` had already sourced `init/history.zsh` and built the alias from it, and the exported value (a `strftime` pattern) never matched the alias's keyword-based `case`. Export `HIST_STAMPS`/`HISTFILE`/`HISTSIZE`/`SAVEHIST` before sourcing `init.zsh`, and support arbitrary `strftime` patterns via `fc -t`, removing the now-redundant duplicate history block from `.zshrc`.
-  - Merge `http_time` into `curl_time` (`zsh/functions/http_checks.zsh`, `curl.zsh`) — the two were near-identical `CURL_FORMAT` timing helpers, and `http_time` mislabeled curl's `%{time_*}` values (always seconds) as milliseconds. `http_time` is now an alias to the corrected `curl_time`.
+  - Merge `http_time` into `curl_time` (`zsh/functions/http_checks.zsh`, `curl.zsh`). The two were near-identical `CURL_FORMAT` timing helpers, and `http_time` mislabeled curl's `%{time_*}` values (always seconds) as milliseconds. `http_time` is now an alias to the corrected `curl_time`.
 - **Scripts**:
-  - Fix `make screenshot` writing a WebP file named `hyprland-showcase.png` at the repo root instead of `dist/hyprland.webp` (`Makefile`) — the default `SCREENSHOT` path didn't match `hypr-screenshot.sh`'s own default output, which always encodes WebP regardless of the given extension.
+  - Fix `make screenshot` writing a WebP file named `hyprland-showcase.png` at the repo root instead of `dist/hyprland.webp` (`Makefile`). The default `SCREENSHOT` path didn't match `hypr-screenshot.sh`'s own default output, which always encodes WebP regardless of the given extension.
   - Fix `bin/comcut`'s lockfile handling: the acquire loop was check-then-touch (racy under concurrent invocations) and never released the lock on error or signal, permanently deadlocking future runs after a crash. Acquire the lock atomically (`noclobber`) and release it via an `EXIT` trap.
-  - Fix `bin/comcut` silently continuing after a failed `comskip`/`ffmpeg` invocation, which could produce a corrupted or partial output with no error reported — the relevant calls now abort the script on failure.
+  - Fix `bin/comcut` silently continuing after a failed `comskip`/`ffmpeg` invocation, which could produce a corrupted or partial output with no error reported. The relevant calls now abort the script on failure.
   - Fix `bin/comskip.sh` forwarding an unset argument to `comcut` instead of failing with a usage message.
   - Fix `bin/razer_dpi.py` always exiting `0`, even when no compatible mouse was found or every DPI write failed, hiding failures from callers (e.g. a systemd unit). It now exits `1` when nothing succeeded.
 
-### 🗑️ Removed
+### Removed
 
 - **Zsh**:
-  - Remove `zsh/functions/rambox.zsh` — hardcoded `dnf`/`rpm` for Fedora/CentOS, dead on this Arch-based setup.
+  - Remove `zsh/functions/rambox.zsh`: hardcoded `dnf`/`rpm` for Fedora/CentOS, dead on this Arch-based setup.
 
-## 🏷️ [v5.5.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.0)
+## [v5.5.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.0)
 
-### ✨ Added
+### Added
 
 - **CI / Pages**:
   - Add a sticky navigation menu to every generated documentation page (`gen_pages.py`) linking Home / Changelog / Installation / CI Workflows / GitLab CI, with the current page highlighted and links resolved relatively so the site works under a subpath.
@@ -51,18 +51,18 @@ All notable changes to this project will be documented in this file.
   - Add `.github/workflows/README.md` documenting the workflows, the shared `.ci_bin/` scripts, and the multi-forge (GitHub/GitLab/Gitea) setup, and publish it to the docs site (mirroring its source path) via `build_pages.sh`.
   - Add `.gitlab/README.md` documenting the GitLab CI pipeline (stages, jobs, the `pages` build-vs-deploy rules, and the shared `.ci_bin/` scripts), and publish it to the docs site (mirroring its source path) via `build_pages.sh`. `build_pages.sh` also writes a `.nojekyll` marker so GitHub Pages serves the dot-directory pages verbatim.
   - Add a **Continuous Integration** section to the main `README.md` summarising the multi-forge (GitHub/GitLab/Gitea) setup and linking to both CI READMEs.
-  - Document the variables/secrets in both CI READMEs — all tokens (`GITHUB_TOKEN`, OIDC, `CI_JOB_TOKEN`) are auto-provided, so no manual secrets are required; note the GitHub Pages / Gitea Actions one-time setup prerequisites.
+  - Document the variables/secrets in both CI READMEs: all tokens (`GITHUB_TOKEN`, OIDC, `CI_JOB_TOKEN`) are auto-provided, so no manual secrets are required; note the GitHub Pages / Gitea Actions one-time setup prerequisites.
 - **Docs**:
   - Add a Hyprland desktop showcase screenshot (`dist/hyprland.webp`) as a hero illustration at the top of `README.md`, and refresh the Neovim feature list (treesitter `main`/Neovim 0.12, LSP `LspAttach` keymaps, gitsigns hunk/blame keymaps).
 - **Hyprland**:
-  - Suspend the machine after 1h of inactivity on PadsTower only (`hypridle.conf`) — hypridle has no per-host mechanism, so the listener guards on the hostname; the laptop keeps its lock/DPMS-only behaviour.
+  - Suspend the machine after 1h of inactivity on PadsTower only (`hypridle.conf`). hypridle has no per-host mechanism, so the listener guards on the hostname; the laptop keeps its lock/DPMS-only behaviour.
   - Add screen zoom on `SUPER + PgUp`/`PgDn` (`Home` resets), driven via `hyprctl eval` + `hl.config` since the Lua parser disables `hyprctl keyword`, with an animated `zoomFactor`. Keyboard binds are used because Hyprland scroll binds leak the scroll event to the focused window ([#9319](https://github.com/hyprwm/Hyprland/issues/9319)).
 - **Neovim**:
-  - Add `neovim` and `tree-sitter-cli` to the Arch package list (`dist/arch/packages/20_apps.txt`) — `neovim` was missing from the curated lists, and the nvim-treesitter `main` branch compiles parsers through the `tree-sitter` CLI (the `master` branch built them directly with `cc`).
-  - Add LSP keymaps via an `LspAttach` autocmd (`lsp.lua`) — `gd`/`gD`/`gi` (definition/declaration/implementation), `<leader>e` (diagnostic float) and `<leader>lf` (format), complementing Neovim 0.11's built-in `grn`/`gra`/`grr`/`K`. The LSP was previously configured but had no bindings.
-  - Add gitsigns hunk keymaps via `on_attach` (`editor.lua`) — `]c`/`[c` to navigate hunks, `<leader>gs`/`gr`/`gp`/`gd` to stage/reset/preview/diff, and `<leader>gb` to toggle inline blame.
+  - Add `neovim` and `tree-sitter-cli` to the Arch package list (`dist/arch/packages/20_apps.txt`). `neovim` was missing from the curated lists, and the nvim-treesitter `main` branch compiles parsers through the `tree-sitter` CLI (the `master` branch built them directly with `cc`).
+  - Add LSP keymaps via an `LspAttach` autocmd (`lsp.lua`): `gd`/`gD`/`gi` (definition/declaration/implementation), `<leader>e` (diagnostic float) and `<leader>lf` (format), complementing Neovim 0.11's built-in `grn`/`gra`/`grr`/`K`. The LSP was previously configured but had no bindings.
+  - Add gitsigns hunk keymaps via `on_attach` (`editor.lua`): `]c`/`[c` to navigate hunks, `<leader>gs`/`gr`/`gp`/`gd` to stage/reset/preview/diff, and `<leader>gb` to toggle inline blame.
 
-### ♻️ Changed
+### Changed
 
 - **Tmux**:
   - Theme the status bar, panes, messages and copy mode with the Gruvbox Dark palette (`.tmux.conf`), aligned with waybar, gruvbox.nvim and hyprtoolkit, replacing the solarized plugin (`seebi/tmux-colors-solarized`) and a dead powerline include (hardcoded `python3.7` path, powerline not installed). Also enable true color (`tmux-256color` + `RGB` terminal override).
@@ -70,11 +70,11 @@ All notable changes to this project will be documented in this file.
   - Generate the Pages site in both `deploy-pages.yml` (GitHub) and the `pages` job (GitLab) by calling the reusable `.ci_bin/build_pages.sh` script instead of duplicating the `gen_pages.py` invocations, keeping the page list in a single source of truth. Made `build_pages.sh` POSIX `sh` and git-optional so it runs on minimal CI images (GitLab alpine).
   - Copy static assets referenced by the docs (the `dist/hyprland.webp` README showcase image) into `public/`, mirroring their source path, so relative `src` links resolve on both GitHub Pages and GitLab Pages (`build_pages.sh`).
   - Factor the CHANGELOG release-notes extraction shared by the GitHub and GitLab release jobs into a single POSIX `.ci_bin/extract_release_notes.sh` script, removing the duplicated `sed` logic.
-  - Make `release.yml` forge-agnostic — create the release through the REST API (`POST /repos/{owner}/{repo}/releases` via `jq`/`curl`) instead of the `gh` CLI, so the same workflow runs on both GitHub and the Gitea runner (which also scans `.github/workflows`).
+  - Make `release.yml` forge-agnostic: create the release through the REST API (`POST /repos/{owner}/{repo}/releases` via `jq`/`curl`) instead of the `gh` CLI, so the same workflow runs on both GitHub and the Gitea runner (which also scans `.github/workflows`).
   - Guard the GitHub-Pages (`deploy-pages.yml`) and Vim-package (`package-vim.yml`) workflows with `if: github.server_url == 'https://github.com'` so they don't run on the Gitea runner.
   - Theme the documentation-site navbar with the Catppuccin palette (Mantle background, Mauve brand/active link) instead of Bootstrap's default `bg-dark`, and limit heading dividers to `h1`/`h2` to reduce visual clutter.
 - **Hyprland**:
-  - Output the isolated showcase capture (`bin/hypr-screenshot.sh`) as a web-optimised WebP (lossy, q80 via `WEBP_QUALITY`, max compression effort) instead of PNG — `grim` writes a temporary PNG that is re-encoded with the first available encoder (`cwebp`/`magick`/`convert`/`ffmpeg`).
+  - Output the isolated showcase capture (`bin/hypr-screenshot.sh`) as a web-optimised WebP (lossy, q80 via `WEBP_QUALITY`, max compression effort) instead of PNG. `grim` writes a temporary PNG that is re-encoded with the first available encoder (`cwebp`/`magick`/`convert`/`ffmpeg`).
   - Source the GTK theme name from `hyprtoolkit.conf` (`gtk_theme`) instead of hardcoding `Materia-dark-compact` in `config.lua`, keeping a single source of truth for theming.
   - Adopt physics spring animations for window open/move (`spring` curve `easy`) and align the full animation tree with Hyprland's upstream example, adding dedicated `layers`/`fadeLayers` animations for layer-shell surfaces (launcher, notifications, Waybar) and a `popin` effect on `windowsIn`.
   - Drop the 10-bit `bitdepth` override on the ASUS XG32WCS monitor (PadsTower), reverting to the default depth.
@@ -85,7 +85,7 @@ All notable changes to this project will be documented in this file.
   - Default gitsigns `current_line_blame` to off (toggle via `<leader>gb`) instead of always-on inline blame (`editor.lua`).
   - Translate all configuration comments to English across the `nvim` config.
 
-### 🐛 Fixed
+### Fixed
 
 - **Hyprland**:
   - Fix hypridle no longer turning displays off (and waybar workspace scrolling) after the migration to the Lua config: with `hyprland.lua`, `hyprctl dispatch` evaluates its arguments as Lua (`hl.dispatch(...)`), so the legacy `dpms off` / `workspace e+1` syntax failed with a parse error. `hypridle.conf` now dispatches `hl.dsp.dpms("off"/"on")` and `waybar/conf/workspaces.json` uses `hl.dsp.focus({ workspace = "e±1" })`.
@@ -102,34 +102,34 @@ All notable changes to this project will be documented in this file.
   - Fix the Vim-only bootstrap command to pipe into `bash`, and remove shebangs from sourced/non-executable shell files so pre-commit executable checks pass.
   - Guard `uwsm` startup in `.zshrc` and avoid running `tty` from `.zshenv` for non-interactive shells.
 - **CI / Pages**:
-  - Fix fenced code blocks nested inside list items rendering as a plain paragraph (e.g. the `git clone … ./install` install snippet leaking `:::sh`) — `gen_pages.py` now extracts every fenced block, dedents it, and renders it with Pygments before Markdown conversion, so in-list code blocks display correctly with highlighting.
-  - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet — code blocks were emitting token spans with no matching CSS, so they rendered monochrome.
+  - Fix fenced code blocks nested inside list items rendering as a plain paragraph (e.g. the `git clone … ./install` install snippet leaking `:::sh`). `gen_pages.py` now extracts every fenced block, dedents it, and renders it with Pygments before Markdown conversion, so in-list code blocks display correctly with highlighting.
+  - Add the Pygments syntax-highlighting colour theme (`dracula`, scoped to `.codehilite`) to the generated stylesheet. Code blocks were emitting token spans with no matching CSS, so they rendered monochrome.
   - Fix the custom table-of-contents styling never applying: the rules targeted `nav[data-toggle='toc']` but the element is `<nav id="toc">`, so they are now keyed on `#toc`.
   - Keep the sticky table of contents below the navbar (offset + higher navbar `z-index`) so it no longer slides over the menu when scrolling.
-  - Fix the 404 on the CI Workflows page on GitHub Pages — `actions/upload-pages-artifact` strips `.git`/`.github` from the deployed tarball, so the page generated under `public/.github/workflows/README.md/` was never published. It is now published under `public/github/workflows/README.md/` (leading dot dropped), with the site nav (`gen_pages.py`) and README updated to match.
+  - Fix the 404 on the CI Workflows page on GitHub Pages. `actions/upload-pages-artifact` strips `.git`/`.github` from the deployed tarball, so the page generated under `public/.github/workflows/README.md/` was never published. It is now published under `public/github/workflows/README.md/` (leading dot dropped), with the site nav (`gen_pages.py`) and README updated to match.
 - **Docs**:
   - Annotate the code fences in `dist/arch/install.md` with languages (`sh`, `text`, `ini`) so they get syntax highlighting, and wrap the previously unfenced shell snippet in the Sound section in a fenced block.
 - **Neovim**:
-  - Fix the treesitter highlighter crashing on Markdown (`README.md`) under Neovim 0.12 — `Decoration provider "start" … attempt to call method 'range' (a nil value)`. The pinned nvim-treesitter `master` branch is frozen at Neovim 0.10/0.11 support; migrate `treesitter.lua` to the `main` branch (`require('nvim-treesitter').install()` + `vim.treesitter.start()` via a `FileType` autocmd) which supports Neovim 0.12, restoring Markdown highlighting.
+  - Fix the treesitter highlighter crashing on Markdown (`README.md`) under Neovim 0.12: `Decoration provider "start" … attempt to call method 'range' (a nil value)`. The pinned nvim-treesitter `master` branch is frozen at Neovim 0.10/0.11 support; migrate `treesitter.lua` to the `main` branch (`require('nvim-treesitter').install()` + `vim.treesitter.start()` via a `FileType` autocmd) which supports Neovim 0.12, restoring Markdown highlighting.
 
-## 🏷️ [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
+## [v5.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.4.0)
 
-### ✨ Added
+### Added
 
 - **CI / Pages**:
   - Add a `post-commit` hook (via `pre-commit`) that regenerates the local `public/` documentation preview after each commit, backed by a reusable `.ci_bin/build_pages.sh` script also usable in CI.
 
-### ♻️ Changed
+### Changed
 
 - **Hyprland**:
   - Increase animation speeds for windows, borders, fades, and workspaces for snappier UI transitions, and remove unused `borderangle` animation.
-  - Tone down blur and shadow effects — reduce blur passes, disable opacity ignore and xray, and lower shadow range and render power.
+  - Tone down blur and shadow effects: reduce blur passes, disable opacity ignore and xray, and lower shadow range and render power.
   - Cap ASUS XG32WCS monitor at 60 Hz for productivity use on PadsP5560.
   - Remove hardware cursor override from PadsP5560 host config (use global default).
-  - Simplify window rules — remove legacy KeePassXC, Bitwarden, and Dolphin rules, keep only Proton Pass for password manager.
+  - Simplify window rules: remove legacy KeePassXC, Bitwarden, and Dolphin rules, keep only Proton Pass for password manager.
   - Trim blur layer rules to `logout_dialog` only, removing unused swaync entries.
   - Launch `hyprlauncher` in daemon mode (`-d`) at autostart for instant toggle via keybind.
-  - Simplify Lua configuration — merge `layout.lua` into `appearance.lua`, inline `utils.lua` helpers, delete empty `workspaces.lua`, and remove verbose comment banners across all files (~75% noise reduction).
+  - Simplify Lua configuration: merge `layout.lua` into `appearance.lua`, inline `utils.lua` helpers, delete empty `workspaces.lua`, and remove verbose comment banners across all files (~75% noise reduction).
   - Simplify the logout command to `pkill wlogout || wlogout` by removing the dead Quickshell (`qs`/`$qsConfig`) branch, since Quickshell is not installed.
   - Remove the redundant `SUPER+SHIFT+F` float-toggle binding (kept on `SUPER+ALT+Space`).
 - **Hyprlock**:
@@ -138,7 +138,7 @@ All notable changes to this project will be documented in this file.
   - Enable WebRTC voice activity detection (VAD) and lazy activation (`node.passive`) on echo-cancel module to reduce CPU usage when mic is idle.
   - Compact voice effects configuration, removing redundant comments and whitespace.
 - **Waybar**:
-  - Split config into per-host files (`config.PadsTower`, `config.PadsP5560`) — desktop omits battery, backlight, and Intel temperature modules.
+  - Split config into per-host files (`config.PadsTower`, `config.PadsP5560`). Desktop omits battery, backlight, and Intel temperature modules.
   - Remove unused weather module (`custom/weather`) configuration.
   - Remove dead `#custom-spotify`/`#custom-weather` CSS selectors.
 - **Alacritty**:
@@ -160,30 +160,30 @@ All notable changes to this project will be documented in this file.
   - Modernize the empty-argument test in `diff-cmd` (`[ -z "$3" ]`) and remove a dead `meld` comment line.
 - **CI / Pages**:
   - Simplify the CSS-path logic in `gen_pages.py` by removing redundant `public/`-prefixed branches that duplicated the generic depth-based formula.
-  - Make the generated documentation pages responsive — wide tables now scroll horizontally on small screens instead of overflowing the layout, with adapted heading sizes and container padding on mobile; widen the main content block to the standard Bootstrap `1140px` container; remove a stray non-project comment block from `style.css`.
-  - Minify the generated HTML and the copied `style.css` in `gen_pages.py` — collapse inter-tag whitespace (preserving `<pre>`/`<code>`/`<script>` content) and strip CSS comments/whitespace (~36% smaller CSS); drop the now-unused `shutil` import.
+  - Make the generated documentation pages responsive: wide tables now scroll horizontally on small screens instead of overflowing the layout, with adapted heading sizes and container padding on mobile; widen the main content block to the standard Bootstrap `1140px` container; remove a stray non-project comment block from `style.css`.
+  - Minify the generated HTML and the copied `style.css` in `gen_pages.py`: collapse inter-tag whitespace (preserving `<pre>`/`<code>`/`<script>` content) and strip CSS comments/whitespace (~36% smaller CSS); drop the now-unused `shutil` import.
 
-### 🗑️ Removed
+### Removed
 
 - **neofetch**:
-  - Remove deprecated neofetch configuration (743 lines) — replaced by fastfetch.
+  - Remove deprecated neofetch configuration (743 lines), replaced by fastfetch.
 - **ashell**, **noctalia**:
   - Remove empty unused configuration directories.
 - **Alacritty**:
   - Remove stale base16 auto-backup file.
 - **Submodules**:
-  - Prune five stale `.gitmodules` entries left over from the i3/X11 era — `zsh-notify`, `i3blocks-contrib`, `i3spotifystatus`, `gruvbox-rofi`, and `base16-alacritty`.
+  - Prune five stale `.gitmodules` entries left over from the i3/X11 era: `zsh-notify`, `i3blocks-contrib`, `i3spotifystatus`, `gruvbox-rofi`, and `base16-alacritty`.
 - **X11**:
   - Remove vestigial `.Xresources` and `.screenrc` (byobu/screen) leftovers on the all-Wayland setup.
 - **Hyprland**:
   - Remove the orphan `hyprpaper.conf` (wallpapers are handled by `awww`).
 - **Waybar**:
-  - Remove three unused module scripts (`modules/headsetcontrol`, `modules/spotify`, `modules/mediaplayer.py`) — `headsetcontrol` is superseded by the inline `exec` in `audio.json`.
-  - Remove the unused `network` module config from `conf/network.json` and its CSS — it duplicated the `nm-applet` tray indicator.
+  - Remove three unused module scripts (`modules/headsetcontrol`, `modules/spotify`, `modules/mediaplayer.py`). `headsetcontrol` is superseded by the inline `exec` in `audio.json`.
+  - Remove the unused `network` module config from `conf/network.json` and its CSS: it duplicated the `nm-applet` tray indicator.
 
-## 🏷️ [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
+## [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
 
-### ✨ Added
+### Added
 
 - **Hyprland**:
   - Add `hyprlauncher` support as the primary desktop application launcher and clipboard history picker.
@@ -198,7 +198,7 @@ All notable changes to this project will be documented in this file.
   - Add Lua-based configuration system with automated AUR safety hooks, including validation checks for suspicious PKGBUILD patterns, orphan packages, and maintainer changes.
   - Add update cooldown hook to automatically defer upgrading packages updated less than 48 hours ago.
 
-### ♻️ Changed
+### Changed
 
 - **Hyprland**:
   - Refactor Lua configurations to dynamically parse and source appearance, typography, and color settings from `hyprtoolkit.conf` with automatic hex format translation and fallbacks.
@@ -227,7 +227,7 @@ All notable changes to this project will be documented in this file.
 - **Installer**:
   - Refactor `install` script for improved reliability, safer path expansion, headless TTY checking, and optimized package installation caching.
 
-### 🗑️ Removed
+### Removed
 
 - **Wofi**:
   - Clean up and remove all wofi configuration files (`.config/wofi`) and package installer entries.
@@ -238,16 +238,16 @@ All notable changes to this project will be documented in this file.
 - **Wlogout**:
   - Remove unused icon assets (`hibernate-hover1.png`, `moon_865813.png`, `sleep2.png`).
 
-## 🏷️ [v5.3.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.1)
+## [v5.3.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.1)
 
-### ✨ Added
+### Added
 
 - **Backup Utility**:
   - Introduce remote disk space delta calculation and log file size changes upon backup completion.
 - **Installer**:
   - Add post-installation hook (`apply_live_changes`) to dynamically rebuild font cache, reload X resources (`xrdb`), and refresh desktop environments (Mako, Waybar).
 
-### ♻️ Changed
+### Changed
 
 - **System Fonts**:
   - Standardize system-wide body and desktop environment UI fonts (GTK, Hyprland, Mako, wlogout, wofi) to **DejaVu Sans** and terminal/code blocks to **JetBrainsMono Nerd Font**.
@@ -256,16 +256,16 @@ All notable changes to this project will be documented in this file.
 - **Backup Utility**:
   - Refactor `backup.sh` to query loaded keys via `ssh-agent` rather than relying on hardcoded private key paths, exclude Lutris runner files, prune deprecated `.localised` exclude pattern, and translate logs from French to English.
 
-### 🗑️ Removed
+### Removed
 
 - **Legacy OS Support**:
   - Drop Ubuntu-specific bootstrap installer script (`dist/ubuntu/install.sh`) and related documentation.
 - **Zsh & Utilities**:
   - Remove deprecated `command-not-found` shell plugin and its assets from `.zshrc` and plugin directory.
 
-## 🏷️ [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
+## [v5.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.0)
 
-### ✨ Added
+### Added
 
 - **Security & Passwords**:
   - Migrate from 1Password to **Proton Pass** as the default password manager.
@@ -285,7 +285,7 @@ All notable changes to this project will be documented in this file.
 - **CI/CD & Docs**:
   - Implement GitHub Actions pipelines for pages deployment/Vim packaging, and add an automated page generator (`gen_pages.py`) with table of contents support.
 
-### ♻️ Changed
+### Changed
 
 - **Hyprland & Keybindings**:
   - Update applications launcher, keybindings, and window rules to run Proton Pass instead of 1Password.
@@ -298,7 +298,7 @@ All notable changes to this project will be documented in this file.
 - **Aesthetics & UI**:
   - Update desktop component styling (Waybar, Wofi, Mako, wlogout) to the official **Catppuccin Mocha** palette.
 
-### 🗑️ Removed
+### Removed
 
 - **Legacy Components**:
   - Remove legacy `1password` Zsh plugin, including the helper function `opswd`.
@@ -307,7 +307,7 @@ All notable changes to this project will be documented in this file.
 - **Redundant Configs**:
   - Streamline environments by removing obsolete GNOME Keyring/SSH socket environment variables.
 
-### 🐛 Fixed
+### Fixed
 
 - **Compositor & Display**:
   - Resolve Gamescope mouse containment issues on multi-monitor setups using software rendering (`no_hardware_cursors = true`).
@@ -316,176 +316,176 @@ All notable changes to this project will be documented in this file.
 - **Sandbox**:
   - Correct Electron feature flags and sandbox configurations.
 
-## 🏷️ [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
+## [v5.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.1)
 
-### ♻️ Changed
+### Changed
 
 - **Status Bar & Packages**:
   - Clean up Waybar configuration by removing unused modules, and consolidate essential package lists (Alacritty, GNOME utilities) into `11_hyprland.txt` and `20_apps.txt`.
 - **Documentation**:
   - Update installation guide package paths and README.md to reflect archiving of legacy setups.
 
-### 🗑️ Removed
+### Removed
 
 - **Legacy Configs**:
   - Archive legacy X11, Sway, and Dunst configurations to `.config-archive/`, and prune obsolete package lists, old package diffs, screenshots, and Nitrogen setup instructions.
 
-### 🐛 Fixed
+### Fixed
 
 - **Electron**:
   - Fix Chromium/Chrome electron flags by properly combining multiple `--enable-features` onto a single line.
 
-## 🏷️ [v5.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.0)
+## [v5.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.2.0)
 
-### ✨ Added
+### Added
 
 - **Hyprland Upgrades**:
   - Upgrade Hyprland configuration to 0.55, introduce a centralized configuration module, define standard coding guidelines, and set default workspaces.
 - **Gaming & Keybindings**:
   - Add custom Doom (2016) optimizations and Gamescope fixes in `steam-optimize`, and enhance shortcut bindings for screenshots, lock, and session controls.
 
-### ♻️ Changed
+### Changed
 
 - **Desktop Daemons**:
   - Migrate wallpaper daemon from swww to awww, switch notification system from Dunst to Mako, and refine Hyprland animations/autostart.
 - **Refactoring**:
   - Rewrite system backup utility to POSIX shell with improved rsync arguments, and optimize `steam-optimize` with helper functions.
 
-### 🐛 Fixed
+### Fixed
 
 - **Stability**:
   - Resolve fullscreen blackscreen issues and restore Steam overlay functionality.
 
-## 🏷️ [v5.1.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.1)
+## [v5.1.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.1)
 
-### ✨ Added
+### Added
 
 - **Arch & System**:
   - Add native Gamemode support, integrate firmware updates into the arch upgrade function, and add vimdiff instructions for `.pacnew` files.
 - **Hyprland**:
   - Add initial host-specific configuration override support.
 
-### ♻️ Changed
+### Changed
 
 - **CI & Aliases**:
   - Optimize pre-commit hooks to respect `.editorconfig` settings, enhance pre-commit leak detection, and refine shell alias error checking/validation.
 - **Docs & Packages**:
   - Update Arch installation guide with modern practices (archinstall) and refresh the applications package list.
 
-## 🏷️ [v5.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.0)
+## [v5.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.1.0)
 
-### ✨ Added
+### Added
 
 - **Features**:
   - Implement automated changelog generation, add wlogout configuration, expand package manager utilities, and support newer Hyprland features.
 
-### ♻️ Changed
+### Changed
 
 - **Aesthetics & UI**:
   - Refine Waybar status layouts, keybindings, fonts, system themes, and add missing system fonts.
 - **Backup & Editor**:
   - Update VS Code extension lists and configure backup scripts to ignore WebStorage directories.
 
-### 🐛 Fixed
+### Fixed
 
 - **Status & Wallpaper**:
   - Fix temperature display, network formatting, wallpaper rotation rules, and DST-related bugs in status bars.
 - **System**:
   - Fix Electron flags and resolve package installation inconsistencies.
 
-## 🏷️ [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0)
+## [v5.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.0.0)
 
 > Entries from here down to v1.0 are retrospective summaries reconstructed
-> after the fact, not detailed at release time — expect them to be broader
+> after the fact, not detailed at release time: expect them to be broader
 > and less specific than v5.1.0 onward.
 
-### ♻️ Changed
+### Changed
 
 - **Compositor Sync**:
   - Major overhaul and synchronization of Hyprland, Sway, and Waybar configurations.
 
-## 🏷️ [v4.4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.1)
+## [v4.4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.1)
 
-### ♻️ Changed
+### Changed
 
 - **Themes & Packages**:
   - Update visual themes, system color schemes, and package management helpers.
 
-### 🐛 Fixed
+### Fixed
 
 - **Status Bar**:
   - Correct Waybar temperature readings and network status formatting bugs.
 
-## 🏷️ [v4.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.0)
+## [v4.4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.4.0)
 
-### ✨ Added
+### Added
 
 - **Compositor & UI**:
   - Introduce new Hyprland configuration options, add new status bar modules, and enhance package installation scripts.
 
-### ♻️ Changed
+### Changed
 
 - **Keybinds & Fonts**:
   - Update config files, modernize keyboard shortcuts, and refine typography.
 
-## 🏷️ [v4.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.3.0)
+## [v4.3.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.3.0)
 
-### ✨ Added
+### Added
 
 - **Desktop Environments**:
   - Support new Hyprland features, enhance dual i3/Sway configurations, and improve package management wrappers.
 
-### ♻️ Changed
+### Changed
 
 - **Structure**:
   - Refactor layout organization, update module setups, and simplify the installation flow.
 
-## 🏷️ [v4.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.2.1)
+## [v4.2.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.2.1)
 
-### 🐛 Fixed
+### Fixed
 
 - **Stability**:
   - Resolve core stability issues, fix status bar layout bugs, and correct package installation mismatches.
 
-## 🏷️ [v4.2](https://gitlab.com/pad92/dotfiles/-/releases/v4.2)
+## [v4.2](https://gitlab.com/pad92/dotfiles/-/releases/v4.2)
 
-### ✨ Added
+### Added
 
 - **Structure**:
   - Add new configuration templates, optimize package management systems, and expand documentation.
 
-### ♻️ Changed
+### Changed
 
 - **Architectural Overhaul**:
   - Restructure file layouts, update system dependencies, and rewrite installer scripts.
 
-## 🏷️ [v4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.1)
+## [v4.1](https://gitlab.com/pad92/dotfiles/-/releases/v4.1)
 
-### ✨ Added
+### Added
 
 - **Visuals**:
   - Add new themes, layout configurations, and improve package installation helpers.
 
-### ♻️ Changed
+### Changed
 
 - **Polish**:
   - Refine keybindings, status bar modules, and enhance overall stability.
 
-## 🏷️ [v4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.0)
+## [v4.0](https://gitlab.com/pad92/dotfiles/-/releases/v4.0)
 
-### ✨ Added
+### Added
 
 - **Multi-Compositor**:
   - Complete overhaul of the configuration system, adding initial Hyprland support alongside modernized Sway and i3 setups.
 
-### ♻️ Changed
+### Changed
 
 - **Architecture**:
   - Redesign file structures and update configurations to support latest upstream software versions.
 
-## 🏷️ [v3.0](https://gitlab.com/pad92/dotfiles/-/releases/v3.0)
+## [v3.0](https://gitlab.com/pad92/dotfiles/-/releases/v3.0)
 
-### ✨ Added
+### Added
 
 - **Multi-Desktop Setup**:
   - Introduce Sway alongside i3, and add clipboard (Greenclip), automounting (udiskie), and notification (Mako/twmn) daemons.
@@ -496,45 +496,45 @@ All notable changes to this project will be documented in this file.
 - **Tmux**:
   - Migrate to TPM, add a solarized theme, and mouse scroll/copy-paste support.
 
-### ♻️ Changed
+### Changed
 
 - **Desktop Environment**:
   - Iterate through compositor (compton → picom) and terminal (Kitty → Alacritty) choices, switch to a base16/gruvbox color scheme, and rework the i3/Sway status bars (i3blocks, py3status, waybar backlight).
 - **Configuration**:
   - Merge in the previously separate Manjaro-specific configuration.
 
-### 🗑️ Removed
+### Removed
 
 - **Terminal**:
   - Prune the superseded Kitty configuration and unused submodules after settling on Alacritty.
 
-## 🏷️ [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1)
+## [v2.1](https://gitlab.com/pad92/dotfiles/-/releases/v2.1)
 
-### ✨ Added
+### Added
 
 - **Templates**:
   - Add additional package configs, visual themes, and package management helpers.
 
-### ♻️ Changed
+### Changed
 
 - **Consistency**:
   - Refine status bar layouts, improve installer script reliability, and standardize settings.
 
-## 🏷️ [v2.0](https://gitlab.com/pad92/dotfiles/-/releases/v2.0)
+## [v2.0](https://gitlab.com/pad92/dotfiles/-/releases/v2.0)
 
-### ✨ Added
+### Added
 
 - **Visuals**:
   - Add window transparency support and initial setup templates.
 
-### ♻️ Changed
+### Changed
 
 - **Cleanup**:
   - Reorganize system modules, update core keybinds, and clean up initial files.
 
-## 🏷️ [v1.0](https://gitlab.com/pad92/dotfiles/-/releases/v1.0)
+## [v1.0](https://gitlab.com/pad92/dotfiles/-/releases/v1.0)
 
-### ✨ Added
+### Added
 
 - **Initial Release**:
   - Core Zsh configurations, visual themes, and baseline system utilities.
