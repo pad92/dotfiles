@@ -1,10 +1,10 @@
-# My Dotfiles Collection
+# My Dotfiles
 
-This is my personal dotfiles collection: configuration files curated for the operating systems and environments I actually use, tuned for a modern Linux desktop.
+Configuration files for the systems and environments I actually use, on a modern Linux desktop.
 
-![Hyprland desktop showcase — Neovim, Waybar & Fastfetch on CachyOS](./dist/hyprland.webp)
+![Hyprland desktop — Neovim, Waybar & Fastfetch on CachyOS](./dist/hyprland.webp)
 
-## 🚀 Installation & Quick Start
+## Installation
 
 For the latest updates, check the [Changelog](./CHANGELOG.md).
 You can also download the current version directly from [here](https://gitlab.com/pad92/dotfiles/-/releases).
@@ -20,7 +20,7 @@ This repository provides automated installation workflows tailored per operating
   ./install
   ```
   > [!TIP]
-  > **High-Fidelity Installer**: The interactive manager presents a clean menu to select package suites (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). It automatically skips already installed packages and configures `yay` or `paru` for AUR dependencies.
+  > The interactive manager presents a menu to select package suites (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). It skips already-installed packages and configures `yay` or `paru` for AUR dependencies.
 
 ### Editor Only
 
@@ -32,11 +32,11 @@ curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
 
 - **Quick Install**: You can download the pre-packaged configuration from the [Artifacts](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim).
 
-## ⚙️ Customization & Personalization
+## Customization
 
-To customize and adapt this dotfiles collection to your own system and identity, you should adjust the following key configuration files:
+To adapt this dotfiles collection to your own system, adjust the following key configuration files:
 
-### 👤 Git Identity
+### Git Identity
 
 - **`~/.gitconfig.local`** _(Not tracked, created locally)_: Define your personal Git credentials here. It is automatically imported by the main [`.gitconfig`](./.gitconfig):
   ```ini
@@ -46,38 +46,38 @@ To customize and adapt this dotfiles collection to your own system and identity,
       signingkey = your_ssh_or_gpg_key
   ```
 
-### 🐚 Shell & Environment (`Zsh`)
+### Shell & Environment (Zsh)
 
 - **[`.zshrc`](./.zshrc)**: Adjust primary shell configurations (e.g., local language `LANG`, default editor `EDITOR`, and the active Oh My Zsh `plugins` list).
-- **[`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)**: Add, edit, or remove terminal aliases to fit your daily workflow.
+- **[`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)**: Add, edit, or remove terminal aliases to fit your workflow.
 
-### 🖥️ Wayland & Hyprland Session
+### Wayland & Hyprland Session
 
 - **[`.config/uwsm/env`](./.config/uwsm/env)**: Manage global environment variables for the Wayland session (e.g., default browser `BROWSER`, default terminal `TERMINAL`, and default cursor theme `XCURSOR_THEME`) and set hostname-specific GPU/driver optimizations (such as `AQ_DRM_DEVICES` or Vulkan driver settings).
 - **`.config/hypr/`**: Adjust window manager bindings, window rules, and look-and-feel preferences (Lua). Host-specific hardware layouts (monitors, workspace mappings, GPU overrides) are loaded from `hosts/<hostname>.lua`. Waybar also uses per-host configs (`config.PadsTower`, `config.PadsP5560`) to adapt modules to available hardware.
 - **`~/.local/share/backgrounds/`**: Add your custom wallpaper image files here to integrate with desktop slideshow/randomizer scripts.
 
-### 💻 Terminals & Tools
+### Terminals & Tools
 
 - **`.config/alacritty/`**: Customize the Alacritty terminal's font, window spacing, opacity, and color palette.
 - **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
-- **[`.config/nvim/`](./.config/nvim/)**: Curated, modern, and modular **Neovim** configuration written from scratch in Lua.
-- **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for your core legacy Vim editor.
+- **[`.config/nvim/`](./.config/nvim/)**: Neovim configuration written from scratch in Lua.
+- **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for Vim.
 - **`~/.config/electron-flags.conf`**: Placeholder for Electron-based editors (VS Code, Codium, Antigravity IDE). Under UWSM, `ELECTRON_OZONE_PLATFORM_HINT=auto` is exported globally so no flags are needed.
-- **`.config/hypr/.luarc.json`**: Project-specific Lua environment settings optimized for Hyprland Lua validation and seamless autocompletion.
+- **`.config/hypr/.luarc.json`**: Project-specific Lua environment settings for Hyprland Lua validation and autocompletion.
 
-## 🛠️ Core Tooling
+## Core Tooling
 
-### 🐚 Shell (Zsh)
+### Shell (Zsh)
 
 Zsh, configured for daily use:
 
-- **Plugins**: Powered by `oh-my-zsh` with `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
-- **Customization**: Extensive history management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
+- **Plugins**: Uses `oh-my-zsh` with `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
+- **Customization**: History management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
 
-#### ⌨️ Zsh Keyboard Shortcuts
+#### Zsh Keyboard Shortcuts
 
-Configured in `zsh/init/key-bindings.zsh` for maximum command line productivity:
+Configured in `zsh/init/key-bindings.zsh`:
 
 | Shortcut                    | Action           | Description                                       |
 | :-------------------------- | :--------------- | :------------------------------------------------ |
@@ -95,11 +95,11 @@ Configured in `zsh/init/key-bindings.zsh` for maximum command line productivity:
 | `Shift + Tab`               | Reverse Complete | Navigate backwards in the autocompletion menu     |
 | `Space`                     | Magic Space      | Perform history expansion when pressing space     |
 
-#### 🐚 Custom Aliases & Functions
+#### Custom Aliases & Functions
 
 Aliases and shell functions defined in `zsh/init/aliases.zsh` and autoloaded from `zsh/functions/`:
 
-##### 📌 Handy Aliases
+##### Handy Aliases
 
 | Alias                              | Target / Command            | Purpose                                                     |
 | :--------------------------------- | :-------------------------- | :---------------------------------------------------------- |
@@ -109,24 +109,24 @@ Aliases and shell functions defined in `zsh/init/aliases.zsh` and autoloaded fro
 | `steam-opt`                        | `steam-optimize`            | Launch Steam with performance/GPU optimizations             |
 | `mirrored` / `mirrors` / `mirrora` | `mirror [delay/score/age]`  | Quick sorting alternatives for Arch mirrorlist optimization |
 
-##### 🛠️ Custom Shell Functions
+##### Custom Shell Functions
 
-Organized by functional modules for clean management:
+Organized by functional modules:
 
-###### 🐧 Arch Linux & System Maintenance (`zsh/functions/arch.zsh`)
+###### Arch Linux & System Maintenance (`zsh/functions/arch.zsh`)
 
 - **`arch_update`**: Comprehensive system upgrade. Triggers `yay -Syu --devel`, firmware update checking (`fwupdmgr`), Flatpak updates, and automated orphans/caches cleanup.
 - **`clean_arch`**: Cleans up packages orphans (`pacman -Rns`), purges pacman/yay cache (`yay -Scc`), removes old packages version caches (`paccache`), and detects outstanding `.pacnew` / `.pacsave` files.
 - **`mirror [delay|score|age]`**: Fetches, filters, and rates the fastest Arch Linux package mirrors located in France utilizing `reflector`.
 
-###### 📁 Archives & Crypto (`zsh/functions/archive.zsh`, `crypt.zsh`)
+###### Archives & Crypto (`zsh/functions/archive.zsh`, `crypt.zsh`)
 
 - **`extract <file>`**: Extract-all wrapper that intelligently decompresses any archive format (`.tar.bz2`, `.tgz`, `.zip`, `.rar`, `.7z`, etc.).
 - **`md5` / `sha1` / `sha256` / `sha512` `<string>`**: Instant, pipeline-friendly string hashing using `openssl`.
 - **`gpg-encrypt <file/dir>`** (alias: **`gpge`**): Recursively encrypts files inside directories or a single file using GPG. Prompts for the GPG email and encrypts batch files with `--trust-model always`, preserving file modification times (`mtime`) and offering option to delete original files.
 - **`gpg-decrypt <file/dir>`** (alias: **`gpgd`**): Recursively decrypts `.gpg` files inside directories or single files. Intelligently extracts `.tar.gz.gpg` / `.tgz.gpg` archives, restores file modification times (`mtime`), and offers option to delete source encrypted files.
 
-###### 🌐 Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`, `ssh.zsh`)
+###### Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`, `ssh.zsh`)
 
 - **`ssh-copy-agent-keys [user@host]`**: Interactive shell function to copy selected SSH public keys from your local `ssh-agent` to a remote server's `authorized_keys`, preventing duplicates.
 - **`ip_a` / `ip_l` / `ip_p`**: Show network info (All, Local, or Public IP address).
@@ -138,34 +138,34 @@ Organized by functional modules for clean management:
 - **`calc "<expr>"`**: Command-line evaluator powered by `bc`.
 - **`src`**: Sourced reloader helper for shell config.
 
-### 📖 Editors (Vim & Neovim)
+### Editors (Vim & Neovim)
 
-#### ⚡ Neovim (Modern & Modular)
+#### Neovim
 
-Written from scratch in Lua, turning Neovim into an IDE-like development environment.
+Written from scratch in Lua.
 
 - **Key Features**:
   - **Plugin Manager**: Managed by `lazy.nvim` for fast startup and lazy loading.
-  - **Fuzzy Finder**: Built with `telescope.nvim` for rapid interactive file/buffer/symbol searching.
-  - **Syntax & AST**: Powered by `nvim-treesitter` (`main` branch, Neovim 0.12+) for beautiful, precise, and fast syntax highlighting, indentation, and folding.
-  - **Native LSP**: Utilizes the modern native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for rich IDE autocompletions, with `LspAttach` keymaps for go-to-definition, diagnostics, and formatting.
+  - **Fuzzy Finder**: Built with `telescope.nvim` for interactive file/buffer/symbol searching.
+  - **Syntax & AST**: Powered by `nvim-treesitter` (`main` branch, Neovim 0.12+) for syntax highlighting, indentation, and folding.
+  - **Native LSP**: Uses the native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for autocompletion, with `LspAttach` keymaps for go-to-definition, diagnostics, and formatting.
   - **Git Integration**: Realtime changes displayed in the margin by `gitsigns.nvim`, with hunk navigation, staging, and blame keymaps.
-  - **Aesthetics**: Sleek `gruvbox` colorscheme coupled with `lualine.nvim` statusline and vertical indentation guides.
+  - **Aesthetics**: `gruvbox` colorscheme with `lualine.nvim` statusline and vertical indentation guides.
 
-#### 📖 Legacy Vim
+#### Legacy Vim
 
-My original editor configuration built with `vundle`.
+My original editor configuration, built with `vundle`.
 
 - **Key Features**: Custom statusline, per-filetype detection, and classic plugins (`vim-gitgutter`, `vim-fugitive`).
 
-### 💾 Terminal & Session Management
+### Terminal & Session Management
 
-- **Terminal Emulators**: Optimized configuration for **Alacritty**.
+- **Terminal**: Configuration for Alacritty.
 - **Multiplexer**: `tmux` configured with plugins for session management and layout persistence.
 
-## 🖥️ Desktop Environment & Window Management
+## Desktop Environment
 
-### ⌨️ Unified Keybindings
+### Keybindings
 
 | Shortcut                            | Action                     |
 | :---------------------------------- | :------------------------- |
@@ -204,12 +204,12 @@ My current primary Window Manager configuration.
   ```sh
   exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
   ```
-- **Wallpaper Daemon (`awww`)**: Wallpaper loading and randomization are fully managed via standard Systemd user services under `graphical-session.target`:
-  - **`awww.service`**: Systemd user service wrapper for the `awww-daemon`. It is robustly configured to prevent startup race conditions in Wayland by waiting for the `$WAYLAND_DISPLAY` socket (`ExecStartPre`) and clearing stale sockets, running with `--no-cache` to prevent BrokenPipe and SIGABRT crashes.
-  - **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 30 minutes to automatically rotate the wallpapers across all connected monitors.
+- **Wallpaper Daemon (`awww`)**: Wallpaper loading and randomization run as Systemd user services under `graphical-session.target`:
+  - **`awww.service`**: Systemd user service wrapper for the `awww-daemon`. Configured to prevent startup race conditions by waiting for the `$WAYLAND_DISPLAY` socket (`ExecStartPre`) and clearing stale sockets, running with `--no-cache` to prevent BrokenPipe and SIGABRT crashes.
+  - **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 30 minutes to rotate wallpapers across all connected monitors.
   - **Manual Trigger**: Force wallpaper randomization at any time with `systemctl --user start awww_random.service`, or use the `SUPER + ALT + Right` keyboard shortcut.
 
-### 🔑 TTY Launch & Session Integration
+### TTY Launch & Session Integration
 
 When launching Hyprland from a TTY, PAM and session management must be configured to support services like GNOME Keyring auto-unlock and UWSM session wrapping.
 
@@ -224,31 +224,31 @@ See the [Arch Linux Installation Guide - UWSM & PAM Setup](./dist/arch/install.m
 
 Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Utilities/Systemd-start/) for official upstream details.
 
-## 📦 System Utilities & OS Specifics
+## System Utilities
 
-### 🔧 Custom Scripts
+### Custom Scripts
 
 Python, Bash, and shell scripts in [`bin/`](./bin/):
 
-- **[`steam-optimize`](./bin/steam-optimize)**: Monitor-aware **Python 3** wrapper for launching Steam games with tuned environment variables (RADV, Vulkan ICD, Mesa layers), game-specific overrides, Gamescope integration, and signal handling with automatic session cleanup.
+- **[`steam-optimize`](./bin/steam-optimize)**: Monitor-aware Python 3 wrapper for launching Steam games with tuned environment variables (RADV, Vulkan ICD, Mesa layers), game-specific overrides, Gamescope integration, and signal handling with automatic session cleanup.
 - **[`awww.sh`](./bin/awww.sh)**: Wallpaper randomizer script for the `awww` daemon, using `shuf -z` and `mapfile` to load a distinct wallpaper per monitor.
 - **[`backup.sh`](./bin/backup.sh)**: System and configuration backup utility powered by `rsync`, integrated with `ssh-agent` (no hardcoded local keys required). Exclude patterns live in [`dist/*_excludes.txt`](./dist/backup_excludes.txt).
 - **[`razer_dpi.py`](./bin/razer_dpi.py)**: Razer peripherals DPI management tool.
 - **[`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)**: Renders this repo's Hyprland config in an isolated, nested compositor instance and captures it as the WebP showcase image at the top of this README (see `make screenshot`).
 - **[`comcut`](./bin/comcut) / [`comskip.sh`](./bin/comskip.sh)**: Commercial-break detection and removal for recorded video files, based on `comskip`/`ffmpeg` (adapted from [comchap](https://github.com/BrettSheleski/comchap)).
 - **[`diff-cmd`](./bin/diff-cmd)**: Diffs the output of a command run against two different arguments (`IN` placeholder), instead of diffing two files.
-- **[`vscodium_ext.sh`](./bin/vscodium_ext.sh)**: Installs the curated list of VSCodium extensions this setup relies on.
-- **Zsh Functions & Aliases**: See the comprehensive [Custom Aliases & Functions](#-custom-aliases--functions) section for a detailed list of system maintenance, utility, and archive handling scripts.
+- **[`vscodium_ext.sh`](./bin/vscodium_ext.sh)**: Installs the VSCodium extensions this setup uses.
+- **Zsh Functions & Aliases**: See the [Custom Aliases & Functions](#custom-aliases--functions) section for system maintenance, utility, and archive handling scripts.
 
-### 🐧 OS Maintenance
+### OS Maintenance
 
 - **Arch Linux**:
   - Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
   - Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
 
-## 🔄 Continuous Integration
+## Continuous Integration
 
-This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **Gitea** instance. The CI keeps forge-specific configuration thin and delegates the real work to reusable scripts in [`.ci_bin/`](./.ci_bin/), so the same logic builds the documentation site and cuts releases on every forge.
+This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **Gitea** instance. The CI delegates the real work to reusable scripts in [`.ci_bin/`](./.ci_bin/), so the same logic builds the documentation site and cuts releases on every forge.
 
 | Forge      | Pipeline                                     | Documentation                                     |
 | :--------- | :------------------------------------------- | :------------------------------------------------ |
@@ -259,9 +259,7 @@ This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **G
 - **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/github/workflows/README.md/` and `/.gitlab/README.md/` (the GitHub one drops the leading dot because `actions/upload-pages-artifact` strips `.github` from the deployed tarball). The same script backs the local `post-commit` preview hook.
 - **Releases**: tagging `v*` extracts the matching section from [`CHANGELOG.md`](./CHANGELOG.md) via [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh) and publishes a release.
 
-## 📋 Application Ecosystem Summary
-
-Tools configured across the stack:
+## Application Ecosystem
 
 | Category        | Tools                      |
 | :-------------- | :------------------------- |
