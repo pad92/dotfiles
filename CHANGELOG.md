@@ -16,6 +16,13 @@ All notable changes to this project will be documented in this file.
   - Document the security tradeoff of `gpg --trust-model always` in `crypt.zsh` (kept deliberately; skips the web-of-trust check).
 - **Scripts**:
   - Add `set -uo pipefail` to `bin/diff-cmd` and `bin/vscodium_ext.sh`.
+- **Steam-Optimize**:
+  - Trim the Forza Horizon 5/6 profile down to its confirmed-working overrides: drop `single_queue` from `VKD3D_CONFIG` (a hang workaround for older vkd3d-proton releases that serializes GPU queues and costs performance), and remove the untested `SDL_VIDEODRIVER=x11` and `WINEDLLOVERRIDES` entries, which had no observed effect on the current Proton stack.
+  - Factor the duplicated Grand Theft Auto V / Enhanced profile into a shared `_GTA_PROFILE`.
+  - Centralize the `UserLocalConfigStore` → `apps` VDF path traversal (duplicated across `get_app_entry`, `get_app_entry_safe`, and the installer's launch-options reader) into a single `get_apps_dict()` helper.
+  - Simplify `NotificationCollector`'s duplicated `__init__`/`start` reset logic into a shared `_reset()`.
+  - Replace the magic `icon` parameter (`1`/`0`/`3`/`None`) on `log_msg` with an explicit `notify` boolean.
+  - Compose the override notification label from a list of active fragments (wayland/battleye/dpi/env) instead of an `elif` chain that silently dropped fragments when several applied at once.
 - **CI**:
   - Narrow the flake8/black `bin/` exclusion in `.pre-commit-config.yaml` to just `bin/steam-optimize` (pending a dedicated formatting pass); `bin/razer_dpi.py` is now PEP8/black-compliant and linted.
 - **Docs**:
@@ -35,6 +42,8 @@ All notable changes to this project will be documented in this file.
   - Fix `bin/comcut` silently continuing after a failed `comskip`/`ffmpeg` invocation, which could produce a corrupted or partial output with no error reported. The relevant calls now abort the script on failure.
   - Fix `bin/comskip.sh` forwarding an unset argument to `comcut` instead of failing with a usage message.
   - Fix `bin/razer_dpi.py` always exiting `0`, even when no compatible mouse was found or every DPI write failed, hiding failures from callers (e.g. a systemd unit). It now exits `1` when nothing succeeded.
+- **Steam-Optimize**:
+  - Fix the `SIGTERM`/`SIGHUP` handler blocking indefinitely if the game process ignored `terminate()`; it now falls back to `kill()` after a 10s timeout.
 
 ### Removed
 

@@ -56,12 +56,19 @@ NVIDIA_ENV_VARS = {
 
 _FORZA_PROFILE = {
     "env": {
-        "VKD3D_CONFIG": "no_upload_hvv,single_queue",
+        # no_upload_hvv: avoids host-visible VRAM uploads (stutter fix on RADV+ReBAR).
+        # single_queue was dropped: it was a hang workaround for old vkd3d-proton
+        # releases and serializes GPU queues, costing performance.
+        "VKD3D_CONFIG": "no_upload_hvv",
         "PROTON_SET_GAME_DRIVE": "1",
-        "WINEDLLOVERRIDES": "winmm=n,b;steam_api64=n,b;version=n,b",
-        "SDL_VIDEODRIVER": "x11"
     },
-    "override_label": "VKD3D tweaks, Game drive, X11 fallback"
+    "override_label": "VKD3D no_upload_hvv, Game drive"
+}
+
+_GTA_PROFILE = {
+    "dpi": 800,
+    "battleye": True,
+    "no_steaminput": True,
 }
 
 GAME_PROFILES = {
@@ -81,15 +88,11 @@ GAME_PROFILES = {
     },
     "271590": {
         "name": "Grand Theft Auto V",
-        "dpi": 800,
-        "battleye": True,
-        "no_steaminput": True,
+        **_GTA_PROFILE,
     },
     "3240220": {
         "name": "Grand Theft Auto V Enhanced",
-        "dpi": 800,
-        "battleye": True,
-        "no_steaminput": True,
+        **_GTA_PROFILE,
     },
     "899770": {
         "name": "Last Epoch",
@@ -148,6 +151,10 @@ def run_silent(cmd):
 class NotificationCollector:
     def __init__(self):
         self.collecting = False
+        self.game_name = "Game"
+        self._reset()
+
+    def _reset(self):
         self.gpu = None
         self.hyprland = None
         self.overrides = None
@@ -155,18 +162,11 @@ class NotificationCollector:
         self.mangohud = False
         self.warnings = []
         self.errors = []
-        self.game_name = "Game"
 
     def start(self, game_name="Game"):
         self.collecting = True
         self.game_name = game_name
-        self.gpu = None
-        self.hyprland = None
-        self.overrides = None
-        self.gamescope = None
-        self.mangohud = False
-        self.warnings = []
-        self.errors = []
+        self._reset()
 
     def add_warning(self, msg):
         if msg not in self.warnings:
@@ -178,7 +178,7 @@ class NotificationCollector:
 
     def get_startup_message(self):
         lines = [f"🎮 Steam Optimize: {self.game_name}", ""]
-        
+
         bullets = []
         if self.gpu:
             bullets.append(f"  • GPU: {self.gpu}")
@@ -190,9 +190,9 @@ class NotificationCollector:
             bullets.append(f"  • Overrides: {self.overrides}")
         if self.mangohud:
             bullets.append("  • HUD: MangoHud (horizontal top bar)")
-        
+
         lines.extend(bullets)
-            
+
         if self.warnings or self.errors:
             lines.append("")
             if self.warnings:
@@ -201,36 +201,35 @@ class NotificationCollector:
             if self.errors:
                 err_msg = "; ".join(self.errors)
                 lines.append(f"  ❌ Error: {err_msg}")
-            
+
         return "\n".join(lines)
 
 collector = NotificationCollector()
 
 # --- Logging ---
 
-def log_msg(level, icon, msg):
+def log_msg(level, msg, notify=True):
     steam_app_id = os.environ.get("SteamAppId", "")
-    tag = "steam-optimize"
-    
+
     log_text = f"{level} [{steam_app_id}] {msg}"
-    run_silent(["logger", "-t", tag, log_text])
-        
-    if icon is None:
+    run_silent(["logger", "-t", "steam-optimize", log_text])
+
+    if not notify:
         return
-        
+
     if collector.collecting:
         if level == "WARN":
             collector.add_warning(msg)
         elif level == "ERROR":
             collector.add_error(msg)
         return
-            
+
     run_silent(["notify-send", "--app-name=steam-optimize", msg])
 
-def log_info_silent(msg): log_msg("INFO", None, msg)
-def log_info(msg):        log_msg("INFO", 1, msg)
-def log_warn(msg):        log_msg("WARN", 0, msg)
-def log_error(msg):       log_msg("ERROR", 3, msg)
+def log_info_silent(msg): log_msg("INFO", msg, notify=False)
+def log_info(msg):        log_msg("INFO", msg)
+def log_warn(msg):        log_msg("WARN", msg)
+def log_error(msg):       log_msg("ERROR", msg)
 
 # --- Global Environment Setup ---
 
@@ -280,7 +279,7 @@ def setup_global_env():
     gamescope_supports_output = check_gamescope_supports_output()
     if not gamescope_supports_output:
         log_warn("Gamescope does not support -O/--prefer-output; monitor pinning will be skipped")
-        
+
     return gamescope_supports_output
 
 # --- Hyprland Integration ---
@@ -289,21 +288,18 @@ def setup_hyprland_env():
     user_id = os.getuid()
     runtime_dir = f"/run/user/{user_id}"
     os.environ["XDG_RUNTIME_DIR"] = runtime_dir
-    
+
     hypr_dir = os.path.join(runtime_dir, "hypr")
     if os.path.isdir(hypr_dir):
-        try:
+        with contextlib.suppress(Exception):
             items = os.listdir(hypr_dir)
             if items:
-                items_with_time = [(os.path.join(hypr_dir, x), x) for x in items]
-                items_with_time.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
-                os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = items_with_time[0][1]
-        except Exception:
-            pass
+                latest = max(items, key=lambda x: os.path.getmtime(os.path.join(hypr_dir, x)))
+                os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = latest
 
 def get_gamescope_args(monitor_selector, gamescope_supports_output):
     args = ["-f", "--force-grab-cursor"]
-    
+
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         collector.gamescope = "Enabled (Default settings)"
         return args
@@ -344,16 +340,12 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     if w and h:
         args = ["-W", str(w), "-H", str(h), "-w", str(w), "-h", str(h)] + args
 
-    r_rate = 0
-    if refresh:
-        r_rate = int(round(refresh))
-        if r_rate > 0:
-            args.append("-r")
-            args.append(str(r_rate))
+    r_rate = int(round(refresh)) if refresh else 0
+    if r_rate > 0:
+        args.extend(["-r", str(r_rate)])
 
     if name and gamescope_supports_output:
-        args.append("-O")
-        args.append(name)
+        args.extend(["-O", name])
 
     # Format gamescope info cleanly
     res_str = f"{w}x{h}" if (w and h) else "auto"
@@ -395,7 +387,7 @@ def hyprland_end():
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         log_info_silent("Restoring Hyprland configuration")
         if not run_silent(["hyprctl", "reload"]):
-            log_msg("ERROR", None, "Failed to reload Hyprland configuration")
+            log_msg("ERROR", "Failed to reload Hyprland configuration", notify=False)
             success = False
         run_silent(["makoctl", "mode", "-s", "default"])
 
@@ -414,7 +406,7 @@ def apply_game_overrides(steam_app_id, game_cmd):
         return game_name, cmd
 
     game_name = profile.get("name", "UnknownGame")
-    
+
     # Apply mouse DPI
     dpi = profile.get("dpi")
     if dpi:
@@ -464,18 +456,18 @@ def apply_game_overrides(steam_app_id, game_cmd):
     # Format notification message
     if "override_label" in profile:
         collector.overrides = profile["override_label"]
-    elif profile.get("wayland"):
-        keep_str = " (SteamInput kept)" if profile.get("keep_steaminput") else ""
-        dpi_str = f", mouse DPI {dpi}" if dpi else ""
-        collector.overrides = f"Wayland{keep_str}{dpi_str}"
-    elif profile.get("battleye"):
-        dpi_str = f", mouse DPI {dpi}" if dpi else ""
-        collector.overrides = f"BattlEye{dpi_str}"
-    elif env_vars:
-        env_keys = ", ".join(env_vars.keys())
-        collector.overrides = f"Env: {env_keys}"
     else:
-        collector.overrides = "Custom config"
+        parts = []
+        if profile.get("wayland"):
+            keep_str = " (SteamInput kept)" if profile.get("keep_steaminput") else ""
+            parts.append(f"Wayland{keep_str}")
+        if profile.get("battleye"):
+            parts.append("BattlEye")
+        if dpi:
+            parts.append(f"mouse DPI {dpi}")
+        if env_vars:
+            parts.append(f"Env: {', '.join(env_vars)}")
+        collector.overrides = ", ".join(parts) if parts else "Custom config"
 
     return game_name, cmd
 
@@ -496,7 +488,7 @@ def find_library_folders(steam_root, vdf_module=None):
     lib_vdf = os.path.join(steam_root, "steamapps", "libraryfolders.vdf")
     if not os.path.isfile(lib_vdf):
         return [steam_root]
-    
+
     folders = []
     if vdf_module:
         try:
@@ -507,7 +499,7 @@ def find_library_folders(steam_root, vdf_module=None):
                     folders.append(v["path"])
         except Exception as e:
             print(f"Warning: Error reading libraryfolders.vdf with vdf module ({e}). Falling back to manual parsing.", file=sys.stderr)
-            
+
     if not folders:
         try:
             with open(lib_vdf, "r", encoding="utf-8") as f:
@@ -518,7 +510,7 @@ def find_library_folders(steam_root, vdf_module=None):
                             folders.append(parts[3])
         except Exception:
             pass
-            
+
     return folders if folders else [steam_root]
 
 def find_battleye_runtime():
@@ -584,47 +576,53 @@ def is_steam_running():
 def shutdown_steam():
     if not is_steam_running():
         return True
-    
+
     print("\n\033[93m⚠️  Steam is currently running.\033[0m")
     print("\033[93mGracefully shutting down Steam to safely modify configurations...\033[0m")
-    
+
     run_silent(["steam", "-shutdown"])
-    
+
     for _ in range(30):
         time.sleep(0.5)
         if not is_steam_running():
             print("\033[92m✓ Steam has been shut down successfully.\033[0m\n")
             return True
-            
+
     print("\033[91mSteam did not shut down in time. Sending termination signal (SIGTERM)...\033[0m")
     run_silent(["pkill", "-x", "steam"])
-        
+
     for _ in range(10):
         time.sleep(0.5)
         if not is_steam_running():
             print("\033[92m✓ Steam has been shut down.\033[0m\n")
             return True
-            
+
     print("\033[91m❌ Unable to shut down Steam. Please close it manually and run the command again.\033[0m")
     return False
 
+_VDF_APPS_PATH = ("UserLocalConfigStore", "Software", "Valve", "Steam", "apps")
+
+def get_apps_dict(config, create=False):
+    """Walks a localconfig VDF down to its 'apps' dict, optionally creating the path."""
+    node = config
+    for key in _VDF_APPS_PATH:
+        node = node.setdefault(key, {}) if create else node.get(key, {})
+        if not isinstance(node, dict):
+            return {}
+    return node
+
 def get_app_entry(config, appid):
     """Retrieves or creates a mutable dictionary for a given AppID in a VDF config."""
-    apps = config.setdefault("UserLocalConfigStore", {}).setdefault("Software", {}).setdefault("Valve", {}).setdefault("Steam", {}).setdefault("apps", {})
+    apps = get_apps_dict(config, create=True)
     entry = apps.setdefault(appid, {})
     if not isinstance(entry, dict):
-        apps[appid] = {}
-        entry = apps[appid]
+        entry = apps[appid] = {}
     return entry
 
 def get_app_entry_safe(config, appid):
     """Safely retrieves a dictionary for a given AppID in a VDF config if it exists."""
-    apps = config.get("UserLocalConfigStore", {}).get("Software", {}).get("Valve", {}).get("Steam", {}).get("apps", {})
-    if apps and isinstance(apps, dict):
-        entry = apps.get(appid)
-        if isinstance(entry, dict):
-            return entry
-    return None
+    entry = get_apps_dict(config).get(appid)
+    return entry if isinstance(entry, dict) else None
 
 def run_installer(script_path):
     # Check if the script is in PATH to warn the user if they can't run it globally
@@ -680,22 +678,13 @@ def run_installer(script_path):
     games_list = sorted(installed_games.items(), key=lambda x: x[1].lower())
     dirty = False
 
+    primary_config = next(iter(vdf_configs.values()))
+
     while True:
         launch_options_by_app = {}
         for appid, _ in games_list:
-            opts = []
-            for path, config in vdf_configs.items():
-                apps = config.get("UserLocalConfigStore", {}).get("Software", {}).get("Valve", {}).get("Steam", {}).get("apps", {})
-                app_data = apps.get(appid, {})
-                if isinstance(app_data, dict) and "LaunchOptions" in app_data:
-                    opts.append(app_data["LaunchOptions"])
-                else:
-                    opts.append("")
-            
-            if len(set(opts)) == 1:
-                launch_options_by_app[appid] = opts[0]
-            else:
-                launch_options_by_app[appid] = opts[0] if opts else ""
+            entry = get_app_entry_safe(primary_config, appid)
+            launch_options_by_app[appid] = entry.get("LaunchOptions", "") if entry else ""
 
         print("\033[2J\033[H", end="", flush=True)
         print("=" * 85)
@@ -707,13 +696,13 @@ def run_installer(script_path):
         for idx, (appid, name) in enumerate(games_list, 1):
             current_options = launch_options_by_app.get(appid, "")
             if current_options == target_option_no_hud:
-                status = f"\033[92m[Optimized (steam-optimize)]\033[0m"
+                status = "\033[92m[Optimized (steam-optimize)]\033[0m"
             elif current_options == target_option_hud:
-                status = f"\033[92m[Optimized + MangoHud]\033[0m"
+                status = "\033[92m[Optimized + MangoHud]\033[0m"
             elif current_options:
                 status = f"\033[93m[Other: {current_options}]\033[0m"
             else:
-                status = f"\033[90m[Not optimized]\033[0m"
+                status = "\033[90m[Not optimized]\033[0m"
 
             print(f"{idx:<4} | {name[:42]:<42} | {appid:<10} | {status}")
 
@@ -757,7 +746,7 @@ def run_installer(script_path):
             mango_choice = input("\nEnable MangoHud for these optimizations? (y/n) [y]: ").strip().lower()
             target_to_use = target_option_no_hud if mango_choice == "n" else target_option_hud
             for appid, _ in games_list:
-                for path, config in vdf_configs.items():
+                for config in vdf_configs.values():
                     get_app_entry(config, appid)["LaunchOptions"] = target_to_use
             dirty = True
             hud_status = "with MangoHud" if target_to_use == target_option_hud else "without MangoHud"
@@ -766,7 +755,7 @@ def run_installer(script_path):
 
         elif choice == "d":
             for appid, _ in games_list:
-                for path, config in vdf_configs.items():
+                for config in vdf_configs.values():
                     entry = get_app_entry_safe(config, appid)
                     if entry and entry.get("LaunchOptions") in (target_option_no_hud, target_option_hud):
                         entry.pop("LaunchOptions", None)
@@ -780,7 +769,7 @@ def run_installer(script_path):
                 current_opts = launch_options_by_app.get(appid, "")
                 if current_opts in (target_option_no_hud, target_option_hud):
                     new_opt = target_option_hud if current_opts == target_option_no_hud else target_option_no_hud
-                    for path, config in vdf_configs.items():
+                    for config in vdf_configs.values():
                         get_app_entry(config, appid)["LaunchOptions"] = new_opt
                     any_changed = True
             if any_changed:
@@ -812,7 +801,7 @@ def run_installer(script_path):
                         new_opt = target_option_no_hud
                         action = "Enabled without MangoHud"
 
-                    for path, config in vdf_configs.items():
+                    for config in vdf_configs.values():
                         if new_opt is None:
                             entry = get_app_entry_safe(config, appid)
                             if entry:
@@ -882,7 +871,7 @@ def parse_args():
     install_mode = False
     mangohud = False
     game_cmd = []
-    
+
     idx = 0
     while idx < len(argv):
         arg = argv[idx]
@@ -912,18 +901,18 @@ def parse_args():
         else:
             game_cmd = argv[idx:]
             break
-            
+
     return install_mode, monitor_selector, mangohud, game_cmd
 
 def main():
     install_mode, monitor_selector, mangohud, game_cmd = parse_args()
-    
+
     script_abs_path = os.path.abspath(sys.argv[0])
-    
+
     if install_mode:
         run_installer(script_abs_path)
         sys.exit(0)
-        
+
     if not game_cmd:
         print("Error: no game command specified", file=sys.stderr)
         usage()
@@ -933,17 +922,17 @@ def main():
 
     gamescope_supports_output = setup_global_env()
     setup_hyprland_env()
-    
+
     if mangohud:
         os.environ["MANGOHUD"] = "1"
         os.environ["MANGOHUD_CONFIG"] = "horizontal,legacy_layout=0,hud_no_margin,font_size=15,background_alpha=0.4,gpu_stats,gpu_temp,cpu_stats,cpu_temp,ram,fps,frame_timing=0,position=top-center"
         log_info("MangoHud enabled with a discrete horizontal top-center layout")
         collector.mangohud = True
-        
+
     steam_app_id = os.environ.get("SteamAppId", "")
     game_name, cmd = apply_game_overrides(steam_app_id, game_cmd)
     collector.game_name = game_name
-    
+
     if cmd and os.path.basename(cmd[0]) != "gamescope":
         if shutil.which("gamescope"):
             gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
@@ -954,7 +943,7 @@ def main():
             collector.gamescope = "Unavailable (not in PATH)"
     else:
         collector.gamescope = "Disabled"
-        
+
     if not shutil.which("game-performance"):
         log_error("game-performance not found in PATH")
         sys.exit(1)
@@ -965,7 +954,11 @@ def main():
         if _game_proc and _game_proc.poll() is None:
             with contextlib.suppress(OSError):
                 _game_proc.terminate()
-            _game_proc.wait()
+            try:
+                _game_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                with contextlib.suppress(OSError):
+                    _game_proc.kill()
         sys.exit(128 + sig)
 
     atexit.register(hyprland_end)
