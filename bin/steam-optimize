@@ -128,7 +128,53 @@ GAME_PROFILES = {
     },
     "2483190": {
         "name": "Forza Horizon 6",
-        **_FORZA_PROFILE,
+        # Steam Input deliberately left enabled: an 8BitDo controller needs
+        # its XInput translation to be recognized by this title, unlike a
+        # genuine Xbox pad. Disabling it (tried once) broke input entirely.
+        # Known limitation: Steam Input doesn't auto-activate for this
+        # shortcut at launch (likely tied to the SteamAppId=480 issue
+        # below), so the controller needs a manual toggle via the Steam
+        # overlay (Shift+Tab -> controller icon) on every launch.
+        # Gamescope produces a black screen with audio still running even
+        # with no forced resolution/output (-f --force-grab-cursor alone is
+        # enough to trigger it), and must be skipped entirely, not just run
+        # minimally. Known tradeoff: without Gamescope, the game's own
+        # exclusive fullscreen doesn't render under Hyprland either; use
+        # windowed mode in-game instead.
+        "no_gamescope": True,
+        "env": {
+            "PROTON_SET_GAME_DRIVE": "1",
+        },
+        # VKD3D_CONFIG must stay fully unset: AMD_ENV_VARS forces
+        # VKD3D_CONFIG=dxr for every AMD game, and FH6 crashes during
+        # CoreCLR startup with dxr, FH5's no_upload_hvv, or the community
+        # enable_experimental_features workaround alike, on every Proton
+        # build tested except proton-cachyos, which already ships the fix
+        # and needs the var left untouched. Requires proton-cachyos.
+        # PROTON_ENABLE_WAYLAND forces Proton's native-Wayland renderer,
+        # which produces a black screen with audio still running for FH6
+        # (same symptom already worked around for DOOM's profile above).
+        # RADV_PERFTEST=nggc,gpl and the Mesa anti-lag layer are experimental
+        # RADV driver features; with no Wine-level error logged during the
+        # black screen, they're the remaining suspects for a silent
+        # driver-side rendering failure.
+        # PROTON_FSR4_*_UPGRADE inject an FSR4 upscaling shim; the flickering
+        # green pixels observed once the game actually rendered match a
+        # known FSR4-shim-on-an-incompatible-title corruption pattern.
+        # PROTON_NO_WM_DECORATION is popped as a fullscreen suspect: with
+        # Gamescope skipped, the game's own fullscreen renders black under
+        # Hyprland, and undecorated-window handling is the remaining
+        # wrapper-controlled variable in that path.
+        "pop_env": [
+            "VKD3D_CONFIG",
+            "PROTON_ENABLE_WAYLAND",
+            "RADV_PERFTEST",
+            "ENABLE_LAYER_MESA_ANTI_LAG",
+            "PROTON_FSR4_RDNA3_UPGRADE",
+            "PROTON_FSR4_UPGRADE",
+            "PROTON_NO_WM_DECORATION",
+        ],
+        "override_label": "Game drive, driver overrides unset, no Gamescope"
     }
 }
 
@@ -208,8 +254,13 @@ collector = NotificationCollector()
 
 # --- Logging ---
 
+# Set by main() when --app-id overrides profile lookup, WITHOUT touching the
+# real SteamAppId env var inherited by the game process: forcing that env
+# var crashed at least one game during startup (see apply_game_overrides).
+_log_app_id_override = None
+
 def log_msg(level, msg, notify=True):
-    steam_app_id = os.environ.get("SteamAppId", "")
+    steam_app_id = _log_app_id_override if _log_app_id_override is not None else os.environ.get("SteamAppId", "")
 
     log_text = f"{level} [{steam_app_id}] {msg}"
     run_silent(["logger", "-t", "steam-optimize", log_text])
@@ -403,7 +454,7 @@ def apply_game_overrides(steam_app_id, game_cmd):
         game_name = f"AppID:{steam_app_id}" if steam_app_id else "UnknownGame"
         log_info("No game-specific overrides; using default settings")
         collector.overrides = "None (Defaults)"
-        return game_name, cmd
+        return game_name, cmd, profile
 
     game_name = profile.get("name", "UnknownGame")
 
@@ -469,7 +520,7 @@ def apply_game_overrides(steam_app_id, game_cmd):
             parts.append(f"Env: {', '.join(env_vars)}")
         collector.overrides = ", ".join(parts) if parts else "Custom config"
 
-    return game_name, cmd
+    return game_name, cmd, profile
 
 # --- Interactive Installer (Factorized) ---
 
@@ -840,6 +891,11 @@ Options:
   -i, --install, --setup    Run the interactive installer to list and configure
                             steam-optimize (and MangoHud) for your games.
   --mangohud                Enable MangoHud with a discrete horizontal top bar.
+  -a, --app-id <id>         Force the Steam AppID used for game-profile lookup.
+                            Useful for non-Steam game shortcuts, where Steam
+                            reports a generic SteamAppId (e.g. 480/Spacewar)
+                            instead of the game's real store AppID.
+  -g, --no-gamescope        Skip the Gamescope wrapper entirely.
   -h, --help                Show this help message and exit
 
 Examples:
@@ -858,6 +914,12 @@ Examples:
   # Use a specific output by name with MangoHud
   {script_name} --monitor DP-1 --mangohud -- %command%
 
+  # Force the game profile for a non-Steam shortcut (real AppID known)
+  {script_name} --app-id 2483190 -- %command%
+
+  # Skip Gamescope entirely (diagnostics)
+  {script_name} --no-gamescope -- %command%
+
 Steam launch option (add before %command%):
   {script_name} -- %command%
 
@@ -870,6 +932,8 @@ def parse_args():
     monitor_selector = "workspace:1"
     install_mode = False
     mangohud = False
+    no_gamescope = False
+    app_id_override = None
     game_cmd = []
 
     idx = 0
@@ -884,12 +948,22 @@ def parse_args():
         elif arg == "--mangohud":
             mangohud = True
             idx += 1
+        elif arg in ("-g", "--no-gamescope"):
+            no_gamescope = True
+            idx += 1
         elif arg in ("-m", "--monitor"):
             if idx + 1 >= len(argv):
                 print("Error: --monitor requires an argument", file=sys.stderr)
                 usage()
                 sys.exit(1)
             monitor_selector = argv[idx + 1]
+            idx += 2
+        elif arg in ("-a", "--app-id"):
+            if idx + 1 >= len(argv):
+                print("Error: --app-id requires an argument", file=sys.stderr)
+                usage()
+                sys.exit(1)
+            app_id_override = argv[idx + 1]
             idx += 2
         elif arg == "--":
             game_cmd = argv[idx + 1:]
@@ -902,10 +976,10 @@ def parse_args():
             game_cmd = argv[idx:]
             break
 
-    return install_mode, monitor_selector, mangohud, game_cmd
+    return install_mode, monitor_selector, mangohud, no_gamescope, app_id_override, game_cmd
 
 def main():
-    install_mode, monitor_selector, mangohud, game_cmd = parse_args()
+    install_mode, monitor_selector, mangohud, no_gamescope, app_id_override, game_cmd = parse_args()
 
     script_abs_path = os.path.abspath(sys.argv[0])
 
@@ -918,6 +992,17 @@ def main():
         usage()
         sys.exit(1)
 
+    if app_id_override:
+        # Non-Steam shortcuts report a generic SteamAppId (e.g. 480/Spacewar).
+        # Only override it for our own profile lookup/log tagging, NOT the
+        # real env var, which the game process inherits. Tried forcing it to
+        # both the real store AppID and the shortcut's own internal AppID:
+        # both crashed a Forza Horizon 6 shortcut during CoreCLR startup, for
+        # a reason still unclear. Any value other than Steam's own default
+        # breaks that game, so don't "fix" this without testing on it.
+        global _log_app_id_override
+        _log_app_id_override = app_id_override
+
     collector.start()
 
     gamescope_supports_output = setup_global_env()
@@ -929,11 +1014,17 @@ def main():
         log_info("MangoHud enabled with a discrete horizontal top-center layout")
         collector.mangohud = True
 
-    steam_app_id = os.environ.get("SteamAppId", "")
-    game_name, cmd = apply_game_overrides(steam_app_id, game_cmd)
+    steam_app_id = app_id_override or os.environ.get("SteamAppId", "")
+    game_name, cmd, profile = apply_game_overrides(steam_app_id, game_cmd)
     collector.game_name = game_name
 
-    if cmd and os.path.basename(cmd[0]) != "gamescope":
+    profile_no_gamescope = bool(profile) and profile.get("no_gamescope", False)
+    no_gamescope = no_gamescope or profile_no_gamescope
+
+    if no_gamescope:
+        reason = "--no-gamescope" if not profile_no_gamescope else "game profile"
+        collector.gamescope = f"Disabled ({reason})"
+    elif cmd and os.path.basename(cmd[0]) != "gamescope":
         if shutil.which("gamescope"):
             gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
             cmd = ["gamescope"] + gs_args + ["--"] + cmd
