@@ -14,6 +14,7 @@ import atexit
 import subprocess
 import contextlib
 import shutil
+import re
 
 # --- Configuration ---
 
@@ -179,18 +180,35 @@ GAME_PROFILES = {
 }
 
 # --- Mouse DPI Tracking ---
-DEFAULT_MOUSE_DPI = 1600
 _dpi_changed = False
+_original_mouse_dpi = None
+_mako_dnd_added = False
 
 # --- Helpers ---
 
 def run_silent(cmd):
-    """Executes a command silently, ignoring output and failures."""
+    """Execute a command silently and return whether it succeeded."""
     try:
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return result.returncode == 0
     except Exception:
         return False
+
+
+def get_current_mouse_dpi():
+    """Return the current DPI reported by razer-cli, or None if unavailable."""
+    try:
+        result = subprocess.run(
+            ["razer-cli", "--dpi", "print"], capture_output=True, text=True
+        )
+    except Exception:
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    values = [int(value) for value in re.findall(r"\bDPI\s*:\s*(\d+)\b", result.stdout, re.I)]
+    return values[0] if values else None
 
 # --- Notification Collector ---
 
@@ -431,16 +449,23 @@ def hyprland_start():
         collector.hyprland = "Optimized (DND active, rendering tweaks failed)"
 
 def hyprland_end():
-    if _dpi_changed:
-        run_silent(["razer-cli", "-d", str(DEFAULT_MOUSE_DPI)])
     success = True
+    if _dpi_changed:
+        if _original_mouse_dpi is None:
+            log_msg("ERROR", "Cannot restore mouse DPI: original value is unknown", notify=False)
+            success = False
+        elif not run_silent(["razer-cli", "-d", str(_original_mouse_dpi)]):
+            log_msg("ERROR", "Failed to restore the original mouse DPI", notify=False)
+            success = False
 
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         log_info_silent("Restoring Hyprland configuration")
         if not run_silent(["hyprctl", "reload"]):
             log_msg("ERROR", "Failed to reload Hyprland configuration", notify=False)
             success = False
-        run_silent(["makoctl", "mode", "-s", "default"])
+        if _mako_dnd_added and not run_silent(["makoctl", "mode", "-r", "dnd"]):
+            log_msg("ERROR", "Failed to restore the previous Mako notification mode", notify=False)
+            success = False
 
     return success
 
@@ -461,8 +486,12 @@ def apply_game_overrides(steam_app_id, game_cmd):
     # Apply mouse DPI
     dpi = profile.get("dpi")
     if dpi:
-        if run_silent(["razer-cli", "-d", str(dpi)]):
-            global _dpi_changed
+        global _dpi_changed, _original_mouse_dpi
+        if _original_mouse_dpi is None:
+            _original_mouse_dpi = get_current_mouse_dpi()
+        if _original_mouse_dpi is None:
+            log_warn("Cannot change mouse DPI: current DPI could not be determined")
+        elif run_silent(["razer-cli", "-d", str(dpi)]):
             _dpi_changed = True
 
     # Apply wayland
@@ -587,6 +616,28 @@ def find_localconfig_paths(steam_root):
                 paths.append(vdf_path)
     return paths
 
+
+def find_active_localconfig_path(steam_root, vdf_module):
+    """Return the localconfig for Steam's most recently used account."""
+    loginusers_path = os.path.join(steam_root, "config", "loginusers.vdf")
+    try:
+        with open(loginusers_path, "r", encoding="utf-8") as f:
+            users = vdf_module.load(f).get("users", {})
+    except Exception:
+        users = {}
+
+    active_ids = [user_id for user_id, data in users.items()
+                  if isinstance(data, dict) and data.get("MostRecent") == "1"]
+    localconfig_paths = find_localconfig_paths(steam_root)
+    for user_id in active_ids:
+        candidate = os.path.join(steam_root, "userdata", user_id, "config", "localconfig.vdf")
+        if candidate in localconfig_paths:
+            return candidate
+
+    if len(localconfig_paths) == 1:
+        return localconfig_paths[0]
+    return None
+
 def get_installed_games(library_folders, vdf_module):
     games = {}
     for folder in library_folders:
@@ -699,21 +750,17 @@ def run_installer(script_path):
         print("\033[91m❌ Error: Unable to find Steam installation folder.\033[0m", file=sys.stderr)
         sys.exit(1)
 
-    localconfig_paths = find_localconfig_paths(steam_root)
-    if not localconfig_paths:
-        print("\033[91m❌ Error: No localconfig.vdf file found in userdata.\033[0m", file=sys.stderr)
-        sys.exit(1)
-
-    if not shutdown_steam():
+    localconfig_path = find_active_localconfig_path(steam_root, vdf_module)
+    if not localconfig_path:
+        print("\033[91m❌ Error: Unable to identify the active Steam account's localconfig.vdf.\033[0m", file=sys.stderr)
         sys.exit(1)
 
     vdf_configs = {}
-    for path in localconfig_paths:
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                vdf_configs[path] = vdf_module.load(f)
-        except Exception as e:
-            print(f"\033[91m❌ Unable to read {path}: {e}\033[0m", file=sys.stderr)
+    try:
+        with open(localconfig_path, "r", encoding="utf-8") as f:
+            vdf_configs[localconfig_path] = vdf_module.load(f)
+    except Exception as e:
+        print(f"\033[91m❌ Unable to read {localconfig_path}: {e}\033[0m", file=sys.stderr)
 
     if not vdf_configs:
         print("\033[91m❌ Error: No localconfig.vdf configuration files could be loaded.\033[0m", file=sys.stderr)
@@ -725,6 +772,9 @@ def run_installer(script_path):
     if not installed_games:
         print("\033[93m⚠️ No installed Steam games detected.\033[0m")
         sys.exit(0)
+
+    if not shutdown_steam():
+        sys.exit(1)
 
     games_list = sorted(installed_games.items(), key=lambda x: x[1].lower())
     dirty = False
@@ -775,6 +825,7 @@ def run_installer(script_path):
         if choice == "s":
             if dirty:
                 print("\nSaving configurations...")
+                save_failed = False
                 for path, config in vdf_configs.items():
                     try:
                         shutil.copy2(path, path + ".bak")
@@ -782,7 +833,11 @@ def run_installer(script_path):
                             vdf_module.dump(config, f, pretty=True)
                         print(f"\033[92m✓ Saved: {path}\033[0m")
                     except Exception as e:
+                        save_failed = True
                         print(f"\033[91m❌ Error saving {path}: {e}\033[0m", file=sys.stderr)
+                if save_failed:
+                    print("\n\033[91m❌ Installation failed; review the errors before restarting Steam.\033[0m", file=sys.stderr)
+                    sys.exit(1)
                 print("\n\033[92m✓ Installation complete! You can now restart Steam.\033[0m")
             else:
                 print("\nNo changes to save.")
@@ -1062,8 +1117,18 @@ def main():
     collector.collecting = False
     log_info(collector.get_startup_message())
 
+    global _mako_dnd_added
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        run_silent(["makoctl", "mode", "-s", "dnd"])
+        try:
+            mode_result = subprocess.run(["makoctl", "mode"], capture_output=True, text=True)
+            current_modes = mode_result.stdout.split() if mode_result.returncode == 0 else []
+        except Exception:
+            current_modes = []
+        if current_modes:
+            if "dnd" not in current_modes:
+                _mako_dnd_added = run_silent(["makoctl", "mode", "-a", "dnd"])
+        else:
+            log_warn("Could not determine the current Mako mode; leaving notifications unchanged")
 
     start_time = int(time.time())
     hypr_success = True
