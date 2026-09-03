@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Hyprlock**: centralize lock-screen palette variables and load dynamic player
+  metadata and artwork only once when the lock screen starts.
 - **Installation**: resolve the Dotbot configuration from the repository path,
   so `install` works when invoked outside the dotfiles directory.
 - **Portability**: stop tracking machine-generated systemd activation links and
