@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Hyprlock**: centralize lock-screen palette variables and load dynamic player
+  metadata and artwork only once when the lock screen starts.
+- **Installation**: resolve the Dotbot configuration from the repository path,
+  so `install` works when invoked outside the dotfiles directory.
+- **Portability**: stop tracking machine-generated systemd activation links and
+  the package-provided `_yay` completion symlink; ignore them when generated
+  locally.
+- **Steam-Optimize**:
+  - Detect failed helper commands instead of treating non-zero exits as
+    successful.
+  - Restore the mouse's detected DPI after a game instead of forcing 1600 DPI.
+  - Limit installer changes to Steam's most recently used account, validate all
+    inputs before shutting Steam down, and report partial save failures.
+  - Preserve the existing Mako notification modes when temporarily enabling
+    do-not-disturb.
+
 ## [v5.5.1](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.1)
 
 ### Changed
