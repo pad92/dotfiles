@@ -5,52 +5,54 @@
 
 # https://notes.depad.fr/linux/2026/05/steam-optimize-le-wrapper-ultime-pour-le-gaming-sous-linux/
 
-import os
-import sys
-import time
-import json
-import signal
 import atexit
-import subprocess
 import contextlib
-import shutil
+import json
+import os
 import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
 
 # --- Configuration ---
 
 # Common environment variables applied to all GPUs
 COMMON_ENV_VARS = {
-    "PROTON_ENABLE_WAYLAND": "1",                 # Enables Wayland support via Proton.
-    "PROTON_NO_WM_DECORATION": "1",               # Disables window manager decorations within Proton.
-    "PROTON_USE_NTSYNC": "1",                     # Uses NTSync for improved input/timing accuracy.
-    "PROTON_XESS_UPGRADE": "1",                   # Enables Proton's XeSS upgrade.
-    "vblank_mode": "0",                           # Disables vertical blanking mode (VSync) for Mesa.
-    "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS": "0",      # Prevents window from minimizing when focus is lost.
+    "PROTON_ENABLE_WAYLAND": "1",  # Enables Wayland support via Proton.
+    "PROTON_NO_WM_DECORATION": "1",  # Disables window manager decorations within Proton.
+    "PROTON_USE_NTSYNC": "1",  # Uses NTSync for improved input/timing accuracy.
+    "PROTON_XESS_UPGRADE": "1",  # Enables Proton's XeSS upgrade.
+    "vblank_mode": "0",  # Disables vertical blanking mode (VSync) for Mesa.
+    "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS": "0",  # Prevents window from minimizing when focus is lost.
 }
 
 # AMD/Radeon specific environment variables
 AMD_ENV_VARS = {
-    "AMD_VULKAN_ICD": "RADV",                     # Sets Vulkan ICD to RADV driver for AMD GPUs.
-    "ENABLE_LAYER_MESA_ANTI_LAG": "1",            # Enables a Mesa anti-lag layer for better performance.
-    "MESA_SHADER_CACHE_MAX_SIZE": "20G",          # Sets the maximum size of the Mesa shader cache (20GB).
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",   # Prevents cleanup of the OpenGL shader disk cache.
-    "PROTON_FSR4_RDNA3_UPGRADE": "1",             # Enables FSR 4 upgrade specifically for RDNA3 hardware.
-    "PROTON_FSR4_UPGRADE": "1",                   # Enables general FSR 4 upgrade support.
-    "RADV_PERFTEST": "nggc,gpl",                  # Enables stable performance features in RADV.
-    "VKD3D_CONFIG": "dxr",                        # Configures VKD3D to use DirectX Ray Tracing (DXR).
+    "AMD_VULKAN_ICD": "RADV",  # Sets Vulkan ICD to RADV driver for AMD GPUs.
+    "ENABLE_LAYER_MESA_ANTI_LAG": "1",  # Enables a Mesa anti-lag layer for better performance.
+    "MESA_SHADER_CACHE_MAX_SIZE": "20G",  # Sets the maximum size of the Mesa shader cache (20GB).
+    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",  # Prevents cleanup of the OpenGL shader disk cache.
+    "PROTON_FSR4_RDNA3_UPGRADE": "1",  # Enables FSR 4 upgrade specifically for RDNA3 hardware.
+    "PROTON_FSR4_UPGRADE": "1",  # Enables general FSR 4 upgrade support.
+    "RADV_PERFTEST": "nggc,gpl",  # Enables stable performance features in RADV.
+    "VKD3D_CONFIG": "dxr",  # Configures VKD3D to use DirectX Ray Tracing (DXR).
 }
 
 # NVIDIA specific environment variables
 NVIDIA_ENV_VARS = {
-    "__GLX_VENDOR_LIBRARY_NAME": "nvidia",        # Forces NVIDIA proprietary OpenGL driver.
-    "__NV_PRIME_RENDER_OFFLOAD": "1",             # Offloads rendering to NVIDIA GPU.
-    "__VK_LAYER_NV_optimus": "NVIDIA_only",       # Vulkan layer for hybrid laptops offloading.
-    "__GL_SHADER_DISK_CACHE": "1",                # Enables OpenGL shader disk cache.
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",   # Prevents cleanup of OpenGL shader cache.
-    "__GL_THREADED_OPTIMIZATIONS": "1",           # Enables threaded optimization for OpenGL.
-    "PROTON_ENABLE_NVAPI": "1",                   # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
-    "PROTON_HIDE_NVIDIA_GPU": "0",                # Exposes NVIDIA GPU (required for NVAPI/DLSS).
-    "__GL_SYNC_TO_VBLANK": "0",                   # Disables VSync for OpenGL applications.
+    "__GLX_VENDOR_LIBRARY_NAME": "nvidia",  # Forces NVIDIA proprietary OpenGL driver.
+    "__NV_PRIME_RENDER_OFFLOAD": "1",  # Offloads rendering to NVIDIA GPU.
+    "__VK_LAYER_NV_optimus": "NVIDIA_only",  # Vulkan layer for hybrid laptops offloading.
+    "__GL_SHADER_DISK_CACHE": "1",  # Enables OpenGL shader disk cache.
+    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",  # Prevents cleanup of OpenGL shader cache.
+    "__GL_THREADED_OPTIMIZATIONS": "1",  # Enables threaded optimization for OpenGL.
+    "PROTON_ENABLE_NVAPI": "1",  # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
+    "PROTON_HIDE_NVIDIA_GPU": "0",  # Exposes NVIDIA GPU (required for NVAPI/DLSS).
+    "__GL_SYNC_TO_VBLANK": "0",  # Disables VSync for OpenGL applications.
 }
 
 # --- Game Profiles (Declarative Overrides Registry) ---
@@ -63,7 +65,7 @@ _FORZA_PROFILE = {
         "VKD3D_CONFIG": "no_upload_hvv",
         "PROTON_SET_GAME_DRIVE": "1",
     },
-    "override_label": "VKD3D no_upload_hvv, Game drive"
+    "override_label": "VKD3D no_upload_hvv, Game drive",
 }
 
 _GTA_PROFILE = {
@@ -117,7 +119,7 @@ GAME_PROFILES = {
         "env": {"mesa_glthread": "true"},
         "pop_env": ["PROTON_ENABLE_WAYLAND"],
         "cmd_args": ["+com_skipIntroVideo", "1", "+set", "m_smooth", "0"],
-        "override_label": "GLThread, Skip intro, VSync off"
+        "override_label": "GLThread, Skip intro, VSync off",
     },
     "13240": {
         "name": "Unreal Tournament GOTY",
@@ -175,8 +177,8 @@ GAME_PROFILES = {
             "PROTON_FSR4_UPGRADE",
             "PROTON_NO_WM_DECORATION",
         ],
-        "override_label": "Game drive, driver overrides unset, no Gamescope"
-    }
+        "override_label": "Game drive, driver overrides unset, no Gamescope",
+    },
 }
 
 # --- Mouse DPI Tracking ---
@@ -186,12 +188,15 @@ _mako_dnd_added = False
 
 # --- Helpers ---
 
+
 def run_silent(cmd):
     """Execute a command silently and return whether it succeeded."""
     try:
-        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        result = subprocess.run(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+        )
         return result.returncode == 0
-    except Exception:
+    except OSError:
         return False
 
 
@@ -199,18 +204,25 @@ def get_current_mouse_dpi():
     """Return the current DPI reported by razer-cli, or None if unavailable."""
     try:
         result = subprocess.run(
-            ["razer-cli", "--dpi", "print"], capture_output=True, text=True
+            ["razer-cli", "--dpi", "print"], capture_output=True, text=True, check=False
         )
-    except Exception:
+    except (OSError, UnicodeError):
         return None
 
     if result.returncode != 0:
         return None
 
-    values = [int(value) for value in re.findall(r"\bDPI\s*:\s*(\d+)\b", result.stdout, re.I)]
+    values = [
+        int(value)
+        for value in re.findall(
+            r"(?:\bDPI\s*:\s*)?\b(\d+)\b", result.stdout, re.IGNORECASE
+        )
+    ]
     return values[0] if values else None
 
+
 # --- Notification Collector ---
+
 
 class NotificationCollector:
     def __init__(self):
@@ -218,14 +230,14 @@ class NotificationCollector:
         self.game_name = "Game"
         self._reset()
 
-    def _reset(self):
-        self.gpu = None
-        self.hyprland = None
-        self.overrides = None
-        self.gamescope = None
+    def _reset(self) -> None:
+        self.gpu: str | None = None
+        self.hyprland: str | None = None
+        self.overrides: str | None = None
+        self.gamescope: str | None = None
         self.mangohud = False
-        self.warnings = []
-        self.errors = []
+        self.warnings: list[str] = []
+        self.errors: list[str] = []
 
     def start(self, game_name="Game"):
         self.collecting = True
@@ -268,6 +280,7 @@ class NotificationCollector:
 
         return "\n".join(lines)
 
+
 collector = NotificationCollector()
 
 # --- Logging ---
@@ -277,8 +290,13 @@ collector = NotificationCollector()
 # var crashed at least one game during startup (see apply_game_overrides).
 _log_app_id_override = None
 
+
 def log_msg(level, msg, notify=True):
-    steam_app_id = _log_app_id_override if _log_app_id_override is not None else os.environ.get("SteamAppId", "")
+    steam_app_id = (
+        _log_app_id_override
+        if _log_app_id_override is not None
+        else os.environ.get("SteamAppId", "")
+    )
 
     log_text = f"{level} [{steam_app_id}] {msg}"
     run_silent(["logger", "-t", "steam-optimize", log_text])
@@ -295,31 +313,48 @@ def log_msg(level, msg, notify=True):
 
     run_silent(["notify-send", "--app-name=steam-optimize", msg])
 
-def log_info_silent(msg): log_msg("INFO", msg, notify=False)
-def log_info(msg):        log_msg("INFO", msg)
-def log_warn(msg):        log_msg("WARN", msg)
-def log_error(msg):       log_msg("ERROR", msg)
+
+def log_info_silent(msg):
+    log_msg("INFO", msg, notify=False)
+
+
+def log_info(msg):
+    log_msg("INFO", msg)
+
+
+def log_warn(msg):
+    log_msg("WARN", msg)
+
+
+def log_error(msg):
+    log_msg("ERROR", msg)
+
 
 # --- Global Environment Setup ---
+
 
 def check_gamescope_supports_output():
     if not shutil.which("gamescope"):
         return False
     try:
-        res = subprocess.run(["gamescope", "--help"], capture_output=True, text=True)
+        res = subprocess.run(
+            ["gamescope", "--help"], capture_output=True, text=True, check=False
+        )
         help_text = res.stdout + res.stderr
         return "--prefer-output" in help_text or " -O" in help_text
-    except Exception:
+    except (OSError, UnicodeError):
         return False
+
 
 def setup_global_env():
     # Raise open file descriptor limit
     try:
         import resource
-        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+        _soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         target = min(1048576, hard)
         resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         log_warn(f"Failed to raise ulimit: {e}")
 
     # Set common variables
@@ -328,13 +363,17 @@ def setup_global_env():
     gpu_detected = False
 
     if os.path.isdir("/sys/module/amdgpu"):
-        log_info("AMD GPU detected (amdgpu module loaded) — applying RADV optimizations")
+        log_info(
+            "AMD GPU detected (amdgpu module loaded) — applying RADV optimizations"
+        )
         os.environ.update(AMD_ENV_VARS)
         gpu_detected = True
         collector.gpu = "AMD (RADV driver)"
 
     if os.path.isdir("/sys/module/nvidia"):
-        log_info("NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations")
+        log_info(
+            "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
+        )
         os.environ.update(NVIDIA_ENV_VARS)
         # Remove Intel Vulkan driver restrictions inherited from UWSM
         os.environ.pop("VK_DRIVER_FILES", None)
@@ -342,16 +381,22 @@ def setup_global_env():
         collector.gpu = "NVIDIA (Proprietary driver)"
 
     if not gpu_detected:
-        log_warn("No specific GPU module (amdgpu/nvidia) detected — using common defaults")
+        log_warn(
+            "No specific GPU module (amdgpu/nvidia) detected — using common defaults"
+        )
         collector.gpu = "Generic (Common defaults)"
 
     gamescope_supports_output = check_gamescope_supports_output()
     if not gamescope_supports_output:
-        log_warn("Gamescope does not support -O/--prefer-output; monitor pinning will be skipped")
+        log_warn(
+            "Gamescope does not support -O/--prefer-output; monitor pinning will be skipped"
+        )
 
     return gamescope_supports_output
 
+
 # --- Hyprland Integration ---
+
 
 def setup_hyprland_env():
     user_id = os.getuid()
@@ -363,8 +408,11 @@ def setup_hyprland_env():
         with contextlib.suppress(Exception):
             items = os.listdir(hypr_dir)
             if items:
-                latest = max(items, key=lambda x: os.path.getmtime(os.path.join(hypr_dir, x)))
+                latest = max(
+                    items, key=lambda x: os.path.getmtime(os.path.join(hypr_dir, x))
+                )
                 os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = latest
+
 
 def get_gamescope_args(monitor_selector, gamescope_supports_output):
     args = ["-f", "--force-grab-cursor"]
@@ -374,12 +422,14 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
         return args
 
     try:
-        res = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True)
+        res = subprocess.run(
+            ["hyprctl", "monitors", "-j"], capture_output=True, text=True, check=False
+        )
         if res.returncode != 0 or not res.stdout:
             collector.gamescope = "Enabled (Default, query failed)"
             return args
         monitors = json.loads(res.stdout)
-    except Exception as e:
+    except (OSError, UnicodeError, json.JSONDecodeError) as e:
         log_warn(f"Failed to query hyprctl: {e}")
         collector.gamescope = "Enabled (Default, query error)"
         return args
@@ -390,14 +440,25 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     elif monitor_selector.startswith("workspace:"):
         try:
             ws_id = int(monitor_selector.split(":")[1])
-            target_monitor = next((m for m in monitors if m.get("activeWorkspace", {}).get("id") == ws_id), None)
-        except Exception:
-            pass
+            target_monitor = next(
+                (
+                    m
+                    for m in monitors
+                    if m.get("activeWorkspace", {}).get("id") == ws_id
+                ),
+                None,
+            )
+        except (ValueError, TypeError, AttributeError) as e:
+            log_warn(f"Failed to select workspace monitor '{monitor_selector}': {e}")
     else:
-        target_monitor = next((m for m in monitors if m.get("name") == monitor_selector), None)
+        target_monitor = next(
+            (m for m in monitors if m.get("name") == monitor_selector), None
+        )
 
     if not target_monitor:
-        log_warn(f"Monitor '{monitor_selector}' not found; using default Gamescope settings.")
+        log_warn(
+            f"Monitor '{monitor_selector}' not found; using default Gamescope settings."
+        )
         collector.gamescope = "Enabled (Default, monitor not found)"
         return args
 
@@ -409,7 +470,7 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     if w and h:
         args = ["-W", str(w), "-H", str(h), "-w", str(w), "-h", str(h)] + args
 
-    r_rate = int(round(refresh)) if refresh else 0
+    r_rate = round(refresh) if refresh else 0
     if r_rate > 0:
         args.extend(["-r", str(r_rate)])
 
@@ -423,6 +484,7 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     collector.gamescope = f"Enabled ({res_str}{ref_str}{out_str})"
 
     return args
+
 
 def hyprland_start():
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -445,16 +507,23 @@ def hyprland_start():
     if run_silent(["hyprctl", "eval", eval_cmd]):
         collector.hyprland = "Optimized (DND, animations/blur disabled)"
     else:
-        log_warn("Failed to apply Hyprland rendering optimizations (hl.config unavailable?)")
+        log_warn(
+            "Failed to apply Hyprland rendering optimizations (hl.config unavailable?)"
+        )
         collector.hyprland = "Optimized (DND active, rendering tweaks failed)"
+
 
 def hyprland_end():
     success = True
     if _dpi_changed:
         if _original_mouse_dpi is None:
-            log_msg("ERROR", "Cannot restore mouse DPI: original value is unknown", notify=False)
+            log_msg(
+                "ERROR",
+                "Cannot restore mouse DPI: original value is unknown",
+                notify=False,
+            )
             success = False
-        elif not run_silent(["razer-cli", "-d", str(_original_mouse_dpi)]):
+        elif not run_silent(["razer-cli", "--dpi", str(_original_mouse_dpi)]):
             log_msg("ERROR", "Failed to restore the original mouse DPI", notify=False)
             success = False
 
@@ -464,12 +533,18 @@ def hyprland_end():
             log_msg("ERROR", "Failed to reload Hyprland configuration", notify=False)
             success = False
         if _mako_dnd_added and not run_silent(["makoctl", "mode", "-r", "dnd"]):
-            log_msg("ERROR", "Failed to restore the previous Mako notification mode", notify=False)
+            log_msg(
+                "ERROR",
+                "Failed to restore the previous Mako notification mode",
+                notify=False,
+            )
             success = False
 
     return success
 
+
 # --- Game Configuration Helpers & Overrides ---
+
 
 def apply_game_overrides(steam_app_id, game_cmd):
     cmd = list(game_cmd)
@@ -491,7 +566,7 @@ def apply_game_overrides(steam_app_id, game_cmd):
             _original_mouse_dpi = get_current_mouse_dpi()
         if _original_mouse_dpi is None:
             log_warn("Cannot change mouse DPI: current DPI could not be determined")
-        elif run_silent(["razer-cli", "-d", str(dpi)]):
+        elif run_silent(["razer-cli", "--dpi", str(dpi)]):
             _dpi_changed = True
 
     # Apply wayland
@@ -507,16 +582,22 @@ def apply_game_overrides(steam_app_id, game_cmd):
         be_path = find_battleye_runtime()
         if not be_path:
             steam_root = find_steam_root()
-            default_root = steam_root if steam_root else os.path.expanduser("~/.local/share/Steam")
-            be_path = os.path.join(default_root, "steamapps", "common", "Proton BattlEye Runtime")
-            log_warn(f"Proton BattlEye Runtime not found in Steam libraries. Falling back to default: {be_path}")
+            default_root = (
+                steam_root if steam_root else os.path.expanduser("~/.local/share/Steam")
+            )
+            be_path = os.path.join(
+                default_root, "steamapps", "common", "Proton BattlEye Runtime"
+            )
+            log_warn(
+                f"Proton BattlEye Runtime not found in Steam libraries. Falling back to default: {be_path}"
+            )
         os.environ["PROTON_BATTLEYE_RUNTIME"] = be_path
         os.environ["PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY"] = "1"
         os.environ["PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC"] = "1"
         log_info(f"Applying BattlEye overrides for {game_name}")
 
     if profile.get("no_steaminput"):
-         os.environ["PROTON_NO_STEAMINPUT"] = "1"
+        os.environ["PROTON_NO_STEAMINPUT"] = "1"
 
     # Environment variables
     env_vars = profile.get("env")
@@ -551,7 +632,9 @@ def apply_game_overrides(steam_app_id, game_cmd):
 
     return game_name, cmd, profile
 
+
 # --- Interactive Installer (Factorized) ---
+
 
 def find_steam_root():
     paths = [
@@ -560,9 +643,12 @@ def find_steam_root():
         os.path.expanduser("~/.steam/root"),
     ]
     for p in paths:
-        if os.path.isdir(p) and os.path.exists(os.path.join(p, "steamapps", "libraryfolders.vdf")):
+        if os.path.isdir(p) and os.path.exists(
+            os.path.join(p, "steamapps", "libraryfolders.vdf")
+        ):
             return p
     return None
+
 
 def find_library_folders(steam_root, vdf_module=None):
     lib_vdf = os.path.join(steam_root, "steamapps", "libraryfolders.vdf")
@@ -574,11 +660,14 @@ def find_library_folders(steam_root, vdf_module=None):
         try:
             with open(lib_vdf, "r", encoding="utf-8") as f:
                 data = vdf_module.load(f)
-            for k, v in data.get("libraryfolders", {}).items():
+            for v in data.get("libraryfolders", {}).values():
                 if "path" in v:
                     folders.append(v["path"])
-        except Exception as e:
-            print(f"Warning: Error reading libraryfolders.vdf with vdf module ({e}). Falling back to manual parsing.", file=sys.stderr)
+        except (OSError, ValueError, SyntaxError, TypeError, AttributeError) as e:
+            print(
+                f"Warning: Error reading libraryfolders.vdf with vdf module ({e}). Falling back to manual parsing.",
+                file=sys.stderr,
+            )
 
     if not folders:
         try:
@@ -588,10 +677,11 @@ def find_library_folders(steam_root, vdf_module=None):
                         parts = line.split('"')
                         if len(parts) >= 4:
                             folders.append(parts[3])
-        except Exception:
-            pass
+        except (OSError, UnicodeError) as e:
+            print(f"Warning: Unable to read {lib_vdf}: {e}", file=sys.stderr)
 
     return folders if folders else [steam_root]
+
 
 def find_battleye_runtime():
     steam_root = find_steam_root()
@@ -603,6 +693,7 @@ def find_battleye_runtime():
         if os.path.isdir(be_path):
             return be_path
     return None
+
 
 def find_localconfig_paths(steam_root):
     userdata_dir = os.path.join(steam_root, "userdata")
@@ -623,20 +714,26 @@ def find_active_localconfig_path(steam_root, vdf_module):
     try:
         with open(loginusers_path, "r", encoding="utf-8") as f:
             users = vdf_module.load(f).get("users", {})
-    except Exception:
+    except (OSError, ValueError, SyntaxError, AttributeError):
         users = {}
 
-    active_ids = [user_id for user_id, data in users.items()
-                  if isinstance(data, dict) and data.get("MostRecent") == "1"]
+    active_ids = [
+        user_id
+        for user_id, data in users.items()
+        if isinstance(data, dict) and data.get("MostRecent") == "1"
+    ]
     localconfig_paths = find_localconfig_paths(steam_root)
     for user_id in active_ids:
-        candidate = os.path.join(steam_root, "userdata", user_id, "config", "localconfig.vdf")
+        candidate = os.path.join(
+            steam_root, "userdata", user_id, "config", "localconfig.vdf"
+        )
         if candidate in localconfig_paths:
             return candidate
 
     if len(localconfig_paths) == 1:
         return localconfig_paths[0]
     return None
+
 
 def get_installed_games(library_folders, vdf_module):
     games = {}
@@ -660,27 +757,37 @@ def get_installed_games(library_folders, vdf_module):
                             "proton",
                             "steamworks",
                             "steamvr",
-                            "steam controller configs"
+                            "steam controller configs",
                         ]
                         if not any(kw in name_lower for kw in exclude_keywords):
                             games[appid] = name
-                except Exception:
-                    pass
+                except (
+                    OSError,
+                    ValueError,
+                    SyntaxError,
+                    TypeError,
+                    AttributeError,
+                ) as e:
+                    print(f"Warning: Unable to read {acf_path}: {e}", file=sys.stderr)
     return games
+
 
 def is_steam_running():
     try:
-        res = subprocess.run(["pgrep", "-x", "steam"], capture_output=True)
+        res = subprocess.run(["pgrep", "-x", "steam"], capture_output=True, check=False)
         return res.returncode == 0
-    except Exception:
+    except OSError:
         return False
+
 
 def shutdown_steam():
     if not is_steam_running():
         return True
 
     print("\n\033[93m⚠️  Steam is currently running.\033[0m")
-    print("\033[93mGracefully shutting down Steam to safely modify configurations...\033[0m")
+    print(
+        "\033[93mGracefully shutting down Steam to safely modify configurations...\033[0m"
+    )
 
     run_silent(["steam", "-shutdown"])
 
@@ -690,7 +797,9 @@ def shutdown_steam():
             print("\033[92m✓ Steam has been shut down successfully.\033[0m\n")
             return True
 
-    print("\033[91mSteam did not shut down in time. Sending termination signal (SIGTERM)...\033[0m")
+    print(
+        "\033[91mSteam did not shut down in time. Sending termination signal (SIGTERM)...\033[0m"
+    )
     run_silent(["pkill", "-x", "steam"])
 
     for _ in range(10):
@@ -699,10 +808,14 @@ def shutdown_steam():
             print("\033[92m✓ Steam has been shut down.\033[0m\n")
             return True
 
-    print("\033[91m❌ Unable to shut down Steam. Please close it manually and run the command again.\033[0m")
+    print(
+        "\033[91m❌ Unable to shut down Steam. Please close it manually and run the command again.\033[0m"
+    )
     return False
 
+
 _VDF_APPS_PATH = ("UserLocalConfigStore", "Software", "Valve", "Steam", "apps")
+
 
 def get_apps_dict(config, create=False):
     """Walks a localconfig VDF down to its 'apps' dict, optionally creating the path."""
@@ -713,6 +826,7 @@ def get_apps_dict(config, create=False):
             return {}
     return node
 
+
 def get_app_entry(config, appid):
     """Retrieves or creates a mutable dictionary for a given AppID in a VDF config."""
     apps = get_apps_dict(config, create=True)
@@ -721,10 +835,40 @@ def get_app_entry(config, appid):
         entry = apps[appid] = {}
     return entry
 
+
 def get_app_entry_safe(config, appid):
     """Safely retrieves a dictionary for a given AppID in a VDF config if it exists."""
     entry = get_apps_dict(config).get(appid)
     return entry if isinstance(entry, dict) else None
+
+
+def save_vdf_config(path, config, vdf_module):
+    """Back up and atomically replace a Steam VDF configuration file."""
+    directory = os.path.dirname(path)
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    temporary_path = None
+    try:
+        shutil.copy2(path, path + ".bak")
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=directory,
+            prefix=".localconfig.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = temporary_file.name
+            vdf_module.dump(config, temporary_file, pretty=True)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.chmod(temporary_path, mode)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(temporary_path)
+
 
 def run_installer(script_path):
     # Check if the script is in PATH to warn the user if they can't run it globally
@@ -732,13 +876,18 @@ def run_installer(script_path):
     is_in_path = shutil.which(script_name) is not None
     if not is_in_path:
         print(f"\033[93m⚠️  Warning: '{script_name}' is not in your PATH.\033[0m")
-        print(f"\033[93m   To launch it globally, consider adding its directory to your PATH:")
-        print(f"   export PATH=\"{os.path.dirname(script_path)}:$PATH\"\033[0m\n")
+        print(
+            "\033[93m   To launch it globally, consider adding its directory to your PATH:"
+        )
+        print(f'   export PATH="{os.path.dirname(script_path)}:$PATH"\033[0m\n')
 
     try:
         import vdf as vdf_module
     except ImportError:
-        print("Error: The python 'vdf' module is required for the installer.", file=sys.stderr)
+        print(
+            "Error: The python 'vdf' module is required for the installer.",
+            file=sys.stderr,
+        )
         print("Please install it with: pip install vdf", file=sys.stderr)
         sys.exit(1)
 
@@ -747,23 +896,34 @@ def run_installer(script_path):
 
     steam_root = find_steam_root()
     if not steam_root:
-        print("\033[91m❌ Error: Unable to find Steam installation folder.\033[0m", file=sys.stderr)
+        print(
+            "\033[91m❌ Error: Unable to find Steam installation folder.\033[0m",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     localconfig_path = find_active_localconfig_path(steam_root, vdf_module)
     if not localconfig_path:
-        print("\033[91m❌ Error: Unable to identify the active Steam account's localconfig.vdf.\033[0m", file=sys.stderr)
+        print(
+            "\033[91m❌ Error: Unable to identify the active Steam account's localconfig.vdf.\033[0m",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     vdf_configs = {}
     try:
         with open(localconfig_path, "r", encoding="utf-8") as f:
             vdf_configs[localconfig_path] = vdf_module.load(f)
-    except Exception as e:
-        print(f"\033[91m❌ Unable to read {localconfig_path}: {e}\033[0m", file=sys.stderr)
+    except (OSError, ValueError, SyntaxError) as e:
+        print(
+            f"\033[91m❌ Unable to read {localconfig_path}: {e}\033[0m", file=sys.stderr
+        )
 
     if not vdf_configs:
-        print("\033[91m❌ Error: No localconfig.vdf configuration files could be loaded.\033[0m", file=sys.stderr)
+        print(
+            "\033[91m❌ Error: No localconfig.vdf configuration files could be loaded.\033[0m",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     library_folders = find_library_folders(steam_root, vdf_module)
@@ -785,13 +945,17 @@ def run_installer(script_path):
         launch_options_by_app = {}
         for appid, _ in games_list:
             entry = get_app_entry_safe(primary_config, appid)
-            launch_options_by_app[appid] = entry.get("LaunchOptions", "") if entry else ""
+            launch_options_by_app[appid] = (
+                entry.get("LaunchOptions", "") if entry else ""
+            )
 
         print("\033[2J\033[H", end="", flush=True)
         print("=" * 85)
         print(f"\033[1;96m{'STEAM-OPTIMIZE INTERACTIVE CONFIGURATOR':^85}\033[0m")
         print("=" * 85)
-        print(f"{'#':<4} | {'Game Name':<42} | {'AppID':<10} | {'Launch Options / Status'}")
+        print(
+            f"{'#':<4} | {'Game Name':<42} | {'AppID':<10} | {'Launch Options / Status'}"
+        )
         print("-" * 85)
 
         for idx, (appid, name) in enumerate(games_list, 1):
@@ -809,10 +973,14 @@ def run_installer(script_path):
 
         print("-" * 85)
         print("\033[1mOptions:\033[0m")
-        print("  \033[96m[t]\033[0m     Toggle optimization for a specific game (Cycles: Off -> On -> On + MangoHud)")
+        print(
+            "  \033[96m[t]\033[0m     Toggle optimization for a specific game (Cycles: Off -> On -> On + MangoHud)"
+        )
         print("  \033[96m[e]\033[0m     Enable optimization for ALL games")
         print("  \033[96m[d]\033[0m     Disable/Remove optimization for ALL games")
-        print("  \033[96m[m]\033[0m     Toggle MangoHud for all currently optimized games")
+        print(
+            "  \033[96m[m]\033[0m     Toggle MangoHud for all currently optimized games"
+        )
         print("  \033[96m[s]\033[0m     Save changes and exit")
         print("  \033[96m[c]\033[0m     Cancel and exit without saving")
         print("=" * 85)
@@ -828,17 +996,24 @@ def run_installer(script_path):
                 save_failed = False
                 for path, config in vdf_configs.items():
                     try:
-                        shutil.copy2(path, path + ".bak")
-                        with open(path, "w", encoding="utf-8") as f:
-                            vdf_module.dump(config, f, pretty=True)
+                        save_vdf_config(path, config, vdf_module)
                         print(f"\033[92m✓ Saved: {path}\033[0m")
-                    except Exception as e:
+                    # Any serializer failure must report an unsuccessful save.
+                    except Exception as e:  # noqa: BLE001
                         save_failed = True
-                        print(f"\033[91m❌ Error saving {path}: {e}\033[0m", file=sys.stderr)
+                        print(
+                            f"\033[91m❌ Error saving {path}: {e}\033[0m",
+                            file=sys.stderr,
+                        )
                 if save_failed:
-                    print("\n\033[91m❌ Installation failed; review the errors before restarting Steam.\033[0m", file=sys.stderr)
+                    print(
+                        "\n\033[91m❌ Installation failed; review the errors before restarting Steam.\033[0m",
+                        file=sys.stderr,
+                    )
                     sys.exit(1)
-                print("\n\033[92m✓ Installation complete! You can now restart Steam.\033[0m")
+                print(
+                    "\n\033[92m✓ Installation complete! You can now restart Steam.\033[0m"
+                )
             else:
                 print("\nNo changes to save.")
             break
@@ -849,13 +1024,23 @@ def run_installer(script_path):
 
         elif choice == "e":
             # Prompt the user to choose if they want to enable MangoHud for all games
-            mango_choice = input("\nEnable MangoHud for these optimizations? (y/n) [y]: ").strip().lower()
-            target_to_use = target_option_no_hud if mango_choice == "n" else target_option_hud
+            mango_choice = (
+                input("\nEnable MangoHud for these optimizations? (y/n) [y]: ")
+                .strip()
+                .lower()
+            )
+            target_to_use = (
+                target_option_no_hud if mango_choice == "n" else target_option_hud
+            )
             for appid, _ in games_list:
                 for config in vdf_configs.values():
                     get_app_entry(config, appid)["LaunchOptions"] = target_to_use
             dirty = True
-            hud_status = "with MangoHud" if target_to_use == target_option_hud else "without MangoHud"
+            hud_status = (
+                "with MangoHud"
+                if target_to_use == target_option_hud
+                else "without MangoHud"
+            )
             print(f"\nEnabled for all games ({hud_status}).")
             time.sleep(1)
 
@@ -863,7 +1048,10 @@ def run_installer(script_path):
             for appid, _ in games_list:
                 for config in vdf_configs.values():
                     entry = get_app_entry_safe(config, appid)
-                    if entry and entry.get("LaunchOptions") in (target_option_no_hud, target_option_hud):
+                    if entry and entry.get("LaunchOptions") in (
+                        target_option_no_hud,
+                        target_option_hud,
+                    ):
                         entry.pop("LaunchOptions", None)
             dirty = True
             print("\nDisabled for all games.")
@@ -874,7 +1062,11 @@ def run_installer(script_path):
             for appid, _ in games_list:
                 current_opts = launch_options_by_app.get(appid, "")
                 if current_opts in (target_option_no_hud, target_option_hud):
-                    new_opt = target_option_hud if current_opts == target_option_no_hud else target_option_no_hud
+                    new_opt = (
+                        target_option_hud
+                        if current_opts == target_option_no_hud
+                        else target_option_no_hud
+                    )
                     for config in vdf_configs.values():
                         get_app_entry(config, appid)["LaunchOptions"] = new_opt
                     any_changed = True
@@ -928,7 +1120,9 @@ def run_installer(script_path):
             print("\nInvalid option. Please try again.")
             time.sleep(1)
 
+
 # --- Usage & Main ---
+
 
 def usage():
     script_name = os.path.basename(sys.argv[0])
@@ -982,6 +1176,7 @@ Logs:
   journalctl -t steam-optimize -f"""
     print(help_text)
 
+
 def parse_args():
     argv = sys.argv[1:]
     monitor_selector = "workspace:1"
@@ -1021,7 +1216,7 @@ def parse_args():
             app_id_override = argv[idx + 1]
             idx += 2
         elif arg == "--":
-            game_cmd = argv[idx + 1:]
+            game_cmd = argv[idx + 1 :]
             break
         elif arg.startswith("-"):
             print(f"Error: unknown option '{arg}'", file=sys.stderr)
@@ -1031,10 +1226,25 @@ def parse_args():
             game_cmd = argv[idx:]
             break
 
-    return install_mode, monitor_selector, mangohud, no_gamescope, app_id_override, game_cmd
+    return (
+        install_mode,
+        monitor_selector,
+        mangohud,
+        no_gamescope,
+        app_id_override,
+        game_cmd,
+    )
+
 
 def main():
-    install_mode, monitor_selector, mangohud, no_gamescope, app_id_override, game_cmd = parse_args()
+    (
+        install_mode,
+        monitor_selector,
+        mangohud,
+        no_gamescope,
+        app_id_override,
+        game_cmd,
+    ) = parse_args()
 
     script_abs_path = os.path.abspath(sys.argv[0])
 
@@ -1065,7 +1275,9 @@ def main():
 
     if mangohud:
         os.environ["MANGOHUD"] = "1"
-        os.environ["MANGOHUD_CONFIG"] = "horizontal,legacy_layout=0,hud_no_margin,font_size=15,background_alpha=0.4,gpu_stats,gpu_temp,cpu_stats,cpu_temp,ram,fps,frame_timing=0,position=top-center"
+        os.environ["MANGOHUD_CONFIG"] = (
+            "horizontal,legacy_layout=0,hud_no_margin,font_size=15,background_alpha=0.4,gpu_stats,gpu_temp,cpu_stats,cpu_temp,ram,fps,frame_timing=0,position=top-center"
+        )
         log_info("MangoHud enabled with a discrete horizontal top-center layout")
         collector.mangohud = True
 
@@ -1120,21 +1332,36 @@ def main():
     global _mako_dnd_added
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         try:
-            mode_result = subprocess.run(["makoctl", "mode"], capture_output=True, text=True)
-            current_modes = mode_result.stdout.split() if mode_result.returncode == 0 else []
-        except Exception:
+            mode_result = subprocess.run(
+                ["makoctl", "mode"], capture_output=True, text=True, check=False
+            )
+            current_modes = (
+                mode_result.stdout.split() if mode_result.returncode == 0 else []
+            )
+        except (OSError, UnicodeError):
             current_modes = []
         if current_modes:
             if "dnd" not in current_modes:
                 _mako_dnd_added = run_silent(["makoctl", "mode", "-a", "dnd"])
         else:
-            log_warn("Could not determine the current Mako mode; leaving notifications unchanged")
+            log_warn(
+                "Could not determine the current Mako mode; leaving notifications unchanged"
+            )
 
     start_time = int(time.time())
     hypr_success = True
     game_rc = 1
     try:
-        _game_proc = subprocess.Popen(["systemd-inhibit", "--what=idle", "--who=steam-optimize", "--why=Steam game running", "game-performance"] + cmd)
+        _game_proc = subprocess.Popen(
+            [
+                "systemd-inhibit",
+                "--what=idle",
+                "--who=steam-optimize",
+                "--why=Steam game running",
+                "game-performance",
+            ]
+            + cmd
+        )
         game_rc = _game_proc.wait()
     finally:
         hypr_success = hyprland_end()
@@ -1148,7 +1375,7 @@ def main():
         end_lines = [
             f"🎮 Steam Optimize: {game_name}",
             "",
-            f"  • Session ended (play time: {duration})"
+            f"  • Session ended (play time: {duration})",
         ]
         if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
             if hypr_success:
@@ -1159,6 +1386,7 @@ def main():
         log_info("\n".join(end_lines))
 
     sys.exit(game_rc)
+
 
 if __name__ == "__main__":
     main()

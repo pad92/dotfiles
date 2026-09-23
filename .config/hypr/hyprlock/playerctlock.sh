@@ -12,8 +12,7 @@ else
     mkdir -p "$ART_DIR"
     chmod 700 "$ART_DIR"
 fi
-ART_FILE="$ART_DIR/mpris_artUrl"
-RESIZED_ART_FILE="$ART_DIR/mpris_artUrl_resized"
+
 
 # Function to get metadata using playerctl
 get_metadata()
@@ -25,12 +24,12 @@ get_metadata()
 # Function to determine the source and return an icon and text
 get_source_info()
 {
-    trackid=$(get_metadata "mpris:trackid")
-    if [[ "$trackid" == *"firefox"* ]]; then
-        echo -e "Firefox  "
-    elif [[ "$trackid" == *"spotify"* ]]; then
+    player_name=$(get_metadata "playerName")
+    if [[ "$player_name" == *"firefox"* ]]; then
+        echo -e "Firefox  "
+    elif [[ "$player_name" == *"spotify"* ]]; then
         echo -e "Spotify  "
-    elif [[ "$trackid" == *"chromium"* ]]; then
+    elif [[ "$player_name" == *"chromium"* ]]; then
         echo -e "Chrome  "
     else
         echo ""
@@ -48,29 +47,50 @@ case "$1" in
         fi
         ;;
     --arturl)
-        url=$(get_metadata "mpris:artUrl")
+        empty_file="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/empty.png"
+        url=$(get_metadata "mpris:artUrl") || url=""
         if [ -z "$url" ]; then
-            echo ""
-            [ -f "$ART_FILE" ] && rm -f "$ART_FILE"
-            [ -f "$RESIZED_ART_FILE" ] && rm -f "$RESIZED_ART_FILE"
+            echo "$empty_file"
+            exit 0
+        fi
+
+        # A URL-specific filename keeps concurrent requests from mixing cache entries.
+        cache_key=$(printf '%s' "$url" | sha256sum) || { echo "$empty_file"; exit 0; }
+        art_file="$ART_DIR/mpris_artUrl_${cache_key%% *}.png"
+        if [ -s "$art_file" ]; then
+            echo "$art_file"
+            exit 0
+        fi
+
+        work_dir=$(mktemp -d "$ART_DIR/mpris_artUrl.XXXXXXXXXX") || { echo "$empty_file"; exit 0; }
+        trap 'rm -rf -- "$work_dir"' EXIT
+        trap 'exit 1' HUP INT TERM
+        if [[ "$url" == file://* ]]; then
+            url=${url#file://}
+        elif [[ "$url" == https://* || "$url" == http://* ]]; then
+            if ! curl -fsSL --max-time 5 "$url" -o "$work_dir/download"; then
+                echo "$empty_file"
+                exit 0
+            fi
+            url="$work_dir/download"
+        fi
+
+        if command -v magick >/dev/null 2>&1; then
+            converter=magick
+        elif command -v convert >/dev/null 2>&1; then
+            converter=convert
         else
-            if [[ "$url" == file://* ]]; then
-                url=${url#file://}
-            elif [[ "$url" == https://* ]]; then
-                if curl -fsSL --max-time 5 "${url}" -o "$ART_FILE"; then
-                    url="$ART_FILE"
-                else
-                    echo ""
-                    exit 0
-                fi
-            fi
+            echo "$empty_file"
+            exit 0
+        fi
 
-            # Resize image to fit hyprlock display requirements (150px smallest dimension)
-            if command -v convert >/dev/null 2>&1; then
-                convert "$url" -resize 150x150^ -gravity center -crop 150x150+0+0 "$RESIZED_ART_FILE" 2>/dev/null && url="$RESIZED_ART_FILE"
-            fi
-
-            echo "$url"
+        # Only publish complete ONGs; temporary files stay on the same filesystem.
+        if "$converter" "$url" -resize 150x150^ -gravity center -crop 150x150+0+0 +repage "PNG:$work_dir/art.png" 2>/dev/null \
+            && [ -s "$work_dir/art.png" ] \
+            && mv -f -- "$work_dir/art.png" "$art_file"; then
+            echo "$art_file"
+        else
+            echo "$empty_file"
         fi
         ;;
     --artist)

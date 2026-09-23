@@ -1,276 +1,274 @@
 # My Dotfiles
 
-Configuration files for the systems and environments I actually use, on a modern Linux desktop.
+My Linux desktop configuration, primarily for Arch Linux and CachyOS: Hyprland,
+Zsh, Neovim, Alacritty, and tmux, with Waybar and Mako.
 
-![Hyprland desktop — Neovim, Waybar & Fastfetch on CachyOS](./dist/hyprland.webp)
+![Hyprland desktop with Neovim, Waybar and Fastfetch on CachyOS](./dist/hyprland.webp)
+
+[Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) · [Arch installation guide](./dist/arch/install.md)
 
 ## Installation
 
-For the latest updates, check the [Changelog](./CHANGELOG.md).
-You can also download the current version directly from [here](https://gitlab.com/pad92/dotfiles/-/releases).
+```sh
+git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+./install
+```
 
-### Full Setup
+The interactive installer lets you choose package groups such as fonts,
+Hyprland, Nvidia, and Steam. It skips installed packages and configures `yay`
+or `paru` for AUR dependencies.
 
-This repository provides automated installation workflows tailored per operating system:
-
-- **Arch Linux & CachyOS (Primary)**: Runs the interactive setup manager.
-  ```sh
-  git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
-  cd ~/.dotfiles
-  ./install
-  ```
-  > [!TIP]
-  > The interactive manager presents a menu to select package suites (Base, Fonts, GTK, Hyprland, Nvidia, Steam, etc.). It skips already-installed packages and configures `yay` or `paru` for AUR dependencies.
-
-### Editor Only
-
-- To set up the editor configuration without installing the full suite:
+For the editor configuration only:
 
 ```sh
 curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
 ```
 
-- **Quick Install**: You can download the pre-packaged configuration from the [Artifacts](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim).
+A [packaged editor configuration](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim)
+is also available.
 
 ## Customization
 
-To adapt this dotfiles collection to your own system, adjust the following key configuration files:
+Set your Git identity in `~/.gitconfig.local`, which [`.gitconfig`](./.gitconfig)
+includes without tracking it:
 
-### Git Identity
+```ini
+[user]
+    name = Your Name
+    email = your.email@example.com
+    signingkey = your_ssh_or_gpg_key
+```
 
-- **`~/.gitconfig.local`** _(Not tracked, created locally)_: Define your personal Git credentials here. It is automatically imported by the main [`.gitconfig`](./.gitconfig):
-  ```ini
-  [user]
-      name = Your Name
-      email = your.email@example.com
-      signingkey = your_ssh_or_gpg_key
-  ```
+| Configuration                                                              | What to change                                                      |
+| :------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| [`.zshrc`](./.zshrc), [`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)     | Shell environment, plugins, and aliases                             |
+| [`.config/uwsm/env`](./.config/uwsm/env)                                   | Wayland session environment and GPU settings                        |
+| [`.config/hypr/`](./.config/hypr/)                                         | Bindings, window rules, and `hosts/<hostname>.lua` hardware layouts |
+| [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf)                      | Toolkit colors, fonts, GTK/icon themes, and geometry                |
+| [`.config/waybar/`](./.config/waybar/)                                     | Status bar, including per-host configurations                       |
+| [`.config/alacritty/`](./.config/alacritty/), [`.tmux.conf`](./.tmux.conf) | Terminal appearance and tmux bindings                               |
+| [`.config/nvim/`](./.config/nvim/), [`.vimrc`](./.vimrc)                   | Editor settings and plugins                                         |
+| `~/.local/share/backgrounds/`                                              | Images for wallpaper rotation                                       |
 
-### Shell & Environment (Zsh)
+Shell settings include `LANG`, `EDITOR`, and the Oh My Zsh plugin list. The UWSM
+environment defines `BROWSER`, `TERMINAL`, `XCURSOR_THEME`, and host-specific GPU
+settings such as `AQ_DRM_DEVICES` and Vulkan drivers. Hyprland host files define
+monitor layouts and workspace mappings; Waybar uses `config.PadsTower` and
+`config.PadsP5560` for different hardware.
 
-- **[`.zshrc`](./.zshrc)**: Adjust primary shell configurations (e.g., local language `LANG`, default editor `EDITOR`, and the active Oh My Zsh `plugins` list).
-- **[`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)**: Add, edit, or remove terminal aliases to fit your workflow.
+Alacritty settings cover fonts, spacing, opacity, and colors. For Hyprland Lua
+validation and completion, see `.config/hypr/.luarc.json`. Under UWSM,
+`ELECTRON_OZONE_PLATFORM_HINT=auto` handles Electron's platform selection;
+`~/.config/electron-flags.conf` is a placeholder for editor-specific flags.
 
-### Wayland & Hyprland Session
+## Shell and editors
 
-- **[`.config/uwsm/env`](./.config/uwsm/env)**: Manage global environment variables for the Wayland session (e.g., default browser `BROWSER`, default terminal `TERMINAL`, and default cursor theme `XCURSOR_THEME`) and set hostname-specific GPU/driver optimizations (such as `AQ_DRM_DEVICES` or Vulkan driver settings).
-- **`.config/hypr/`**: Adjust window manager bindings, window rules, and look-and-feel preferences (Lua). Host-specific hardware layouts (monitors, workspace mappings, GPU overrides) are loaded from `hosts/<hostname>.lua`. Waybar also uses per-host configs (`config.PadsTower`, `config.PadsP5560`) to adapt modules to available hardware.
-- **`~/.local/share/backgrounds/`**: Add your custom wallpaper image files here to integrate with desktop slideshow/randomizer scripts.
+Zsh uses Oh My Zsh with `docker`, `ansible`, `git`, `vscode`, and `thefuck`, plus
+autosuggestions and syntax highlighting. It also configures history, prompt
+themes, and `$HOME/.bin` in `PATH`.
 
-### Terminals & Tools
+### Custom aliases and functions
 
-- **`.config/alacritty/`**: Customize the Alacritty terminal's font, window spacing, opacity, and color palette.
-- **[`.tmux.conf`](./.tmux.conf)**: Customize keys and options for your Tmux workspace.
-- **[`.config/nvim/`](./.config/nvim/)**: Neovim configuration written from scratch in Lua.
-- **[`.vimrc`](./.vimrc)**: Adjust keybindings and plugin preferences for Vim.
-- **`~/.config/electron-flags.conf`**: Placeholder for Electron-based editors (VS Code, Codium, Antigravity IDE). Under UWSM, `ELECTRON_OZONE_PLATFORM_HINT=auto` is exported globally so no flags are needed.
-- **`.config/hypr/.luarc.json`**: Project-specific Lua environment settings for Hyprland Lua validation and autocompletion.
+Aliases live in [`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh), and shell
+functions load from [`zsh/functions/`](./zsh/functions/).
 
-## Core Tooling
+| Alias                            | Command                                 |
+| :------------------------------- | :-------------------------------------- |
+| `terraform`                      | `tofu`, when available                  |
+| `mediasync`                      | Home media server sync script           |
+| `backup`                         | `~/.dotfiles/bin/backup.sh`             |
+| `steam-opt`                      | `steam-optimize`                        |
+| `mirrored`, `mirrors`, `mirrora` | `mirror` sorted by delay, score, or age |
 
-### Shell (Zsh)
+Common functions:
 
-Zsh, configured for daily use:
+| Command                                      | Purpose                                                                                  |
+| :------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| `arch_update`                                | Run `yay -Syu --devel`, firmware checks, Flatpak updates, and orphan/cache cleanup       |
+| `clean_arch`                                 | Remove orphan packages, clean pacman/yay caches, and find `.pacnew` / `.pacsave` files   |
+| `mirror [delay\|score\|age]`                 | Select and rank French Arch mirrors with `reflector`                                     |
+| `extract <file>`                             | Unpack archives including `.tar.bz2`, `.tgz`, `.zip`, `.rar`, and `.7z`                  |
+| `gpg-encrypt <file/dir>` / `gpge`            | Encrypt files or directories recursively; prompt for the GPG email                       |
+| `gpg-decrypt <file/dir>` / `gpgd`            | Decrypt files or directories and extract `.tar.gz.gpg` / `.tgz.gpg` archives             |
+| `md5`, `sha1`, `sha256`, `sha512` `<string>` | Hash a string with OpenSSL                                                               |
+| `ssh-copy-agent-keys [user@host]`            | Select keys from `ssh-agent` and add them to remote `authorized_keys` without duplicates |
+| `ip_a`, `ip_l`, `ip_p`                       | Show all, local, or public IP information                                                |
+| `curl_time <url>`                            | Measure DNS, connection, first-byte, and total HTTP timings                              |
+| `meteo`                                      | Show the weather through `wttr.in`                                                       |
+| `transfer <file>`                            | Upload to `transfer.sh` and return a shareable URL                                       |
+| `youtubeEncode <file>`                       | Encode video with `libx264` and AAC for YouTube                                          |
+| `radio`                                      | Listen to radio from the terminal                                                        |
+| `calc "<expr>"`                              | Evaluate expressions with `bc`                                                           |
+| `src`                                        | Reload the shell configuration                                                           |
 
-- **Plugins**: Uses `oh-my-zsh` with `docker`, `ansible`, `git`, `vscode`, `thefuck`, and syntax highlighting/autosuggestions.
-- **Customization**: History management, custom prompt themes, and path exports for custom binaries (`$HOME/.bin`).
+Maintenance functions live in `arch.zsh`; archive and encryption helpers live
+in `archive.zsh` and `crypt.zsh`. The GPG helpers preserve modification times
+and offer to delete source files. Encryption uses `--trust-model always`;
+decryption also restores timestamps when extracting archives.
 
-#### Zsh Keyboard Shortcuts
+### Shell shortcuts
 
-Configured in `zsh/init/key-bindings.zsh`:
+Configured in [`zsh/init/key-bindings.zsh`](./zsh/init/key-bindings.zsh):
 
-| Shortcut                    | Action           | Description                                       |
-| :-------------------------- | :--------------- | :------------------------------------------------ |
-| `Ctrl + R`                  | History Search   | Search backward incrementally in history          |
-| `Ctrl + X, Ctrl + E`        | Edit Command     | Edit current command line in `$EDITOR` (Vim)      |
-| `Ctrl + Left`               | Back Word        | Move cursor backward one word                     |
-| `Ctrl + Right`              | Forward Word     | Move cursor forward one word                      |
-| `Alt + L` (Esc + L)         | Quick `ls`       | Run the `ls` command immediately                  |
-| `Alt + W` (Esc + W)         | Kill Region      | Cut/delete text from the cursor to the mark       |
-| `Alt + M`                   | Copy Shell Word  | Copy the previous word on the command line        |
-| `Up Arrow` (after typing)   | Fuzzy Search     | Search history forward matching the typed prefix  |
-| `Down Arrow` (after typing) | Fuzzy Search     | Search history backward matching the typed prefix |
-| `PageUp` / `PageDown`       | History Navigate | Move up/down through history lines                |
-| `Home` / `End`              | Line Navigation  | Go to the beginning/end of the line               |
-| `Shift + Tab`               | Reverse Complete | Navigate backwards in the autocompletion menu     |
-| `Space`                     | Magic Space      | Perform history expansion when pressing space     |
+| Shortcut               | Action                               |
+| :--------------------- | :----------------------------------- |
+| `Ctrl+R`               | Search backward through history      |
+| `Ctrl+X Ctrl+E`        | Edit the command in `$EDITOR`        |
+| `Ctrl+Left/Right`      | Move by word                         |
+| `Alt+L` (`Esc L`)      | Run `ls`                             |
+| `Alt+W` (`Esc W`)      | Cut text between the cursor and mark |
+| `Alt+M`                | Copy the previous shell word         |
+| `Up/Down` after typing | Search history by the typed prefix   |
+| `PageUp/PageDown`      | Navigate history                     |
+| `Home/End`             | Move to the start/end of the line    |
+| `Shift+Tab`            | Cycle completion backward            |
+| `Space`                | Expand history references            |
 
-#### Custom Aliases & Functions
+### Follow several logs
 
-Aliases and shell functions defined in `zsh/init/aliases.zsh` and autoloaded from `zsh/functions/`:
+[`mtail`](./zsh/functions/mtail.zsh) prefixes lines with the filename and uses
+`tail -F` to follow files across rotation. It prints the last 10 lines and scans
+for new matches every second. Quote globs to include future files:
 
-##### Handy Aliases
+```zsh
+mtail                              # Defaults to *.log
+mtail app.log worker.log           # Specific files
+mtail '*.log' '/var/log/app/*.log'  # Current and future matches
+mtail 'my app.log'                 # Spaces in filenames
+```
 
-| Alias                              | Target / Command            | Purpose                                                     |
-| :--------------------------------- | :-------------------------- | :---------------------------------------------------------- |
-| `terraform`                        | `tofu`                      | Uses OpenTofu as transparent replacement if available       |
-| `mediasync`                        | `~/.../tools/mediasync.py`  | Sync home media server repository                           |
-| `backup`                           | `~/.dotfiles/bin/backup.sh` | Trigger complete system backup script                       |
-| `steam-opt`                        | `steam-optimize`            | Launch Steam with performance/GPU optimizations             |
-| `mirrored` / `mirrors` / `mirrora` | `mirror [delay/score/age]`  | Quick sorting alternatives for Arch mirrorlist optimization |
+`Ctrl+C` stops the followers without closing Zsh. Requires `awk` and standard
+command-line tools, not `inotify-tools`.
 
-##### Custom Shell Functions
+### Editors
 
-Organized by functional modules:
+[Neovim](./.config/nvim/) is configured in Lua:
 
-###### Arch Linux & System Maintenance (`zsh/functions/arch.zsh`)
+- `lazy.nvim` manages plugins and lazy loading.
+- Telescope searches files, buffers, and symbols.
+- `nvim-treesitter` on its `main` branch provides highlighting, indentation,
+  and folding. This setup requires Neovim 0.12+.
+- Native LSP (`vim.lsp.config` / `vim.lsp.enable`, available since 0.11) works
+  with Mason and `nvim-cmp`. `LspAttach` sets navigation, diagnostic, and
+  formatting shortcuts.
+- Gitsigns shows changes in the margin and provides hunk navigation, staging,
+  and blame commands.
+- Gruvbox, Lualine, and vertical indentation guides define the appearance.
 
-- **`arch_update`**: Comprehensive system upgrade. Triggers `yay -Syu --devel`, firmware update checking (`fwupdmgr`), Flatpak updates, and automated orphans/caches cleanup.
-- **`clean_arch`**: Cleans up packages orphans (`pacman -Rns`), purges pacman/yay cache (`yay -Scc`), removes old packages version caches (`paccache`), and detects outstanding `.pacnew` / `.pacsave` files.
-- **`mirror [delay|score|age]`**: Fetches, filters, and rates the fastest Arch Linux package mirrors located in France utilizing `reflector`.
+The [older Vim setup](./.vimrc) uses Vundle, a custom status line, filetype
+settings, `vim-gitgutter`, and `vim-fugitive`. Alacritty is the terminal;
+tmux includes session-management and layout-persistence plugins.
 
-###### Archives & Crypto (`zsh/functions/archive.zsh`, `crypt.zsh`)
+## Desktop
 
-- **`extract <file>`**: Extract-all wrapper that intelligently decompresses any archive format (`.tar.bz2`, `.tgz`, `.zip`, `.rar`, `.7z`, etc.).
-- **`md5` / `sha1` / `sha256` / `sha512` `<string>`**: Instant, pipeline-friendly string hashing using `openssl`.
-- **`gpg-encrypt <file/dir>`** (alias: **`gpge`**): Recursively encrypts files inside directories or a single file using GPG. Prompts for the GPG email and encrypts batch files with `--trust-model always`, preserving file modification times (`mtime`) and offering option to delete original files.
-- **`gpg-decrypt <file/dir>`** (alias: **`gpgd`**): Recursively decrypts `.gpg` files inside directories or single files. Intelligently extracts `.tar.gz.gpg` / `.tgz.gpg` archives, restores file modification times (`mtime`), and offers option to delete source encrypted files.
+The Hyprland configuration uses Lua and requires **Hyprland 0.55+**.
+The theme starts in [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf).
+`include/toolkit.lua` parses it, `config.lua` consumes it, and
+`conf/autostart.lua` applies GTK/libadwaita settings through `gsettings`.
+Lock-screen colors remain separate, as described below.
 
-###### Networking & Utilities (`zsh/functions/` `ip.zsh`, `meteo.zsh`, `transfer.zsh`, `curl.zsh`, `youtube.zsh`, `ssh.zsh`)
+For TTY startup, see the
+[session installation guide](./dist/arch/install.md#gnome-keyring-pam-setup).
+It covers GNOME Keyring PAM configuration in `/etc/pam.d/login`, UWSM setup,
+Zsh startup files, and systemd session services. The
+[upstream systemd guide](https://wiki.hypr.land/Useful-Utilities/Systemd-start/)
+provides further context.
 
-- **`ssh-copy-agent-keys [user@host]`**: Interactive shell function to copy selected SSH public keys from your local `ssh-agent` to a remote server's `authorized_keys`, preventing duplicates.
-- **`ip_a` / `ip_l` / `ip_p`**: Show network info (All, Local, or Public IP address).
-- **`meteo`**: Instant graphical terminal-based weather forecast using `wttr.in`.
-- **`transfer <file>`**: Fast upload of any file to `transfer.sh` and returns a direct shareable URL.
-- **`curl_time <url>`**: Detailed HTTP connection profiling (DNS lookup, connect, start-transfer, and total times).
-- **`youtubeEncode <file>`**: Re-encodes source video with optimized parameters (`libx264`, `aac`) for reliable YouTube uploads.
-- **`radio`**: Easy interactive CLI radio terminal frontend.
-- **`calc "<expr>"`**: Command-line evaluator powered by `bc`.
-- **`src`**: Sourced reloader helper for shell config.
+### Main shortcuts
 
-### Editors (Vim & Neovim)
+| Shortcut                                  | Action                                         |
+| :---------------------------------------- | :--------------------------------------------- |
+| `SUPER + Return`                          | Terminal                                       |
+| `SUPER + E / C / W / M`                   | File manager / editor / browser / music player |
+| `SUPER + Shift + Return`                  | Password manager                               |
+| `SUPER + Shift + Q`                       | Close window                                   |
+| `SUPER + [0-9]` / `SUPER + Shift + [0-9]` | Focus workspace / move window to workspace     |
+| `SUPER + Arrows` or Vim keys              | Move focus; add `Shift` to move the window     |
+| `SUPER + F` / `SUPER + ALT + Space`       | Toggle fullscreen / floating                   |
+| `SUPER + L` / `SUPER + Delete`            | Lock / logout menu                             |
+| `SUPER + ALT + Right`                     | Change wallpaper                               |
+| `SUPER + PgUp/PgDn` / `SUPER + Home`      | Zoom in/out / reset                            |
+| `Print` / `SUPER + P`                     | Screenshot                                     |
 
-#### Neovim
+Media and brightness keys control volume, playback, and screen brightness.
 
-Written from scratch in Lua.
+### Wallpapers and lock screen
 
-- **Key Features**:
-  - **Plugin Manager**: Managed by `lazy.nvim` for fast startup and lazy loading.
-  - **Fuzzy Finder**: Built with `telescope.nvim` for interactive file/buffer/symbol searching.
-  - **Syntax & AST**: Powered by `nvim-treesitter` (`main` branch, Neovim 0.12+) for syntax highlighting, indentation, and folding.
-  - **Native LSP**: Uses the native LSP framework (`vim.lsp.config`/`vim.lsp.enable` in Neovim 0.11+) integrated with `mason.nvim` and `nvim-cmp` for autocompletion, with `LspAttach` keymaps for go-to-definition, diagnostics, and formatting.
-  - **Git Integration**: Realtime changes displayed in the margin by `gitsigns.nvim`, with hunk navigation, staging, and blame keymaps.
-  - **Aesthetics**: `gruvbox` colorscheme with `lualine.nvim` statusline and vertical indentation guides.
+Put wallpaper images in `~/.local/share/backgrounds/`. For example, to copy
+images tagged `paysage` from a source directory:
 
-#### Legacy Vim
+```sh
+exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
+```
 
-My original editor configuration, built with `vundle`.
+`awww.service` runs under `graphical-session.target`. It waits for the Wayland
+socket, clears stale sockets, and starts the daemon with `--no-cache` to avoid
+startup races and the cache-related failures encountered with this setup.
+`awww_random.timer` calls `awww_random.service` every 30 minutes to select a
+wallpaper per monitor through [`awww.sh`](./bin/awww.sh). To change them manually:
 
-- **Key Features**: Custom statusline, per-filetype detection, and classic plugins (`vim-gitgutter`, `vim-fugitive`).
+```sh
+systemctl --user start awww_random.service
+```
 
-### Terminal & Session Management
+[Hyprlock](./.config/hypr/hyprlock.conf) shows the clock, system batteries, and
+media information. Player labels refresh every second, batteries every 10
+seconds, and artwork every 5 seconds. Its [scripts](./.config/hypr/hyprlock/)
+use `playerctl` for metadata, `curl` for remote covers, and ImageMagick (`magick`
+or `convert`) to produce 150 × 150 ONGs. The first cover appears after a refresh
+and any download time. Missing artwork displays a transparent image.
 
-- **Terminal**: Configuration for Alacritty.
-- **Multiplexer**: `tmux` configured with plugins for session management and layout persistence.
+Covers are cached by URL under `$XDG_RUNTIME_DIR`, falling back to a private
+directory under `${TMPDIR:-/tmp}`. Battery readings come from
+`/sys/class/power_supply` and exclude peripherals. Lock-screen colors and
+positions are configured separately in `hyprlock.conf`.
 
-## Desktop Environment
+## Scripts
 
-### Keybindings
+See [`bin/`](./bin/) for the full collection.
 
-| Shortcut                            | Action                     |
-| :---------------------------------- | :------------------------- |
-| `SUPER + Return`                    | Terminal                   |
-| `SUPER + Shift + Q`                 | Close window               |
-| `SUPER + [0-9]`                     | Focus workspace            |
-| `SUPER + Shift + [0-9]`             | Move window to workspace   |
-| `SUPER + [Arrows/Vim keys]`         | Focus window               |
-| `SUPER + Shift + [Arrows/Vim keys]` | Move window                |
-| `SUPER + F`                         | Fullscreen toggle          |
-| `XF86Audio...`                      | Audio Controls             |
-| `XF86Mon...`                        | Brightness Controls        |
-| `SUPER + E`                         | File manager               |
-| `SUPER + C`                         | Code editor                |
-| `SUPER + W`                         | Browser                    |
-| `SUPER + M`                         | Music Player               |
-| `SUPER + Shift + Return`            | Password Manager           |
-| `SUPER + L`                         | Lock                       |
-| `SUPER + Delete`                    | Logout menu                |
-| `SUPER + ALT + Space`               | Float/Tile                 |
-| `SUPER + ALT + Right`               | Change wallpaper           |
-| `SUPER + PgUp/PgDn` / `Home`        | Screen zoom in/out / reset |
-| `Print` / `SUPER + P`               | Screenshot                 |
+| Script                                                     | Purpose                                                                                                                                |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup |
+| [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication; [exclude patterns](./dist/backup_excludes.txt)                                        |
+| [`awww.sh`](./bin/awww.sh)                                 | Select a distinct wallpaper per monitor with `shuf -z` and `mapfile`                                                                   |
+| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                 |
+| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                             |
+| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)              |
+| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                |
+| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                            |
 
-### Hyprland
+## CI and releases
 
-My current primary Window Manager configuration.
+The repository is mirrored on GitHub, GitLab, and a self-hosted Gitea instance.
+All three use shared scripts in [`.ci_bin/`](./.ci_bin/).
 
-> [!WARNING]
-> **Breaking Change**: The Hyprland configuration has migrated to Lua. These files are compatible with **Hyprland v0.55 and above**.
+| Forge  | Pipeline                                     | Documentation                                     |
+| :----- | :------------------------------------------- | :------------------------------------------------ |
+| GitHub | [`.github/workflows/`](./.github/workflows/) | [Workflows README](./.github/workflows/README.md) |
+| GitLab | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
+| Gitea  | Reuses `.github/workflows/`                  | See the Workflows README                          |
 
-- **Configuration**: Located in `.config/hypr`
-- **Theming**: [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf) is the single source of truth for colors, fonts, icon/GTK theme, and geometry. It is parsed by `include/toolkit.lua` and consumed by `config.lua`, which pushes the values to GTK/libadwaita apps via `gsettings` at session start (`conf/autostart.lua`). Change the theme there — no value is hardcoded in the Lua configs.
-- **Wallpapers**: Place images into `~/.local/share/backgrounds`
-- **Batch upload tip**:
-  ```sh
-  exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
-  ```
-- **Wallpaper Daemon (`awww`)**: Wallpaper loading and randomization run as Systemd user services under `graphical-session.target`:
-  - **`awww.service`**: Systemd user service wrapper for the `awww-daemon`. Configured to prevent startup race conditions by waiting for the `$WAYLAND_DISPLAY` socket (`ExecStartPre`) and clearing stale sockets, running with `--no-cache` to prevent BrokenPipe and SIGABRT crashes.
-  - **`awww_random.timer`**: Triggers `awww_random.service` (which executes [`awww.sh`](./bin/awww.sh)) every 30 minutes to rotate wallpapers across all connected monitors.
-  - **Manual Trigger**: Force wallpaper randomization at any time with `systemctl --user start awww_random.service`, or use the `SUPER + ALT + Right` keyboard shortcut.
+[`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) builds the README,
+changelog, installation guide, and CI documentation into a static site. It also
+backs the local `post-commit` preview hook. The CI pages are published at
+`/github/workflows/README.md/` and `/.gitlab/README.md/`; the GitHub path loses its
+leading dot because `actions/upload-pages-artifact` strips `.github` from the
+published archive.
 
-### TTY Launch & Session Integration
+Tags matching `v*` publish a release using the matching changelog section,
+extracted by [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh).
 
-When launching Hyprland from a TTY, PAM and session management must be configured to support services like GNOME Keyring auto-unlock and UWSM session wrapping.
+## Application ecosystem
 
-For a detailed, step-by-step setup covering:
-
-- **GNOME Keyring PAM configuration** (`/etc/pam.d/login`)
-- **UWSM (Universal Wayland Session Manager) installation and setup**
-- **TTY shell profile/rc integration (`~/.zshrc` or `~/.zprofile`)**
-- **Systemd graphical session target and application autostart**
-
-See the [Arch Linux Installation Guide - UWSM & PAM Setup](./dist/arch/install.md#gnome-keyring-pam-setup).
-
-Refer to the [Hyprland Wiki - Systemd startup](https://wiki.hypr.land/Useful-Utilities/Systemd-start/) for official upstream details.
-
-## System Utilities
-
-### Custom Scripts
-
-Python, Bash, and shell scripts in [`bin/`](./bin/):
-
-- **[`steam-optimize`](./bin/steam-optimize)**: Monitor-aware Python 3 wrapper for launching Steam games with tuned environment variables (RADV, Vulkan ICD, Mesa layers), game-specific overrides, Gamescope integration, and signal handling with automatic session cleanup.
-- **[`awww.sh`](./bin/awww.sh)**: Wallpaper randomizer script for the `awww` daemon, using `shuf -z` and `mapfile` to load a distinct wallpaper per monitor.
-- **[`backup.sh`](./bin/backup.sh)**: System and configuration backup utility powered by `rsync`, integrated with `ssh-agent` (no hardcoded local keys required). Exclude patterns live in [`dist/*_excludes.txt`](./dist/backup_excludes.txt).
-- **[`razer_dpi.py`](./bin/razer_dpi.py)**: Razer peripherals DPI management tool.
-- **[`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)**: Renders this repo's Hyprland config in an isolated, nested compositor instance and captures it as the WebP showcase image at the top of this README (see `make screenshot`).
-- **[`comcut`](./bin/comcut) / [`comskip.sh`](./bin/comskip.sh)**: Commercial-break detection and removal for recorded video files, based on `comskip`/`ffmpeg` (adapted from [comchap](https://github.com/BrettSheleski/comchap)).
-- **[`diff-cmd`](./bin/diff-cmd)**: Diffs the output of a command run against two different arguments (`IN` placeholder), instead of diffing two files.
-- **[`vscodium_ext.sh`](./bin/vscodium_ext.sh)**: Installs the VSCodium extensions this setup uses.
-- **Zsh Functions & Aliases**: See the [Custom Aliases & Functions](#custom-aliases--functions) section for system maintenance, utility, and archive handling scripts.
-
-### OS Maintenance
-
-- **Arch Linux**:
-  - Detailed installation guide: [Arch Linux / CachyOS Installation Guide](./dist/arch/install.md).
-  - Includes `arch_update` for full system updates and `mirror` functions for mirrorlist management.
-
-## Continuous Integration
-
-This repository is mirrored across **GitHub**, **GitLab**, and a self-hosted **Gitea** instance. The CI delegates the real work to reusable scripts in [`.ci_bin/`](./.ci_bin/), so the same logic builds the documentation site and cuts releases on every forge.
-
-| Forge      | Pipeline                                     | Documentation                                     |
-| :--------- | :------------------------------------------- | :------------------------------------------------ |
-| **GitHub** | [`.github/workflows/`](./.github/workflows/) | [Workflows README](./.github/workflows/README.md) |
-| **GitLab** | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
-| **Gitea**  | reuses `.github/workflows/` (forge-agnostic) | see the Workflows README                          |
-
-- **Pages**: [`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) renders the Markdown docs (this README, the changelog, the install guide, and both CI READMEs) into the static site — the CI docs are published at `/github/workflows/README.md/` and `/.gitlab/README.md/` (the GitHub one drops the leading dot because `actions/upload-pages-artifact` strips `.github` from the deployed tarball). The same script backs the local `post-commit` preview hook.
-- **Releases**: tagging `v*` extracts the matching section from [`CHANGELOG.md`](./CHANGELOG.md) via [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh) and publishes a release.
-
-## Application Ecosystem
-
-| Category        | Tools                      |
-| :-------------- | :------------------------- |
-| **Shell**       | Zsh                        |
-| **Editor**      | Neovim, Vim, VSCode        |
-| **Terminal**    | Alacritty                  |
-| **Multiplexer** | Tmux                       |
-| **UI/UX**       | Waybar, hyprlauncher, Mako |
-| **Security**    | Proton Pass CLI            |
-| **System**      | Fastfetch, Htop            |
-
----
+| Category              | Tools                      |
+| :-------------------- | :------------------------- |
+| Shell                 | Zsh                        |
+| Editors               | Neovim, Vim, VSCode        |
+| Terminal and sessions | Alacritty, tmux            |
+| Desktop tools         | Waybar, hyprlauncher, Mako |
+| Passwords             | Proton Pass CLI            |
+| System information    | Fastfetch, Htop            |
 
 _Maintained by [pad](https://gitlab.com/pad92)🐐 with ❤️ since 2015 (11+ years)_

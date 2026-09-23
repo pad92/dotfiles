@@ -4,10 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Zsh**: Add `mtail` to follow multiple files or quoted glob patterns with
+  filename prefixes. It scans for new matches every second and uses `tail -F`
+  to handle rotation and recreation. `Ctrl+C` cleans up its followers and
+  temporary files without closing the calling shell.
+
 ### Fixed
 
-- **Hyprlock**: centralize lock-screen palette variables and load dynamic player
-  metadata and artwork only once when the lock screen starts.
+- **Hyprlock**:
+  - Centralize the lock-screen palette variables.
+  - Refresh player labels every second, battery status every 10 seconds, and
+    artwork every 5 seconds instead of leaving the display unchanged.
+  - Replace obsolete general options with the `fadeIn` animation setting for
+    Hyprlock 0.9.6.
+  - Identify media sources by `playerName` and use the Nerd Font Firefox glyph.
+  - Use a transparent image when artwork is missing or cannot be processed.
+    Cache covers by URL and publish converted ONGs with an atomic rename.
+  - Keep the battery display independent of device order, show a percentage
+    for each system battery, and exclude peripheral batteries.
 - **Installation**: resolve the Dotbot configuration from the repository path,
   so `install` works when invoked outside the dotfiles directory.
 - **Portability**: stop tracking machine-generated systemd activation links and
@@ -16,9 +32,14 @@ All notable changes to this project will be documented in this file.
 - **Steam-Optimize**:
   - Detect failed helper commands instead of treating non-zero exits as
     successful.
-  - Restore the mouse's detected DPI after a game instead of forcing 1600 DPI.
+  - Set and restore the mouse's detected DPI using the correct `razer-cli`
+    option instead of silently treating the device-selection option as a DPI
+    change.
   - Limit installer changes to Steam's most recently used account, validate all
     inputs before shutting Steam down, and report partial save failures.
+  - Atomically replace `localconfig.vdf` after writing a durable temporary file,
+    keeping a backup of the previous file and avoiding truncated Steam
+    configuration files after an interrupted save.
   - Preserve the existing Mako notification modes when temporarily enabling
     do-not-disturb.
 

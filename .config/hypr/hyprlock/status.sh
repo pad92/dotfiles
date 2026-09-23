@@ -1,48 +1,36 @@
 #!/bin/sh
 
-OUTPUT=""
-capacity=""
+mains=""
+batteries=""
 
-# On vérifie si le répertoire existe pour éviter l'erreur
-if [ ! -d /sys/class/power_supply ]; then
-    exit 0
-fi
-
-# On boucle sur chaque dossier trouvé dans power_supply
 for ps in /sys/class/power_supply/*; do
-    # On vérifie que c'est bien un répertoire (évite les erreurs si le dossier est vide)
-    [ ! -d "$ps" ] && continue
+    [ -d "$ps" ] && [ -r "$ps/type" ] || continue
+    type=$(cat "$ps/type" 2>/dev/null) || continue
 
-    type=$(cat "$ps/type")
+    case "$type" in
+        Mains)
+            if [ "$(cat "$ps/online" 2>/dev/null)" = "1" ]; then
+                mains=""
+            fi
+            ;;
+        Battery)
+            # Exclude peripheral batteries (mouse, keyboard, etc.).
+            [ "$(cat "$ps/scope" 2>/dev/null)" = "Device" ] && continue
+            cap=$(cat "$ps/capacity" 2>/dev/null) || continue
+            case "$cap" in
+                ''|*[!0-9]*) continue ;;
+            esac
 
-    # Cas du Secteur
-    if [ "$type" = "Mains" ]; then
-        if [ -f "$ps/online" ] && [ "$(cat "$ps/online")" = "1" ]; then
-            OUTPUT=" "
-        fi
-    fi
+            if [ "$cap" -gt 90 ]; then icon=""
+            elif [ "$cap" -gt 60 ]; then icon=""
+            elif [ "$cap" -gt 40 ]; then icon=""
+            elif [ "$cap" -gt 10 ]; then icon=""
+            else icon=""; fi
 
-    # Cas de la Batterie
-    if [ "$type" = "Battery" ]; then
-        if [ -f "$ps/capacity" ]; then
-            cap=$(cat "$ps/capacity")
-            capacity="${cap}%"
-
-            if [ "$cap" -gt 90 ]; then icon=" "
-            elif [ "$cap" -gt 60 ]; then icon=" "
-            elif [ "$cap" -gt 40 ]; then icon=" "
-            elif [ "$cap" -gt 10 ]; then icon=" "
-            else icon=" "; fi
-
-            # On ajoute l'icône à l'output existant (qui peut contenir la prise )
-            OUTPUT="${OUTPUT}${icon}"
-        fi
-    fi
+            batteries="${batteries}${batteries:+  }${icon} ${cap}%"
+            ;;
+    esac
 done
 
-# Si rien n'est trouvé (PC fixe sans batterie), on sort sans rien écrire
-if [ -z "$OUTPUT" ] && [ -z "$capacity" ]; then
-    exit 0
-fi
-
-echo "${OUTPUT} ${capacity}"
+[ -n "$mains$batteries" ] || exit 0
+printf '%s\n' "${mains}${mains:+${batteries:+ }}${batteries}"
