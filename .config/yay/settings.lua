@@ -1,3 +1,5 @@
+local yay = rawget(_G, "yay")
+
 -- Display & search
 yay.opt.bottom_up = true
 yay.opt.sort_by = "votes"

@@ -1,3 +1,4 @@
+local hl = rawget(_G, "hl")
 local config = require("config")
 
 hl.config({

@@ -1,3 +1,5 @@
+local hl = rawget(_G, "hl")
+
 -- Main Hyprland Lua Configuration (v0.55)
 
 local config = require("config")
@@ -17,5 +19,5 @@ table.insert(messages, "Hyprland Lua configuration loaded successfully")
 
 hl.notification.create({
   text = table.concat(messages, "\n"),
-  duration = config.notifications.duration
+  duration = config.notifications.duration,
 })

@@ -1,3 +1,5 @@
+local yay = rawget(_G, "yay")
+
 yay.create_autocmd("PostInstall", {
   desc = "post-install checks: orphans and pacnew files",
   callback = function(event)

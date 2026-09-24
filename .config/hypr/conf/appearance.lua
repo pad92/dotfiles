@@ -1,3 +1,4 @@
+local hl = rawget(_G, "hl")
 local config = require("config")
 
 hl.config({
@@ -27,5 +28,5 @@ hl.config({
       render_power = config.visuals.shadow.render_power,
       color = config.colors.shadow,
     },
-  }
+  },
 })

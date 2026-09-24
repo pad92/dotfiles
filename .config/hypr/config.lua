@@ -121,8 +121,6 @@ local config = {
   },
 
   autostart = {
-    "blueman-applet",
-    "nm-applet --indicator",
     "/usr/bin/swayosd-server",
     "hyprlauncher -d",
   },

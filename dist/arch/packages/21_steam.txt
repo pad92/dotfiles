@@ -1,4 +1,4 @@
-game-performance
+gamemode
 gamescope
 ludusavi
 mangohud

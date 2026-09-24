@@ -5,3 +5,7 @@
 sur = "sur"
 branche = "branche"
 formater = "formater"
+hda = "hda"
+
+[default.extend-identifiers]
+PNGs = "PNGs"

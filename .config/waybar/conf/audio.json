@@ -10,12 +10,9 @@
       "phone": "",
       "portable": "",
       "car": "",
-      "default": [
-        "",
-        ""
-      ]
+      "default": ["", ""]
     },
-    "on-click": "pactl set-default-sink $(pactl list short sinks | grep -v \"$(pactl info | grep 'Default Sink' | cut -d' ' -f3)\" | head -n1 | cut -f2)",
+    "on-click": "~/.config/waybar/modules/cycle-default-sink",
     "on-click-right": "pavucontrol"
   },
   "custom/headsetcontrol": {

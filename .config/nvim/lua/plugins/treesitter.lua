@@ -1,3 +1,5 @@
+local vim = rawget(_G, "vim")
+
 return {
   -- [ TREESITTER (AST syntax highlighting - main branch, requires Neovim >= 0.12) ]
   {

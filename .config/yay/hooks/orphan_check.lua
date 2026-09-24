@@ -1,15 +1,14 @@
+local yay = rawget(_G, "yay")
 local known_maintainers = {}
 
-local state_path = (os.getenv("XDG_DATA_HOME") or os.getenv("HOME") .. "/.local/share")
-  .. "/yay/maintainers.lua"
+local state_path = (os.getenv("XDG_DATA_HOME") or os.getenv("HOME") .. "/.local/share") .. "/yay/maintainers.lua"
 
 local f = io.open(state_path, "r")
 if f then
   local content = f:read("*a")
   f:close()
-  local loader = (loadstring or load)(content)
+  local loader = load(content, "@" .. state_path, "t", {})
   if loader then
-    setfenv(loader, {})
     known_maintainers = loader() or {}
   end
 end
@@ -24,8 +23,9 @@ yay.create_autocmd("UpgradeSelect", {
         if pkg.maintainer == nil then
           yay.log.warn(pkg.name .. ": orphaned on AUR — review before upgrading")
         elseif known_maintainers[pkg.name] and known_maintainers[pkg.name] ~= pkg.maintainer then
-          yay.log.warn(pkg.name .. ": maintainer changed from "
-            .. known_maintainers[pkg.name] .. " to " .. pkg.maintainer)
+          yay.log.warn(
+            pkg.name .. ": maintainer changed from " .. known_maintainers[pkg.name] .. " to " .. pkg.maintainer
+          )
         end
 
         if pkg.maintainer then

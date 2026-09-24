@@ -1,3 +1,5 @@
+local hl = rawget(_G, "hl")
+
 -- Curves mirror Hyprland's official example/hyprland.lua.
 hl.curve("easeOutQuint", { type = "bezier", points = { { 0.23, 1 }, { 0.32, 1 } } })
 hl.curve("linear", { type = "bezier", points = { { 0, 0 }, { 1, 1 } } })

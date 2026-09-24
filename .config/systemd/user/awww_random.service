@@ -1,5 +1,6 @@
 [Unit]
 Description=Change wallpaper using AWWW
+ConditionEnvironment=XDG_CURRENT_DESKTOP=Hyprland
 PartOf=graphical-session.target
 After=awww.service
 

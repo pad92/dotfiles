@@ -1,18 +1,20 @@
+local yay = rawget(_G, "yay")
+
 local suspicious = {
-  { "curl[%s]+[^%s]-|[%s]*[sb]h",       "pipe from curl into shell" },
-  { "wget[%s]+[^%s]-|[%s]*[sb]h",        "pipe from wget into shell" },
-  { "base64[%s]+-%-decode",               "base64 decode" },
-  { "base64[%s]+-d",                      "base64 decode" },
-  { 'eval[%s]*%$[%s]*%(',                 "eval on command substitution" },
-  { "chmod[%s]+%+s",                      "setuid bit" },
-  { "chmod[%s]+4",                        "setuid bit" },
-  { "/etc/shadow",                        "access to /etc/shadow" },
-  { "/etc/passwd",                        "access to /etc/passwd" },
-  { "python[%d]*%s+%-c%s*['\"]import",     "inline python execution" },
-  { "\\x%x%x[^%c]-\\x%x%x",              "hex-encoded strings" },
-  { "nc[%s]+-[elp]",                      "netcat listener/exec" },
-  { "/dev/tcp/",                          "bash reverse shell" },
-  { "mkfifo",                             "named pipe (potential reverse shell)" },
+  { "curl[%s]+[^%s]-|[%s]*[sb]h", "pipe from curl into shell" },
+  { "wget[%s]+[^%s]-|[%s]*[sb]h", "pipe from wget into shell" },
+  { "base64[%s]+-%-decode", "base64 decode" },
+  { "base64[%s]+-d", "base64 decode" },
+  { "eval[%s]*%$[%s]*%(", "eval on command substitution" },
+  { "chmod[%s]+%+s", "setuid bit" },
+  { "chmod[%s]+4", "setuid bit" },
+  { "/etc/shadow", "access to /etc/shadow" },
+  { "/etc/passwd", "access to /etc/passwd" },
+  { "python[%d]*%s+%-c%s*['\"]import", "inline python execution" },
+  { "\\x%x%x[^%c]-\\x%x%x", "hex-encoded strings" },
+  { "nc[%s]+-[elp]", "netcat listener/exec" },
+  { "/dev/tcp/", "bash reverse shell" },
+  { "mkfifo", "named pipe (potential reverse shell)" },
 }
 
 yay.create_autocmd("AURPreInstall", {

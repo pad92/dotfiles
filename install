@@ -78,7 +78,7 @@ run_dotbot() {
     fi
 
     # Execute dotbot with provided arguments
-    "${dotbot_path}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+    "${dotbot_path}" -d "${BASEDIR}" -c "${BASEDIR}/${CONFIG}" "${@}"
 
     log_success "Dotbot execution completed."
 }
@@ -116,9 +116,9 @@ show_cursor() { printf "\033[?25h" >&2; }
 
 read_key() {
     local key
-    IFS= read -r -s -n 1 key
+    IFS= read -r -s -n 1 key < /dev/tty
     if [[ "$key" == "$ESC" ]]; then
-        read -r -s -n 2 -t 0.1 key
+        IFS= read -r -s -n 2 -t 0.1 key < /dev/tty || true
         if [[ -z "$key" ]]; then
             echo "ESCAPE"
         elif [[ "$key" == "[A" ]]; then
@@ -224,34 +224,60 @@ show_multi_select() {
 ensure_aur_helper() {
     if command -v paru &> /dev/null; then
         AUR_HELPER="paru"
-    elif command -v yay &> /dev/null; then
-        AUR_HELPER="yay"
-    else
-        log_info "No AUR helper (paru or yay) found, which is needed to install AUR packages."
-        local choice
-        read -rp "Would you like to install yay? [Y/n] " choice < /dev/tty
-        if [[ "$choice" =~ ^[Nn]$ ]]; then
-            log_warn "Skipping AUR helper installation. AUR packages might fail to install."
-            AUR_HELPER="sudo pacman"
-        else
-            log_info "Installing yay..."
-            local tmpdir
-            tmpdir=$(mktemp -d)
-            # Expand $tmpdir now (it is local and gone by the time EXIT fires)
-            # shellcheck disable=SC2064
-            trap "rm -rf '$tmpdir'; show_cursor" EXIT
-            if git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" &>/dev/null; then
-                (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm)
-                AUR_HELPER="yay"
-                log_success "yay installed successfully!"
-            else
-                log_error "Failed to clone yay-bin. Falling back to sudo pacman."
-                AUR_HELPER="sudo pacman"
-            fi
-            rm -rf "$tmpdir"
-            trap show_cursor EXIT
-        fi
+        return 0
     fi
+    if command -v yay &> /dev/null; then
+        AUR_HELPER="yay"
+        return 0
+    fi
+
+    log_info "No AUR helper (paru or yay) found."
+    local choice
+    read -rp "Would you like to install yay? [Y/n] " choice < /dev/tty
+    if [[ "$choice" =~ ^[Nn]$ ]]; then
+        log_warn "AUR helper installation declined; AUR packages will be skipped."
+        return 2
+    fi
+
+    if (( EUID == 0 )); then
+        log_error "yay must be built as a regular user, not root."
+        return 1
+    fi
+
+    log_info "Installing yay build dependencies from the official repositories..."
+    if ! sudo pacman -Syu --needed -- base-devel git; then
+        log_error "Failed to install yay build dependencies."
+        return 1
+    fi
+    if ! command -v makepkg &> /dev/null; then
+        log_error "makepkg is unavailable after installing base-devel."
+        return 1
+    fi
+
+    local tmpdir
+    if ! tmpdir=$(mktemp -d); then
+        log_error "Failed to create a temporary build directory."
+        return 1
+    fi
+    log_info "Building and installing yay..."
+    if ! (
+        trap 'rm -rf "$tmpdir"' EXIT
+        git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" &> /dev/null
+        cd "$tmpdir/yay-bin"
+        makepkg -si --noconfirm
+    ); then
+        log_error "Failed to build or install yay."
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    rm -rf "$tmpdir"
+
+    if ! command -v yay &> /dev/null; then
+        log_error "yay is still unavailable after installation."
+        return 1
+    fi
+    AUR_HELPER="yay"
+    log_success "yay installed successfully!"
 }
 
 install_arch_packages() {
@@ -260,6 +286,23 @@ install_arch_packages() {
     fi
 
     log_info "Detected Arch Linux or CachyOS system."
+
+    if ! command -v pacman &> /dev/null; then
+        log_error "pacman is required to install Arch Linux packages."
+        return 1
+    fi
+    if ! command -v sudo &> /dev/null; then
+        log_error "sudo is required to install packages."
+        return 1
+    fi
+    if [[ ! -t 0 || ! -t 1 ]]; then
+        log_warn "No interactive TTY available; skipping package installation."
+        return 0
+    fi
+    if ! sudo -v; then
+        log_error "Unable to obtain sudo credentials."
+        return 1
+    fi
 
     local packages_dir="${BASEDIR}/dist/arch/packages"
     if [[ ! -d "$packages_dir" ]]; then
@@ -291,7 +334,11 @@ install_arch_packages() {
     trap show_cursor EXIT
 
     local selected_idxs=()
-    selected_idxs=($(show_multi_select "${options[@]}"))
+    local selected_output
+    selected_output=$(show_multi_select "${options[@]}")
+    if [[ -n "$selected_output" ]]; then
+        read -r -a selected_idxs <<< "$selected_output"
+    fi
 
     if (( ${#selected_idxs[@]} == 0 )); then
         log_warn "No categories selected. Skipping package installation."
@@ -318,17 +365,19 @@ install_arch_packages() {
         return 0
     fi
 
-    # Filter out already installed packages
+    # Filter out installed packages and duplicate list entries.
     local to_install=()
     local installed_count=0
-    local -A installed_pkgs
+    local -A installed_pkgs=()
+    local -A queued_pkgs=()
     while IFS= read -r pkg; do
         installed_pkgs["$pkg"]=1
     done < <(pacman -Qq 2>/dev/null)
     for pkg in "${all_pkgs[@]}"; do
         if [[ -n "${installed_pkgs[$pkg]+x}" ]]; then
             installed_count=$((installed_count + 1))
-        else
+        elif [[ -z "${queued_pkgs[$pkg]+x}" ]]; then
+            queued_pkgs["$pkg"]=1
             to_install+=("$pkg")
         fi
     done
@@ -340,17 +389,58 @@ install_arch_packages() {
         return 0
     fi
 
-    log_info "Packages to install: ${to_install[*]}"
+    # pacman only receives packages advertised by enabled official repositories.
+    # Everything else is an AUR candidate and must be handled by an AUR helper.
+    local repo_pkgs=()
+    local aur_candidates=()
+    local missing_multilib=()
+    for pkg in "${to_install[@]}"; do
+        if pacman -Si -- "$pkg" &> /dev/null; then
+            repo_pkgs+=("$pkg")
+        elif [[ "$pkg" == lib32-* || "$pkg" == "steam" ]]; then
+            missing_multilib+=("$pkg")
+        else
+            aur_candidates+=("$pkg")
+        fi
+    done
 
-    # Ensure AUR helper is available
-    local AUR_HELPER=""
-    ensure_aur_helper
+    if (( ${#missing_multilib[@]} > 0 )); then
+        log_error "Packages require the multilib repository: ${missing_multilib[*]}"
+        log_error "Enable [multilib] in /etc/pacman.conf, run sudo pacman -Syu, then rerun the installer."
+        return 1
+    fi
 
-    log_info "Installing packages using $AUR_HELPER..."
-    if [[ "$AUR_HELPER" == "sudo pacman" ]]; then
-        sudo pacman -S --needed "${to_install[@]}"
-    else
-        $AUR_HELPER -S --needed "${to_install[@]}"
+    if (( ${#repo_pkgs[@]} > 0 )); then
+        log_info "Installing repository packages: ${repo_pkgs[*]}"
+        sudo pacman -Syu --needed -- "${repo_pkgs[@]}"
+    fi
+
+    if (( ${#aur_candidates[@]} > 0 )); then
+        log_info "AUR candidates: ${aur_candidates[*]}"
+        local AUR_HELPER=""
+        local helper_status=0
+        if ensure_aur_helper; then
+            :
+        else
+            helper_status=$?
+            if (( helper_status == 2 )); then
+                return 0
+            fi
+            return "$helper_status"
+        fi
+
+        local aur_failures=()
+        for pkg in "${aur_candidates[@]}"; do
+            log_info "Installing AUR candidate with ${AUR_HELPER}: $pkg"
+            if ! "$AUR_HELPER" -S --needed -- "$pkg"; then
+                log_error "Failed to install AUR candidate: $pkg"
+                aur_failures+=("$pkg")
+            fi
+        done
+        if (( ${#aur_failures[@]} > 0 )); then
+            log_error "AUR packages not installed: ${aur_failures[*]}"
+            return 1
+        fi
     fi
 
     log_success "Package installation completed successfully!"

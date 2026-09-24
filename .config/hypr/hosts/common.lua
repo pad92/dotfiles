@@ -1,3 +1,5 @@
+local hl = rawget(_G, "hl")
+
 -- Shared config across hosts: both PadsTower and PadsP5560 drive the same
 -- external Dell and ASUS monitors, so the common parts are factored here
 -- instead of being duplicated verbatim in each hosts/<hostname>.lua.

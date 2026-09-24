@@ -43,7 +43,7 @@ includes without tracking it:
 | Configuration                                                              | What to change                                                      |
 | :------------------------------------------------------------------------- | :------------------------------------------------------------------ |
 | [`.zshrc`](./.zshrc), [`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)     | Shell environment, plugins, and aliases                             |
-| [`.config/uwsm/env`](./.config/uwsm/env)                                   | Wayland session environment and GPU settings                        |
+| [`.config/uwsm/`](./.config/uwsm/)                                         | Shared session environment and compositor-specific GPU settings     |
 | [`.config/hypr/`](./.config/hypr/)                                         | Bindings, window rules, and `hosts/<hostname>.lua` hardware layouts |
 | [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf)                      | Toolkit colors, fonts, GTK/icon themes, and geometry                |
 | [`.config/waybar/`](./.config/waybar/)                                     | Status bar, including per-host configurations                       |
@@ -51,16 +51,17 @@ includes without tracking it:
 | [`.config/nvim/`](./.config/nvim/), [`.vimrc`](./.vimrc)                   | Editor settings and plugins                                         |
 | `~/.local/share/backgrounds/`                                              | Images for wallpaper rotation                                       |
 
-Shell settings include `LANG`, `EDITOR`, and the Oh My Zsh plugin list. The UWSM
-environment defines `BROWSER`, `TERMINAL`, `XCURSOR_THEME`, and host-specific GPU
-settings such as `AQ_DRM_DEVICES` and Vulkan drivers. Hyprland host files define
+Shell settings include `LANG`, `EDITOR`, and the Oh My Zsh plugin list. The common
+UWSM environment defines `BROWSER`, `TERMINAL`, and `XCURSOR_THEME`, while
+`env-hyprland` contains host-specific GPU settings such as `AQ_DRM_DEVICES` and
+Vulkan drivers. Hyprland host files define
 monitor layouts and workspace mappings; Waybar uses `config.PadsTower` and
 `config.PadsP5560` for different hardware.
 
 Alacritty settings cover fonts, spacing, opacity, and colors. For Hyprland Lua
-validation and completion, see `.config/hypr/.luarc.json`. Under UWSM,
-`ELECTRON_OZONE_PLATFORM_HINT=auto` handles Electron's platform selection;
-`~/.config/electron-flags.conf` is a placeholder for editor-specific flags.
+validation and completion, see `.config/hypr/.luarc.json`. Electron 38 and later
+select native Wayland automatically in a Wayland session, without an environment
+variable; `~/.config/electron-flags.conf` remains available for editor-specific flags.
 
 ## Shell and editors
 
@@ -216,7 +217,7 @@ systemctl --user start awww_random.service
 media information. Player labels refresh every second, batteries every 10
 seconds, and artwork every 5 seconds. Its [scripts](./.config/hypr/hyprlock/)
 use `playerctl` for metadata, `curl` for remote covers, and ImageMagick (`magick`
-or `convert`) to produce 150 × 150 ONGs. The first cover appears after a refresh
+or `convert`) to produce 150 × 150 PNGs. The first cover appears after a refresh
 and any download time. Missing artwork displays a transparent image.
 
 Covers are cached by URL under `$XDG_RUNTIME_DIR`, falling back to a private

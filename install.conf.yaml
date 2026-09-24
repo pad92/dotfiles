@@ -12,9 +12,14 @@
     ~/.zshrc: .zshrc
     ~/.gitconfig: .gitconfig
     ~/.gtkrc-2.0: .gtkrc-2.0
+    ~/.config/autostart/nm-applet.desktop:
+      path: .config/autostart/nm-applet.desktop
+      create: true
     ~/.config/:
       glob: true
       path: .config/*
+      exclude:
+        - .config/autostart
       create: true
 
 - shell:

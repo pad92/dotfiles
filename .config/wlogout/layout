@@ -18,7 +18,7 @@
 }
 {
     "label": "logout",
-    "action": "uwsm stop || hyprctl dispatch exit || pkill Hyprland || pkill sway || pkill niri || loginctl terminate-user $USER",
+    "action": "uwsm stop || hyprctl dispatch exit",
     "text": "Logouṯ",
     "keybind": "t"
 }

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+default_sink=$(pactl get-default-sink)
+next_sink=$(
+  pactl list short sinks | awk -v current="$default_sink" '
+    NR == 1 { first = $2 }
+    select_next { print $2; selected = 1; exit }
+    $2 == current { select_next = 1 }
+    END { if (!selected && first != "") print first }
+  '
+)
+
+[ -n "$next_sink" ] || exit 0
+exec pactl set-default-sink "$next_sink"

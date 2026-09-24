@@ -1,0 +1,19 @@
+# GPU configuration specific to Hyprland/Aquamarine.
+# Never use /dev/dri/by-path here: ':' is Aquamarine's device-list separator.
+case "$(hostname)" in
+    PadsP5560)
+        # Intel iGPU first, NVIDIA dGPU second.
+        export LIBVA_DRIVER_NAME=iHD
+        export __GLX_VENDOR_LIBRARY_NAME=mesa
+        export DRI_PRIME=0
+        export AQ_DRM_DEVICES="/dev/dri/card1:/dev/dri/card0"
+        export VK_DRIVER_FILES="/usr/share/vulkan/icd.d/intel_icd.json"
+
+        # NVIDIA offload optimizations.
+        export NVD_BACKEND=direct
+        export __GL_GSYNC_ALLOWED=1
+        ;;
+    PadsTower)
+        export AQ_DRM_DEVICES="/dev/dri/card1"
+        ;;
+esac

@@ -22,6 +22,7 @@ playerctl
 polkit-gnome
 qt5-wayland
 qt6-wayland
+qt6ct
 slurp
 swappy
 swayosd
@@ -30,4 +31,5 @@ waybar
 wl-clipboard
 wlogout
 woff2-font-awesome
+xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland

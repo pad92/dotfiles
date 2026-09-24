@@ -1,3 +1,5 @@
+local hl = rawget(_G, "hl")
+
 hl.on("hyprland.start", function()
   local config = require("config")
 
@@ -6,7 +8,9 @@ hl.on("hyprland.start", function()
   end
 
   hl.exec_cmd("hyprctl setcursor " .. config.visuals.cursor_theme .. " " .. tostring(config.visuals.cursor_size))
-  hl.exec_cmd("uwsm app -- /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 || uwsm app -- /usr/libexec/polkit-gnome-authentication-agent-1")
+  hl.exec_cmd(
+    "uwsm app -- /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 || uwsm app -- /usr/libexec/polkit-gnome-authentication-agent-1"
+  )
 
   for _, app in ipairs(config.autostart) do
     hl.exec_cmd("uwsm app -- " .. app)

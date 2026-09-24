@@ -1,3 +1,5 @@
+local yay = rawget(_G, "yay")
+
 -- yay v13 Lua configuration
 -- Overlays config.json; CLI flags still take final precedence.
 

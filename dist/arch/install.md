@@ -138,7 +138,7 @@ pacstrap /mnt \
   ${KERNEL} \
   ${KERNEL}-headers \
   ${UCODE} \
-  crda \
+  wireless-regdb \
   efibootmgr \
   git \
   grub \
@@ -153,6 +153,7 @@ pacstrap /mnt \
   python \
   resolvconf \
   rsync \
+  sudo \
   terminus-font \
   vim \
   wpa_supplicant \
@@ -182,8 +183,8 @@ fi
 ### Sound
 
 ```sh
-if grep -wq '^snd_had_intel' /proc/modules; then
-echo "options snd_had_intel power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
+if grep -wq '^snd_hda_intel' /proc/modules; then
+echo "options snd_hda_intel power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
 elif grep -wq '^snd_ac97_codec' /proc/modules; then
 echo "options snd_ac97_codec power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
 fi
@@ -336,36 +337,29 @@ echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
 passwd ${MYUSER}
 ```
 
+### Package manager
+
+```sh
+# Enable color, checksum, verbose output, and the official multilib repository.
+sed -i 's/#Color/Color/' /etc/pacman.conf
+sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf
+sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
+sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+pacman -Syu
+```
+
+`multilib` must be enabled before running the dotfiles installer because the
+base and Steam package groups contain `lib32-*` packages.
+
 ### Dotfiles
 
 ```sh
-# Run setup commands in user context without blocking shell execution
-sudo -u ${MYUSER} -i bash -c '
+# Run setup commands in the regular user's context.
+sudo -u "${MYUSER}" -i bash -c '
   git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
   mkdir -p ~/.config
   ~/.dotfiles/install
 '
-
-
-```
-
-### Package manager
-
-```sh
-# Enable color, checksum, and verbose output in pacman
-sed -i 's/#Color/Color/' /etc/pacman.conf && \
-sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf && \
-sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
-
-# Enable multilib repository for 32-bit application support
-# Uncomment the following lines in /etc/pacman.conf:
-# [multilib]
-# SigLevel = PackageRequired
-# Include = /etc/pacman.d/mirrorlist
-
-# Modern archinstall typically enables these repositories and settings automatically
-# For now, we'll leave the multilib configuration as a commented example
-# Uncomment the multilib section manually if needed
 ```
 
 ### AUR
@@ -374,13 +368,15 @@ sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
 # Modern archinstall typically handles AUR package management automatically
 # For manual installation, 'yay' is a popular choice for AUR packages
 
-# Install yay (AUR helper)
-sudo pacman -Sy --noconfirm git base-devel
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd
-rm -fr yay
+# Install yay (AUR helper) as the regular user created above.
+sudo pacman -Syu --needed --noconfirm git base-devel sudo
+sudo -u "${MYUSER}" -i bash -c '
+  tmpdir=$(mktemp -d)
+  trap '\''rm -rf "$tmpdir"'\'' EXIT
+  git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin"
+  cd "$tmpdir/yay-bin"
+  makepkg -si --noconfirm
+'
 
 # Alternative AUR helpers:
 # - paru (more lightweight)

@@ -1,3 +1,5 @@
+local vim = rawget(_G, "vim")
+
 return {
   -- [ TELESCOPE (Fuzzy Finder) ]
   {

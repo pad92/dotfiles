@@ -1,3 +1,4 @@
+local yay = rawget(_G, "yay")
 local cooldown = 2 * 24 * 60 * 60 -- 48 hours
 
 yay.create_autocmd("UpgradeSelect", {
