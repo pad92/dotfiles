@@ -7,9 +7,21 @@ local f = io.open(state_path, "r")
 if f then
   local content = f:read("*a")
   f:close()
-  local loader = load(content, "@" .. state_path, "t", {})
+  local loader, load_err = load(function()
+    local chunk = content
+    content = nil
+    return chunk
+  end, "@" .. state_path)
+
   if loader then
-    known_maintainers = loader() or {}
+    local ok, saved_maintainers = pcall(loader)
+    if ok and type(saved_maintainers) == "table" then
+      known_maintainers = saved_maintainers
+    elseif not ok then
+      yay.log.warn("could not read maintainer state: " .. tostring(saved_maintainers))
+    end
+  else
+    yay.log.warn("could not load maintainer state: " .. tostring(load_err))
   end
 end
 
