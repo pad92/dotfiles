@@ -199,6 +199,65 @@ def preprocess_markdown(text):
     return pattern.sub(replace_fenced_code, text)
 
 
+def normalize_nested_list_indentation(text):
+    """Adapt compact nested lists without changing unrelated indentation."""
+    quote_re = re.compile(r"^((?: {0,3}>[ \t]?)*)(.*)$")
+    marker_re = re.compile(r"^( *)(?:[-+*]|\d+[.)])\s+")
+    stacks = {}
+    normalized = []
+
+    for line in text.split("\n"):
+        quote_match = quote_re.match(line)
+        quote_prefix, content = quote_match.groups()
+        stack = stacks.setdefault(quote_prefix, [])
+        marker = marker_re.match(content)
+
+        if marker:
+            source_indent = len(marker.group(1))
+            while stack and source_indent < stack[-1][0]:
+                stack.pop()
+
+            if stack and source_indent == stack[-1][0]:
+                output_indent = stack[-1][1]
+            elif stack:
+                output_indent = stack[-1][1] + 4
+                stack.append((source_indent, output_indent))
+            else:
+                output_indent = source_indent
+                stack.append((source_indent, output_indent))
+
+            normalized.append(
+                quote_prefix + " " * output_indent + content[source_indent:]
+            )
+            continue
+
+        if not content.strip():
+            normalized.append(line)
+            continue
+
+        source_indent = len(content) - len(content.lstrip(" "))
+        while len(stack) > 1 and source_indent <= stack[-1][0]:
+            stack.pop()
+
+        if stack and source_indent > stack[-1][0]:
+            offset = stack[-1][1] - stack[-1][0]
+            content = " " * (source_indent + offset) + content[source_indent:]
+        elif source_indent == 0:
+            stack.clear()
+
+        if not quote_prefix:
+            stacks = {"": stack}
+        normalized.append(quote_prefix + content)
+
+    return "\n".join(normalized)
+
+
+def render_markdown(text):
+    """Render Markdown using the compact nested-list style used by the docs."""
+    text = normalize_nested_list_indentation(preprocess_markdown(text))
+    return markdown.markdown(text, extensions=["extra", "codehilite", "toc"])
+
+
 def parse_alerts(text):
     lines = text.split("\n")
     new_lines = []
@@ -231,10 +290,7 @@ def parse_alerts(text):
                 else:
                     break
 
-            alert_content = preprocess_markdown("\n".join(alert_lines))
-            compiled_content = markdown.markdown(
-                alert_content, extensions=["extra", "codehilite", "toc"]
-            )
+            compiled_content = render_markdown("\n".join(alert_lines))
 
             icon_svg, title_text = get_alert_resources(alert_type)
 
@@ -277,9 +333,7 @@ def generate_html(input_file, output_file, title):
     text = parse_alerts(text)
 
     # Convert markdown to html
-    html_content = markdown.markdown(
-        preprocess_markdown(text), extensions=["extra", "codehilite", "toc"]
-    )
+    html_content = render_markdown(text)
 
     # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
     for i, block in enumerate(code_blocks):

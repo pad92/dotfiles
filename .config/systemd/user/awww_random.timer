@@ -6,7 +6,7 @@ PartOf=graphical-session.target
 [Timer]
 OnActiveSec=1s
 OnCalendar=*:0/30
-Persistent=true
+AccuracySec=1s
 Unit=awww_random.service
 
 [Install]

@@ -5,6 +5,14 @@ repos:
   # public/ is gitignored, so this only refreshes the local preview.
   - repo: local
     hooks:
+      - id: test-gen-pages
+        name: test documentation page generator
+        language: system
+        entry: python3 .ci_bin/test_gen_pages.py
+        files: ^\.ci_bin/(gen_pages|test_gen_pages)\.py$
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: build-pages
         name: build documentation pages (public/)
         language: system

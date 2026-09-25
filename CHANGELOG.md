@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.5.3](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.3)
+
+### Fixed
+
+- **AWWW**: Start the wallpaper timer after UWSM has imported the Hyprland
+  session environment, so the initial wallpaper is applied at login.
+- **CI / Pages**: Preserve two-space nested lists when generating HTML instead
+  of flattening child items into the parent list.
+
 ## [v5.5.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.2)
 
 ### Added
