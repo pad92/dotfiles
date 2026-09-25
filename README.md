@@ -15,9 +15,14 @@ cd ~/.dotfiles
 ./install
 ```
 
-The interactive installer lets you choose package groups such as fonts,
-Hyprland, Nvidia, and Steam. It skips installed packages and configures `yay`
-or `paru` for AUR dependencies.
+Run the installer from a terminal as a regular user with `sudo` access. You can
+choose package groups such as fonts, Hyprland, Nvidia, and Steam; packages already
+on the system are skipped. Before selecting Steam or any group containing
+`lib32-*` packages, enable `[multilib]` as described in the
+[Arch installation guide](./dist/arch/install.md#package-manager).
+
+The installer uses `paru` or `yay` if either is already available. Otherwise, it
+can build `yay-bin` for you. If you decline, it skips the AUR packages.
 
 For the editor configuration only:
 
@@ -193,6 +198,8 @@ provides further context.
 | `Print` / `SUPER + P`                     | Screenshot                                     |
 
 Media and brightness keys control volume, playback, and screen brightness.
+Left-click Waybar's audio module to switch to the next output sink. Right-click it
+to open `pavucontrol`.
 
 ### Wallpapers and lock screen
 
@@ -203,11 +210,12 @@ images tagged `paysage` from a source directory:
 exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
 ```
 
-`awww.service` runs under `graphical-session.target`. It waits for the Wayland
-socket, clears stale sockets, and starts the daemon with `--no-cache` to avoid
-startup races and the cache-related failures encountered with this setup.
-`awww_random.timer` calls `awww_random.service` every 30 minutes to select a
-wallpaper per monitor through [`awww.sh`](./bin/awww.sh). To change them manually:
+`awww.service` only starts in a Hyprland session. It waits for the Wayland socket,
+removes stale sockets, and runs the daemon with `--no-cache`. These checks prevent
+the startup races and cache failures seen on this setup. Every 30 minutes,
+`awww_random.timer` calls `awww_random.service`, which uses
+[`awww.sh`](./bin/awww.sh) to choose a wallpaper for each monitor. To change them
+manually:
 
 ```sh
 systemctl --user start awww_random.service

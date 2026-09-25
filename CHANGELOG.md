@@ -4,12 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.5.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.2)
+
 ### Added
 
 - **Zsh**: Add `mtail` to follow multiple files or quoted glob patterns with
   filename prefixes. It scans for new matches every second and uses `tail -F`
   to handle rotation and recreation. `Ctrl+C` cleans up its followers and
   temporary files without closing the calling shell.
+
+### Changed
+
+- **Desktop session**:
+  - Move host-specific GPU settings from the common UWSM environment to
+    `env-hyprland`. UWSM now sets the session's `XDG_*` variables.
+  - Restrict AWWW, Hypridle, Mako, and Waybar user units to Hyprland sessions,
+    and start `nm-applet` through XDG autostart outside KDE and GNOME.
+  - Cycle through every available audio sink from Waybar, wrapping back to the
+    first sink, and open `pavucontrol` with a right click.
+- **Installation**:
+  - Separate official repository packages from AUR candidates and remove
+    duplicates from the selection. Report a missing `multilib` repository and
+    each AUR package that fails to install.
+  - Reuse an installed `paru` or `yay`, or offer to build `yay-bin` as a regular
+    user after installing its official build dependencies.
+  - Refresh the Arch package lists and installation guide for current package
+    names, required desktop components, `sudo`, and `multilib` setup.
+  - Update the Dotbot submodule.
+- **Docs**: Rewrite and shorten the README. Setup instructions are now separate
+  from the shell, desktop, script, and release documentation.
 
 ### Fixed
 
@@ -21,11 +44,22 @@ All notable changes to this project will be documented in this file.
     Hyprlock 0.9.6.
   - Identify media sources by `playerName` and use the Nerd Font Firefox glyph.
   - Use a transparent image when artwork is missing or cannot be processed.
-    Cache covers by URL and publish converted ONGs with an atomic rename.
+    Cache covers by URL and publish converted PNGs with an atomic rename.
   - Keep the battery display independent of device order, show a percentage
     for each system battery, and exclude peripheral batteries.
-- **Installation**: resolve the Dotbot configuration from the repository path,
-  so `install` works when invoked outside the dotfiles directory.
+- **Installation**:
+  - Resolve the Dotbot configuration from the repository path, so `install`
+    works when invoked outside the dotfiles directory.
+  - Read menu input directly from the terminal and check `pacman`, `sudo`, and
+    credentials before installing packages. If the user declines the AUR helper,
+    skip AUR packages instead of sending their names to `pacman`.
+- **Desktop**:
+  - Override PipeWire's existing realtime module settings instead of loading a
+    duplicate module.
+  - Stop the logout menu from terminating the whole user session when both UWSM
+    and Hyprland dispatch fail.
+- **Yay**: Load hooks with yay's embedded Lua runtime. Invalid maintainer state
+  now produces a warning instead of aborting the upgrade.
 - **Portability**: stop tracking machine-generated systemd activation links and
   the package-provided `_yay` completion symlink; ignore them when generated
   locally.
