@@ -21,6 +21,7 @@ nwg-displays
 nwg-look
 playerctl
 polkit-gnome
+perl-image-exiftool
 qt5-wayland
 qt6-wayland
 qt6ct

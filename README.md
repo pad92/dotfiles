@@ -205,9 +205,10 @@ to open `pavucontrol`.
 ### Wallpapers and lock screen
 
 [`awww.sh`](./bin/awww.sh) selects a different image for each monitor from local
-files or an existing NFS/CIFS mount. Photos keep their aspect ratio and use a
-blurred copy as background instead of black bars. In `auto` mode, an unavailable,
-empty, or slow remote source falls back to local images.
+files or an existing NFS/CIFS mount. Photos keep their aspect ratio, use a
+blurred copy as background, and show their date and city when the metadata is
+available. In `auto` mode, an unavailable, empty, or slow remote source falls
+back to local images.
 
 Copy the sample to create the Git-ignored configuration. The script reloads it
 each time it runs and uses the sample itself when the local file is absent.
@@ -216,8 +217,8 @@ each time it runs and uses the sample itself when the local file is absent.
 cp ~/.config/awww/awww.conf-sample ~/.config/awww/awww.conf
 ```
 
-The sample documents the source modes, NFS/CIFS examples, timeouts, and
-troubleshooting commands.
+The sample documents multiple local and remote source directories, NFS/CIFS
+mounts, timeouts, and troubleshooting commands.
 
 Put fallback images in `~/.local/share/backgrounds/`. For example, this command
 copies images tagged `paysage` from another directory:

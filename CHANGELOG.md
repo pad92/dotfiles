@@ -6,17 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **AWWW**: Add a local configuration file with a committed sample and three
-  wallpaper source modes: `auto`, `local`, and `remote`. Existing NFS, CIFS, and
-  systemd automount sources use bounded scans and image loads, with a local
-  fallback when the remote source is unavailable, empty, or fails during
-  application. Images keep their aspect ratio and use a cached blurred copy as
-  background instead of black bars.
+- **AWWW**: Add configurable local and mounted NFS/CIFS sources, including
+  multiple directories and automatic local fallback. Preserve image ratios with
+  blurred backgrounds and optional date/city metadata.
 
 ### Changed
 
-- **Docs**: Document the wallpaper configuration, local fallback, NFS/CIFS
-  examples, configuration reload, and troubleshooting commands.
+- **Docs**: Document AWWW source, rendering, and troubleshooting options.
 
 ## [v5.5.3](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.3)
 

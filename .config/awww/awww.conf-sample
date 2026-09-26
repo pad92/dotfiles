@@ -7,20 +7,21 @@
 #   remote - require the remote directory and fail when it is unavailable
 WALLPAPER_SOURCE="auto"
 
-LOCAL_WALLPAPER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds"
+# Images from every listed directory are combined into one pool.
+LOCAL_WALLPAPER_DIRS=(
+    "${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds"
+    # "$HOME/Pictures/wallpapers"
+)
 
-# The remote directory must already be mounted. Leave it empty for local-only
-# operation in auto mode. Systemd automounts are supported.
-REMOTE_WALLPAPER_DIR=""
+# Remote directories must already be mounted. Leave the array empty for
+# local-only operation in auto mode. Systemd automounts are supported.
+REMOTE_WALLPAPER_DIRS=(
+    # NFS example:
+    # "/mnt/wallpapers-nfs"
+    # CIFS/SMB example:
+    # "/mnt/wallpapers-smb"
+)
 REMOTE_FS_TYPES="nfs,nfs4,cifs,smb3"
-
-# NFS example:
-# REMOTE_WALLPAPER_DIR="/mnt/wallpapers-nfs"
-# REMOTE_FS_TYPES="nfs,nfs4"
-#
-# CIFS/SMB example:
-# REMOTE_WALLPAPER_DIR="/mnt/wallpapers-smb"
-# REMOTE_FS_TYPES="cifs,smb3"
 
 # Maximum time, in seconds, for mount detection, directory scanning, and image
 # loading. The systemd service stops the complete update after two minutes.
@@ -35,8 +36,23 @@ AWWW_BLURRED_BACKGROUND="true"
 AWWW_BACKGROUND_BLUR="30"
 AWWW_RENDER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/awww/rendered"
 
+# Keep first-time rendering unobtrusive. Cached images skip ImageMagick and EXIF
+# reads on later runs. ionice idle priority is also used when available.
+AWWW_RENDER_THREADS="2"
+AWWW_RENDER_NICE="10"
+
+# Show the capture date and city in the bottom-right corner when the matching
+# EXIF/IPTC/XMP fields exist. GPS coordinates are not sent to an online service.
+AWWW_METADATA_OVERLAY="true"
+AWWW_METADATA_DATE_FORMAT="%d/%m/%Y"
+AWWW_METADATA_FONT="DejaVu-Sans"
+AWWW_METADATA_FONT_SIZE="20"
+AWWW_METADATA_MARGIN="36"
+
 # Apply and troubleshoot:
 #   systemctl --user restart awww_random.service
 #   ~/.dotfiles/bin/awww.sh
 #   findmnt --target /mnt/wallpapers-smb --output TARGET,SOURCE,FSTYPE
+#
+# Older LOCAL_WALLPAPER_DIR and REMOTE_WALLPAPER_DIR settings remain supported.
 #   journalctl --user -u awww_random.service -n 30 --no-pager
