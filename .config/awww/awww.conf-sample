@@ -1,0 +1,35 @@
+# Copy this file to ~/.config/awww/awww.conf before editing it. The local file
+# is ignored by Git and reloaded on every run.
+#
+# WALLPAPER_SOURCE modes:
+#   auto   - use the remote directory when available, otherwise use local files
+#   local  - always use local files
+#   remote - require the remote directory and fail when it is unavailable
+WALLPAPER_SOURCE="auto"
+
+LOCAL_WALLPAPER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds"
+
+# The remote directory must already be mounted. Leave it empty for local-only
+# operation in auto mode. Systemd automounts are supported.
+REMOTE_WALLPAPER_DIR=""
+REMOTE_FS_TYPES="nfs,nfs4,cifs,smb3"
+
+# NFS example:
+# REMOTE_WALLPAPER_DIR="/mnt/wallpapers-nfs"
+# REMOTE_FS_TYPES="nfs,nfs4"
+#
+# CIFS/SMB example:
+# REMOTE_WALLPAPER_DIR="/mnt/wallpapers-smb"
+# REMOTE_FS_TYPES="cifs,smb3"
+
+# Maximum time, in seconds, for mount detection, directory scanning, and image
+# loading. The systemd service stops the complete update after two minutes.
+REMOTE_PROBE_TIMEOUT="3"
+REMOTE_SCAN_TIMEOUT="15"
+REMOTE_APPLY_TIMEOUT="10"
+
+# Apply and troubleshoot:
+#   systemctl --user restart awww_random.service
+#   ~/.dotfiles/bin/awww.sh
+#   findmnt --target /mnt/wallpapers-smb --output TARGET,SOURCE,FSTYPE
+#   journalctl --user -u awww_random.service -n 30 --no-pager

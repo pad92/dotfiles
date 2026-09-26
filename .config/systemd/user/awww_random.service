@@ -5,6 +5,8 @@ PartOf=graphical-session.target
 After=awww.service
 
 [Service]
+Type=oneshot
+TimeoutStartSec=2min
 ExecCondition=/bin/sh -c '[ -n "$WAYLAND_DISPLAY" ]'
 ExecStart=/bin/bash %h/.dotfiles/bin/awww.sh
 

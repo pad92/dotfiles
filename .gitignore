@@ -38,6 +38,7 @@ Desktop.ini
 !.tmux/plugins/tpm/*
 
 # Config files that may contain secrets or be system-specific
+.config/awww/awww.conf
 .config/nitrogen/bg-saved.cfg
 .config/gtk-3.0/bookmarks
 .config/gtk-3.0/servers

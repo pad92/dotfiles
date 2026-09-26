@@ -54,7 +54,8 @@ includes without tracking it:
 | [`.config/waybar/`](./.config/waybar/)                                     | Status bar, including per-host configurations                       |
 | [`.config/alacritty/`](./.config/alacritty/), [`.tmux.conf`](./.tmux.conf) | Terminal appearance and tmux bindings                               |
 | [`.config/nvim/`](./.config/nvim/), [`.vimrc`](./.vimrc)                   | Editor settings and plugins                                         |
-| `~/.local/share/backgrounds/`                                              | Images for wallpaper rotation                                       |
+| [`.config/awww/`](./.config/awww/)                                         | Local and remote wallpaper sources                                  |
+| `~/.local/share/backgrounds/`                                              | Local images for wallpaper rotation                                 |
 
 Shell settings include `LANG`, `EDITOR`, and the Oh My Zsh plugin list. The common
 UWSM environment defines `BROWSER`, `TERMINAL`, and `XCURSOR_THEME`, while
@@ -203,22 +204,33 @@ to open `pavucontrol`.
 
 ### Wallpapers and lock screen
 
-Put wallpaper images in `~/.local/share/backgrounds/`. For example, to copy
-images tagged `paysage` from a source directory:
+[`awww.sh`](./bin/awww.sh) selects a different image for each monitor from local
+files or an existing NFS/CIFS mount. In `auto` mode, an unavailable, empty, or
+slow remote source falls back to local images.
+
+Copy the sample to create the Git-ignored configuration. The script reloads it
+each time it runs and uses the sample itself when the local file is absent.
 
 ```sh
-exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} -o "${XDG_DATA_HOME}/backgrounds/"
+cp ~/.config/awww/awww.conf-sample ~/.config/awww/awww.conf
 ```
 
-`awww.service` only starts in a Hyprland session. It waits for the Wayland socket,
-removes stale sockets, and runs the daemon with `--no-cache`. These checks prevent
-the startup races and cache failures seen on this setup. Every 30 minutes,
-`awww_random.timer` calls `awww_random.service`, which uses
-[`awww.sh`](./bin/awww.sh) to choose a wallpaper for each monitor. To change them
-manually:
+The sample documents the source modes, NFS/CIFS examples, timeouts, and
+troubleshooting commands.
+
+Put fallback images in `~/.local/share/backgrounds/`. For example, this command
+copies images tagged `paysage` from another directory:
 
 ```sh
-systemctl --user start awww_random.service
+exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} \
+    -o "${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds/"
+```
+
+`awww.service` starts with Hyprland, and `awww_random.timer` changes wallpapers
+every 30 minutes. Apply changes with:
+
+```sh
+systemctl --user restart awww_random.service
 ```
 
 [Hyprlock](./.config/hypr/hyprlock.conf) shows the clock, system batteries, and
@@ -241,7 +253,7 @@ See [`bin/`](./bin/) for the full collection.
 | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup |
 | [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication; [exclude patterns](./dist/backup_excludes.txt)                                        |
-| [`awww.sh`](./bin/awww.sh)                                 | Select a distinct wallpaper per monitor with `shuf -z` and `mapfile`                                                                   |
+| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                         |
 | [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                 |
 | [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                             |
 | [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)              |
