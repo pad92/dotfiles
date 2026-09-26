@@ -110,18 +110,27 @@ sleep 1
 # Nested in a Wayland session, Hyprland opens a window-sized output whose
 # resolution tracks the host. For a deterministic, full-HD capture we add a
 # virtual headless output and drop the nested one so windows land on it.
-mons_before="$(hyprctl -i "$SIG" monitors -j | grep -o '"name": "[^"]*"')"
-hyprctl -i "$SIG" output create headless >/dev/null
+monitor_names() {
+    hyprctl -i "$SIG" monitors -j | python3 -c \
+        'import json,sys; print(*(m["name"] for m in json.load(sys.stdin)), sep="\n")'
+}
+
+mons_before="$(monitor_names | sort)"
+if ! hyprctl -i "$SIG" output create headless >/dev/null; then
+    echo "Error: failed to create a headless output." >&2
+    exit 1
+fi
 sleep 1
-OUTPUT="$(comm -13 <(echo "$mons_before" | sort) \
-    <(hyprctl -i "$SIG" monitors -j | grep -o '"name": "[^"]*"' | sort) \
-    | sed 's/.*"name": "//;s/".*//' | head -1)"
-OUTPUT="${OUTPUT:-HEADLESS-2}"
+OUTPUT="$(comm -13 <(printf '%s\n' "$mons_before") <(monitor_names | sort) | head -1)"
+if [ -z "$OUTPUT" ]; then
+    echo "Error: could not identify the new headless output." >&2
+    exit 1
+fi
 # Remove every other (nested) output so the headless one is sole + focused
 while read -r m; do
     [ "$m" = "$OUTPUT" ] && continue
     hyprctl -i "$SIG" output remove "$m" >/dev/null 2>&1
-done < <(hyprctl -i "$SIG" monitors -j | grep -o '"name": "[^"]*"' | sed 's/.*"name": "//;s/".*//')
+done < <(monitor_names)
 # Optional resolution override, e.g. RES=2560x1440
 [ -n "${RES:-}" ] && hyprctl -i "$SIG" eval \
     "hl.monitor({ output = \"$OUTPUT\", mode = \"$RES@60\", position = \"0x0\", scale = 1 })" >/dev/null
