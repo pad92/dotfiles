@@ -10,7 +10,8 @@ All notable changes to this project will be documented in this file.
   wallpaper source modes: `auto`, `local`, and `remote`. Existing NFS, CIFS, and
   systemd automount sources use bounded scans and image loads, with a local
   fallback when the remote source is unavailable, empty, or fails during
-  application.
+  application. Images keep their aspect ratio and use a cached blurred copy as
+  background instead of black bars.
 
 ### Changed
 

@@ -15,6 +15,7 @@ hyprpwcenter
 hyprsysteminfo
 hyprutils
 hyprwayland-scanner
+imagemagick
 noto-fonts-emoji
 nwg-displays
 nwg-look

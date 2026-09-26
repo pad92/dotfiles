@@ -29,8 +29,11 @@ load_config() {
     # shellcheck source=/dev/null
     source "${config_to_load}"
 
-    # Keep configurations created before this option was introduced compatible.
+    # Keep configurations created before these options were introduced compatible.
     REMOTE_APPLY_TIMEOUT="${REMOTE_APPLY_TIMEOUT:-10}"
+    AWWW_BLURRED_BACKGROUND="${AWWW_BLURRED_BACKGROUND:-true}"
+    AWWW_BACKGROUND_BLUR="${AWWW_BACKGROUND_BLUR:-30}"
+    AWWW_RENDER_CACHE_DIR="${AWWW_RENDER_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/awww/rendered}"
 }
 
 timeout_is_valid() {
@@ -73,6 +76,28 @@ validate_remote_config() {
     fi
 }
 
+validate_render_config() {
+    case "${AWWW_BLURRED_BACKGROUND}" in
+        true|false) ;;
+        *)
+            log "Error: AWWW_BLURRED_BACKGROUND must be 'true' or 'false'."
+            return 1
+            ;;
+    esac
+
+    if [ "${AWWW_BLURRED_BACKGROUND}" = "true" ]; then
+        if ! timeout_is_valid "${AWWW_BACKGROUND_BLUR}"; then
+            log "Error: AWWW_BACKGROUND_BLUR must be a positive number."
+            return 1
+        fi
+
+        if [ -z "${AWWW_RENDER_CACHE_DIR}" ]; then
+            log "Error: AWWW_RENDER_CACHE_DIR must not be empty."
+            return 1
+        fi
+    fi
+}
+
 validate_config() {
     case "${WALLPAPER_SOURCE-}" in
         local)
@@ -92,17 +117,28 @@ validate_config() {
             return 1
             ;;
     esac
+
+    validate_render_config
 }
 
 require_commands() {
     local command_name
 
-    for command_name in awww find mktemp sed shuf; do
+    for command_name in awww find mktemp shuf; do
         if ! command -v "${command_name}" >/dev/null 2>&1; then
             log "Error: '${command_name}' is not installed or not found in PATH."
             return 1
         fi
     done
+
+    if [ "${AWWW_BLURRED_BACKGROUND}" = "true" ]; then
+        for command_name in magick mkdir mv sha256sum stat; do
+            if ! command -v "${command_name}" >/dev/null 2>&1; then
+                log "Error: '${command_name}' is required for blurred backgrounds."
+                return 1
+            fi
+        done
+    fi
 }
 
 run_with_timeout() {
@@ -268,38 +304,104 @@ ensure_awww_daemon() {
 }
 
 get_monitors() {
+    local line
     local query
 
     query=$(awww query 2>/dev/null) || return 1
     [ -n "${query}" ] || return 1
 
-    mapfile -t MONITORS < <(printf '%s\n' "${query}" | sed -E 's/^: ([^:]+):.*/\1/')
+    while IFS= read -r line; do
+        if [[ "${line}" =~ ^:[[:space:]]([^:]+):[[:space:]]([0-9]+x[0-9]+), ]]; then
+            MONITORS+=("${BASH_REMATCH[1]}")
+            MONITOR_SIZES+=("${BASH_REMATCH[2]}")
+        fi
+    done <<< "${query}"
 }
 
-apply_image() {
-    local monitor="$1"
-    local image="$2"
-    local -a command
-
-    command=(awww img --outputs "${monitor}" "${image}" --resize=crop --transition-type fade)
-
+run_for_active_source() {
     if [ "${ACTIVE_WALLPAPER_SOURCE}" = "remote" ]; then
-        run_with_timeout "${REMOTE_APPLY_TIMEOUT}" "${command[@]}"
+        run_with_timeout "${REMOTE_APPLY_TIMEOUT}" "$@"
     else
-        "${command[@]}"
+        "$@"
     fi
 }
 
+prepare_display_image() {
+    local dimensions="$1"
+    local image="$2"
+    local cache_key
+    local cached_image
+    local image_metadata
+    local temporary_image
+    local -a render_command
+
+    if [ "${AWWW_BLURRED_BACKGROUND}" = "false" ]; then
+        DISPLAY_IMAGE="${image}"
+        DISPLAY_RESIZE_MODE="fit"
+        return 0
+    fi
+
+    image_metadata=$(run_for_active_source stat --format='%Y:%s' "${image}") || return 1
+    cache_key=$(printf '%s\n' \
+        "${image}|${image_metadata}|${dimensions}|${AWWW_BACKGROUND_BLUR}" \
+        | sha256sum) || return 1
+    cache_key="${cache_key%% *}"
+
+    mkdir -p "${AWWW_RENDER_CACHE_DIR}" || return 1
+    cached_image="${AWWW_RENDER_CACHE_DIR}/${cache_key}.jpg"
+
+    if [ ! -s "${cached_image}" ]; then
+        temporary_image=$(mktemp --tmpdir="${AWWW_RENDER_CACHE_DIR}" \
+            '.awww-render.XXXXXX.jpg') || return 1
+        render_command=(
+            magick "${image}" -auto-orient -write mpr:source +delete
+            mpr:source -resize "${dimensions}^" -gravity center
+            -extent "${dimensions}" -blur "0x${AWWW_BACKGROUND_BLUR}"
+            \( mpr:source -resize "${dimensions}" \)
+            -gravity center -composite -strip -quality 92 "${temporary_image}"
+        )
+
+        if ! run_for_active_source "${render_command[@]}"; then
+            rm -f "${temporary_image}"
+            return 1
+        fi
+
+        mv "${temporary_image}" "${cached_image}" || return 1
+    fi
+
+    DISPLAY_IMAGE="${cached_image}"
+    DISPLAY_RESIZE_MODE="no"
+}
+
+apply_image() {
+    local dimensions="$1"
+    local monitor="$2"
+    local image="$3"
+    local -a command
+
+    prepare_display_image "${dimensions}" "${image}" || return 1
+    command=(
+        awww img --outputs "${monitor}" "${DISPLAY_IMAGE}"
+        --resize="${DISPLAY_RESIZE_MODE}" --transition-type fade
+    )
+
+    run_for_active_source "${command[@]}"
+}
+
 apply_wallpapers() {
+    local dimensions
     local image
     local image_index=0
     local monitor
+    local monitor_index
     local status=0
 
-    for monitor in "${MONITORS[@]}"; do
+    for monitor_index in "${!MONITORS[@]}"; do
+        monitor="${MONITORS[monitor_index]}"
+        dimensions="${MONITOR_SIZES[monitor_index]}"
         image="${IMAGES[image_index % ${#IMAGES[@]}]}"
 
-        if ! apply_image "${monitor}" "${image}"; then
+        if ! apply_image "${dimensions}" "${monitor}" "${image}"; then
             if [ "${WALLPAPER_SOURCE}" = "auto" ] \
                 && [ "${ACTIVE_WALLPAPER_SOURCE}" = "remote" ]; then
                 log "Warning: Applying a remote wallpaper failed; switching to local images."
@@ -309,7 +411,7 @@ apply_wallpapers() {
                 fi
                 image_index=0
                 image="${IMAGES[image_index]}"
-                apply_image "${monitor}" "${image}" || status=1
+                apply_image "${dimensions}" "${monitor}" "${image}" || status=1
             else
                 status=1
             fi
@@ -328,8 +430,11 @@ main() {
 
     IMAGES=()
     MONITORS=()
+    MONITOR_SIZES=()
     ACTIVE_WALLPAPER_DIR=""
     ACTIVE_WALLPAPER_SOURCE=""
+    DISPLAY_IMAGE=""
+    DISPLAY_RESIZE_MODE=""
 
     prepare_images || return 1
     ensure_awww_daemon || return 1

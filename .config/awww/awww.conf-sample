@@ -28,6 +28,13 @@ REMOTE_PROBE_TIMEOUT="3"
 REMOTE_SCAN_TIMEOUT="15"
 REMOTE_APPLY_TIMEOUT="10"
 
+# Preserve the complete photo and fill unused screen space with an enlarged,
+# blurred copy. Rendered images are cached by source file and monitor resolution.
+# Set this to false to use AWWW's regular fit mode instead.
+AWWW_BLURRED_BACKGROUND="true"
+AWWW_BACKGROUND_BLUR="30"
+AWWW_RENDER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/awww/rendered"
+
 # Apply and troubleshoot:
 #   systemctl --user restart awww_random.service
 #   ~/.dotfiles/bin/awww.sh
