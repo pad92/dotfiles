@@ -13,6 +13,18 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Docs**: Document AWWW source, rendering, and troubleshooting options.
+- **Hyprlock**:
+  - Update the animation, DPMS, and sleep-lock settings for Hyprlock 0.9.6 and
+    Hypridle 0.1.8.
+  - Show the website behind browser media, including service-specific names and
+    icons for Deezer, YouTube, and other common streaming sites.
+  - Escape player metadata and limit artwork downloads, conversions, cache size,
+    and retry frequency.
+  - Keep a cached cover when the same URL fails to refresh or Firefox removes
+    its temporary MPRIS image. Artwork refreshes every 3 seconds so the script
+    can save that image before it disappears.
+  - Detect USB, USB-C, USB-PD, and wireless chargers in the lock-screen power
+    status.
 
 ## [v5.5.3](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.3)
 
