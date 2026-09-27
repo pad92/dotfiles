@@ -8,7 +8,7 @@ for ps in /sys/class/power_supply/*; do
     type=$(cat "$ps/type" 2>/dev/null) || continue
 
     case "$type" in
-        Mains)
+        Mains|USB|USB_C|USB_PD|USB_PD_DRP|USB_DCP|USB_CDP|USB_ACA|Wireless)
             if [ "$(cat "$ps/online" 2>/dev/null)" = "1" ]; then
                 mains=""
             fi

@@ -235,17 +235,26 @@ every 30 minutes. Apply changes with:
 systemctl --user restart awww_random.service
 ```
 
-[Hyprlock](./.config/hypr/hyprlock.conf) shows the clock, system batteries, and
-media information. Player labels refresh every second, batteries every 10
-seconds, and artwork every 5 seconds. Its [scripts](./.config/hypr/hyprlock/)
-use `playerctl` for metadata, `curl` for remote covers, and ImageMagick (`magick`
-or `convert`) to produce 150 × 150 PNGs. The first cover appears after a refresh
-and any download time. Missing artwork displays a transparent image.
+[Hyprlock](./.config/hypr/hyprlock.conf) shows the time, system batteries, and
+current media. Player text and artwork refresh every 3 seconds; battery status
+refreshes every 10 seconds.
 
-Covers are cached by URL under `$XDG_RUNTIME_DIR`, falling back to a private
-directory under `${TMPDIR:-/tmp}`. Battery readings come from
-`/sys/class/power_supply` and exclude peripherals. Lock-screen colors and
-positions are configured separately in `hyprlock.conf`.
+For media playing in Firefox or Chrome, the source label reads `xesam:url` and
+shows the service name instead of the browser. Known services such as Deezer and
+YouTube get their own icon. Other valid domains use a globe, while missing or
+invalid URLs fall back to the browser name.
+
+The [helper scripts](./.config/hypr/hyprlock/) read metadata with `playerctl`,
+download HTTPS covers with `curl`, and resize them to 150 × 150 with ImageMagick.
+Downloads and conversions have size, time, and resource limits. Covers are
+cached by URL under `$XDG_RUNTIME_DIR`, or in a private `${TMPDIR:-/tmp}`
+directory when no runtime directory is available. A cached cover stays on
+screen if refreshing that same URL fails or Firefox deletes its temporary image.
+When there is no usable cover for the current URL, Hyprlock displays a
+transparent image.
+
+Battery readings come from `/sys/class/power_supply` and exclude peripherals.
+Colors and positions are configured in `hyprlock.conf`.
 
 ## Scripts
 
