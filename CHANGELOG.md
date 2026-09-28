@@ -26,6 +26,11 @@ All notable changes to this project will be documented in this file.
   - Detect USB, USB-C, USB-PD, and wireless chargers in the lock-screen power
     status.
 
+### Fixed
+
+- **AWWW**: Render wallpapers at each monitor's scaled pixel dimensions so they
+  fill mixed-DPI and HiDPI displays instead of appearing small and centered.
+
 ## [v5.5.3](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.3)
 
 ### Fixed

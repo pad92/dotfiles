@@ -202,7 +202,7 @@ validate_config() {
 require_commands() {
     local command_name
 
-    for command_name in awww find mktemp shuf; do
+    for command_name in awww awk find mktemp shuf; do
         if ! command -v "${command_name}" >/dev/null 2>&1; then
             log "Error: '${command_name}' is not installed or not found in PATH."
             return 1
@@ -401,17 +401,35 @@ ensure_awww_daemon() {
     done
 }
 
-get_monitors() {
-    local line
-    local query
+scale_dimensions() {
+    local dimensions="$1"
+    local scale="$2"
+    local height
+    local width
 
+    IFS=x read -r width height <<< "${dimensions}"
+    LC_ALL=C awk -v width="${width}" -v height="${height}" -v scale="${scale}" \
+        'BEGIN { printf "%dx%d", int(width * scale + 0.5), int(height * scale + 0.5) }'
+}
+
+get_monitors() {
+    local dimensions
+    local line
+    local monitor_pattern
+    local query
+    local scale
+
+    monitor_pattern='^:[[:space:]]([^:]+):[[:space:]]([0-9]+x[0-9]+),'
+    monitor_pattern+='[[:space:]]scale:[[:space:]]([0-9]+([.][0-9]+)?),'
     query=$(awww query 2>/dev/null) || return 1
     [ -n "${query}" ] || return 1
 
     while IFS= read -r line; do
-        if [[ "${line}" =~ ^:[[:space:]]([^:]+):[[:space:]]([0-9]+x[0-9]+), ]]; then
+        if [[ "${line}" =~ ${monitor_pattern} ]]; then
+            dimensions="${BASH_REMATCH[2]}"
+            scale="${BASH_REMATCH[3]}"
             MONITORS+=("${BASH_REMATCH[1]}")
-            MONITOR_SIZES+=("${BASH_REMATCH[2]}")
+            MONITOR_SIZES+=("$(scale_dimensions "${dimensions}" "${scale}")")
         fi
     done <<< "${query}"
 }
@@ -616,4 +634,6 @@ main() {
     apply_wallpapers
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
