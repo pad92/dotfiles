@@ -35,6 +35,9 @@ All notable changes to this project will be documented in this file.
 
 - **AWWW**: Render wallpapers at each monitor's scaled pixel dimensions so they
   fill mixed-DPI and HiDPI displays instead of appearing small and centered.
+- **Steam Optimize**: Select the active Steam account correctly, avoid mixed AMD
+  and NVIDIA driver overrides on hybrid systems, preserve the inherited
+  Hyprland session, and restore mouse DPI only from valid command output.
 - **Zsh**: Stop reloading `/etc/profile.d` in every interactive shell and remove
   redundant completion, color, path, and editor initialization.
 

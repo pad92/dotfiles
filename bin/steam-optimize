@@ -215,7 +215,9 @@ def get_current_mouse_dpi():
     values = [
         int(value)
         for value in re.findall(
-            r"(?:\bDPI\s*:\s*)?\b(\d+)\b", result.stdout, re.IGNORECASE
+            r"^\s*(?:DPI\s*:\s*)?(\d+)(?:\s+\d+)?\s*$",
+            result.stdout,
+            re.IGNORECASE | re.MULTILINE,
         )
     ]
     return values[0] if values else None
@@ -362,23 +364,30 @@ def setup_global_env():
 
     gpu_detected = False
 
-    if os.path.isdir("/sys/module/amdgpu"):
+    amd_loaded = os.path.isdir("/sys/module/amdgpu")
+    nvidia_loaded = os.path.isdir("/sys/module/nvidia")
+
+    # Prefer the discrete NVIDIA GPU on hybrid systems. Applying both sets of
+    # variables can force RADV while NVIDIA render offload is requested.
+    if nvidia_loaded:
+        if amd_loaded:
+            log_info("AMD and NVIDIA GPUs detected — selecting NVIDIA render offload")
+        else:
+            log_info(
+                "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
+            )
+        os.environ.update(NVIDIA_ENV_VARS)
+        # Remove Intel Vulkan driver restrictions inherited from UWSM
+        os.environ.pop("VK_DRIVER_FILES", None)
+        gpu_detected = True
+        collector.gpu = "NVIDIA (Proprietary driver)"
+    elif amd_loaded:
         log_info(
             "AMD GPU detected (amdgpu module loaded) — applying RADV optimizations"
         )
         os.environ.update(AMD_ENV_VARS)
         gpu_detected = True
         collector.gpu = "AMD (RADV driver)"
-
-    if os.path.isdir("/sys/module/nvidia"):
-        log_info(
-            "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
-        )
-        os.environ.update(NVIDIA_ENV_VARS)
-        # Remove Intel Vulkan driver restrictions inherited from UWSM
-        os.environ.pop("VK_DRIVER_FILES", None)
-        gpu_detected = True
-        collector.gpu = "NVIDIA (Proprietary driver)"
 
     if not gpu_detected:
         log_warn(
@@ -404,14 +413,29 @@ def setup_hyprland_env():
     os.environ["XDG_RUNTIME_DIR"] = runtime_dir
 
     hypr_dir = os.path.join(runtime_dir, "hypr")
-    if os.path.isdir(hypr_dir):
-        with contextlib.suppress(Exception):
-            items = os.listdir(hypr_dir)
-            if items:
-                latest = max(
-                    items, key=lambda x: os.path.getmtime(os.path.join(hypr_dir, x))
-                )
-                os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = latest
+    inherited_signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    if inherited_signature and os.path.isdir(
+        os.path.join(hypr_dir, inherited_signature)
+    ):
+        return
+
+    os.environ.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
+    if not os.path.isdir(hypr_dir):
+        return
+
+    try:
+        items = [
+            item
+            for item in os.listdir(hypr_dir)
+            if os.path.isdir(os.path.join(hypr_dir, item))
+        ]
+        if items:
+            latest = max(
+                items, key=lambda x: os.path.getmtime(os.path.join(hypr_dir, x))
+            )
+            os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = latest
+    except OSError as e:
+        log_warn(f"Failed to discover the active Hyprland session: {e}")
 
 
 def get_gamescope_args(monitor_selector, gamescope_supports_output):
@@ -717,15 +741,17 @@ def find_active_localconfig_path(steam_root, vdf_module):
     except (OSError, ValueError, SyntaxError, AttributeError):
         users = {}
 
-    active_ids = [
-        user_id
-        for user_id, data in users.items()
-        if isinstance(data, dict) and data.get("MostRecent") == "1"
+    active_account_ids = [
+        str(int(steam_id) & 0xFFFFFFFF)
+        for steam_id, data in users.items()
+        if isinstance(data, dict)
+        and data.get("MostRecent") == "1"
+        and str(steam_id).isdigit()
     ]
     localconfig_paths = find_localconfig_paths(steam_root)
-    for user_id in active_ids:
+    for account_id in active_account_ids:
         candidate = os.path.join(
-            steam_root, "userdata", user_id, "config", "localconfig.vdf"
+            steam_root, "userdata", account_id, "config", "localconfig.vdf"
         )
         if candidate in localconfig_paths:
             return candidate
