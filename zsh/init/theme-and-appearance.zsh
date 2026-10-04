@@ -1,5 +1,3 @@
-# ls colors
-autoload -U colors && colors
 export LSCOLORS="Gxfxcxdxbxegedabagacad"
 
 # Enable ls colors

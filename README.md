@@ -47,7 +47,7 @@ includes without tracking it:
 
 | Configuration                                                              | What to change                                                      |
 | :------------------------------------------------------------------------- | :------------------------------------------------------------------ |
-| [`.zshrc`](./.zshrc), [`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh)     | Shell environment, plugins, and aliases                             |
+| [`.zshenv`](./.zshenv), [`.zprofile`](./.zprofile), [`.zshrc`](./.zshrc)   | Shell environment, desktop login, plugins, and aliases              |
 | [`.config/uwsm/`](./.config/uwsm/)                                         | Shared session environment and compositor-specific GPU settings     |
 | [`.config/hypr/`](./.config/hypr/)                                         | Bindings, window rules, and `hosts/<hostname>.lua` hardware layouts |
 | [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf)                      | Toolkit colors, fonts, GTK/icon themes, and geometry                |

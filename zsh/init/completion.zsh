@@ -1,6 +1,7 @@
 # Load and initialize the completion system ignoring insecure directories.
 # Rebuild the dump (and run the security check) at most once a day; otherwise
 # reuse the cached dump with -C to skip the slow per-startup scan.
+zmodload zsh/complist
 autoload -Uz compinit
 if [[ -n ${ZDOTDIR:-${HOME}}/.zcompdump(#qN.mh+24) ]]; then
   compinit -i
