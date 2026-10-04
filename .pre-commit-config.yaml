@@ -123,4 +123,4 @@ repos:
       - id: shellcheck
         args: [--severity=warning, --exclude=SC2207, --exclude=SC2034]
         # shellcheck does not support zsh syntax (glob qualifiers, etc.)
-        exclude: '(\.zsh$|^\.zshrc$|^\.zshenv$)'
+        exclude: '(\.zsh$|^\.zshrc$|^\.zshenv$|^\.zprofile$)'

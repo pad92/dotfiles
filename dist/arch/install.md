@@ -496,21 +496,26 @@ sudo pacman -S uwsm libnewt
 
 ### Launch from TTY
 
-Add to your shell configuration (note that this is already integrated at the bottom of `~/.zshrc` in this dotfiles setup, but you can use `~/.zprofile` instead if you prefer to create and configure one):
+This dotfiles setup installs the following logic in `~/.zprofile`, so it runs
+only for a login shell attached to a terminal:
 
 #### Option A: Interactive selection menu at login
 
 ```zsh
-if uwsm check may-start && uwsm select; then
-    exec uwsm start default
+if [[ -o login && -t 0 ]] && command -v uwsm >/dev/null 2>&1; then
+    if uwsm check may-start && uwsm select; then
+        exec uwsm start default
+    fi
 fi
 ```
 
 #### Option B: Direct launch
 
 ```zsh
-if uwsm check may-start; then
-    exec uwsm start hyprland.desktop
+if [[ -o login && -t 0 ]] && command -v uwsm >/dev/null 2>&1; then
+    if uwsm check may-start; then
+        exec uwsm start hyprland.desktop
+    fi
 fi
 ```
 

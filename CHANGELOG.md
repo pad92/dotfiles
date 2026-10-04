@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Docs**: Document AWWW source, rendering, and troubleshooting options.
+- **Zsh**:
+  - Centralize and deduplicate `PATH` setup in `.zshenv`, with user binaries
+    taking precedence consistently in login, interactive, and nested shells.
+  - Move UWSM startup to `.zprofile`, restrict Fastfetch to top-level terminals,
+    and cap saved command history at 100,000 entries.
 - **Hyprlock**:
   - Update the animation, DPMS, and sleep-lock settings for Hyprlock 0.9.6 and
     Hypridle 0.1.8.
@@ -32,6 +37,11 @@ All notable changes to this project will be documented in this file.
 
 - **AWWW**: Render wallpapers at each monitor's scaled pixel dimensions so they
   fill mixed-DPI and HiDPI displays instead of appearing small and centered.
+- **Steam Optimize**: Select the active Steam account correctly, avoid mixed AMD
+  and NVIDIA driver overrides on hybrid systems, preserve the inherited
+  Hyprland session, and restore mouse DPI only from valid command output.
+- **Zsh**: Stop reloading `/etc/profile.d` in every interactive shell and remove
+  redundant completion, color, path, and editor initialization.
 
 ## [v5.5.3](https://gitlab.com/pad92/dotfiles/-/releases/v5.5.3)
 

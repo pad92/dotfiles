@@ -9,6 +9,7 @@
     ~/.vim: .vim
     ~/.vimrc: .vimrc
     ~/.zshenv: .zshenv
+    ~/.zprofile: .zprofile
     ~/.zshrc: .zshrc
     ~/.gitconfig: .gitconfig
     ~/.gtkrc-2.0: .gtkrc-2.0
