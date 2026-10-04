@@ -2,6 +2,5 @@ gamemode
 gamescope
 ludusavi
 mangohud
-power-profiles-daemon
 proton-cachyos-slr
 steam

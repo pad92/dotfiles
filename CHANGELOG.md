@@ -6,8 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Installation**: Add a selectable SRE/DevOps package group for infrastructure,
-  containers, Kubernetes, diagnostics, security, and command-line tooling.
+- **Installation**: Add selectable SRE/DevOps, container-runtime, IaC, GPU-driver,
+  and vendor-specific printer package groups.
 - **AWWW**: Add configurable local and mounted NFS/CIFS sources, including
   multiple directories and automatic local fallback. Preserve image ratios with
   blurred backgrounds and optional date/city metadata.
@@ -35,6 +35,12 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Installation**: Replace removed Arch package names, remove conflicting power
+  managers and redundant transitive dependencies, and count packages only once
+  when multiple selected groups overlap. Track packages installed by the
+  dotfiles installer and provide read-only planning plus opt-in, confirmed
+  reconciliation of packages that are no longer selected. Stop the backup job
+  from automatically removing every orphan package outside that managed state.
 - **AWWW**: Render wallpapers at each monitor's scaled pixel dimensions so they
   fill mixed-DPI and HiDPI displays instead of appearing small and centered.
 - **Steam Optimize**: Select the active Steam account correctly, avoid mixed AMD

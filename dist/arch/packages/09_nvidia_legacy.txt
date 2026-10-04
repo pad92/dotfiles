@@ -1,0 +1,7 @@
+lib32-nvidia-580xx-utils
+libva-nvidia-driver
+nvidia-580xx-dkms
+nvidia-580xx-settings
+nvidia-580xx-utils
+nvidia-container-toolkit
+nvidia-prime

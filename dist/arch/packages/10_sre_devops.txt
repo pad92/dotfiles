@@ -6,13 +6,9 @@ bandit
 base-devel
 bat
 btop
-buildah
 check-jsonschema
 cosign
 curl
-docker
-docker-buildx
-docker-compose
 ethtool
 eza
 fd
@@ -27,7 +23,6 @@ helmfile
 httpie
 iotop-c
 iperf3
-jq
 k9s
 kubeconform
 kubectl
@@ -39,9 +34,7 @@ mypy
 nmap
 openbsd-netcat
 openssh
-opentofu
 packer
-podman
 pre-commit
 python
 python-pipx
@@ -50,14 +43,12 @@ rsync
 ruff
 shellcheck
 shfmt
-skopeo
 socat
 sops
 stern
 strace
 sysstat
 tcpdump
-terraform
 tflint
 tmux
 tree

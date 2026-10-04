@@ -16,13 +16,30 @@ cd ~/.dotfiles
 ```
 
 Run the installer from a terminal as a regular user with `sudo` access. You can
-choose package groups such as fonts, Hyprland, Nvidia, and Steam; packages already
-on the system are skipped. Before selecting Steam or any group containing
-`lib32-*` packages, enable `[multilib]` as described in the
+choose package groups such as fonts, Hyprland, generation-specific GPU drivers,
+containers, infrastructure tools, and Steam; packages already on the system are
+skipped. Select only the hardware and alternative-tool groups that match the
+machine. Before selecting Steam or any group containing `lib32-*` packages,
+enable `[multilib]` as described in the
 [Arch installation guide](./dist/arch/install.md#package-manager).
+
+Select `08_amd` for AMD graphics. Select `08_intel_modern` for Broadwell and
+newer Intel graphics, or `07_intel_legacy` for older generations. Select
+`09_nvidia_modern` for Turing and newer GPUs, or `09_nvidia_legacy` for Maxwell,
+Pascal, and Volta. Do not select both generations for the same GPU vendor. Canon
+and Samsung printer drivers are separate from the generic printer stack, as are
+Docker and Podman and the OpenTofu and Terraform IaC tools.
 
 The installer uses `paru` or `yay` if either is already available. Otherwise, it
 can build `yay-bin` for you. If you decline, it skips the AUR packages.
+
+Package installation is additive by default. Use `./install --package-plan` to
+preview changes without requesting sudo access, or
+`./install --reconcile-packages` to review packages previously installed by the
+dotfiles installer that are no longer selected. Reconciliation never claims
+packages that predated its state file and requires explicit confirmation before
+removal. Previous group selections are restored from state; the first managed
+run starts with no groups selected, and an empty selection always means “skip”.
 
 For the editor configuration only:
 
@@ -261,16 +278,16 @@ Colors and positions are configured in `hyprlock.conf`.
 
 See [`bin/`](./bin/) for the full collection.
 
-| Script                                                     | Purpose                                                                                                                                |
-| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
-| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup |
-| [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication; [exclude patterns](./dist/backup_excludes.txt)                                        |
-| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                         |
-| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                 |
-| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                             |
-| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)              |
-| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                |
-| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                            |
+| Script                                                     | Purpose                                                                                                                                    |
+| :--------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup     |
+| [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication, report Arch orphans without removing them; [exclude patterns](./dist/backup_excludes.txt) |
+| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                             |
+| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                     |
+| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                                 |
+| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)                  |
+| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                    |
+| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                                |
 
 ## CI and releases
 

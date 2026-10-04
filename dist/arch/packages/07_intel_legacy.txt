@@ -1,0 +1,2 @@
+lib32-libva-intel-driver
+libva-intel-driver
