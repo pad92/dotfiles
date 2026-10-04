@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Installation**: Add a selectable SRE/DevOps package group for infrastructure,
+  containers, Kubernetes, diagnostics, security, and command-line tooling.
 - **AWWW**: Add configurable local and mounted NFS/CIFS sources, including
   multiple directories and automatic local fallback. Preserve image ratios with
   blurred backgrounds and optional date/city metadata.
