@@ -1,4 +1,3 @@
-cnijfilter2
 cups
 foomatic-db
 foomatic-db-gutenprint-ppds
@@ -6,5 +5,4 @@ foomatic-db-nonfree
 foomatic-db-nonfree-ppds
 foomatic-db-ppds
 gutenprint
-samsung-unified-driver
 system-config-printer

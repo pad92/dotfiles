@@ -11,6 +11,14 @@ DOTBOT_DIR="dotbot"
 DOTBOT_BIN="bin/dotbot"
 # Get the absolute path of the script directory
 BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PACKAGE_ACTION="install"
+PACKAGE_STATE_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/arch-packages.json"
+DOTBOT_ARGS=()
+SHOW_HELP=false
+PACKAGE_STATE_LOADED=false
+PREVIOUS_SELECTED_GROUPS=()
+PREVIOUS_OWNED_PACKAGES=()
+declare -A PACKAGE_GROUP_DEFAULTS=()
 
 # --- Colors for output ---
 RED='\033[0;31m'
@@ -25,6 +33,58 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # --- Helper Functions ---
+
+show_help() {
+    cat <<'EOF'
+Usage: ./install [OPTIONS] [-- DOTBOT_ARGS...]
+
+Install the dotfiles and optionally manage selectable Arch Linux package groups.
+
+Options:
+  --package-plan         Preview package installs and managed removals without
+                         making changes or requesting sudo access.
+  --reconcile-packages   Install selected packages and offer to remove packages
+                         previously installed by this installer but no longer
+                         selected. Removal requires explicit confirmation.
+  -h, --help             Show this help and exit.
+
+Unrecognized arguments are forwarded to Dotbot. Use -- to stop parsing installer
+options and forward every remaining argument to Dotbot.
+EOF
+}
+
+parse_install_args() {
+    while (( $# > 0 )); do
+        case "$1" in
+            --package-plan)
+                if [[ "$PACKAGE_ACTION" != "install" ]]; then
+                    log_error "Only one package action may be selected."
+                    return 1
+                fi
+                PACKAGE_ACTION="plan"
+                ;;
+            --reconcile-packages)
+                if [[ "$PACKAGE_ACTION" != "install" ]]; then
+                    log_error "Only one package action may be selected."
+                    return 1
+                fi
+                PACKAGE_ACTION="reconcile"
+                ;;
+            -h|--help)
+                SHOW_HELP=true
+                ;;
+            --)
+                shift
+                DOTBOT_ARGS+=("$@")
+                break
+                ;;
+            *)
+                DOTBOT_ARGS+=("$1")
+                ;;
+        esac
+        shift
+    done
+}
 
 backup_existing_files() {
     log_info "Backing up existing regular files that should be symlinks..."
@@ -158,7 +218,11 @@ show_multi_select() {
     local -a options=("${@}")
     local -a selected=()
     for i in "${!options[@]}"; do
-        selected[i]=1
+        if [[ -n "${PACKAGE_GROUP_DEFAULTS[${options[i]}]+x}" ]]; then
+            selected[i]=1
+        else
+            selected[i]=0
+        fi
     done
 
     local active=0
@@ -280,6 +344,148 @@ ensure_aur_helper() {
     log_success "yay installed successfully!"
 }
 
+load_package_state() {
+    PACKAGE_STATE_LOADED=false
+    PREVIOUS_SELECTED_GROUPS=()
+    PREVIOUS_OWNED_PACKAGES=()
+
+    if [[ ! -f "$PACKAGE_STATE_FILE" ]]; then
+        return 0
+    fi
+
+    local state_output
+    if ! state_output=$(python3 - "$PACKAGE_STATE_FILE" <<'PY'
+import json
+import re
+import sys
+
+path = sys.argv[1]
+name_pattern = re.compile(r"^[a-zA-Z0-9@._+-]+$")
+with open(path, encoding="utf-8") as state_file:
+    state = json.load(state_file)
+
+if state.get("version") != 1:
+    raise ValueError("unsupported package-state version")
+
+for key, record_type in (("selected_groups", "group"), ("owned_packages", "package")):
+    values = state.get(key)
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) and name_pattern.fullmatch(value) for value in values
+    ):
+        raise ValueError(f"invalid {key}")
+    for value in values:
+        print(f"{record_type}\t{value}")
+PY
+    ); then
+        log_warn "Package state is invalid; automatic removal is disabled."
+        return 0
+    fi
+
+    local record_type value
+    while IFS=$'\t' read -r record_type value; do
+        case "$record_type" in
+            group) PREVIOUS_SELECTED_GROUPS+=("$value") ;;
+            package) PREVIOUS_OWNED_PACKAGES+=("$value") ;;
+        esac
+    done <<< "$state_output"
+    PACKAGE_STATE_LOADED=true
+}
+
+write_package_state() {
+    local groups_name=$1
+    local packages_name=$2
+    local -n groups_ref="$groups_name"
+    local -n packages_ref="$packages_name"
+
+    python3 - "$PACKAGE_STATE_FILE" "${#groups_ref[@]}" \
+        "${groups_ref[@]}" "${packages_ref[@]}" <<'PY'
+import json
+import os
+import sys
+import tempfile
+
+path = sys.argv[1]
+group_count = int(sys.argv[2])
+groups = sys.argv[3 : 3 + group_count]
+packages = sys.argv[3 + group_count :]
+state = {
+    "version": 1,
+    "selected_groups": sorted(set(groups)),
+    "owned_packages": sorted(set(packages)),
+}
+
+directory = os.path.dirname(path)
+os.makedirs(directory, mode=0o700, exist_ok=True)
+temporary_path = None
+try:
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=directory,
+        prefix=".arch-packages.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary_file:
+        temporary_path = temporary_file.name
+        json.dump(state, temporary_file, indent=2, sort_keys=True)
+        temporary_file.write("\n")
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+    os.chmod(temporary_path, 0o600)
+    os.replace(temporary_path, path)
+    temporary_path = None
+finally:
+    if temporary_path:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
+PY
+}
+
+is_protected_package() {
+    case "$1" in
+        base|base-devel|bash|filesystem|git|glibc|grub|networkmanager|pacman|python|sudo|systemd|linux|linux-*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+sort_array() {
+    local array_name=$1
+    local -n array_ref="$array_name"
+    if (( ${#array_ref[@]} > 0 )); then
+        mapfile -t array_ref < <(printf '%s\n' "${array_ref[@]}" | sort -u)
+    fi
+}
+
+collect_removal_candidates() {
+    local installed_name=$1
+    local desired_name=$2
+    local owned_name=$3
+    local result_name=$4
+    local -n installed_ref="$installed_name"
+    local -n desired_ref="$desired_name"
+    local -n owned_ref="$owned_name"
+    local -n result_ref="$result_name"
+
+    result_ref=()
+    local pkg
+    for pkg in "${!owned_ref[@]}"; do
+        if [[ -n "${installed_ref[$pkg]+x}" && -z "${desired_ref[$pkg]+x}" ]]; then
+            if is_protected_package "$pkg"; then
+                log_warn "Protected package remains managed and will not be removed: $pkg"
+            else
+                result_ref+=("$pkg")
+            fi
+        fi
+    done
+    sort_array "$result_name"
+}
+
 install_arch_packages() {
     if ! is_arch_or_cachyos; then
         return 0
@@ -291,7 +497,7 @@ install_arch_packages() {
         log_error "pacman is required to install Arch Linux packages."
         return 1
     fi
-    if ! command -v sudo &> /dev/null; then
+    if [[ "$PACKAGE_ACTION" != "plan" ]] && ! command -v sudo &> /dev/null; then
         log_error "sudo is required to install packages."
         return 1
     fi
@@ -299,11 +505,6 @@ install_arch_packages() {
         log_warn "No interactive TTY available; skipping package installation."
         return 0
     fi
-    if ! sudo -v; then
-        log_error "Unable to obtain sudo credentials."
-        return 1
-    fi
-
     local packages_dir="${BASEDIR}/dist/arch/packages"
     if [[ ! -d "$packages_dir" ]]; then
         log_warn "Packages directory not found at $packages_dir. Skipping package installation."
@@ -327,6 +528,15 @@ install_arch_packages() {
         options+=("$(basename "$file" .txt)")
     done
 
+    load_package_state
+    PACKAGE_GROUP_DEFAULTS=()
+    if [[ "$PACKAGE_STATE_LOADED" == true ]]; then
+        local previous_group
+        for previous_group in "${PREVIOUS_SELECTED_GROUPS[@]}"; do
+            PACKAGE_GROUP_DEFAULTS["$previous_group"]=1
+        done
+    fi
+
     log_info "Select the package categories you would like to install."
     echo -e "Use ${BLUE}Up/Down Arrow${NC} keys to navigate, ${BLUE}Space${NC} to toggle, ${BLUE}Enter${NC} to confirm, ${BLUE}Escape${NC} to skip:\n" >&2
 
@@ -345,11 +555,15 @@ install_arch_packages() {
         return 0
     fi
 
-    # Read packages from selected files
+    # Read packages from selected files.
     local all_pkgs=()
+    local selected_groups=()
     for idx in "${selected_idxs[@]}"; do
         local file="${files[idx]}"
-        log_info "Reading packages from $(basename "$file")..."
+        local group_name
+        group_name=$(basename "$file" .txt)
+        selected_groups+=("$group_name")
+        log_info "Reading packages from ${group_name}..."
 
         while IFS= read -r line || [[ -n "$line" ]]; do
             line="${line#"${line%%[![:space:]]*}"}"
@@ -365,29 +579,35 @@ install_arch_packages() {
         return 0
     fi
 
-    # Filter out installed packages and duplicate list entries.
+    # Build the desired target set and snapshot the current package database.
+    local desired_pkgs=()
+    local -A desired_set=()
+    local pkg
+    for pkg in "${all_pkgs[@]}"; do
+        if [[ -z "${desired_set[$pkg]+x}" ]]; then
+            desired_set["$pkg"]=1
+            desired_pkgs+=("$pkg")
+        fi
+    done
+    sort_array desired_pkgs
+    sort_array selected_groups
+
     local to_install=()
     local installed_count=0
-    local -A installed_pkgs=()
-    local -A queued_pkgs=()
+    local -A installed_before=()
     while IFS= read -r pkg; do
-        installed_pkgs["$pkg"]=1
+        installed_before["$pkg"]=1
     done < <(pacman -Qq 2>/dev/null)
-    for pkg in "${all_pkgs[@]}"; do
-        if [[ -n "${installed_pkgs[$pkg]+x}" ]]; then
+
+    for pkg in "${desired_pkgs[@]}"; do
+        if [[ -n "${installed_before[$pkg]+x}" ]]; then
             installed_count=$((installed_count + 1))
-        elif [[ -z "${queued_pkgs[$pkg]+x}" ]]; then
-            queued_pkgs["$pkg"]=1
+        else
             to_install+=("$pkg")
         fi
     done
 
     log_info "Package status: ${installed_count} already installed, ${#to_install[@]} to install."
-
-    if (( ${#to_install[@]} == 0 )); then
-        log_success "All selected packages are already installed!"
-        return 0
-    fi
 
     # pacman only receives packages advertised by enabled official repositories.
     # Everything else is an AUR candidate and must be handled by an AUR helper.
@@ -404,18 +624,68 @@ install_arch_packages() {
         fi
     done
 
+    local removal_candidates=()
+    local -A owned_set=()
+    if [[ "$PACKAGE_STATE_LOADED" == true ]]; then
+        for pkg in "${PREVIOUS_OWNED_PACKAGES[@]}"; do
+            if [[ -n "${installed_before[$pkg]+x}" ]]; then
+                owned_set["$pkg"]=1
+            fi
+        done
+        collect_removal_candidates installed_before desired_set owned_set removal_candidates
+    elif [[ "$PACKAGE_ACTION" == "reconcile" ]]; then
+        log_warn "No valid ownership state exists; package removal is disabled for this run."
+    fi
+
+    if [[ "$PACKAGE_ACTION" == "plan" ]]; then
+        log_info "Package plan (read-only):"
+        if (( ${#repo_pkgs[@]} > 0 )); then
+            printf '  Repository installs: %s\n' "${repo_pkgs[*]}"
+        fi
+        if (( ${#aur_candidates[@]} > 0 )); then
+            printf '  AUR installs: %s\n' "${aur_candidates[*]}"
+        fi
+        if (( ${#missing_multilib[@]} > 0 )); then
+            printf '  Blocked by missing [multilib]: %s\n' "${missing_multilib[*]}"
+        fi
+        if (( ${#removal_candidates[@]} > 0 )); then
+            printf '  Managed removal candidates: %s\n' "${removal_candidates[*]}"
+        elif [[ "$PACKAGE_STATE_LOADED" == true ]]; then
+            printf '  Managed removal candidates: none\n'
+        else
+            printf '  Managed removal candidates: unavailable without valid state\n'
+        fi
+        if (( ${#to_install[@]} == 0 )); then
+            printf '  Installs: none\n'
+        fi
+        return 0
+    fi
+
     if (( ${#missing_multilib[@]} > 0 )); then
         log_error "Packages require the multilib repository: ${missing_multilib[*]}"
         log_error "Enable [multilib] in /etc/pacman.conf, run sudo pacman -Syu, then rerun the installer."
         return 1
     fi
 
+    local install_failed=false
+    local needs_sudo=false
     if (( ${#repo_pkgs[@]} > 0 )); then
-        log_info "Installing repository packages: ${repo_pkgs[*]}"
-        sudo pacman -Syu --needed -- "${repo_pkgs[@]}"
+        needs_sudo=true
+    fi
+    if [[ "$needs_sudo" == true ]] && ! sudo -v; then
+        log_error "Unable to obtain sudo credentials."
+        return 1
     fi
 
-    if (( ${#aur_candidates[@]} > 0 )); then
+    if (( ${#repo_pkgs[@]} > 0 )); then
+        log_info "Installing repository packages: ${repo_pkgs[*]}"
+        if ! sudo pacman -Syu --needed -- "${repo_pkgs[@]}"; then
+            log_error "Repository package installation failed."
+            install_failed=true
+        fi
+    fi
+
+    if [[ "$install_failed" == false && ${#aur_candidates[@]} -gt 0 ]]; then
         log_info "AUR candidates: ${aur_candidates[*]}"
         local AUR_HELPER=""
         local helper_status=0
@@ -424,26 +694,144 @@ install_arch_packages() {
         else
             helper_status=$?
             if (( helper_status == 2 )); then
-                return 0
+                log_warn "AUR packages were left uninstalled."
+            else
+                install_failed=true
             fi
-            return "$helper_status"
         fi
 
-        local aur_failures=()
-        for pkg in "${aur_candidates[@]}"; do
-            log_info "Installing AUR candidate with ${AUR_HELPER}: $pkg"
-            if ! "$AUR_HELPER" -S --needed -- "$pkg"; then
-                log_error "Failed to install AUR candidate: $pkg"
-                aur_failures+=("$pkg")
+        if [[ -n "$AUR_HELPER" ]]; then
+            local aur_failures=()
+            for pkg in "${aur_candidates[@]}"; do
+                log_info "Installing AUR candidate with ${AUR_HELPER}: $pkg"
+                if ! "$AUR_HELPER" -S --needed -- "$pkg"; then
+                    log_error "Failed to install AUR candidate: $pkg"
+                    aur_failures+=("$pkg")
+                fi
+            done
+            if (( ${#aur_failures[@]} > 0 )); then
+                log_error "AUR packages not installed: ${aur_failures[*]}"
+                install_failed=true
             fi
-        done
-        if (( ${#aur_failures[@]} > 0 )); then
-            log_error "AUR packages not installed: ${aur_failures[*]}"
-            return 1
         fi
     fi
 
-    log_success "Package installation completed successfully!"
+    # Re-read authoritative package state after potentially partial transactions.
+    local -A installed_after=()
+    while IFS= read -r pkg; do
+        installed_after["$pkg"]=1
+    done < <(pacman -Qq 2>/dev/null)
+
+    for pkg in "${!owned_set[@]}"; do
+        if [[ -z "${installed_after[$pkg]+x}" ]]; then
+            unset 'owned_set[$pkg]'
+        fi
+    done
+    for pkg in "${desired_pkgs[@]}"; do
+        if [[ -z "${installed_before[$pkg]+x}" && -n "${installed_after[$pkg]+x}" ]]; then
+            owned_set["$pkg"]=1
+        fi
+    done
+
+    local missing_desired=()
+    for pkg in "${desired_pkgs[@]}"; do
+        if [[ -z "${installed_after[$pkg]+x}" ]]; then
+            missing_desired+=("$pkg")
+        fi
+    done
+    sort_array missing_desired
+    if (( ${#missing_desired[@]} > 0 )); then
+        log_warn "Desired packages still missing; reconciliation is disabled: ${missing_desired[*]}"
+    fi
+
+    removal_candidates=()
+    if [[ "$PACKAGE_STATE_LOADED" == true ]]; then
+        collect_removal_candidates installed_after desired_set owned_set removal_candidates
+    fi
+
+    if [[ "$PACKAGE_ACTION" == "reconcile" \
+        && "$install_failed" == false \
+        && ${#missing_desired[@]} -eq 0 \
+        && ${#removal_candidates[@]} -gt 0 ]]; then
+        local removal_preview=()
+        local removal_output
+        if removal_output=$(
+            pacman -Rs --print --print-format '%n' -- "${removal_candidates[@]}"
+        ); then
+            if [[ -n "$removal_output" ]]; then
+                mapfile -t removal_preview <<< "$removal_output"
+                sort_array removal_preview
+            fi
+        else
+            log_warn "Pacman could not produce a safe removal transaction; nothing will be removed."
+            removal_preview=()
+        fi
+
+        local unsafe_preview=false
+        for pkg in "${removal_preview[@]}"; do
+            if [[ -n "${desired_set[$pkg]+x}" ]] || is_protected_package "$pkg"; then
+                log_error "Unsafe package in removal transaction: $pkg"
+                unsafe_preview=true
+            fi
+        done
+
+        if [[ "$unsafe_preview" == false && ${#removal_preview[@]} -gt 0 ]]; then
+            printf '\nManaged packages no longer selected:\n'
+            printf '  - %s\n' "${removal_candidates[@]}"
+            printf 'Pacman removal transaction (including unneeded dependencies):\n'
+            printf '  - %s\n' "${removal_preview[@]}"
+            printf '\n[r] remove  [k] keep installed and stop managing  [c] cancel: '
+            local removal_choice
+            IFS= read -r removal_choice < /dev/tty
+            case "$removal_choice" in
+                r|R)
+                    printf 'Type REMOVE to confirm: '
+                    local confirmation
+                    IFS= read -r confirmation < /dev/tty
+                    if [[ "$confirmation" == "REMOVE" ]]; then
+                        if ! sudo pacman -Rs -- "${removal_candidates[@]}"; then
+                            log_error "Package removal failed or was cancelled."
+                            install_failed=true
+                        fi
+                    else
+                        log_warn "Removal confirmation did not match; nothing was removed."
+                    fi
+                    ;;
+                k|K)
+                    for pkg in "${removal_candidates[@]}"; do
+                        unset 'owned_set[$pkg]'
+                    done
+                    log_info "Packages kept installed and released from dotfiles management."
+                    ;;
+                *)
+                    log_info "Package removal cancelled; ownership was retained."
+                    ;;
+            esac
+        fi
+    fi
+
+    # Only packages still present may remain owned after a removal attempt.
+    local -A final_installed=()
+    while IFS= read -r pkg; do
+        final_installed["$pkg"]=1
+    done < <(pacman -Qq 2>/dev/null)
+    local owned_packages=()
+    for pkg in "${!owned_set[@]}"; do
+        if [[ -n "${final_installed[$pkg]+x}" ]]; then
+            owned_packages+=("$pkg")
+        fi
+    done
+    sort_array owned_packages
+    write_package_state selected_groups owned_packages
+
+    if [[ "$install_failed" == true ]]; then
+        return 1
+    fi
+    if (( ${#to_install[@]} == 0 )); then
+        log_success "All selected packages are already installed!"
+    else
+        log_success "Package installation completed successfully!"
+    fi
 }
 
 apply_live_changes() {
@@ -469,14 +857,23 @@ apply_live_changes() {
 }
 
 main() {
+    parse_install_args "$@"
+    if [[ "$SHOW_HELP" == true ]]; then
+        show_help
+        return 0
+    fi
     log_info "Starting dotfiles installation..."
 
     check_dependencies
     install_arch_packages
+    if [[ "$PACKAGE_ACTION" == "plan" ]]; then
+        log_success "Package plan completed without changes."
+        return 0
+    fi
     backup_existing_files
     setup_dotbot
 
-    run_dotbot "$@"
+    run_dotbot "${DOTBOT_ARGS[@]}"
     install_vim_plugins
     apply_live_changes
 
@@ -484,4 +881,6 @@ main() {
 }
 
 # Start the script
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

@@ -113,8 +113,8 @@ manage_packages() {
             # pacman -Qtdq exits 1 when no orphans — suppress with || true
             orphans="$(pacman -Qtdq 2>/dev/null || true)"
             if [ -n "$orphans" ]; then
-                log "Removing orphans..." "$C_ORANGE"
-                printf '%s\n' "$orphans" | xargs yay -Rns --noconfirm
+                log "Orphan packages detected (left installed):" "$C_ORANGE"
+                printf '%s\n' "$orphans"
             fi
             yay -Sc --noconfirm
             pacman -Qqe | awk '{print $1}' > "${PKGLIST_CURRENT}"

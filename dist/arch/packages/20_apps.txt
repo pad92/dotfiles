@@ -1,8 +1,6 @@
+7zip
 alacritty
-ansible-core
 discord
-docker
-docker-compose
 firefox-i18n-en-us
 firefox-i18n-fr
 fwupd
@@ -18,13 +16,11 @@ gst-plugins-ugly
 gstreamer
 nautilus
 neovim
-p7zip
 pavucontrol
 proton-pass-cli-bin
 seahorse
 spotify-launcher
 telegram-desktop
-terraform
 tree-sitter-cli
 vlc
 vscodium-bin
