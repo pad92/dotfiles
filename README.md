@@ -23,12 +23,13 @@ machine. Before selecting Steam or any group containing `lib32-*` packages,
 enable `[multilib]` as described in the
 [Arch installation guide](./dist/arch/install.md#package-manager).
 
-Select `08_amd` for AMD graphics. Select `08_intel_modern` for Broadwell and
-newer Intel graphics, or `07_intel_legacy` for older generations. Select
-`09_nvidia_modern` for Turing and newer GPUs, or `09_nvidia_legacy` for Maxwell,
-Pascal, and Volta. Do not select both generations for the same GPU vendor. Canon
-and Samsung printer drivers are separate from the generic printer stack, as are
-Docker and Podman and the OpenTofu and Terraform IaC tools.
+The installer detects PCI graphics controllers and preselects the matching AMD,
+Intel, or NVIDIA driver group. Hybrid Intel/NVIDIA systems get both groups. It
+also distinguishes legacy Intel GPUs (older than Broadwell) and legacy NVIDIA
+GPUs (Maxwell, Pascal, and Volta) from newer hardware. These are menu defaults,
+so they can still be changed before confirmation. Canon and Samsung printer
+drivers are separate from the generic printer stack, as are Docker and Podman
+and the OpenTofu and Terraform IaC tools.
 
 The installer uses `paru` or `yay` if either is already available. Otherwise, it
 can build `yay-bin` for you. If you decline, it skips the AUR packages.
@@ -38,8 +39,16 @@ preview changes without requesting sudo access, or
 `./install --reconcile-packages` to review packages previously installed by the
 dotfiles installer that are no longer selected. Reconciliation never claims
 packages that predated its state file and requires explicit confirmation before
-removal. Previous group selections are restored from state; the first managed
-run starts with no groups selected, and an empty selection always means “skip”.
+removal. Previous group selections are restored from state, then detected GPU
+groups replace saved GPU defaults so the menu follows the current hardware. The
+first managed run otherwise starts with no groups selected, and an empty
+selection always means “skip”.
+
+When at least one GPU group is selected, the installer also finds installed
+packages belonging only to unselected GPU profiles. It asks `pacman` to remove
+them after the desired drivers are installed and only if the previewed removal
+transaction contains no desired or protected package. `--package-plan` reports
+these removals without applying them.
 
 For the editor configuration only:
 
