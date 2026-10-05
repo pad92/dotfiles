@@ -18,6 +18,7 @@ SHOW_HELP=false
 PACKAGE_STATE_LOADED=false
 PREVIOUS_SELECTED_GROUPS=()
 PREVIOUS_OWNED_PACKAGES=()
+DEFAULT_PACKAGE_GROUPS=(01_base 03_gtk 11_hyprland)
 declare -A PACKAGE_GROUP_DEFAULTS=()
 
 # --- Colors for output ---
@@ -177,6 +178,13 @@ is_graphics_package_group() {
             return 1
             ;;
     esac
+}
+
+apply_standard_package_defaults() {
+    local group
+    for group in "${DEFAULT_PACKAGE_GROUPS[@]}"; do
+        PACKAGE_GROUP_DEFAULTS["$group"]=1
+    done
 }
 
 detect_graphics_package_groups_from_pci() {
@@ -692,6 +700,7 @@ install_arch_packages() {
             PACKAGE_GROUP_DEFAULTS["$previous_group"]=1
         done
     fi
+    apply_standard_package_defaults
     apply_detected_graphics_defaults
 
     log_info "Select the package categories you would like to install."

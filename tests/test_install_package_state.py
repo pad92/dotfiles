@@ -144,6 +144,17 @@ printf '%s\n' "${candidates[@]}"
                 )
                 self.assertEqual(result.stdout.splitlines(), expected)
 
+    def test_standard_package_groups_are_selected_by_default(self):
+        result = self.run_bash(r"""
+PACKAGE_GROUP_DEFAULTS=()
+apply_standard_package_defaults
+printf '%s\n' "${!PACKAGE_GROUP_DEFAULTS[@]}" | sort
+""")
+
+        self.assertEqual(
+            result.stdout.splitlines(), ["01_base", "03_gtk", "11_hyprland"]
+        )
+
     def test_graphics_detection_selects_legacy_generations(self):
         result = self.run_bash(r"""
 pci_devices='0000:00:02.0 VGA compatible controller [0300]: Intel Corporation 4th Gen Core Processor Integrated Graphics Controller [8086:0412]

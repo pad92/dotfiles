@@ -23,13 +23,14 @@ machine. Before selecting Steam or any group containing `lib32-*` packages,
 enable `[multilib]` as described in the
 [Arch installation guide](./dist/arch/install.md#package-manager).
 
-The installer detects PCI graphics controllers and preselects the matching AMD,
-Intel, or NVIDIA driver group. Hybrid Intel/NVIDIA systems get both groups. It
-also distinguishes legacy Intel GPUs (older than Broadwell) and legacy NVIDIA
-GPUs (Maxwell, Pascal, and Volta) from newer hardware. These are menu defaults,
-so they can still be changed before confirmation. Canon and Samsung printer
-drivers are separate from the generic printer stack, as are Docker and Podman
-and the OpenTofu and Terraform IaC tools.
+The installer preselects the base, GTK, and Hyprland groups. It also detects PCI
+graphics controllers and preselects the matching AMD, Intel, or NVIDIA driver
+group. Hybrid Intel/NVIDIA systems get both GPU groups. Legacy Intel GPUs (older
+than Broadwell) and legacy NVIDIA GPUs (Maxwell, Pascal, and Volta) are
+distinguished from newer hardware. These are menu defaults, so they can still
+be changed before confirmation. Canon and Samsung printer drivers are separate
+from the generic printer stack, as are Docker and Podman and the OpenTofu and
+Terraform IaC tools.
 
 The installer uses `paru` or `yay` if either is already available. Otherwise, it
 can build `yay-bin` for you. If you decline, it skips the AUR packages.
@@ -40,9 +41,9 @@ preview changes without requesting sudo access, or
 dotfiles installer that are no longer selected. Reconciliation never claims
 packages that predated its state file and requires explicit confirmation before
 removal. Previous group selections are restored from state, then detected GPU
-groups replace saved GPU defaults so the menu follows the current hardware. The
-first managed run otherwise starts with no groups selected, and an empty
-selection always means “skip”.
+groups replace saved GPU defaults so the menu follows the current hardware.
+The base, GTK, and Hyprland defaults are then enabled on every run; an empty
+selection after manually clearing the menu still means “skip”.
 
 When at least one GPU group is selected, the installer also finds installed
 packages belonging only to unselected GPU profiles. It asks `pacman` to remove

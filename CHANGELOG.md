@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - **Installation**: Automatically preselect AMD, Intel, NVIDIA, and hybrid
   Intel/NVIDIA graphics-driver groups from detected PCI hardware, and safely
   remove installed driver packages that belong only to unselected GPU profiles.
+  Preselect the base, GTK, and Hyprland package groups as standard defaults.
 - **Installation**: Add selectable SRE/DevOps, container-runtime, IaC, GPU-driver,
   and vendor-specific printer package groups.
 - **AWWW**: Add configurable local and mounted NFS/CIFS sources, including
