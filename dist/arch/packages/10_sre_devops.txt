@@ -1,4 +1,5 @@
 act
+actionlint
 age
 ansible-core
 ansible-lint
@@ -15,6 +16,7 @@ fd
 fzf
 git
 git-delta
+glab
 github-cli
 go
 hadolint-bin
@@ -24,6 +26,7 @@ httpie
 iotop-c
 iperf3
 k9s
+kube-linter
 kubeconform
 kubectl
 kubectx
@@ -49,6 +52,7 @@ stern
 strace
 sysstat
 tcpdump
+tea
 tflint
 tmux
 tree
