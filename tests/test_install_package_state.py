@@ -111,6 +111,126 @@ printf '%s\n' "${candidates[@]}"
 
         self.assertEqual(result.stdout.splitlines()[-1], "managed-stale")
 
+    def test_graphics_detection_selects_each_vendor(self):
+        cases = {
+            "amd": (
+                "AMD/ATI Navi 22 [1002:73df]",
+                ["08_amd"],
+            ),
+            "intel": (
+                "Intel TigerLake-LP GT2 [Iris Xe Graphics] [8086:9a49]",
+                ["08_intel_modern"],
+            ),
+            "nvidia": (
+                "NVIDIA AD107 [GeForce RTX 4060] [10de:2882]",
+                ["09_nvidia_modern"],
+            ),
+            "intel_nvidia_hybrid": (
+                "Intel UHD Graphics 630 [8086:3e9b]\n"
+                "0000:01:00.0 3D controller [0302]: "
+                "NVIDIA TU117M [GeForce GTX 1650 Mobile] [10de:1f91]",
+                ["08_intel_modern", "09_nvidia_modern"],
+            ),
+        }
+
+        for name, (controllers, expected) in cases.items():
+            with self.subTest(name=name):
+                pci_devices = (
+                    "0000:00:02.0 VGA compatible controller [0300]: " + controllers
+                )
+                result = self.run_bash(
+                    "detect_graphics_package_groups_from_pci "
+                    f"{shlex.quote(pci_devices)}"
+                )
+                self.assertEqual(result.stdout.splitlines(), expected)
+
+    def test_standard_package_groups_are_selected_by_default(self):
+        result = self.run_bash(r"""
+PACKAGE_GROUP_DEFAULTS=()
+apply_standard_package_defaults
+printf '%s\n' "${!PACKAGE_GROUP_DEFAULTS[@]}" | sort
+""")
+
+        self.assertEqual(
+            result.stdout.splitlines(), ["01_base", "03_gtk", "11_hyprland"]
+        )
+
+    def test_graphics_detection_selects_legacy_generations(self):
+        result = self.run_bash(r"""
+pci_devices='0000:00:02.0 VGA compatible controller [0300]: Intel Corporation 4th Gen Core Processor Integrated Graphics Controller [8086:0412]
+0000:01:00.0 3D controller [0302]: NVIDIA Corporation GP107M [GeForce GTX 1050 Mobile] [10de:1c8d]'
+detect_graphics_package_groups_from_pci "$pci_devices"
+""")
+
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ["07_intel_legacy", "09_nvidia_legacy"],
+        )
+
+    def test_hybrid_graphics_replaces_stale_gpu_defaults_only(self):
+        result = self.run_bash(r"""
+PACKAGE_GROUP_DEFAULTS=([01_base]=1 [08_amd]=1 [09_nvidia_legacy]=1)
+detect_graphics_package_groups() {
+    printf '%s\n' 08_intel_modern 09_nvidia_modern
+}
+apply_detected_graphics_defaults
+printf '%s\n' "${!PACKAGE_GROUP_DEFAULTS[@]}" | sort
+""")
+
+        self.assertEqual(
+            result.stdout.splitlines()[-3:],
+            ["01_base", "08_intel_modern", "09_nvidia_modern"],
+        )
+
+    def test_unneeded_graphics_packages_exclude_selected_and_shared_packages(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            package_directory = Path(temporary_directory)
+            amd_file = package_directory / "08_amd.txt"
+            intel_file = package_directory / "08_intel_modern.txt"
+            nvidia_legacy_file = package_directory / "09_nvidia_legacy.txt"
+            nvidia_modern_file = package_directory / "09_nvidia_modern.txt"
+            amd_file.write_text("vulkan-radeon\n", encoding="utf-8")
+            intel_file.write_text("vulkan-intel\n", encoding="utf-8")
+            nvidia_legacy_file.write_text(
+                "libva-nvidia-driver\nnvidia-580xx-utils\n", encoding="utf-8"
+            )
+            nvidia_modern_file.write_text(
+                "libva-nvidia-driver\nnvidia-utils\n", encoding="utf-8"
+            )
+            files = " ".join(
+                shlex.quote(str(path))
+                for path in (
+                    amd_file,
+                    intel_file,
+                    nvidia_legacy_file,
+                    nvidia_modern_file,
+                )
+            )
+            result = self.run_bash(f"""
+files=({files})
+selected_groups=(08_intel_modern 09_nvidia_modern)
+declare -A installed=(
+    [vulkan-radeon]=1
+    [vulkan-intel]=1
+    [libva-nvidia-driver]=1
+    [nvidia-580xx-utils]=1
+    [nvidia-utils]=1
+)
+declare -A desired=(
+    [vulkan-intel]=1
+    [libva-nvidia-driver]=1
+    [nvidia-utils]=1
+)
+candidates=()
+collect_unneeded_graphics_packages \
+    files selected_groups installed desired candidates
+printf '%s\n' "${{candidates[@]}}"
+""")
+
+        self.assertEqual(
+            result.stdout.splitlines(), ["nvidia-580xx-utils", "vulkan-radeon"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
