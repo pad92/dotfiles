@@ -40,6 +40,12 @@ second_cover=$($PLAYER_HELPER --arturl)
 [[ -s $second_cover ]] \
     || fail "the cached artwork disappeared with its temporary source"
 
+cp "$EMPTY_IMAGE" "$TEST_DIR/source cover.png"
+export MOCK_ART_URL="file://$TEST_DIR/source%20cover.png"
+spaced_path_cover=$($PLAYER_HELPER --arturl)
+[[ $spaced_path_cover != "$EMPTY_IMAGE" && -s $spaced_path_cover ]] \
+    || fail "a percent-encoded space in a local artwork URL was not decoded"
+
 export MOCK_ART_URL=""
 no_url_cover=$($PLAYER_HELPER --arturl)
 [[ $no_url_cover == "$EMPTY_IMAGE" ]] \

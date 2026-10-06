@@ -170,6 +170,26 @@ lock_cache_file()
     flock -w 2 "$CACHE_LOCK_FD"
 }
 
+file_url_path()
+{
+    python3 -c '
+import re
+import sys
+from urllib.parse import unquote, urlsplit
+
+url = urlsplit(sys.argv[1])
+if url.scheme != "file" or url.netloc not in ("", "localhost") or not url.path.startswith("/"):
+    raise ValueError("unsupported local artwork URL")
+if re.search(r"%(?![0-9A-Fa-f]{2})", url.path):
+    raise ValueError("malformed escape in local artwork URL")
+
+path = unquote(url.path, errors="strict")
+if chr(0) in path:
+    raise ValueError("NUL byte in local artwork path")
+print(path, end="")
+' "$1"
+}
+
 fallback_artwork()
 {
     local stale_file=${1:-}
@@ -198,11 +218,8 @@ get_artwork()
     trap 'exit 1' HUP INT TERM
 
     case "$url" in
-        file://localhost/*)
-            source_path=/${url#file://localhost/}
-            ;;
-        file:///*)
-            source_path=${url#file://}
+        file://localhost/*|file:///*)
+            source_path=$(file_url_path "$url" 2>/dev/null) || { echo "$EMPTY_FILE"; return; }
             ;;
         https://*)
             cache_key=$(printf '%s' "$url" | sha256sum) || { echo "$EMPTY_FILE"; return; }
