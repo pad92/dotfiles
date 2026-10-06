@@ -26,33 +26,35 @@ function M.load()
   local hostname = get_hostname()
   local messages = {}
 
+  local function load_module(module, success_message, error_message)
+    local status, err = pcall(require, module)
+    if not status then
+      table.insert(messages, error_message .. tostring(err))
+      return false
+    end
+
+    table.insert(messages, success_message)
+    return true
+  end
+
   if hostname then
     local host_module = "hosts." .. hostname
     local found_path = package.searchpath(host_module, package.path)
 
     if found_path then
-      local status, err = pcall(require, host_module)
-      if status then
-        table.insert(messages, "Host config loaded: " .. hostname)
-      else
-        print("Error loading host configuration: " .. tostring(err))
-      end
+      return messages, load_module(host_module, "Host config loaded: " .. hostname, "Host config failed: ")
     else
       local default_module = "hosts.default"
       local default_found = package.searchpath(default_module, package.path)
 
       if default_found then
-        local status, err = pcall(require, default_module)
-        if status then
-          table.insert(messages, "Default host config loaded")
-        else
-          print("Error loading default host configuration: " .. tostring(err))
-        end
+        return messages, load_module(default_module, "Default host config loaded", "Default host config failed: ")
       end
     end
   end
 
-  return messages
+  table.insert(messages, "Host configuration could not be selected")
+  return messages, false
 end
 
 return M

@@ -14,6 +14,8 @@ hl.config({
   gestures = config.input.gestures,
 })
 
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+
 if config.input.device_overrides.name then
   hl.device(config.input.device_overrides)
 end

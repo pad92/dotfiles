@@ -13,9 +13,10 @@ require("conf.keybindings")
 require("conf.windowrules")
 
 local host = require("include.host")
-local messages = host.load()
+local messages, host_config_loaded = host.load()
 
-table.insert(messages, "Hyprland Lua configuration loaded successfully")
+local load_status = host_config_loaded and "loaded successfully" or "loaded with errors"
+table.insert(messages, "Hyprland Lua configuration " .. load_status)
 
 hl.notification.create({
   text = table.concat(messages, "\n"),
