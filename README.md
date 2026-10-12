@@ -119,7 +119,7 @@ Common functions:
 
 | Command                                      | Purpose                                                                                  |
 | :------------------------------------------- | :--------------------------------------------------------------------------------------- |
-| `arch_update`                                | Run `yay -Syu --devel`, firmware checks, Flatpak updates, and orphan/cache cleanup       |
+| `arch_update`                                | Run system, firmware, Flatpak, and orphan/cache updates; report failed steps             |
 | `clean_arch`                                 | Remove orphan packages, clean pacman/yay caches, and find `.pacnew` / `.pacsave` files   |
 | `mirror [delay\|score\|age]`                 | Select and rank French Arch mirrors with `reflector`                                     |
 | `extract <file>`                             | Unpack archives including `.tar.bz2`, `.tgz`, `.zip`, `.rar`, and `.7z`                  |
