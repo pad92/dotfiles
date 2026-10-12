@@ -72,31 +72,19 @@ clean_arch() {
 ## get fastest mirrors
 if command -v reflector &>/dev/null; then
   mirror() {
-    # Validate that required command exists
     if ! command -v reflector &> /dev/null; then
       echo "Error: reflector could not be found"
       return 1
     fi
 
     local sort_type="$1"
-    local cmd=""
-
+    local -a sort_args=()
     case "$sort_type" in
-      "delay")
-        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort delay --verbose --save /etc/pacman.d/mirrorlist"
-        ;;
-      "score")
-        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort score --verbose --save /etc/pacman.d/mirrorlist"
-        ;;
-      "age")
-        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --sort age --verbose --save /etc/pacman.d/mirrorlist"
-        ;;
-      *)
-        cmd="sudo reflector -p https -c FR --latest 20 --fastest 20 --verbose --save /etc/pacman.d/mirrorlist"
-        ;;
+      delay|score|age) sort_args=(--sort "$sort_type") ;;
     esac
 
-    eval "$cmd"
+    sudo reflector -p https -c FR --latest 20 --fastest 20 \
+      $sort_args --verbose --save /etc/pacman.d/mirrorlist
   }
 
   alias mirror="mirror"

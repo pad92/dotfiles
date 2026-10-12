@@ -1,7 +1,13 @@
-md5()    { echo -n $1 | openssl md5 /dev/stdin }
-sha1()   { echo -n $1 | openssl sha1 /dev/stdin }
-sha256() { echo -n $1 | openssl dgst -sha256 /dev/stdin }
-sha512() { echo -n $1 | openssl dgst -sha512 /dev/stdin }
+_hash_text() {
+  local algorithm="$1"
+  local text="$2"
+  print -rn -- "$text" | openssl dgst "-$algorithm"
+}
+
+md5()    { _hash_text md5 "$1" }
+sha1()   { _hash_text sha1 "$1" }
+sha256() { _hash_text sha256 "$1" }
+sha512() { _hash_text sha512 "$1" }
 
 #urlencode() { python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1])" "$@" }
 #urldecode() { python -c "import sys, urllib as ul; print ul.unquote_plus(sys.argv[1])" "$@" }
