@@ -1,40 +1,53 @@
-git_prune_r() {
-  for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
-    echo -ne "- ${REPO}"
-    RET=$(git --git-dir=${REPO}/.git remote prune origin 2>&1 )
-    if [ $? -ne 0 ]; then
-      echo -ne "\tERROR\n"
-      echo "$(date +"%Y%m%d-%H%M") ERROR: ${REPO}" >> prune.log
-      echo "${RET}"                                >> prune.log
-      echo ""                                      >> prune.log
-    else
-      echo -ne "\tOK\n"
-    fi
-  done
+_git_for_each_repo() {
+  local action="$1"
+  local git_dir repo
+
+  while IFS= read -r -d '' git_dir; do
+    repo="${git_dir:h}"
+    [[ "$repo" == */.terraform/* ]] && continue
+    "$action" "$repo"
+  done < <(find "$PWD" \( -type l -o -type d \) -name .git -print0)
 }
 
-git_pull_r() {
-  for REPO in $(find "$(pwd)/" \( -type l -o -type d \) -name .git | grep -v '/.terraform/' | sed 's@/.git@@g'); do
-    echo -ne "- ${REPO}"
-    RET=$(git --git-dir=${REPO}/.git pull 2>&1 )
-    GIT_BRANCH_CURRENT=$(git --git-dir=${REPO}/.git rev-parse --abbrev-ref HEAD)
-    if [ $? -ne 0 ]; then
-      GIT_BRANCH_DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
-      RET=$(git --git-dir=${REPO}/.git checkout ${GIT_BRANCH_DEFAULT} 2>&1)
-      RET=$(git --git-dir=${REPO}/.git pull 2>&1)
-      if [ $? -ne 0 ]; then
-        echo -ne "\tERROR : unable to pull ${GIT_BRANCH_DEFAULT}\n"
-      else
-        echo -ne "\tERROR : unable to pull ${GIT_BRANCH_CURRENT}, switch to ${GIT_BRANCH_DEFAULT}"
-      fi
-      echo "$(date +"%Y%m%d-%H%M") ERROR: ${REPO}" >> prune.log
-      echo "${RET}"                                >> prune.log
-      echo ""                                      >> prune.log
+_git_prune_repo() {
+    local repo="$1"
+    local output
+    echo -ne "- ${repo}"
+    if ! output=$(git -C "$repo" remote prune origin 2>&1); then
+      echo -ne "\tERROR\n"
+      echo "$(date +"%Y%m%d-%H%M") ERROR: ${repo}" >> prune.log
+      echo "${output}" >> prune.log
+      echo "" >> prune.log
     else
       echo -ne "\tOK\n"
     fi
-  done
 }
+
+_git_pull_repo() {
+    local repo="$1"
+    local output current_branch default_branch
+    echo -ne "- ${repo}"
+    if ! output=$(git -C "$repo" pull 2>&1); then
+      current_branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD)
+      default_branch=$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD)
+      default_branch=${default_branch#origin/}
+      if [[ -z "$default_branch" ]]; then
+        echo -ne "\tERROR : unable to determine the default branch\n"
+      elif ! output=$(git -C "$repo" checkout "$default_branch" 2>&1) || ! output=$(git -C "$repo" pull 2>&1); then
+        echo -ne "\tERROR : unable to pull ${default_branch}\n"
+      else
+        echo -ne "\tERROR : unable to pull ${current_branch}, switch to ${default_branch}"
+      fi
+      echo "$(date +"%Y%m%d-%H%M") ERROR: ${repo}" >> prune.log
+      echo "${output}" >> prune.log
+      echo "" >> prune.log
+    else
+      echo -ne "\tOK\n"
+    fi
+}
+
+git_prune_r() { _git_for_each_repo _git_prune_repo }
+git_pull_r() { _git_for_each_repo _git_pull_repo }
 
 gi() {
   curl -sLw \"\\\n\" https://www.toptal.com/developers/gitignore/api/$@
