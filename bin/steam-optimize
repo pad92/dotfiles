@@ -17,29 +17,18 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Iterable
 
 # --- Configuration ---
 
 # Common environment variables applied to all GPUs
 COMMON_ENV_VARS = {
-    "PROTON_ENABLE_WAYLAND": "1",  # Enables Wayland support via Proton.
-    "PROTON_NO_WM_DECORATION": "1",  # Disables window manager decorations within Proton.
-    "PROTON_USE_NTSYNC": "1",  # Uses NTSync for improved input/timing accuracy.
-    "PROTON_XESS_UPGRADE": "1",  # Enables Proton's XeSS upgrade.
-    "vblank_mode": "0",  # Disables vertical blanking mode (VSync) for Mesa.
     "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS": "0",  # Prevents window from minimizing when focus is lost.
 }
 
 # AMD/Radeon specific environment variables
 AMD_ENV_VARS = {
     "AMD_VULKAN_ICD": "RADV",  # Sets Vulkan ICD to RADV driver for AMD GPUs.
-    "ENABLE_LAYER_MESA_ANTI_LAG": "1",  # Enables a Mesa anti-lag layer for better performance.
-    "MESA_SHADER_CACHE_MAX_SIZE": "20G",  # Sets the maximum size of the Mesa shader cache (20GB).
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",  # Prevents cleanup of the OpenGL shader disk cache.
-    "PROTON_FSR4_RDNA3_UPGRADE": "1",  # Enables FSR 4 upgrade specifically for RDNA3 hardware.
-    "PROTON_FSR4_UPGRADE": "1",  # Enables general FSR 4 upgrade support.
-    "RADV_PERFTEST": "nggc,gpl",  # Enables stable performance features in RADV.
-    "VKD3D_CONFIG": "dxr",  # Configures VKD3D to use DirectX Ray Tracing (DXR).
 }
 
 # NVIDIA specific environment variables
@@ -47,12 +36,8 @@ NVIDIA_ENV_VARS = {
     "__GLX_VENDOR_LIBRARY_NAME": "nvidia",  # Forces NVIDIA proprietary OpenGL driver.
     "__NV_PRIME_RENDER_OFFLOAD": "1",  # Offloads rendering to NVIDIA GPU.
     "__VK_LAYER_NV_optimus": "NVIDIA_only",  # Vulkan layer for hybrid laptops offloading.
-    "__GL_SHADER_DISK_CACHE": "1",  # Enables OpenGL shader disk cache.
-    "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP": "1",  # Prevents cleanup of OpenGL shader cache.
-    "__GL_THREADED_OPTIMIZATIONS": "1",  # Enables threaded optimization for OpenGL.
     "PROTON_ENABLE_NVAPI": "1",  # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
     "PROTON_HIDE_NVIDIA_GPU": "0",  # Exposes NVIDIA GPU (required for NVAPI/DLSS).
-    "__GL_SYNC_TO_VBLANK": "0",  # Disables VSync for OpenGL applications.
 }
 
 # --- Game Profiles (Declarative Overrides Registry) ---
@@ -78,7 +63,9 @@ GAME_PROFILES = {
     "1808500": {
         "name": "Arc Raiders",
         "wayland": True,
-        "dpi": 800,
+        # Keep Mesa's shader cache from evicting entries too aggressively.
+        "env": {"MESA_SHADER_CACHE_MAX_SIZE": "20G"},
+        # "dpi": 800,
     },
     "526870": {
         "name": "Satisfactory",
@@ -148,19 +135,10 @@ GAME_PROFILES = {
         "env": {
             "PROTON_SET_GAME_DRIVE": "1",
         },
-        # VKD3D_CONFIG must stay fully unset: AMD_ENV_VARS forces
-        # VKD3D_CONFIG=dxr for every AMD game, and FH6 crashes during
-        # CoreCLR startup with dxr, FH5's no_upload_hvv, or the community
-        # enable_experimental_features workaround alike, on every Proton
-        # build tested except proton-cachyos, which already ships the fix
-        # and needs the var left untouched. Requires proton-cachyos.
-        # PROTON_ENABLE_WAYLAND forces Proton's native-Wayland renderer,
-        # which produces a black screen with audio still running for FH6
-        # (same symptom already worked around for DOOM's profile above).
-        # RADV_PERFTEST=nggc,gpl and the Mesa anti-lag layer are experimental
-        # RADV driver features; with no Wine-level error logged during the
-        # black screen, they're the remaining suspects for a silent
-        # driver-side rendering failure.
+        # Keep these rendering overrides unset for FH6, even if inherited
+        # from the user's shell: testing found CoreCLR startup failures and
+        # rendering corruption. proton-cachyos was the only tested build
+        # that worked.
         # PROTON_FSR4_*_UPGRADE inject an FSR4 upscaling shim; the flickering
         # green pixels observed once the game actually rendered match a
         # known FSR4-shim-on-an-incompatible-title corruption pattern.
@@ -180,6 +158,14 @@ GAME_PROFILES = {
         "override_label": "Game drive, driver overrides unset, no Gamescope",
     },
 }
+
+_EXCLUDED_GAME_NAME_PARTS = (
+    "steam linux runtime",
+    "proton",
+    "steamworks",
+    "steamvr",
+    "steam controller configs",
+)
 
 # --- Mouse DPI Tracking ---
 _dpi_changed = False
@@ -382,9 +368,7 @@ def setup_global_env():
         gpu_detected = True
         collector.gpu = "NVIDIA (Proprietary driver)"
     elif amd_loaded:
-        log_info(
-            "AMD GPU detected (amdgpu module loaded) — applying RADV optimizations"
-        )
+        log_info("AMD GPU detected (amdgpu module loaded) — selecting RADV")
         os.environ.update(AMD_ENV_VARS)
         gpu_detected = True
         collector.gpu = "AMD (RADV driver)"
@@ -597,6 +581,7 @@ def apply_game_overrides(steam_app_id, game_cmd):
     if profile.get("wayland"):
         os.environ.pop("SDL_VIDEODRIVER", None)
         os.environ.pop("__GLX_VENDOR_LIBRARY_NAME", None)
+        os.environ["PROTON_ENABLE_WAYLAND"] = "1"
         if not profile.get("keep_steaminput"):
             os.environ["PROTON_NO_STEAMINPUT"] = "1"
         log_info(f"Applying native Wayland optimizations for {game_name}")
@@ -748,7 +733,7 @@ def find_active_localconfig_path(steam_root, vdf_module):
         and data.get("MostRecent") == "1"
         and str(steam_id).isdigit()
     ]
-    localconfig_paths = find_localconfig_paths(steam_root)
+    localconfig_paths = set(find_localconfig_paths(steam_root))
     for account_id in active_account_ids:
         candidate = os.path.join(
             steam_root, "userdata", account_id, "config", "localconfig.vdf"
@@ -778,14 +763,9 @@ def get_installed_games(library_folders, vdf_module):
                     name = app_state.get("name")
                     if appid and name:
                         name_lower = name.lower()
-                        exclude_keywords = [
-                            "steam linux runtime",
-                            "proton",
-                            "steamworks",
-                            "steamvr",
-                            "steam controller configs",
-                        ]
-                        if not any(kw in name_lower for kw in exclude_keywords):
+                        if not any(
+                            part in name_lower for part in _EXCLUDED_GAME_NAME_PARTS
+                        ):
                             games[appid] = name
                 except (
                     OSError,
@@ -866,6 +846,28 @@ def get_app_entry_safe(config, appid):
     """Safely retrieves a dictionary for a given AppID in a VDF config if it exists."""
     entry = get_apps_dict(config).get(appid)
     return entry if isinstance(entry, dict) else None
+
+
+def set_launch_option(
+    configs: Iterable[dict[str, object]],
+    appid: str,
+    option: str | None,
+    managed_options: tuple[str, ...] = (),
+) -> bool:
+    """Set or remove an app's launch option across all loaded Steam configs."""
+    changed = False
+    for config in configs:
+        if option is None:
+            entry = get_app_entry_safe(config, appid)
+            if not entry or (
+                managed_options and entry.get("LaunchOptions") not in managed_options
+            ):
+                continue
+            entry.pop("LaunchOptions", None)
+        else:
+            get_app_entry(config, appid)["LaunchOptions"] = option
+        changed = True
+    return changed
 
 
 def save_vdf_config(path, config, vdf_module):
@@ -1059,8 +1061,7 @@ def run_installer(script_path):
                 target_option_no_hud if mango_choice == "n" else target_option_hud
             )
             for appid, _ in games_list:
-                for config in vdf_configs.values():
-                    get_app_entry(config, appid)["LaunchOptions"] = target_to_use
+                set_launch_option(vdf_configs.values(), appid, target_to_use)
             dirty = True
             hud_status = (
                 "with MangoHud"
@@ -1072,13 +1073,12 @@ def run_installer(script_path):
 
         elif choice == "d":
             for appid, _ in games_list:
-                for config in vdf_configs.values():
-                    entry = get_app_entry_safe(config, appid)
-                    if entry and entry.get("LaunchOptions") in (
-                        target_option_no_hud,
-                        target_option_hud,
-                    ):
-                        entry.pop("LaunchOptions", None)
+                set_launch_option(
+                    vdf_configs.values(),
+                    appid,
+                    None,
+                    managed_options=(target_option_no_hud, target_option_hud),
+                )
             dirty = True
             print("\nDisabled for all games.")
             time.sleep(1)
@@ -1093,9 +1093,9 @@ def run_installer(script_path):
                         if current_opts == target_option_no_hud
                         else target_option_no_hud
                     )
-                    for config in vdf_configs.values():
-                        get_app_entry(config, appid)["LaunchOptions"] = new_opt
-                    any_changed = True
+                    any_changed |= set_launch_option(
+                        vdf_configs.values(), appid, new_opt
+                    )
             if any_changed:
                 dirty = True
                 print("\nToggled MangoHud for all optimized games.")
@@ -1125,13 +1125,7 @@ def run_installer(script_path):
                         new_opt = target_option_no_hud
                         action = "Enabled without MangoHud"
 
-                    for config in vdf_configs.values():
-                        if new_opt is None:
-                            entry = get_app_entry_safe(config, appid)
-                            if entry:
-                                entry.pop("LaunchOptions", None)
-                        else:
-                            get_app_entry(config, appid)["LaunchOptions"] = new_opt
+                    set_launch_option(vdf_configs.values(), appid, new_opt)
 
                     dirty = True
                     print(f"\n{action} for {name}.")
