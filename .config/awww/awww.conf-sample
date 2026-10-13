@@ -46,7 +46,7 @@ AWWW_RENDER_NICE="10"
 # EXIF/IPTC/XMP fields exist. GPS coordinates are not sent to an online service.
 AWWW_METADATA_OVERLAY="true"
 AWWW_METADATA_DATE_FORMAT="%d/%m/%Y"
-AWWW_METADATA_FONT="DejaVu-Sans"
+AWWW_METADATA_FONT="Fondamento"
 AWWW_METADATA_FONT_SIZE="20"
 AWWW_METADATA_MARGIN="36"
 

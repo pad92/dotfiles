@@ -267,6 +267,10 @@ systemctl --user restart awww_random.service
 current media. Player text and artwork refresh every 3 seconds; battery status
 refreshes every 10 seconds.
 
+Choose **Carousel** in Wlogout to lock with photos from the configured AWWW
+sources. The background advances every minute and uses AWWW's blur and metadata
+settings.
+
 For media playing in Firefox or Chrome, the source label reads `xesam:url` and
 shows the service name instead of the browser. Known services such as Deezer and
 YouTube get their own icon. Other valid domains use a globe, while missing or

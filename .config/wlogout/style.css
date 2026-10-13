@@ -1,83 +1,91 @@
 * {
-	background-image: none;
-	font-family: "DejaVu Sans";
+  background-image: none;
+  font-family: 'DejaVu Sans';
 }
 
 @import '../waybar/style.css';
 
 window {
-	background-color: rgba(29, 32, 33, 0.45);
+  background-color: rgba(29, 32, 33, 0.45);
 }
 
 button {
-	margin: 10px;
-	border-radius: 20px;
-	border: none;
-	color: @text;
-	background-color: @base;
-	background-repeat: no-repeat;
-	background-position: center;
-	background-size: 20%;
-	box-shadow: none;
-	text-shadow: none;
+  margin: 10px;
+  border-radius: 20px;
+  border: none;
+  color: @text;
+  background-color: @base;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20%;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 button:hover {
-	background-color: @blue;
-	background-size: 30%;
-	transition: all 0.3s cubic-bezier(.55, 0.0, .28, 1.682);
+  background-color: @blue;
+  background-size: 30%;
+  transition: all 0.3s cubic-bezier(0.55, 0, 0.28, 1.682);
 }
 
 /* Adjust the size of the label inside the button */
 button label {
-	font-size: 28px;
+  font-size: 28px;
 }
 
 /* --- Icons Configuration (Normal & Hover) --- */
 #lock {
-	background-image: image(url("./icons/lock.png"));
+  background-image: image(url('./icons/lock.png'));
 }
 
 #lock:hover {
-	background-image: image(url("./icons/lock-hover.png"));
+  background-image: image(url('./icons/lock-hover.png'));
+}
+
+#carousel {
+  background-image: image(url('./icons/carousel.png'));
+}
+
+#carousel:hover {
+  background-image: image(url('./icons/carousel-hover.png'));
 }
 
 #logout {
-	background-image: image(url("./icons/logout.png"));
+  background-image: image(url('./icons/logout.png'));
 }
 
 #logout:hover {
-	background-image: image(url("./icons/logout-hover.png"));
+  background-image: image(url('./icons/logout-hover.png'));
 }
 
 #suspend {
-	background-image: image(url("./icons/sleep.png"));
+  background-image: image(url('./icons/sleep.png'));
 }
 
 #suspend:hover {
-	background-image: image(url("./icons/sleep-hover.png"));
+  background-image: image(url('./icons/sleep-hover.png'));
 }
 
 #shutdown {
-	background-image: image(url("./icons/power.png"));
+  background-image: image(url('./icons/power.png'));
 }
 
 #shutdown:hover {
-	background-image: image(url("./icons/power-hover.png"));
+  background-image: image(url('./icons/power-hover.png'));
 }
 
 #reboot {
-	background-image: image(url("./icons/restart.png"));
+  background-image: image(url('./icons/restart.png'));
 }
 
 #reboot:hover {
-	background-image: image(url("./icons/restart-hover.png"));
+  background-image: image(url('./icons/restart-hover.png'));
 }
 
 #hibernate {
-	background-image: image(url("./icons/hibernate.png"));
+  background-image: image(url('./icons/hibernate.png'));
 }
 
 #hibernate:hover {
-	background-image: image(url("./icons/hibernate-hover.png"));
+  background-image: image(url('./icons/hibernate-hover.png'));
 }

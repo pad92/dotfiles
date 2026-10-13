@@ -56,7 +56,7 @@ load_config() {
     AWWW_RENDER_NICE="${AWWW_RENDER_NICE:-10}"
     AWWW_METADATA_OVERLAY="${AWWW_METADATA_OVERLAY:-true}"
     AWWW_METADATA_DATE_FORMAT="${AWWW_METADATA_DATE_FORMAT:-%d/%m/%Y}"
-    AWWW_METADATA_FONT="${AWWW_METADATA_FONT:-DejaVu-Sans}"
+    AWWW_METADATA_FONT="${AWWW_METADATA_FONT:-Fondamento}"
     AWWW_METADATA_FONT_SIZE="${AWWW_METADATA_FONT_SIZE:-20}"
     AWWW_METADATA_MARGIN="${AWWW_METADATA_MARGIN:-36}"
 }
@@ -224,6 +224,29 @@ require_commands() {
         log "Error: 'exiftool' is required for the metadata overlay."
         return 1
     fi
+}
+
+font_is_available() {
+    magick -list font | awk -v font="$1" \
+        '$1 == "Font:" && $2 == font { found = 1 } END { exit !found }'
+}
+
+resolve_metadata_font() {
+    local fallback_font="DejaVu-Sans"
+
+    [ "${AWWW_METADATA_OVERLAY}" = "true" ] || return 0
+
+    if font_is_available "${AWWW_METADATA_FONT}"; then
+        return 0
+    fi
+
+    if ! font_is_available "${fallback_font}"; then
+        log "Error: Neither metadata font '${AWWW_METADATA_FONT}' nor fallback '${fallback_font}' is available."
+        return 1
+    fi
+
+    log "Warning: Metadata font '${AWWW_METADATA_FONT}' is unavailable; using '${fallback_font}'."
+    AWWW_METADATA_FONT="${fallback_font}"
 }
 
 run_with_timeout() {
@@ -617,6 +640,7 @@ main() {
     load_config || return 1
     validate_config || return 1
     require_commands || return 1
+    resolve_metadata_font || return 1
 
     IMAGES=()
     MONITORS=()

@@ -95,7 +95,7 @@ local config = {
 
   utils = {
     screenshot = 'grim -g "$(slurp -d)" - | swappy -f -',
-    lock = "hyprlock -c ~/.config/hypr/hyprlock.conf",
+    lock = "~/.dotfiles/bin/hyprlock-guard.sh hyprlock -c ~/.config/hypr/hyprlock.conf",
     logout = "pkill wlogout || wlogout -p layer-shell",
     vol_mute = "swayosd-client --output-volume mute-toggle",
     mic_mute = "swayosd-client --input-volume mute-toggle",
