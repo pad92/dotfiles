@@ -67,7 +67,6 @@ fi
 # --- Colours & logging ---
 C_ORANGE='\033[0;33m'
 C_GREEN='\033[0;32m'
-C_RED='\033[0;31m'
 C_NC='\033[0m'
 
 log() { printf "${2:-${C_NC}}%s${C_NC}\n" "$1"; }
@@ -102,6 +101,161 @@ format_size() {
         printf '%s%.2f GB\n' "$prefix" "$(echo "$abs_size_kb" | awk '{print $1 / 1048576}')"
     fi
 }
+
+format_volume() {
+    awk -v bytes="$1" 'BEGIN {
+        unit = "B"
+        if (bytes >= 1073741824) {
+            bytes /= 1073741824
+            unit = "GB"
+        } else if (bytes >= 1048576) {
+            bytes /= 1048576
+            unit = "MB"
+        } else if (bytes >= 1024) {
+            bytes /= 1024
+            unit = "KB"
+        }
+        printf "%.2f %s\n", bytes, unit
+    }'
+}
+
+decode_rsync_name() {
+    local input="$1"
+    local output=""
+    local octal char
+    local i=0
+    local LC_ALL=C
+
+    while [ "$i" -lt "${#input}" ]; do
+        char="${input:i:1}"
+        if [ "$char" = "\\" ]; then
+            octal="${input:i+2:3}"
+            if [ "${input:i:2}" = '\#' ] && [[ "$octal" =~ ^[0-7]{3}$ ]]; then
+                output+="\\${octal}"
+                i=$((i + 5))
+            else
+                output+="\\\\"
+                i=$((i + 1))
+            fi
+        else
+            output+="$char"
+            i=$((i + 1))
+        fi
+    done
+
+    printf -v RSYNC_DECODED_NAME '%b' "$output"
+}
+
+quote_remote_arg() {
+    local input="$1"
+    local output="'"
+    local char
+    local i
+
+    for ((i = 0; i < ${#input}; i++)); do
+        char="${input:i:1}"
+        if [ "$char" = "'" ]; then
+            output+="'\\''"
+        else
+            output+="$char"
+        fi
+    done
+
+    output+="'"
+    printf '%s' "$output"
+}
+
+remote_file_sizes() {
+    local remote_dir="$1"
+    shift
+    local -a paths=("$@")
+    local remote_path quoted_args command output kind bytes
+    local start=0 index end
+
+    while [ "$start" -lt "${#paths[@]}" ]; do
+        end=$((start + 16))
+        [ "$end" -le "${#paths[@]}" ] || end="${#paths[@]}"
+        quoted_args=""
+        for ((index = start; index < end; index++)); do
+            remote_path="${remote_dir}/${paths[index]}"
+            quoted_args+=" $(quote_remote_arg "$remote_path")"
+        done
+
+        command="LC_ALL=C stat -c '%F|%s' --${quoted_args}"
+        if ! output="$(run_ssh "${REMOTE_USER}@${REMOTE_HOST}" "$command")"; then
+            log "ERROR: Could not read sizes of files scheduled for deletion." "$C_ORANGE" >&2
+            return 1
+        fi
+
+        while IFS='|' read -r kind bytes; do
+            [ -n "$bytes" ] || continue
+            if ! [[ "$bytes" =~ ^[0-9]+$ ]]; then
+                log "ERROR: Invalid remote file size while preparing backup summary." "$C_ORANGE" >&2
+                return 1
+            fi
+            if [ "$kind" != "directory" ]; then
+                DELETED_BYTES=$((DELETED_BYTES + bytes))
+            fi
+        done <<< "$output"
+
+        start="$end"
+    done
+}
+
+collect_rsync_volumes() {
+    local src="$1"
+    local full_dest_path="$2"
+    local exclude_file="$3"
+    local plan_file="$4"
+    local item size path
+    local -a deleted_paths=()
+
+    if ! rsync --dry-run --force --archive --perms --xattrs \
+        --no-specials --no-devices --no-links \
+        --delete --delete-excluded \
+        -e "$RSYNC_SSH" \
+        --itemize-changes --out-format='%i|%l|%n' \
+        --exclude-from="$exclude_file" \
+        "$src" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/" > "$plan_file"; then
+        return 1
+    fi
+
+    while IFS='|' read -r item size path; do
+        case "$item" in
+            '*deleting'*)
+                decode_rsync_name "$path"
+                deleted_paths+=("$RSYNC_DECODED_NAME")
+                if [ "${#deleted_paths[@]}" -ge 16 ]; then
+                    if ! remote_file_sizes "$full_dest_path" "${deleted_paths[@]}"; then
+                        VOLUME_STATS_AVAILABLE=false
+                    fi
+                    deleted_paths=()
+                fi
+                ;;
+            '>f+++++++++'|'<f+++++++++')
+                if [[ "$size" =~ ^[0-9]+$ ]]; then
+                    ADDED_BYTES=$((ADDED_BYTES + size))
+                fi
+                ;;
+            '>f'*|'<f'*)
+                if [[ "$size" =~ ^[0-9]+$ ]]; then
+                    MODIFIED_BYTES=$((MODIFIED_BYTES + size))
+                fi
+                ;;
+        esac
+    done < "$plan_file"
+
+    if [ "${#deleted_paths[@]}" -gt 0 ] && [ "$VOLUME_STATS_AVAILABLE" = true ]; then
+        if ! remote_file_sizes "$full_dest_path" "${deleted_paths[@]}"; then
+            VOLUME_STATS_AVAILABLE=false
+        fi
+    fi
+}
+
+ADDED_BYTES=0
+DELETED_BYTES=0
+MODIFIED_BYTES=0
+VOLUME_STATS_AVAILABLE=true
 
 # --- OS maintenance ---
 manage_packages() {
@@ -153,6 +307,8 @@ perform_rsync() {
     # Collect all exclude sources into a temp file
     local exclude_tmp
     exclude_tmp="$(mktemp)"
+    local plan_tmp
+    plan_tmp="$(mktemp)"
 
     [ -f "${HOME}/.no_backup.txt" ] && cat "${HOME}/.no_backup.txt" >> "$exclude_tmp"
     dotfiles_dist="${HOME}/.dotfiles/dist"
@@ -160,26 +316,31 @@ perform_rsync() {
         [ -f "$f" ] && cat "$f" >> "$exclude_tmp"
     done
 
-    # Exit code 23 = some files skipped (e.g. symlinks with --no-links) — not a real error
+    if ! collect_rsync_volumes "$src" "$full_dest_path" "$exclude_tmp" "$plan_tmp"; then
+        VOLUME_STATS_AVAILABLE=false
+        log "WARNING: Could not estimate rsync change volumes." "$C_ORANGE" >&2
+    fi
+    rm -f "$plan_tmp"
+
     # shellcheck disable=SC2086
-    rsync --force --archive --perms --xattrs \
+    local rsync_rc=0
+    if rsync --force --archive --perms --xattrs \
         --no-specials --no-devices --no-links \
         --delete --delete-excluded \
         -e "$RSYNC_SSH" \
         $RSYNC_INFO \
         --exclude-from="$exclude_tmp" \
-        "${src}" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/" \
-        || { rc=$?; [ "$rc" -eq 23 ] || { rm -f "$exclude_tmp"; exit "$rc"; }; }
+        "${src}" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/"; then
+        :
+    else
+        rsync_rc=$?
+    fi
 
     rm -f "$exclude_tmp"
+    return "$rsync_rc"
 }
 
 # --- Execution ---
-if ! ping -c 1 -W 2 "$REMOTE_HOST" > /dev/null 2>&1; then
-    log "ERROR: $REMOTE_HOST is unreachable." "$C_RED"
-    exit 1
-fi
-
 manage_packages
 manage_diffs
 
@@ -194,4 +355,11 @@ DELTA=$(( SIZE_AFTER - SIZE_BEFORE ))
 
 FINISH="$(date +%s)"
 log "Backup completed in $(( (FINISH - START) / 60 ))m $(( (FINISH - START) % 60 ))s" "$C_GREEN"
+if [ "$VOLUME_STATS_AVAILABLE" = true ]; then
+    log "Estimated volume added: $(format_volume "$ADDED_BYTES")" "$C_GREEN"
+    log "Estimated volume deleted: $(format_volume "$DELETED_BYTES")" "$C_GREEN"
+    log "Estimated volume modified (new file sizes): $(format_volume "$MODIFIED_BYTES")" "$C_GREEN"
+else
+    log "Change volume summary unavailable." "$C_ORANGE"
+fi
 log "Disk space delta: $(format_size "$DELTA")" "$C_GREEN"
