@@ -8,6 +8,7 @@ CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/hyprlock-carousel"
 BACKGROUND_FILE="${CACHE_DIR}/backgrounds.conf"
 GENERATED_CONFIG="${CACHE_DIR}/hyprlock.conf"
 MONITOR_FILE="${CACHE_DIR}/monitors"
+DPMS_INHIBIT_FILE="${XDG_RUNTIME_DIR:-${HOME}/.cache}/hyprlock-carousel.dpms-inhibit"
 CAROUSEL_INTERVAL=60
 
 lock_with_default_config() {
@@ -89,6 +90,10 @@ awk -v backgrounds="${BACKGROUND_FILE}" -v clock_font="${clock_font}" '
     { print }
 ' "${CAROUSEL_TEMPLATE}" > "${GENERATED_CONFIG}" \
     || start_regular_lock 'Unable to generate the carousel configuration' "$@"
+
+mkdir -p "$(dirname -- "${DPMS_INHIBIT_FILE}")"
+: > "${DPMS_INHIBIT_FILE}"
+trap 'rm -f -- "${DPMS_INHIBIT_FILE}"' EXIT
 
 hyprlock -c "${GENERATED_CONFIG}" "$@" &
 hyprlock_pid=$!
