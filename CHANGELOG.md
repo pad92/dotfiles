@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 - **AWWW**: Add configurable local and mounted NFS/CIFS sources, including
   multiple directories and automatic local fallback. Preserve image ratios with
   blurred backgrounds and optional date/city metadata.
+- **Hyprlock**: Add a Wlogout entry for a lock-screen view that uses the
+  configured AWWW photo sources and rendering options, including photo
+  metadata when enabled. The clock uses the AWWW metadata font.
 
 ### Changed
 
