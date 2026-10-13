@@ -26,6 +26,9 @@ load_awww() {
 }
 
 refresh_image_list() {
+    local temporary_list
+    local temporary_source
+
     load_awww || return 1
 
     for command_name in find mktemp shuf; do
@@ -123,7 +126,7 @@ fi
 
 if [ "$#" -ne 2 ] || ! [[ "$1" =~ ^[A-Za-z0-9_.-]+$ ]] \
     || ! [[ "$2" =~ ^[1-9][0-9]*x[1-9][0-9]*$ ]]; then
-    log "Usage: $0 --refresh | MONITOR WIDTHxHEIGHT"
+    log "Usage: $0 --refresh | --current MONITOR | --font | MONITOR WIDTHxHEIGHT"
     exit 1
 fi
 
