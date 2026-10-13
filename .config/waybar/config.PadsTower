@@ -11,6 +11,7 @@
     "temperature#cpu",
     "memory",
     "temperature#gpu",
+    "custom/lact-profile",
     "custom/headsetcontrol",
     "tray"
   ],

@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profiles=(Balance Silence Jeux-perf)
+
+configured_profiles() {
+  lact cli profile list 2>/dev/null
+}
+
+profiles_are_configured() {
+  local available="$1" profile
+
+  for profile in "${profiles[@]}"; do
+    if ! grep -Fxq -- "$profile" <<< "$available"; then
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+print_status() {
+  local profile available
+
+  if ! available="$(configured_profiles)"; then
+    printf '{"text":""}\n'
+    return
+  fi
+
+  if ! profiles_are_configured "$available"; then
+    printf '{"text":"GPU profils?","tooltip":"Profils LACT absents de /etc/lact/config.yaml : Balance, Silence, Jeux-perf","class":"unavailable"}\n'
+    return
+  fi
+
+  if ! profile="$(lact cli profile get 2>/dev/null)"; then
+    printf '{"text":""}\n'
+    return
+  fi
+
+  profile="${profile//$'\r'/}"
+  case "$profile" in
+    Balance)
+      printf '{"text":"","tooltip":"LACT : Balance — clic pour changer","class":"balance"}\n'
+      ;;
+    Silence)
+      printf '{"text":"Zzz","tooltip":"LACT : Silence — clic pour changer","class":"silence"}\n'
+      ;;
+    Jeux-perf)
+      printf '{"text":"","tooltip":"LACT : Jeux/perf — clic pour changer","class":"jeux-perf"}\n'
+      ;;
+    *)
+      printf '{"text":"?","tooltip":"Profil LACT inconnu : %s","class":"unknown"}\n' \
+        "${profile:-aucun}"
+      ;;
+  esac
+}
+
+cycle_profile() {
+  local current next index available
+
+  if ! available="$(configured_profiles)" || ! profiles_are_configured "$available"; then
+    exit 1
+  fi
+
+  if ! current="$(lact cli profile get 2>/dev/null)"; then
+    exit 1
+  fi
+
+  for index in "${!profiles[@]}"; do
+    if [[ "${profiles[$index]}" == "$current" ]]; then
+      next="${profiles[$(((index + 1) % ${#profiles[@]}))]}"
+      lact cli profile set "$next" >/dev/null
+      return
+    fi
+  done
+
+  lact cli profile set "${profiles[0]}" >/dev/null
+}
+
+case "${1:-status}" in
+  status) print_status ;;
+  cycle) cycle_profile ;;
+  *) exit 2 ;;
+esac

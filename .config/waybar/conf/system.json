@@ -10,6 +10,14 @@
   "memory": {
     "format": "{}% "
   },
+  "custom/lact-profile": {
+    "exec": "$HOME/.config/waybar/modules/lact-profile status",
+    "on-click": "$HOME/.config/waybar/modules/lact-profile cycle",
+    "return-type": "json",
+    "interval": 5,
+    "hide-empty-text": true,
+    "tooltip": true
+  },
   "battery": {
     "states": {
       "good": 95,
@@ -19,28 +27,12 @@
     "format": "{icon} {capacity}%",
     "format-charging": " {capacity}%",
     "format-plugged": " {capacity}%",
-    "format-icons": [
-      "",
-      "",
-      "",
-      "",
-      ""
-    ]
+    "format-icons": ["", "", "", "", ""]
   },
   "backlight": {
     "device": "intel_backlight",
     "format": "{icon}",
-    "format-icons": [
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      ""
-    ]
+    "format-icons": ["", "", "", "", "", "", "", "", ""]
   },
   "tray": {
     "spacing": 5
