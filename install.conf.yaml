@@ -21,8 +21,10 @@
       path: .config/*
       exclude:
         - .config/autostart
+        - .config/lact
       create: true
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
     - ["ln -sf config.$(hostname) ~/.config/waybar/config", Setting up Waybar host config]
+    - ["if ! cmp -s .config/lact/config.yaml /etc/lact/config.yaml; then sudo install -d /etc/lact && if [ -e /etc/lact/config.yaml ]; then sudo cp -an /etc/lact/config.yaml /etc/lact/config.yaml.dotfiles-backup; fi && sudo install -m 644 .config/lact/config.yaml /etc/lact/config.yaml; fi", Installing LACT configuration]
