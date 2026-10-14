@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
+
 ### Added
 
 - **Installation**: Automatically preselect AMD, Intel, NVIDIA, and hybrid

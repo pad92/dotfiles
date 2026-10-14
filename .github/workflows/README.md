@@ -1,9 +1,8 @@
 # CI Workflows
 
-GitHub Actions workflows for this repository. The repo is hosted on **GitHub**,
-**GitLab** (`.gitlab-ci.yml`), and a self-hosted **Gitea** instance, so the
-forge-specific logic is kept thin and the real work lives in reusable scripts
-under [`.ci_bin/`](../../.ci_bin).
+This repository is hosted on **GitHub**, **GitLab** (`.gitlab-ci.yml`), and a
+self-hosted **Gitea** instance. The workflows call shared scripts under
+[`.ci_bin/`](../../.ci_bin) for work used by more than one forge.
 
 > [!NOTE]
 > A Gitea Actions runner also scans `.github/workflows`, so these files run on
@@ -42,9 +41,9 @@ On a `v*` tag it:
 2. creates the release via the REST API
    (`POST $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases`) using `jq` + `curl`.
 
-The API call is **forge-agnostic**: GitHub and Gitea expose the same release
-endpoint and both inject `GITHUB_API_URL`, `GITHUB_REPOSITORY`, and
-`secrets.GITHUB_TOKEN`, so this one workflow publishes releases on either forge.
+The same API request works on GitHub and Gitea. Both runners provide
+`GITHUB_API_URL`, `GITHUB_REPOSITORY`, and `secrets.GITHUB_TOKEN`, so this
+workflow can publish releases on either forge.
 
 > [!IMPORTANT]
 > The release notes are read from `CHANGELOG.md` **at the tagged commit**.

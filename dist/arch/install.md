@@ -1,49 +1,75 @@
-# Arch Linux Full-Disk Encryption Installation Guide
+# Arch Linux Manual Installation Guide (LUKS and LVM)
 
-This guide provides instructions for an Arch Linux installation featuring full-disk encryption via LVM on LUKS and an encrypted boot partition (GRUB) for UEFI systems.
+This is a worked example for installing Arch Linux on a UEFI system with an
+LVM volume group inside a LUKS-encrypted root partition. The EFI System
+Partition (`/efi`) remains unencrypted; `/boot` is a directory on the encrypted
+root filesystem, not a separate encrypted partition. These commands erase or
+repartition disks and need to be adapted to the target machine.
 
-For advanced security, the system can be further hardened against Evil Maid attacks using UEFI Secure Boot with custom enrolled keys and a self-signed kernel/bootloader.
+For current installation and security guidance, start with the
+[Arch Linux Installation Guide](https://wiki.archlinux.org/title/Installation_guide)
+and the [dm-crypt encryption guide](https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system).
+An unencrypted EFI System Partition does not protect boot files from offline
+modification. Consult the
+[Secure Boot guide](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot)
+if that threat matters.
 
 ## Preface
 
-Most of this is from the [Arch Wiki](<https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_(GRUB)>) and other resources linked thereof.
+This page retains a GRUB-based example. [Huntrar's current guide](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268)
+now uses systemd-boot and unified kernel images; follow the ArchWiki for
+bootloader-specific details.
 
-Based on [huntrar's gist](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268#file-full-disk-encryption-arch-uefi-md) installation guide.
+_Note:_ The device examples use `/dev/nvme0n1`. Replace the disk and partition
+paths, partition sizes, and logical volume sizes to match your hardware.
 
-_Note:_ The system was installed on an NVMe SSD, substitute `/dev/nvme0nX` with `/dev/sdX` or your device as needed.
-
-Modern Arch Linux installations often use the `archinstall` tool. This guide takes the manual route instead: useful for understanding what's happening under the hood, or on systems where automated tools aren't available.
+Arch Linux changes frequently. Check package names and commands against the
+official wiki before using this machine-specific example. You can also use
+`archinstall` and follow the dotfiles setup section below.
 
 ## Table of contents
 
 [[_TOC_]]
 
-# Create USB stick
+# Create a USB installer
 
-- Download ISO From [https://archlinux.org/download/](http://archlinux.mirrors.ovh.net/archlinux/iso/latest/)
+Download the ISO and its detached signature from the official
+[Arch Linux downloads page](https://archlinux.org/download/). Verify the
+signature before writing the image. Replace the date below with the filename
+you downloaded.
 
 ```sh
-wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso
-wget http://archlinux.mirrors.ovh.net/archlinux/iso/latest/archlinux-x86_64.iso.sig
-
-gpg --keyserver pgp.mit.edu --keyserver-options auto-key-retrieve --verify archlinux-x86_64.iso.sig
-
-sudo dd bs=4M if=archlinux-*.iso of=/dev/sda status=progress oflag=sync
+gpg --auto-key-locate clear,wkd --locate-external-key pierre@archlinux.org
+gpg --fingerprint pierre@archlinux.org
+gpg --verify archlinux-YYYY.MM.DD-x86_64.iso.sig archlinux-YYYY.MM.DD-x86_64.iso
 ```
 
-where `/dev/sda` is your usb key
+Compare the displayed fingerprint with the one on the downloads page before
+accepting the signature.
 
-# From live
+Identify the USB device with `lsblk` and verify its model and size. Writing the
+image erases the selected device. Use the whole device, not a partition. Find
+its stable path with `ls -l /dev/disk/by-id/usb-*` and replace the example only
+after checking it:
 
-| Number | Start (sector) | End (sector) | Size       | Code | Name                |
-| ------ | -------------- | ------------ | ---------- | ---- | ------------------- |
-| 1      | 2048           | 4095         | 1024.0 KiB | EF02 | BIOS boot partition |
-| 2      | 4096           | 1130495      | 550.0 MiB  | EF00 | EFI System          |
-| 3      | 1130496        | 976773134    | 465.2 GiB  | 8309 | Linux LUKS          |
+```sh
+lsblk -o NAME,PATH,SIZE,MODEL,TRAN
+sudo dd bs=4M if=archlinux-YYYY.MM.DD-x86_64.iso of=/dev/disk/by-id/usb-REPLACE_ME conv=fsync status=progress
+```
+
+# Boot into the live environment
+
+The example creates a 1 MiB BIOS boot partition, a 550 MiB EFI System
+Partition, and one LUKS partition using the remaining space. The BIOS boot
+partition is not needed for UEFI-only systems; omit it only if you also update
+the partition numbers used below.
 
 ## Partitions
 
 ### Create
+
+Check the target disk with `lsblk` before starting. The `o` command below
+replaces its partition table.
 
 ```text
 gdisk /dev/nvme0n1
@@ -69,8 +95,22 @@ w
 ### LUKS
 
 ```sh
-cryptsetup luksFormat --type luks1 --use-random -S 1 -s 512 -h sha512 -i 5000 /dev/nvme0n1p3
+cryptsetup luksFormat --type luks2 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
+```
+
+Before relying on GRUB to unlock the encrypted `/boot`, check that the installed
+GRUB version supports the LUKS2 key-derivation function in use. See the
+[ArchWiki GRUB guidance](https://wiki.archlinux.org/title/GRUB#LUKS2).
+Keep the default key-derivation settings unless the bootloader requires a
+compatible alternative. A LUKS header backup can recover from header damage, but
+it also lets someone attempt offline passphrase guesses. Protect it, store it
+separately from the encrypted disk, and do not rely on it to recover a forgotten
+passphrase.
+
+```sh
+cryptsetup luksHeaderBackup /dev/nvme0n1p3 \
+  --header-backup-file /path/on/offline-storage/cryptlvm-header.img
 ```
 
 ### LVM
@@ -109,7 +149,6 @@ mount /dev/nvme0n1p2                     /mnt/efi
 mount /dev/mapper/archlvm-home           /mnt/home
 mount /dev/mapper/archlvm-var_lib_docker /mnt/var/lib/docker
 mount /dev/mapper/archlvm-opt            /mnt/opt
-chmod 700 /boot
 ```
 
 ## System
@@ -123,7 +162,6 @@ chmod 700 /boot
 # KERNEL='linux-zen' # Result of a collaborative effort of kernel hackers to provide the best Linux kernel possible for everyday systems.
 # KERNEL='linux-hardened' # Security-focused kernel with additional hardening features
 
-# Modern archinstall typically recommends 'linux' for most users
 KERNEL='linux'
 
 # Available microcode options:
@@ -132,9 +170,10 @@ KERNEL='linux'
 
 UCODE='intel-ucode' # for Intel processors, adjust as needed
 
-pacstrap /mnt \
+pacstrap -K /mnt \
   base \
   base-devel \
+  cryptsetup \
   ${KERNEL} \
   ${KERNEL}-headers \
   ${UCODE} \
@@ -151,7 +190,7 @@ pacstrap /mnt \
   openssh \
   os-prober \
   python \
-  resolvconf \
+  openresolv \
   rsync \
   sudo \
   terminus-font \
@@ -195,17 +234,16 @@ fi
 ```sh
 genfstab -U /mnt                                           >> /mnt/etc/fstab
 echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
-sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 ```
 
-# From chroot
+# Configure the installed system
 
 ```sh
 arch-chroot /mnt
 ```
 
-At this point you should have the following partitions and logical volumes:
-`lsblk`
+Check the resulting layout with `lsblk`. Device names and sizes will vary; this
+output illustrates the example commands above.
 
 | NAME                         | MAJ:MIN | RM  | SIZE   | RO  | TYPE  | MOUNTPOINT      |
 | ---------------------------- | ------- | --- | ------ | --- | ----- | --------------- |
@@ -216,36 +254,22 @@ At this point you should have the following partitions and logical volumes:
 | ..└─cryptlvm                 | 254:0   | 0   | 953.3G | 0   | crypt |                 |
 | ....├─archlvm-swap           | 254:1   | 0   | 31.1G  | 0   | lvm   | [SWAP]          |
 | ....├─archlvm-slash          | 254:2   | 0   | 32G    | 0   | lvm   | /               |
-| ....└─archlvm-home           | 254:3   | 0   | 100G   | 0   | lvm   | /home           |
+| ....└─archlvm-home           | 254:3   | 0   | 850G   | 0   | lvm   | /home           |
 | ....└─archlvm-opt            | 254:4   | 0   | 30G    | 0   | lvm   | /opt            |
 | ....└─archlvm-var_lib_docker | 254:5   | 0   | 10G    | 0   | lvm   | /var/lib/docker |
 
 ## Build flags
 
-Use all cores for builds:
-
-```sh
-sed -i 's/^CXXFLAGS.*/CXXFLAGS="-march=native -mtune=native -O2 -pipe -fstack-protector-strong --param=ssp-buffer-size=4 -fno-plt"/' /etc/makepkg.conf && \
-sed -i 's/^#RUSTFLAGS.*/RUSTFLAGS="-C opt-level=2 -C target-cpu=native"/' /etc/makepkg.conf && \
-sed -i 's/^#BUILDDIR.*/BUILDDIR=\/tmp\/makepkg/' /etc/makepkg.conf && \
-sed -i 's/^#MAKEFLAGS.*/MAKEFLAGS="-j$(getconf _NPROCESSORS_ONLN) --quiet"/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSGZ.*/COMPRESSGZ=(pigz -c -f -n)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSBZ2.*/COMPRESSBZ2=(pbzip2 -c -f)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSXZ.*/COMPRESSXZ=(xz -T "$(getconf _NPROCESSORS_ONLN)" -c -z --best -)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSZST.*/COMPRESSZST=(zstd -c -z -q --ultra -T0 -22 -)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSLZ.*/COMPRESSLZ=(lzip -c -f)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSLRZ.*/COMPRESSLRZ=(lrzip -9 -q)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSLZO.*/COMPRESSLZO=(lzop -q --best)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSZ.*/COMPRESSZ=(compress -c -f)/' /etc/makepkg.conf && \
-sed -i 's/^COMPRESSLZ4.*/COMPRESSLZ4=(lz4 -q --best)/' /etc/makepkg.conf
-```
+Keep the default `/etc/makepkg.conf` unless you have a specific reason to change
+it. `-march=native` produces packages optimized for the build machine and can
+make them unsuitable for other computers. Custom compression settings can also
+increase build time without improving runtime performance.
 
 ## Time zone
 
 ```sh
-timedatectl set-timezone "$(curl -s --fail https://ipapi.co/timezone)"
-timedatectl set-ntp true
-timedatectl
+# Replace Region/City with your time zone.
+ln -sf /usr/share/zoneinfo/Region/City /etc/localtime
 hwclock --systohc
 ```
 
@@ -266,8 +290,7 @@ echo 'FONT=ter-116n'    >> /etc/vconsole.conf
 
 mkdir -p /etc/X11/xorg.conf.d
 cat <<EOF>/etc/X11/xorg.conf.d/00-keyboard.conf
-# Read and parsed by systemd-located. It's probably wise not to edit this file
-# manually too freely.
+# Set the Xorg keyboard layout. Adjust this for your keyboard.
 Section "InputClass"
         Identifier "system-keyboard"
         MatchIsKeyboard "on"
@@ -298,7 +321,7 @@ EOF
 ```sh
 UUID=$(blkid /dev/nvme0n1p3 -s UUID -o value)
 
-sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:cryptlvm root=/dev/mapper/archlvm-slash cryptkey=rootfs:/root/.cryptlvm/archluks.bin\""  /etc/default/grub
+sed -i "/^GRUB_CMDLINE_LINUX=/cGRUB_CMDLINE_LINUX=\"rd.luks.name=${UUID}=cryptlvm root=/dev/mapper/archlvm-slash\"" /etc/default/grub
 
 sed -i "/GRUB_ENABLE_CRYPTODISK=/cGRUB_ENABLE_CRYPTODISK=y" /etc/default/grub
 
@@ -309,17 +332,21 @@ grub-mkconfig -o /boot/grub/grub.cfg
 ### initramfs
 
 ```sh
-mkdir /root/.cryptlvm && chmod 700 /root/.cryptlvm
-head -c 64 /dev/urandom > /root/.cryptlvm/archluks.bin && chmod 600 /root/.cryptlvm/archluks.bin
-# Note: -i 1 sets the PBKDF iterations time to 1ms for faster boot. Increase for stronger security.
-cryptsetup -v luksAddKey -i 1 /dev/nvme0n1p3 /root/.cryptlvm/archluks.bin
+mkdir -p /etc/cryptsetup-keys.d
+head -c 64 /dev/urandom > /etc/cryptsetup-keys.d/cryptlvm.key
+chmod 600 /etc/cryptsetup-keys.d/cryptlvm.key
+cryptsetup -v luksAddKey /dev/nvme0n1p3 /etc/cryptsetup-keys.d/cryptlvm.key
 
-# For Intel graphics; for AMD use: MODULES=(amdgpu), for Nvidia use: MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-sed -i '/^MODULES/c\MODULES=(intel_agp i915)' /etc/mkinitcpio.conf
-sed -i '/^FILES/c\FILES=(/root/.cryptlvm/archluks.bin)' /etc/mkinitcpio.conf
-sed -i '/^HOOKS/c\HOOKS=(base udev autodetect modconf block keyboard keymap consolefont encrypt lvm2 filesystems fsck)' /etc/mkinitcpio.conf
+# The key is embedded in the initramfs. Protect the boot chain and keep a
+# separate recovery method; the EFI System Partition remains unencrypted.
+sed -i '/^FILES/c\FILES=(/etc/cryptsetup-keys.d/cryptlvm.key)' /etc/mkinitcpio.conf
+sed -i '/^HOOKS/c\HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)' /etc/mkinitcpio.conf
 mkinitcpio -P
 ```
+
+The `sd-encrypt` hook uses `/etc/cryptsetup-keys.d/cryptlvm.key` for the
+`cryptlvm` mapping. See the ArchWiki's
+[mkinitcpio encryption instructions](https://wiki.archlinux.org/title/Dm-crypt/System_configuration#mkinitcpio).
 
 ## Services
 
@@ -332,18 +359,20 @@ systemctl enable systemd-timesyncd.service
 
 ```sh
 MYUSER='MyUser'
-useradd -m -s /bin/zsh -G network,users,storage,lp,input,audio,wheel ${MYUSER}
-echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel
-passwd ${MYUSER}
+useradd -m -s /bin/zsh -G wheel "${MYUSER}"
+EDITOR=vi visudo -f /etc/sudoers.d/wheel
+passwd "${MYUSER}"
 ```
+
+In `visudo`, add `%wheel ALL=(ALL:ALL) ALL` to require the user's password for
+administrative commands. Do not edit sudoers files with a plain text editor.
 
 ### Package manager
 
 ```sh
-# Enable color, checksum, verbose output, and the official multilib repository.
+# Enable color, disk-space checks, and the official multilib repository.
 sed -i 's/#Color/Color/' /etc/pacman.conf
 sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf
-sed -i 's/#UseSyslog/UseSyslog/' /etc/pacman.conf
 sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 pacman -Syu
 ```
@@ -358,46 +387,27 @@ base and Steam package groups contain `lib32-*` packages.
 sudo -u "${MYUSER}" -i bash -c '
   git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
   mkdir -p ~/.config
-  ~/.dotfiles/install
 '
 ```
 
-### AUR
+### AUR packages
+
+The dotfiles installer uses `paru` or `yay` when available. If neither is
+installed, it can offer to build `yay-bin`; declining skips AUR packages.
+Review AUR build files before installing them. See the
+[ArchWiki AUR guidance](https://wiki.archlinux.org/title/Arch_User_Repository)
+for the security model and recommended workflow.
+
+### Window manager and applications
+
+Install the dotfiles and selected package groups as the regular user. The
+read-only package plan is optional. Avoid passing every package list to an AUR
+helper: the lists contain optional and hardware-specific groups that should not
+all be installed together.
 
 ```sh
-# Modern archinstall typically handles AUR package management automatically
-# For manual installation, 'yay' is a popular choice for AUR packages
-
-# Install yay (AUR helper) as the regular user created above.
-sudo pacman -Syu --needed --noconfirm git base-devel sudo
-sudo -u "${MYUSER}" -i bash -c '
-  tmpdir=$(mktemp -d)
-  trap '\''rm -rf "$tmpdir"'\'' EXIT
-  git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin"
-  cd "$tmpdir/yay-bin"
-  makepkg -si --noconfirm
-'
-
-# Alternative AUR helpers:
-# - paru (more lightweight)
-# - pikaur (Python-based)
-# - pamac (GUI-based, if using a desktop environment)
-```
-
-### WM and apps
-
-Packages and software are installed via the dotfiles setup script (`~/.dotfiles/install`).
-
-To install or re-install packages manually:
-
-```sh
-yay -S --needed $(cat ~/.dotfiles/dist/arch/packages/*.txt)
-```
-
-Or re-run the installer:
-
-```sh
-~/.dotfiles/install
+sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --package-plan'
+sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install'
 ```
 
 ```sh
@@ -406,7 +416,6 @@ exit
 
 ```sh
 sync
-exit
 umount -R /mnt
 reboot
 ```
@@ -422,7 +431,6 @@ sudo systemctl enable --now auto-cpufreq
 ## SSD Trim
 
 ```sh
-sudo pacman -S util-linux
 sudo systemctl enable fstrim.timer
 ```
 
@@ -437,56 +445,53 @@ sudo systemctl enable usbguard.service
 
 ## Docker
 
-```sh
-yay -S docker docker-compose
-usermod -a -G docker MyUser
-```
+Select the Docker package group in the dotfiles installer. For access to the
+Docker daemon without `sudo`, follow the Docker post-install guidance and
+consider the security implications of membership in the `docker` group.
 
 ## Nvidia
 
-```sh
-sed -i '/^MODULES/c\MODULES=(nvidia)' /etc/mkinitcpio.conf
-yay -S nvidia-dkms nvidia-utils
-sudo mkinitcpio -P
-
-```
+Select the matching NVIDIA driver group in the dotfiles installer. It separates
+legacy and modern hardware; avoid mixing both groups. Rebuild the initramfs only
+if your chosen driver setup requires it.
 
 ## Nvidia Prime
 
-```sh
-yay -S nvidia-dkms nvidia-utils nvidia-prime
-```
+The NVIDIA package groups include `nvidia-prime`. Select the driver group that
+matches the GPU rather than installing a second driver set manually.
 
 ## Spotify
 
-Remove notification
+For Spotify client versions that store preferences in
+`~/.config/spotify/Users/<user>-user/prefs`, add this setting to disable desktop
+notifications. Preserve the file's other settings.
 
-```sh
-echo 'ui.track_notifications_enabled=false' > ~/.config/spotify/Users/*-user/prefs
+```ini
+ui.track_notifications_enabled=false
 ```
 
 ## GNOME Keyring PAM Setup
 
-Add `pam_gnome_keyring.so` to `/etc/pam.d/login` to automatically unlock GNOME Keyring on TTY login:
+For TTY logins, append these entries to the matching sections in
+`/etc/pam.d/login`. Keep the existing PAM rules. Automatic unlock requires the
+login password and the keyring password to match. Display managers may already
+configure PAM; use their PAM file instead of `/etc/pam.d/login` when applicable.
 
 ```ini
-#%PAM-1.0
-
-auth       requisite    pam_nologin.so
-auth       include      system-local-login
--auth      optional     pam_gnome_keyring.so
-account    include      system-local-login
-password   include      system-local-login
--password  optional     pam_gnome_keyring.so    use_authtok
-session    include      system-local-login
--session   optional     pam_gnome_keyring.so    auto_start
+auth       optional     pam_gnome_keyring.so
+session    optional     pam_gnome_keyring.so    auto_start
 ```
 
-## Systemd Startup (UWSM)
+See the [ArchWiki GNOME Keyring guide](https://wiki.archlinux.org/title/GNOME/Keyring)
+for other login methods and password-change integration.
+
+## Start Hyprland with UWSM
 
 For complete documentation, see [Hyprland Wiki](https://wiki.hypr.land/Useful-Utilities/Systemd-start/).
 
-[UWSM](https://github.com/Vladimir-csp/uwsm) (Universal Wayland Session Manager) wraps the compositor in Systemd units for robust environment, application, and session management.
+[UWSM](https://github.com/Vladimir-csp/uwsm) (Universal Wayland Session
+Manager) runs the compositor in systemd units and manages the session
+environment and applications.
 
 ### Installation
 
@@ -539,32 +544,28 @@ uwsm app -- alacritty
   systemctl --user add-wants graphical-session.target <service>
   ```
 
-## Real-time Audio & Latency (Gaming/Work/VoIP)
+## Real-time audio scheduling
 
-To allow PipeWire and WirePlumber to run with real-time scheduling (preventing audio stuttering, clicks, and dropouts under heavy CPU load, such as in games or during compilation on a work machine):
+The `realtime-privileges` package sets PAM limits and creates a `realtime`
+group for real-time scheduling. This can help prevent audio dropouts under high
+CPU load.
 
-1. Install the `realtime-privileges` package, which configures the necessary PAM limits and creates the `realtime` group:
+Install the package and add your user to the group:
 
 ```sh
 sudo pacman -S realtime-privileges
 ```
 
-2. Add your user to the `realtime` group:
-
 ```sh
 sudo usermod -aG realtime MyUser
 ```
 
-_Note: You must log out and log back in (or reboot) for the group membership to take effect. If you don't do this, PipeWire logs will show `mod.rt: could not set nice-level to -11: Permission denied`._
+Log out and back in, or reboot, for the new group membership to take effect.
 
-## Modern Security Practices
+## Security follow-up
 
-`archinstall` bakes some of this in by default; a manual install doesn't, so it's worth adding separately:
-
-- `firewalld` for network filtering
-- `fail2ban` against SSH brute-force attempts
-- automatic security updates via `pacman-contrib` and `reflector`
-- SSH hardened to key-only auth, root login disabled
-- `systemd-boot` instead of GRUB, if you don't need os-prober
-- an extra encryption layer on the initramfs
-- a backup plan for the LUKS keyfiles, not just the data they protect
+Security settings depend on how the machine is used and who can access it.
+Consult the [ArchWiki security recommendations](https://wiki.archlinux.org/title/Security)
+for current guidance on networking, remote access, updates, Secure Boot, and
+backups. Keep an independently stored backup of the LUKS header and recovery
+material; do not store the only copy on the encrypted disk.

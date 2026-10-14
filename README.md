@@ -93,9 +93,10 @@ monitor layouts and workspace mappings; Waybar uses `config.PadsTower` and
 `config.PadsP5560` for different hardware.
 
 Alacritty settings cover fonts, spacing, opacity, and colors. For Hyprland Lua
-validation and completion, see `.config/hypr/.luarc.json`. Electron 38 and later
-select native Wayland automatically in a Wayland session, without an environment
-variable; `~/.config/electron-flags.conf` remains available for editor-specific flags.
+validation and completion, see `.config/hypr/.luarc.json`. Electron 38.2 and
+later use native Wayland by default in a Wayland session, as described in the
+[Electron Wayland notes](https://www.electronjs.org/blog/tech-talk-wayland).
+This repository's `~/.config/electron-flags.conf` contains no required flags.
 
 ## Shell and editors
 
@@ -258,12 +259,12 @@ The sample documents multiple local and remote source directories, NFS/CIFS
 mounts, timeouts, and troubleshooting commands.
 
 Generated renders live in `managed-v1/` under `AWWW_RENDER_CACHE_DIR`. The cache
-expires files unused for 30 days and evicts the oldest unused renders above
-`AWWW_RENDER_CACHE_MAX_BYTES` (2 GiB by default). Wallpaper and carousel
-references are preserved, even if they alone exceed the quota; the script then
-prints a warning. Files outside this managed directory, including older renders
-from previous versions, are left for manual cleanup. ImageMagick is required
-even with effects disabled, to reject missing or corrupt images.
+removes unreferenced renders older than 30 days and evicts the oldest remaining
+renders above `AWWW_RENDER_CACHE_MAX_BYTES` (2 GiB by default). Wallpaper and
+carousel references are preserved, even if they alone exceed the quota; the
+script then prints a warning. Files outside this managed directory, including
+older renders from previous versions, are left for manual cleanup. ImageMagick
+is required even with effects disabled, to reject missing or corrupt images.
 
 Put fallback images in `~/.local/share/backgrounds/`. For example, this command
 copies images tagged `paysage` from another directory:
