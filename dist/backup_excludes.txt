@@ -1,13 +1,14 @@
 ._*
-.adobe
 .apdisk
 .AppleDB
 .AppleDesktop
 .AppleDouble
-.aptitude
 .atom/compile-cache/
 .cache
-.cargo
+.cargo/registry/cache/
+.cargo/registry/src/
+.cargo/git/checkouts/
+.cargo/git/db/
 .ccache/?
 .ccache/tmp
 .cddb
@@ -22,18 +23,13 @@
 .config/**/Service Worker/CacheStorage
 .config/*/Cache
 .config/Atom/*Cache
-.config/Atom/IndexedDB
 .config/BraveSoftware/Brave-Browser/*/Feature Engagement Tracker/
-.config/BraveSoftware/Brave-Browser/*/Local Storage/
 .config/BraveSoftware/Brave-Browser/*/Service Worker/CacheStorage/
-.config/BraveSoftware/Brave-Browser/*/Session Storage/
 .config/BraveSoftware/Brave-Browser/Safe Browsing/
 .config/BraveSoftware/Brave-Browser/ShaderCache/
 .config/chromium/*/Application Cache
 .config/chromium/*/History Index *
-.config/chromium/*/Local Storage
 .config/chromium/*/Service Worker/CacheStorage
-.config/chromium/*/Session Storage
 .config/Code - OSS/logs/
 .config/Code/CachedData/*
 .config/Code/logs/
@@ -41,11 +37,8 @@
 .config/geany/geany_socket_*
 .config/google-chrome/*/Application Cache
 .config/google-chrome/*/History Index *
-.config/google-chrome/*/Local Storage
 .config/google-chrome/*/Service Worker/CacheStorage
-.config/google-chrome/*/Session Storage
 .config/google-chrome/ShaderCache
-.config/lbry
 .config/libreoffice/4/cache
 .config/scc/daemon.socket
 .config/VirtualBox/VBoxGuestAdditions_*
@@ -64,6 +57,7 @@
 .gnupg/gpg-agent-info-*
 .gnupg/random_seed
 .gnupg/rnd
+.gnupg/S.*
 .googleearth/Cache
 .googleearth/Temp
 .gradle/caches
@@ -76,19 +70,6 @@
 .icedtea
 .icedteaplugin
 .java/deployment/cache
-.kde/share/apps/gwenview/recentfolders
-.kde/share/apps/klipper
-.kde/share/apps/kmess/customemoticons
-.kde/share/apps/kmess/displaypics
-.kde/share/apps/okular/docdata
-.kde/share/apps/RecentDocuments
-.kde4/share/apps/gwenview/recentfolders
-.kde4/share/apps/klipper
-.kde4/share/apps/kmess/customemoticons
-.kde4/share/apps/kmess/displaypics
-.kde4/share/apps/okular/docdata
-.kde4/share/apps/RecentDocuments
-.kerl
 .komodoedit/*/*.xmlc
 .komodoedit/*/codeintel/db
 .komodoedit/*/commandments.fifo
@@ -114,33 +95,16 @@
 .komodoedit/*/XRE/XPC.mfasl
 .komodoedit/*/XRE/xpti.dat
 .komodoedit/*/XUL.mfasl
-.local/share/akonadi
 .local/share/baloo
 .local/share/gvfs-metadata
-.local/share/klipper
-.local/share/lbry/lbrynet
-.local/share/lutris/runners
-.local/share/okular/docdata
-.local/share/org.kde.gwenview/recentfolders
-.local/share/RecentDocuments
-.local/share/spotify-launcher
-.local/share/Steam
-.local/share/torbrowser
 .local/share/tracker
 .local/share/Trash
-.local/share/zeitgeist
-.local/state
 .LSOverride
-.macromedia
 .mozilla/firefox/*/.parentlock
 .mozilla/firefox/*/blocklist.xml
 .mozilla/firefox/*/Cache
 .mozilla/firefox/*/compreg.dat
 .mozilla/firefox/*/extensions.cache
-.mozilla/firefox/*/extensions.ini
-.mozilla/firefox/*/extensions.rdf
-.mozilla/firefox/*/extensions.sqlite
-.mozilla/firefox/*/extensions.sqlite-journal
 .mozilla/firefox/*/minidumps
 .mozilla/firefox/*/pluginreg.dat
 .mozilla/firefox/*/urlclassifier3.sqlite
@@ -151,17 +115,12 @@
 .mozilla/seamonkey/*/blocklist.xml
 .mozilla/seamonkey/*/Cache
 .mozilla/seamonkey/*/compreg.dat
-.mozilla/seamonkey/*/extensions.ini
-.mozilla/seamonkey/*/extensions.rdf
-.mozilla/seamonkey/*/extensions.sqlite
 .mozilla/seamonkey/*/minidumps
 .mozilla/seamonkey/*/pluginreg.dat
 .mozilla/seamonkey/*/xpti.dat
 .nfs*
 .npm
 .nv/GLCache
-.nvm
-.ollama
 .opera/application_cache
 .opera/cache
 .opera/icons
@@ -175,13 +134,10 @@
 .purple/icons
 .recently-used
 .recently-used.xbel
-.rustup
 .Spotlight-V100
 .TemporaryItems
-.terraformrc
 .thumb
 .thumbnails
-.thunderbird
 .thunderbird/*/Cache
 .Trash-*
 .Trash-1*
@@ -196,13 +152,8 @@
 .var/app/*/.cache
 .var/app/*/cache
 .VeraCrypt-lock-*
-.vim/bundle/*
-.viminfo
 .VolumeIcon.icns
-.vscode-oss/extensions/*
-.vscode/extensions/*
 .wayland-errors
-.wget-hsts
 .Xauthority
 .xsession-errors
 .xsession-errors.old
@@ -210,15 +161,9 @@
 [Dd]esktop.ini
 *_override.tf
 *_override.tf.json
-*.cab
-*.icloud
-*.lnk
-*.msi
-*.msix
-*.msm
-*.msp
 *.retry
 *.stackdump
+# Terraform state and variable files may contain credentials or secrets.
 *.tfstate
 *.tfstate.*
 *.tfvars
@@ -229,16 +174,12 @@
 /.dbus
 /.keychain
 /.m2/repository
-/.Private
-/.subversion
 /.Trash
 /.virtualenvs
 /snap/chromium/*/.config/chromium/*/Service Worker/CacheStorage
-/snap/chromium/*/.local/share/
 /snap/chromium/common/.cache
-/snap/riot-web/
 /Trash
-\$RECYCLE.BIN/
+$RECYCLE.BIN/
 cache
 crash.*.log
 crash.log
@@ -252,7 +193,68 @@ override.tf
 override.tf.json
 recently-used.xbel
 Temporary Items
-terraform.rc
 Thumbs.db
 Thumbs.db:encryptable
-WebStorage
+
+# Caches in any directory tree
+Cache/
+caches/
+Caches/
+cache2/
+Cache2/
+Temp/
+Temporary/
+
+# Temporary files and editor leftovers
+*.sock
+*.tmp
+*.temp
+*.swp
+*.swo
+*.part
+*.partial
+*.crdownload
+*.download
+.#*
+
+# Common temporary and cache directories
+.tmp/
+tmp/
+temp/
+.yarn/cache/
+.pnpm-store/
+.parcel-cache/
+.turbo/
+.ssh/sockets/
+
+# JavaScript and frontend build output
+node_modules/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.angular/
+coverage/
+
+# Python packaging and bytecode
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+*.py[cod]
+
+# Python caches and environments
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.venv/
+venv/
+
+# Java, Kotlin, and native build output
+target/
+CMakeFiles/
+CMakeCache.txt
