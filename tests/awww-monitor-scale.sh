@@ -19,7 +19,7 @@ OUTPUT
 EOF
 chmod +x "$TEST_DIR/bin/awww"
 
-export PATH="$TEST_DIR/bin:/usr/bin"
+export PATH="$TEST_DIR/bin:$PATH"
 # shellcheck source=../bin/awww.sh
 source "$ROOT_DIR/bin/awww.sh"
 
@@ -39,3 +39,40 @@ get_monitors
     || fail "monitor scales were not applied to render dimensions"
 
 printf 'PASS: awww monitor scale parsing\n'
+
+# Values are read by validate_config in the sourced script.
+# shellcheck disable=SC2034
+WALLPAPER_SOURCE=local
+# shellcheck disable=SC2034
+LOCAL_WALLPAPER_DIRS=()
+# shellcheck disable=SC2034
+REMOTE_WALLPAPER_DIRS=()
+# shellcheck disable=SC2034
+AWWW_BLURRED_BACKGROUND=false
+# shellcheck disable=SC2034
+AWWW_METADATA_OVERLAY=false
+if validate_config; then
+    fail "an empty local wallpaper source passed validation"
+fi
+
+printf 'PASS: awww rejects invalid source configuration\n'
+
+# shellcheck disable=SC2034
+WALLPAPER_SOURCE=auto
+# shellcheck disable=SC2034
+LOCAL_WALLPAPER_DIRS=("$TEST_DIR")
+# shellcheck disable=SC2034
+REMOTE_WALLPAPER_DIRS=("$TEST_DIR/remote")
+# shellcheck disable=SC2034
+REMOTE_FS_TYPES=""
+# shellcheck disable=SC2034
+REMOTE_PROBE_TIMEOUT=3
+# shellcheck disable=SC2034
+REMOTE_SCAN_TIMEOUT=15
+# shellcheck disable=SC2034
+REMOTE_APPLY_TIMEOUT=10
+if validate_config; then
+    fail "an invalid remote source passed validation in auto mode"
+fi
+
+printf 'PASS: awww rejects invalid remote configuration in auto mode\n'

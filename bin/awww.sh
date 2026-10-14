@@ -5,6 +5,7 @@ set -uo pipefail
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/awww"
 CONFIG_FILE="${AWWW_CONFIG_FILE:-${CONFIG_DIR}/awww.conf}"
 CONFIG_SAMPLE_FILE="${CONFIG_FILE}-sample"
+AWWW_CACHE_HELPER="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/awww-cache.py"
 
 export AWWW_TRANSITION_FPS=30
 export AWWW_TRANSITION_STEP=10
@@ -52,6 +53,8 @@ load_config() {
     AWWW_BLURRED_BACKGROUND="${AWWW_BLURRED_BACKGROUND:-true}"
     AWWW_BACKGROUND_BLUR="${AWWW_BACKGROUND_BLUR:-30}"
     AWWW_RENDER_CACHE_DIR="${AWWW_RENDER_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/awww/rendered}"
+    AWWW_RENDER_CACHE_MAX_AGE_DAYS="${AWWW_RENDER_CACHE_MAX_AGE_DAYS:-30}"
+    AWWW_RENDER_CACHE_MAX_BYTES="${AWWW_RENDER_CACHE_MAX_BYTES:-2147483648}"
     AWWW_RENDER_THREADS="${AWWW_RENDER_THREADS:-2}"
     AWWW_RENDER_NICE="${AWWW_RENDER_NICE:-10}"
     AWWW_METADATA_OVERLAY="${AWWW_METADATA_OVERLAY:-true}"
@@ -173,21 +176,30 @@ validate_render_config() {
             log "Error: AWWW_RENDER_NICE must be an integer between 0 and 19."
             return 1
         fi
+
+        if ! [[ "${AWWW_RENDER_CACHE_MAX_AGE_DAYS}" =~ ^[1-9][0-9]*$ ]]; then
+            log "Error: AWWW_RENDER_CACHE_MAX_AGE_DAYS must be a positive integer."
+            return 1
+        fi
+        if ! [[ "${AWWW_RENDER_CACHE_MAX_BYTES}" =~ ^[1-9][0-9]*$ ]]; then
+            log "Error: AWWW_RENDER_CACHE_MAX_BYTES must be a positive integer."
+            return 1
+        fi
     fi
 }
 
 validate_config() {
     case "${WALLPAPER_SOURCE-}" in
         local)
-            validate_local_config
+            validate_local_config || return 1
             ;;
         remote)
-            validate_remote_config
+            validate_remote_config || return 1
             ;;
         auto)
             validate_local_config || return 1
             if [ "${#REMOTE_WALLPAPER_DIRS[@]}" -gt 0 ]; then
-                validate_remote_config
+                validate_remote_config || return 1
             fi
             ;;
         *)
@@ -202,7 +214,7 @@ validate_config() {
 require_commands() {
     local command_name
 
-    for command_name in awww awk find mktemp shuf; do
+    for command_name in awww awk find magick mktemp shuf; do
         if ! command -v "${command_name}" >/dev/null 2>&1; then
             log "Error: '${command_name}' is not installed or not found in PATH."
             return 1
@@ -211,7 +223,7 @@ require_commands() {
 
     if [ "${AWWW_BLURRED_BACKGROUND}" = "true" ] \
         || [ "${AWWW_METADATA_OVERLAY}" = "true" ]; then
-        for command_name in magick mkdir mv nice sha256sum stat; do
+        for command_name in flock magick mkdir mv nice python3 sha256sum stat touch; do
             if ! command -v "${command_name}" >/dev/null 2>&1; then
                 log "Error: '${command_name}' is required to render wallpapers."
                 return 1
@@ -497,6 +509,27 @@ read_photo_metadata() {
     fi
 }
 
+lock_render_cache() {
+    AWWW_MANAGED_CACHE_DIR="${AWWW_RENDER_CACHE_DIR}/managed-v1"
+    if [ -L "${AWWW_MANAGED_CACHE_DIR}" ]; then
+        log "Error: Managed render cache must not be a symlink."
+        return 1
+    fi
+    mkdir -p "${AWWW_MANAGED_CACHE_DIR}" || return 1
+    if [ -z "${AWWW_RENDER_LOCK_FD-}" ]; then
+        exec {AWWW_RENDER_LOCK_FD}> "${AWWW_MANAGED_CACHE_DIR}/.lock" || return 1
+    fi
+    flock -w 5 "${AWWW_RENDER_LOCK_FD}" || return 1
+}
+
+prune_render_cache() {
+    python3 "${AWWW_CACHE_HELPER}" "${AWWW_MANAGED_CACHE_DIR}" \
+        "${XDG_CACHE_HOME:-${HOME}/.cache}/hyprlock-carousel" \
+        --max-bytes "${AWWW_RENDER_CACHE_MAX_BYTES}" \
+        --max-age-days "${AWWW_RENDER_CACHE_MAX_AGE_DAYS}" \
+        --protect "$1"
+}
+
 prepare_display_image() {
     local dimensions="$1"
     local image="$2"
@@ -508,6 +541,7 @@ prepare_display_image() {
 
     if [ "${AWWW_BLURRED_BACKGROUND}" = "false" ] \
         && [ "${AWWW_METADATA_OVERLAY}" = "false" ]; then
+        run_for_active_source magick "${image}[0]" null: || return 1
         DISPLAY_IMAGE="${image}"
         DISPLAY_RESIZE_MODE="fit"
         return 0
@@ -519,10 +553,13 @@ prepare_display_image() {
         | sha256sum) || return 1
     cache_key="${cache_key%% *}"
 
-    mkdir -p "${AWWW_RENDER_CACHE_DIR}" || return 1
-    cached_image="${AWWW_RENDER_CACHE_DIR}/${cache_key}.jpg"
+    lock_render_cache || return 1
+    cached_image="${AWWW_MANAGED_CACHE_DIR}/${cache_key}.jpg"
+    prune_render_cache "${cached_image}" || log "Warning: Cache cleanup failed."
 
-    if [ ! -s "${cached_image}" ]; then
+    if [ -s "${cached_image}" ]; then
+        touch -- "${cached_image}" || return 1
+    else
         METADATA_LABEL=""
         if [ "${AWWW_METADATA_OVERLAY}" = "true" ]; then
             read_photo_metadata "${image}"
@@ -530,12 +567,13 @@ prepare_display_image() {
 
         if [ "${AWWW_BLURRED_BACKGROUND}" = "false" ] \
             && [ -z "${METADATA_LABEL}" ]; then
+            run_for_active_source magick "${image}[0]" null: || return 1
             DISPLAY_IMAGE="${image}"
             DISPLAY_RESIZE_MODE="fit"
             return 0
         fi
 
-        temporary_image=$(mktemp --tmpdir="${AWWW_RENDER_CACHE_DIR}" \
+        temporary_image=$(mktemp --tmpdir="${AWWW_MANAGED_CACHE_DIR}" \
             '.awww-render.XXXXXX.jpg') || return 1
 
         if [ "${AWWW_BLURRED_BACKGROUND}" = "true" ]; then
@@ -584,6 +622,7 @@ prepare_display_image() {
 
     DISPLAY_IMAGE="${cached_image}"
     DISPLAY_RESIZE_MODE="no"
+    prune_render_cache "${cached_image}" || log "Warning: Wallpaper rendered, but cache cleanup failed."
 }
 
 apply_image() {
@@ -598,7 +637,15 @@ apply_image() {
         --resize="${DISPLAY_RESIZE_MODE}" --transition-type fade
     )
 
-    run_for_active_source "${command[@]}"
+    run_for_active_source "${command[@]}" || return 1
+    if [[ "${monitor}" =~ ^[A-Za-z0-9_.-]+$ ]] && [ -d "${AWWW_RENDER_CACHE_DIR}/managed-v1" ]; then
+        lock_render_cache || return 1
+        local pins="${AWWW_MANAGED_CACHE_DIR}/pins"
+        mkdir -p "${pins}" || return 1
+        ln -s -- "${DISPLAY_IMAGE}" "${pins}/.awww-${monitor}.$$" || return 1
+        mv -Tf -- "${pins}/.awww-${monitor}.$$" "${pins}/awww-${monitor}" || return 1
+        prune_render_cache "${DISPLAY_IMAGE}" || log "Warning: Cache cleanup failed."
+    fi
 }
 
 apply_wallpapers() {

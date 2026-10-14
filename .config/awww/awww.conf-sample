@@ -36,6 +36,11 @@ REMOTE_APPLY_TIMEOUT="10"
 AWWW_BLURRED_BACKGROUND="true"
 AWWW_BACKGROUND_BLUR="30"
 AWWW_RENDER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/awww/rendered"
+# Generated files live in managed-v1/ below this directory. Other files are kept.
+# Expire unused renders and evict the oldest when their total exceeds 2 GiB.
+# Current wallpaper/carousel references are protected even above the quota.
+AWWW_RENDER_CACHE_MAX_AGE_DAYS="30"
+AWWW_RENDER_CACHE_MAX_BYTES="2147483648"
 
 # Keep first-time rendering unobtrusive. Cached images skip ImageMagick and EXIF
 # reads on later runs. ionice idle priority is also used when available.

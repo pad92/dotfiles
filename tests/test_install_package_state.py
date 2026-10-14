@@ -1,4 +1,6 @@
 import json
+import os
+import pty
 import shlex
 import stat
 import subprocess
@@ -10,6 +12,104 @@ INSTALL_SCRIPT = Path(__file__).parents[1] / "install"
 
 
 class InstallPackageStateTests(unittest.TestCase):
+    def test_inventory_failure_aborts_install_without_rewriting_state(self):
+        for fail_at in (1, 2, 3):
+            with self.subTest(
+                fail_at=fail_at
+            ), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packages = root / "dist/arch/packages"
+                packages.mkdir(parents=True)
+                (packages / "01_base.txt").write_text("base\n")
+                state_path = root / "state.json"
+                saved = json.dumps(
+                    {
+                        "version": 1,
+                        "selected_groups": ["01_base"],
+                        "owned_packages": ["old-package"],
+                    }
+                )
+                state_path.write_text(saved)
+                counter = root / "counter"
+                counter.write_text("0")
+                marker = root / "unexpected-transaction"
+                script = f"""
+source {shlex.quote(str(INSTALL_SCRIPT))}
+BASEDIR={shlex.quote(str(root))}
+PACKAGE_STATE_FILE={shlex.quote(str(state_path))}
+is_arch_or_cachyos() {{ return 0; }}
+detect_graphics_package_groups() {{ return 1; }}
+show_multi_select() {{ printf '0\\n'; }}
+show_cursor() {{ :; }}
+sudo() {{ touch {shlex.quote(str(marker))}; return 1; }}
+pacman() {{
+    [[ "$*" == '-Qq' ]] || return 99
+    local count
+    count=$(<{shlex.quote(str(counter))})
+    count=$((count + 1))
+    printf '%s' "$count" > {shlex.quote(str(counter))}
+    printf 'base\\nold-package\\n'
+    (( count != {fail_at} ))
+}}
+install_arch_packages
+"""
+                master, slave = pty.openpty()
+                try:
+                    result = subprocess.run(
+                        ["bash", "-c", script],
+                        stdin=slave,
+                        stdout=slave,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=10,
+                    )
+                finally:
+                    os.close(master)
+                    os.close(slave)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(counter.read_text(), str(fail_at))
+                self.assertEqual(state_path.read_text(), saved)
+                self.assertFalse(marker.exists())
+
+    def test_partial_gpu_detection_preserves_all_saved_choices(self):
+        result = self.run_bash("""
+PACKAGE_GROUP_DEFAULTS=([08_intel_modern]=1 [09_nvidia_legacy]=1 [01_base]=1)
+detect_graphics_package_groups() {
+    detect_graphics_package_groups_from_pci 'Intel TigerLake [0300] [8086:9a49]
+NVIDIA unknown controller [0302] [10de:9999]'
+}
+apply_detected_graphics_defaults >/dev/null
+printf '%s\\n' "${!PACKAGE_GROUP_DEFAULTS[@]}" | sort
+""")
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ["01_base", "08_intel_modern", "09_nvidia_legacy"],
+        )
+
+    def test_failed_or_invalid_inventory_preserves_previous_snapshot(self):
+        for response in (
+            "printf 'partial-package\\n'; return 1",
+            "return 0",
+            "printf 'valid-package\\ninvalid package\\n'",
+        ):
+            with self.subTest(response=response):
+                result = self.run_bash(f"""
+declare -A snapshot=([previous-package]=1)
+pacman() {{ {response}; }}
+if read_installed_packages snapshot; then exit 1; fi
+printf '%s\\n' "${{!snapshot[@]}}"
+""")
+                self.assertEqual(result.stdout.strip(), "previous-package")
+
+    def test_successful_inventory_replaces_snapshot(self):
+        result = self.run_bash("""
+declare -A snapshot=([previous-package]=1)
+pacman() { printf 'base\\nlinux-cachyos\\n'; }
+read_installed_packages snapshot
+printf '%s\\n' "${!snapshot[@]}" | sort
+""")
+        self.assertEqual(result.stdout.splitlines(), ["base", "linux-cachyos"])
+
     def run_bash(self, body):
         script = f"source {shlex.quote(str(INSTALL_SCRIPT))}\n{body}"
         return subprocess.run(

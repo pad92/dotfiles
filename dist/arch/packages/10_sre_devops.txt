@@ -16,8 +16,8 @@ fd
 fzf
 git
 git-delta
-glab
 github-cli
+glab
 go
 hadolint-bin
 helm

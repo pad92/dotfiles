@@ -20,8 +20,11 @@ clean_arch() {
     return 1
   fi
 
-  if ! orphan_packages=$(pacman -Qtdq); then
-    echo "Error: could not query orphan packages"
+  local pacman_status=0
+  orphan_packages=$(pacman -Qtdq 2>&1) || pacman_status=$?
+  if (( pacman_status != 0 && pacman_status != 1 )) \
+    || [[ $pacman_status -eq 1 && -n $orphan_packages ]]; then
+    echo "Error: could not query orphan packages: $orphan_packages"
     return 1
   fi
 

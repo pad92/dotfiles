@@ -10,6 +10,18 @@ stages:
   - pages
   - release
 
+unit_tests:
+  stage: test
+  image: python:3.13-alpine
+  before_script:
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick
+  script:
+    - python3 -m unittest discover -s tests -p 'test_*.py'
+    - bash tests/awww-monitor-scale.sh
+    - bash tests/hyprlock-playerctlock.sh
+    - zsh tests/arch-clean-no-orphans.zsh
+    - zsh tests/git-pull-recursive.zsh
+
 # Le SAST tourne par défaut sure tous les commits
 sast:
   stage: test
@@ -51,7 +63,7 @@ pages:
         - '.gitlab/README.md'
         - '.gitlab-ci.yml'
 
-# Job de validation Pages : construit les docs sur les branches non-déployées
+# Job de validation Pages : construct les docs sur les branches non-déployées
 build_pages_review:
   extends: .pages_build
   rules:
