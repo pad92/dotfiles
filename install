@@ -190,6 +190,7 @@ apply_standard_package_defaults() {
 detect_graphics_package_groups_from_pci() {
     local pci_devices=$1
     local line normalized group
+    local incomplete=false
     local -A detected_groups=()
 
     while IFS= read -r line; do
@@ -210,10 +211,12 @@ detect_graphics_package_groups_from_pci() {
                     *"hd graphics 4600"*|*"hd graphics 5000"*|*"hd graphics 5100"*)
                         group="07_intel_legacy"
                         ;;
-                    *)
-                        # intel-media-driver supports Broadwell and newer GPUs.
+                    *broadwell*|*skylake*|*kabylake*|*coffeelake*|*cometlake*|\
+                    *icelake*|*tigerlake*|*rocketlake*|*alderlake*|*raptorlake*|\
+                    *meteorlake*|*lunarlake*|*arrowlake*|*"iris xe"*|*"uhd graphics"*|*"arc "*)
                         group="08_intel_modern"
                         ;;
+                    *) incomplete=true ;;
                 esac
                 ;;
             *"[10de:"*)
@@ -225,12 +228,19 @@ detect_graphics_package_groups_from_pci() {
                     *"tesla p"[0-9]*|*"tesla v"[0-9]*|*"titan v"*|*"titan x"*)
                         group="09_nvidia_legacy"
                         ;;
-                    *)
-                        # Current NVIDIA GPUs (Turing and newer) use the open modules.
+                    *turing*|*tu[0-9]*|*ampere*|*ada*|*blackwell*|*"geforce rtx 20"*|\
+                    *"geforce rtx 30"*|*"geforce rtx 40"*|*"geforce rtx 50"*|\
+                    *"quadro rtx"*|*"rtx a"[0-9]*|*"nvidia a"[0-9]*|\
+                    *"nvidia h"[0-9]*|*"nvidia l"[0-9]*|*"tesla t4"*)
                         group="09_nvidia_modern"
+                        ;;
+                    *)
+                        printf 'Warning: NVIDIA generation is unknown; GPU package defaults were not changed.\n' >&2
+                        incomplete=true
                         ;;
                 esac
                 ;;
+            *) incomplete=true ;;
         esac
 
         if [[ -n "$group" ]]; then
@@ -238,7 +248,7 @@ detect_graphics_package_groups_from_pci() {
         fi
     done <<< "$pci_devices"
 
-    if (( ${#detected_groups[@]} == 0 )); then
+    if [[ "$incomplete" == true ]] || (( ${#detected_groups[@]} == 0 )); then
         return 1
     fi
     printf '%s\n' "${!detected_groups[@]}" | sort
@@ -250,8 +260,11 @@ detect_graphics_package_groups() {
     if command -v lspci &> /dev/null; then
         pci_devices=$(lspci -Dnn 2>/dev/null || true)
     else
+        # PCI IDs alone cannot distinguish NVIDIA generations or legacy Intel
+        # media drivers. Only AMD has one package group across supported GPUs.
         local device_path class vendor device
-        for device_path in /sys/bus/pci/devices/*; do
+        local pci_sysfs_root="${PCI_SYSFS_ROOT:-/sys/bus/pci/devices}"
+        for device_path in "${pci_sysfs_root}"/*; do
             [[ -r "$device_path/class" && -r "$device_path/vendor" \
                 && -r "$device_path/device" ]] || continue
             class=$(<"$device_path/class")
@@ -261,7 +274,11 @@ detect_graphics_package_groups() {
             esac
             vendor=$(<"$device_path/vendor")
             device=$(<"$device_path/device")
-            pci_devices+=" [${class:2:4}]: [${vendor:2}:${device:2}]"$'\n'
+            if [[ "${vendor,,}" == "0x1002" ]]; then
+                pci_devices+=" [${class:2:4}]: [${vendor:2}:${device:2}]"$'\n'
+            else
+                return 1
+            fi
         done
     fi
 
@@ -271,7 +288,7 @@ detect_graphics_package_groups() {
 apply_detected_graphics_defaults() {
     local detected_output
     if ! detected_output=$(detect_graphics_package_groups); then
-        log_warn "No supported PCI graphics controller was detected; GPU groups were not changed."
+        log_warn "GPU detection is unavailable or incomplete; saved GPU groups were preserved."
         return 0
     fi
 
@@ -509,6 +526,35 @@ PY
         esac
     done <<< "$state_output"
     PACKAGE_STATE_LOADED=true
+}
+
+read_installed_packages() {
+    local -n inventory_result=$1
+    local inventory_output package
+    local -A inventory_snapshot=()
+
+    if ! inventory_output=$(pacman -Qq); then
+        log_error "Unable to read the package database; saved package state is unchanged." >&2
+        return 1
+    fi
+    if [[ -z "$inventory_output" ]]; then
+        log_error "Package database is empty; refusing to replace saved package state." >&2
+        return 1
+    fi
+    while IFS= read -r package; do
+        if ! [[ "$package" =~ ^[a-zA-Z0-9@._+-]+$ ]]; then
+            log_error "Invalid package database output; saved package state is unchanged." >&2
+            return 1
+        fi
+        inventory_snapshot["$package"]=1
+    done <<< "$inventory_output"
+
+    inventory_result=()
+    for package in "${!inventory_snapshot[@]}"; do
+        # This nameref publishes the validated snapshot to the caller.
+        # shellcheck disable=SC2034
+        inventory_result["$package"]=1
+    done
 }
 
 write_package_state() {
@@ -761,9 +807,7 @@ install_arch_packages() {
     local to_install=()
     local installed_count=0
     local -A installed_before=()
-    while IFS= read -r pkg; do
-        installed_before["$pkg"]=1
-    done < <(pacman -Qq 2>/dev/null)
+    read_installed_packages installed_before || return 1
 
     for pkg in "${desired_pkgs[@]}"; do
         if [[ -n "${installed_before[$pkg]+x}" ]]; then
@@ -774,8 +818,6 @@ install_arch_packages() {
     done
 
     local graphics_removal_candidates=()
-    collect_unneeded_graphics_packages \
-        files selected_groups installed_before desired_set graphics_removal_candidates
 
     log_info "Package status: ${installed_count} already installed, ${#to_install[@]} to install."
 
@@ -803,6 +845,17 @@ install_arch_packages() {
             fi
         done
         collect_removal_candidates installed_before desired_set owned_set removal_candidates
+        if [[ "$PACKAGE_ACTION" == "reconcile" ]]; then
+            local graphics_packages=()
+            collect_unneeded_graphics_packages \
+                files selected_groups installed_before desired_set graphics_packages
+            for pkg in "${graphics_packages[@]}"; do
+                if [[ -n "${owned_set[$pkg]+x}" ]]; then
+                    graphics_removal_candidates+=("$pkg")
+                fi
+            done
+            sort_array graphics_removal_candidates
+        fi
     elif [[ "$PACKAGE_ACTION" == "reconcile" ]]; then
         log_warn "No valid ownership state exists; package removal is disabled for this run."
     fi
@@ -897,9 +950,7 @@ install_arch_packages() {
 
     # Re-read authoritative package state after potentially partial transactions.
     local -A installed_after=()
-    while IFS= read -r pkg; do
-        installed_after["$pkg"]=1
-    done < <(pacman -Qq 2>/dev/null)
+    read_installed_packages installed_after || return 1
 
     for pkg in "${!owned_set[@]}"; do
         if [[ -z "${installed_after[$pkg]+x}" ]]; then
@@ -969,15 +1020,24 @@ install_arch_packages() {
         done
 
         if [[ "$install_failed" == false && "$unsafe_graphics_removal" == false ]]; then
-            log_info "Removing obsolete graphics-driver packages: ${graphics_removal_candidates[*]}"
-            if ! sudo pacman -Rs -- "${graphics_removal_candidates[@]}"; then
-                log_error "Obsolete graphics-driver package removal failed or was cancelled."
-                install_failed=true
+            printf '\nManaged obsolete graphics packages:\n'
+            printf '  - %s\n' "${graphics_removal_candidates[@]}"
+            printf 'Pacman removal transaction (including unneeded dependencies):\n'
+            printf '  - %s\n' "${graphics_removal_preview[@]}"
+            printf '\nType REMOVE to confirm: '
+            local graphics_confirmation
+            IFS= read -r graphics_confirmation < /dev/tty
+            if [[ "$graphics_confirmation" == "REMOVE" ]]; then
+                log_info "Removing obsolete graphics-driver packages."
+                if ! sudo pacman -Rs -- "${graphics_removal_candidates[@]}"; then
+                    log_error "Obsolete graphics-driver package removal failed or was cancelled."
+                    install_failed=true
+                else
+                    installed_after=()
+                    read_installed_packages installed_after || return 1
+                fi
             else
-                installed_after=()
-                while IFS= read -r pkg; do
-                    installed_after["$pkg"]=1
-                done < <(pacman -Qq 2>/dev/null)
+                log_warn "Removal confirmation did not match; nothing was removed."
             fi
         elif [[ "$unsafe_graphics_removal" == true ]]; then
             install_failed=true
@@ -987,6 +1047,19 @@ install_arch_packages() {
     removal_candidates=()
     if [[ "$PACKAGE_STATE_LOADED" == true ]]; then
         collect_removal_candidates installed_after desired_set owned_set removal_candidates
+        if (( ${#graphics_removal_candidates[@]} > 0 )); then
+            local -A graphics_removal_set=()
+            local non_graphics_removal_candidates=()
+            for pkg in "${graphics_removal_candidates[@]}"; do
+                graphics_removal_set["$pkg"]=1
+            done
+            for pkg in "${removal_candidates[@]}"; do
+                if [[ -z "${graphics_removal_set[$pkg]+x}" ]]; then
+                    non_graphics_removal_candidates+=("$pkg")
+                fi
+            done
+            removal_candidates=("${non_graphics_removal_candidates[@]}")
+        fi
     fi
 
     if [[ "$PACKAGE_ACTION" == "reconcile" \
@@ -1052,9 +1125,7 @@ install_arch_packages() {
 
     # Only packages still present may remain owned after a removal attempt.
     local -A final_installed=()
-    while IFS= read -r pkg; do
-        final_installed["$pkg"]=1
-    done < <(pacman -Qq 2>/dev/null)
+    read_installed_packages final_installed || return 1
     local owned_packages=()
     for pkg in "${!owned_set[@]}"; do
         if [[ -n "${final_installed[$pkg]+x}" ]]; then

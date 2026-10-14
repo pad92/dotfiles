@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
+
 ### Added
 
 - **Installation**: Automatically preselect AMD, Intel, NVIDIA, and hybrid
@@ -42,6 +44,19 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Installation**: Keep LACT as an explicit import template. Preserve all saved
+  GPU choices after partial detection and stop without rewriting package state
+  when an inventory fails. Require managed ownership and explicit confirmation
+  before removing an old GPU driver profile.
+- **AWWW and Hyprlock**: Reject invalid configuration and unreadable images,
+  including when effects are disabled. Bound carousel attempts and duration,
+  with a local fallback in auto mode. Expire managed renders after 30 days and
+  enforce a configurable 2 GiB quota while preserving current backgrounds.
+- **CI**: Install ImageMagick, retain Python's executable path, and cover package
+  inventory errors, partial GPU detection, carousel timeouts, and cache eviction.
+- **Zsh**: Treat an empty orphan list as a successful cleanup and keep recursive
+  Git pulls on the current branch when a fast-forward is not possible.
+- **Arch packages**: Restore alphabetical order in the AMD and SRE/DevOps lists.
 - **Installation**: Replace removed Arch package names, remove conflicting power
   managers and redundant transitive dependencies, and count packages only once
   when multiple selected groups overlap. Track packages installed by the

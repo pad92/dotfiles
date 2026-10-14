@@ -40,16 +40,17 @@ preview changes without requesting sudo access, or
 `./install --reconcile-packages` to review packages previously installed by the
 dotfiles installer that are no longer selected. Reconciliation never claims
 packages that predated its state file and requires explicit confirmation before
-removal. Previous group selections are restored from state, then detected GPU
-groups replace saved GPU defaults so the menu follows the current hardware.
+removal. Previous group selections are restored from state. Detected GPU groups
+replace saved GPU defaults only when every controller can be classified;
+partial detection preserves all saved choices for manual review. If a package
+inventory fails or returns invalid data, installation stops without rewriting
+the saved package state.
 The base, GTK, and Hyprland defaults are then enabled on every run; an empty
 selection after manually clearing the menu still means “skip”.
 
-When at least one GPU group is selected, the installer also finds installed
-packages belonging only to unselected GPU profiles. It asks `pacman` to remove
-them after the desired drivers are installed and only if the previewed removal
-transaction contains no desired or protected package. `--package-plan` reports
-these removals without applying them.
+GPU-driver removal also requires `--reconcile-packages`, recorded ownership,
+and explicit confirmation. Packages installed outside the installer remain
+unmanaged. Removal previews reject desired or protected packages.
 
 For the editor configuration only:
 
@@ -92,9 +93,10 @@ monitor layouts and workspace mappings; Waybar uses `config.PadsTower` and
 `config.PadsP5560` for different hardware.
 
 Alacritty settings cover fonts, spacing, opacity, and colors. For Hyprland Lua
-validation and completion, see `.config/hypr/.luarc.json`. Electron 38 and later
-select native Wayland automatically in a Wayland session, without an environment
-variable; `~/.config/electron-flags.conf` remains available for editor-specific flags.
+validation and completion, see `.config/hypr/.luarc.json`. Electron 38.2 and
+later use native Wayland by default in a Wayland session, as described in the
+[Electron Wayland notes](https://www.electronjs.org/blog/tech-talk-wayland).
+This repository's `~/.config/electron-flags.conf` contains no required flags.
 
 ## Shell and editors
 
@@ -229,6 +231,14 @@ Media and brightness keys control volume, playback, and screen brightness.
 Left-click Waybar's audio module to switch to the next output sink. Right-click it
 to open `pavucontrol`.
 
+### LACT profiles
+
+[`.config/lact/config.yaml`](./.config/lact/config.yaml) is a profile template for
+PadsTower's GPU (`1002:73df-1462:3980-0000:0d:00.0`). The installer does not copy
+it to `/etc/lact/config.yaml`. To use it, first back up your LACT configuration,
+verify the GPU identifier in LACT, and manually merge the relevant profiles.
+Review the fan curves for your hardware before applying them.
+
 ### Wallpapers and lock screen
 
 [`awww.sh`](./bin/awww.sh) selects a different image for each monitor from local
@@ -247,6 +257,14 @@ cp ~/.config/awww/awww.conf-sample ~/.config/awww/awww.conf
 
 The sample documents multiple local and remote source directories, NFS/CIFS
 mounts, timeouts, and troubleshooting commands.
+
+Generated renders live in `managed-v1/` under `AWWW_RENDER_CACHE_DIR`. The cache
+removes unreferenced renders older than 30 days and evicts the oldest remaining
+renders above `AWWW_RENDER_CACHE_MAX_BYTES` (2 GiB by default). Wallpaper and
+carousel references are preserved, even if they alone exceed the quota; the
+script then prints a warning. Files outside this managed directory, including
+older renders from previous versions, are left for manual cleanup. ImageMagick
+is required even with effects disabled, to reject missing or corrupt images.
 
 Put fallback images in `~/.local/share/backgrounds/`. For example, this command
 copies images tagged `paysage` from another directory:
@@ -269,7 +287,11 @@ refreshes every 10 seconds.
 
 Choose **Carousel** in Wlogout to lock with photos from the configured AWWW
 sources. The background advances every minute and uses AWWW's blur and metadata
-settings.
+settings. Each image update tries at most three images per source. In `auto`
+mode, failed remote reads fall back to local images. A helper invocation has a
+25-second deadline, followed by at most two seconds for forced termination;
+`CAROUSEL_TIMEOUT_SECONDS` can override the deadline (minimum 3 seconds).
+If the update fails, the previous background remains available.
 
 For media playing in Firefox or Chrome, the source label reads `xesam:url` and
 shows the service name instead of the browser. Known services such as Deezer and
@@ -292,16 +314,16 @@ Colors and positions are configured in `hyprlock.conf`.
 
 See [`bin/`](./bin/) for the full collection.
 
-| Script                                                     | Purpose                                                                                                                                    |
-| :--------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup     |
+| Script                                                     | Purpose                                                                                                                                                                                                                                       |
+| :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup                                                                                                        |
 | [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication, report Arch orphans without removing them, estimate added and deleted file sizes and full sizes of changed files, and apply [exclude patterns](./dist/backup_excludes.txt) to remote pruning |
-| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                             |
-| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                     |
-| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                                 |
-| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)                  |
-| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                    |
-| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                                |
+| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                                                                                                                                |
+| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                                                                                                                        |
+| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                                                                                                                                    |
+| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)                                                                                                                     |
+| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                                                                                                                       |
+| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                                                                                                                                   |
 
 ## CI and releases
 

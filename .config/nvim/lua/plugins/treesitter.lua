@@ -8,8 +8,6 @@ return {
     lazy = false,
     build = ":TSUpdate",
     config = function()
-      require("nvim-treesitter").setup()
-
       -- Parsers to install (markdown_inline = injections inside markdown)
       local parsers = {
         "lua",
@@ -23,7 +21,21 @@ return {
         "css",
         "bash",
       }
-      require("nvim-treesitter").install(parsers)
+
+      local treesitter = require("nvim-treesitter")
+      if type(treesitter.install) == "function" then
+        -- nvim-treesitter main branch API (Neovim >= 0.12)
+        treesitter.setup()
+        treesitter.install(parsers)
+      else
+        -- Older nvim-treesitter checkouts expose parser installation through
+        -- the configs module instead of nvim-treesitter.install().
+        require("nvim-treesitter.configs").setup({
+          ensure_installed = parsers,
+          highlight = { enable = true },
+          indent = { enable = true },
+        })
+      end
 
       -- Enable highlight + indent + folding for filetypes with an installed parser
       vim.api.nvim_create_autocmd("FileType", {

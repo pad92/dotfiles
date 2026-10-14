@@ -2,12 +2,15 @@
 
 set -uo pipefail
 
-AWWW_SCRIPT="${HOME}/.dotfiles/bin/awww.sh"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P) || exit 1
+AWWW_SCRIPT="${SCRIPT_DIR}/../../../bin/awww.sh"
 CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/hyprlock-carousel"
 IMAGE_INDEX="${CACHE_DIR}/index"
 IMAGE_LIST="${CACHE_DIR}/images"
 IMAGE_SOURCE="${CACHE_DIR}/source"
 LOCK_FILE="${CACHE_DIR}/lock"
+CAROUSEL_TIMEOUT_SECONDS="${CAROUSEL_TIMEOUT_SECONDS:-25}"
+CAROUSEL_MAX_ATTEMPTS=3
 
 log() {
     printf '%s\n' "$*" >&2
@@ -57,12 +60,21 @@ render_next_image() {
     local image_index
     local next_index
     local selected_image
+    local attempt
+    local found=false
     local temporary_index
     local temporary_link
 
     load_awww || return 1
     require_commands || return 1
     resolve_metadata_font || return 1
+
+    # Every external operation shares the phase budget, including metadata reads.
+    run_for_active_source() {
+        local remaining=$((CAROUSEL_PHASE_DEADLINE - SECONDS))
+        (( remaining > 0 )) || return 1
+        timeout --kill-after=1s "${remaining}s" "$@"
+    }
 
     ACTIVE_WALLPAPER_SOURCE=$(cat "${IMAGE_SOURCE}") || return 1
     IMAGES=()
@@ -74,9 +86,40 @@ render_next_image() {
         image_index=0
     fi
 
-    selected_image="${IMAGES[image_index % ${#IMAGES[@]}]}"
-    next_index=$(((image_index + 1) % ${#IMAGES[@]}))
-    prepare_display_image "${dimensions}" "${selected_image}" || return 1
+    CAROUSEL_PHASE_DEADLINE=$((SECONDS + CAROUSEL_TIMEOUT_SECONDS / 3))
+    if [ "${ACTIVE_WALLPAPER_SOURCE}" != remote ]; then
+        CAROUSEL_PHASE_DEADLINE=$((CAROUSEL_STARTED + CAROUSEL_TIMEOUT_SECONDS - 1))
+    fi
+    for ((attempt = 0; attempt < ${#IMAGES[@]} && attempt < CAROUSEL_MAX_ATTEMPTS; attempt++)); do
+        selected_image="${IMAGES[(image_index + attempt) % ${#IMAGES[@]}]}"
+        if prepare_display_image "${dimensions}" "${selected_image}"; then
+            found=true
+            break
+        fi
+        log "Warning: Skipping unreadable carousel image '${selected_image}'."
+    done
+    if [ "${found}" = false ] && [ "${WALLPAPER_SOURCE}" = auto ] \
+        && [ "${ACTIVE_WALLPAPER_SOURCE}" = remote ]; then
+        log "Warning: Remote carousel images failed; trying local images."
+        CAROUSEL_PHASE_DEADLINE=$((CAROUSEL_STARTED + CAROUSEL_TIMEOUT_SECONDS - 1))
+        load_wallpaper_sources local "${LOCAL_WALLPAPER_DIRS[@]}" || return 1
+        printf '%s\0' "${IMAGES[@]}" > "${IMAGE_LIST}.tmp" || return 1
+        mv -f -- "${IMAGE_LIST}.tmp" "${IMAGE_LIST}" || return 1
+        printf '%s\n' local > "${IMAGE_SOURCE}" || return 1
+        image_index=0
+        for ((attempt = 0; attempt < ${#IMAGES[@]} && attempt < CAROUSEL_MAX_ATTEMPTS; attempt++)); do
+            if prepare_display_image "${dimensions}" "${IMAGES[attempt]}"; then
+                found=true
+                break
+            fi
+        done
+    fi
+    if [ "${found}" = false ]; then
+        printf '%s\n' "$(((image_index + attempt) % ${#IMAGES[@]}))" > "${IMAGE_INDEX}"
+        log "Error: Carousel attempt limit reached; keeping the current background."
+        return 1
+    fi
+    next_index=$(((image_index + attempt + 1) % ${#IMAGES[@]}))
 
     current_image="${CACHE_DIR}/current-${monitor}"
     temporary_link="${CACHE_DIR}/.current-${monitor}.$$"
@@ -88,22 +131,14 @@ render_next_image() {
     mv -f -- "${temporary_index}" "${IMAGE_INDEX}" || return 1
     trap - RETURN
 
+    if [ -n "${AWWW_MANAGED_CACHE_DIR-}" ]; then
+        prune_render_cache "${DISPLAY_IMAGE}" || log "Warning: Cache cleanup failed."
+    fi
+
     printf '%s\n' "${DISPLAY_IMAGE}"
 }
 
-mkdir -p "${CACHE_DIR}" || exit 1
-if ! command -v flock >/dev/null 2>&1; then
-    log "Error: 'flock' is not installed or not found in PATH."
-    exit 1
-fi
-exec 9> "${LOCK_FILE}"
-flock 9
-
-if [ "${1-}" = "--refresh" ]; then
-    refresh_image_list
-    exit $?
-fi
-
+# Reading an atomically published link must never wait for a renderer.
 if [ "${1-}" = "--current" ]; then
     if [ "$#" -ne 2 ] || ! [[ "$2" =~ ^[A-Za-z0-9_.-]+$ ]]; then
         log "Usage: $0 --current MONITOR"
@@ -111,6 +146,25 @@ if [ "${1-}" = "--current" ]; then
     fi
     printf '%s/current-%s\n' "${CACHE_DIR}" "$2"
     exit 0
+fi
+
+if ! [[ "${CAROUSEL_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ ]] \
+    || (( CAROUSEL_TIMEOUT_SECONDS < 3 )); then
+    log 'Error: CAROUSEL_TIMEOUT_SECONDS must be an integer of at least 3.'
+    exit 1
+fi
+if [ "${1-}" != --bounded-worker ]; then
+    exec timeout --kill-after=2s "${CAROUSEL_TIMEOUT_SECONDS}s" bash "$0" --bounded-worker "$@"
+fi
+shift
+CAROUSEL_STARTED=${SECONDS}
+mkdir -p "${CACHE_DIR}" || exit 1
+exec 9> "${LOCK_FILE}" || exit 1
+flock -w 2 9 || exit 1
+
+if [ "${1-}" = "--refresh" ]; then
+    refresh_image_list
+    exit $?
 fi
 
 if [ "${1-}" = "--font" ]; then

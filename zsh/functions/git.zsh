@@ -1,12 +1,14 @@
 _git_for_each_repo() {
   local action="$1"
   local git_dir repo
+  local action_status=0
 
   while IFS= read -r -d '' git_dir; do
     repo="${git_dir:h}"
     [[ "$repo" == */.terraform/* ]] && continue
-    "$action" "$repo"
+    "$action" "$repo" || action_status=1
   done < <(find "$PWD" \( -type l -o -type d \) -name .git -print0)
+  return $action_status
 }
 
 _git_prune_repo() {
@@ -18,6 +20,7 @@ _git_prune_repo() {
       echo "$(date +"%Y%m%d-%H%M") ERROR: ${repo}" >> prune.log
       echo "${output}" >> prune.log
       echo "" >> prune.log
+      return 1
     else
       echo -ne "\tOK\n"
     fi
@@ -25,22 +28,14 @@ _git_prune_repo() {
 
 _git_pull_repo() {
     local repo="$1"
-    local output current_branch default_branch
+    local output
     echo -ne "- ${repo}"
-    if ! output=$(git -C "$repo" pull 2>&1); then
-      current_branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD)
-      default_branch=$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD)
-      default_branch=${default_branch#origin/}
-      if [[ -z "$default_branch" ]]; then
-        echo -ne "\tERROR : unable to determine the default branch\n"
-      elif ! output=$(git -C "$repo" checkout "$default_branch" 2>&1) || ! output=$(git -C "$repo" pull 2>&1); then
-        echo -ne "\tERROR : unable to pull ${default_branch}\n"
-      else
-        echo -ne "\tERROR : unable to pull ${current_branch}, switch to ${default_branch}"
-      fi
+    if ! output=$(git -C "$repo" pull --ff-only 2>&1); then
+      echo -ne "\tERROR : unable to fast-forward current branch\n"
       echo "$(date +"%Y%m%d-%H%M") ERROR: ${repo}" >> prune.log
       echo "${output}" >> prune.log
       echo "" >> prune.log
+      return 1
     else
       echo -ne "\tOK\n"
     fi

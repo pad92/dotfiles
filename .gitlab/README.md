@@ -22,10 +22,10 @@ test → package → pages → release
 
 | Job              | Stage   | Runs when                          | Purpose                                                                           |
 | ---------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------- |
-| `sast`           | test    | every commit                       | Static security analysis (from the SAST template).                                |
-| `package_vim`    | package | always                             | Tar `.vim`/`.vimrc` into a `vim.tar.gz` artifact (submodules pulled recursively). |
+| `sast`           | test    | branch pipelines                   | Static security analysis using the included template's default rules.             |
+| `package_vim`    | package | branch and tag pipelines           | Tar `.vim`/`.vimrc` into a `vim.tar.gz` artifact (submodules pulled recursively). |
 | `pages`          | pages   | default branch + doc files change  | Build and deploy the static docs site into `public/`.                             |
-| `build_pages_review` | pages | non-default branch + doc files change | Build the static docs site for validation without deploying it.                 |
+| `build_pages_review` | pages | non-default branch or MR; matching changes | Build the static docs site for validation without deploying it.               |
 | `create_release` | release | a tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`.                                 |
 
 ### 📄 `pages`
@@ -35,12 +35,16 @@ Runs on `alpine:latest`, installs `python3`/`py3-markdown`, then calls
 the GitHub `deploy-pages.yml` workflow and the local `post-commit` hook, so the
 page list stays in one place.
 
-The pipeline uses two jobs so documentation can be built everywhere but only
-**deployed** from the default branch:
+The pipeline uses two jobs so documentation can be built on branches and merge
+requests but only **deployed** from the default branch. GitLab treats
+`rules:changes` as true on pipelines without a push diff unless a comparison
+ref is set, so tag and scheduled pipelines may also run `build_pages_review`
+([GitLab rules](https://docs.gitlab.com/ci/yaml/#ruleschanges)).
 
 1. `pages` runs on the default branch and is the official Pages deployment.
-2. `build_pages_review` runs on other branches / merge requests and uploads a
-   short-lived `public/` artifact for validation only.
+2. `build_pages_review` runs on other branches and merge requests, then uploads a
+   short-lived `public/` artifact for validation only. Tag and scheduled
+   pipelines on non-default refs can also run it when there is no push diff.
 
 > [!NOTE]
 > `build_pages.sh` is POSIX `sh` and git-optional, so it runs on the minimal

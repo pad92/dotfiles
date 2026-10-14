@@ -19,7 +19,7 @@ esac
 EOF
 chmod +x "$TEST_DIR/bin/playerctl"
 
-export PATH="$TEST_DIR/bin:/usr/bin"
+export PATH="$TEST_DIR/bin:$PATH"
 export XDG_RUNTIME_DIR="$TEST_DIR/runtime"
 
 fail()
@@ -31,7 +31,7 @@ fail()
 cp "$EMPTY_IMAGE" "$TEST_DIR/source.png"
 export MOCK_ART_URL="file://$TEST_DIR/source.png"
 first_cover=$($PLAYER_HELPER --arturl)
-[[ -s $first_cover ]] || fail "temporary artwork was not cached"
+[[ $first_cover != "$EMPTY_IMAGE" && -s $first_cover ]] || fail "temporary artwork was not cached"
 
 rm "$TEST_DIR/source.png"
 second_cover=$($PLAYER_HELPER --arturl)
