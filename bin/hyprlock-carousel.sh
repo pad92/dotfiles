@@ -8,7 +8,10 @@ CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/hyprlock-carousel"
 BACKGROUND_FILE="${CACHE_DIR}/backgrounds.conf"
 GENERATED_CONFIG="${CACHE_DIR}/hyprlock.conf"
 MONITOR_FILE="${CACHE_DIR}/monitors"
+DPMS_INHIBIT_FILE="${XDG_RUNTIME_DIR:-${HOME}/.cache}/hyprlock-carousel.dpms-inhibit"
 CAROUSEL_INTERVAL=60
+HYPRIDLE_WAS_ACTIVE=false
+MAIN_BASHPID="${BASHPID}"
 
 lock_with_default_config() {
     exec hyprlock -c "${HOME}/.config/hypr/hyprlock.conf" "$@"
@@ -89,6 +92,27 @@ awk -v backgrounds="${BACKGROUND_FILE}" -v clock_font="${clock_font}" '
     { print }
 ' "${CAROUSEL_TEMPLATE}" > "${GENERATED_CONFIG}" \
     || start_regular_lock 'Unable to generate the carousel configuration' "$@"
+
+mkdir -p "$(dirname -- "${DPMS_INHIBIT_FILE}")"
+: > "${DPMS_INHIBIT_FILE}"
+trap '
+    if [ "${BASHPID}" = "${MAIN_BASHPID}" ]; then
+        rm -f -- "${DPMS_INHIBIT_FILE}"
+        if [ "${HYPRIDLE_WAS_ACTIVE}" = true ]; then
+            systemctl --user start hypridle.service \
+                || printf "Warning: Unable to restart hypridle.service.\n" >&2
+        fi
+    fi
+' EXIT
+
+if command -v systemctl >/dev/null 2>&1 \
+    && systemctl --user is-active --quiet hypridle.service; then
+    if systemctl --user stop hypridle.service; then
+        HYPRIDLE_WAS_ACTIVE=true
+    else
+        printf 'Warning: Unable to stop hypridle.service; idle actions may still run.\n' >&2
+    fi
+fi
 
 hyprlock -c "${GENERATED_CONFIG}" "$@" &
 hyprlock_pid=$!
