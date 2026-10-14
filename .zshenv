@@ -1,6 +1,6 @@
 export LANG=en_US.UTF-8
-export EDITOR='vim'
-export VISUAL='vim'
+export EDITOR='nvim'
+export VISUAL='nvim'
 export PAGER=less
 export ELECTRON_TRASH=gio
 export TERM="${TERM:-xterm-256color}"
