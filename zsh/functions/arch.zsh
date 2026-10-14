@@ -20,12 +20,21 @@ clean_arch() {
     return 1
   fi
 
-  local pacman_status=0
-  orphan_packages=$(pacman -Qtdq 2>&1) || pacman_status=$?
-  if (( pacman_status != 0 && pacman_status != 1 )) \
-    || [[ $pacman_status -eq 1 && -n $orphan_packages ]]; then
-    echo "Error: could not query orphan packages: $orphan_packages"
-    return 1
+  local _pacman_status=0
+  local _pacman_stderr_file
+  _pacman_stderr_file=$(mktemp)
+  orphan_packages=$(pacman -Qtdq 2>"${_pacman_stderr_file}") || _pacman_status=$?
+  if (( _pacman_status != 0 )); then
+    local _err_msg
+    _err_msg=$(cat "${_pacman_stderr_file}")
+    rm -f "${_pacman_stderr_file}"
+    if [[ -n $_err_msg ]]; then
+      echo "Error: could not query orphan packages: $_err_msg"
+      return 1
+    fi
+    # Exit code 1 with empty stderr: no orphans found, not an error
+  else
+    rm -f "${_pacman_stderr_file}"
   fi
 
   if [[ -n "$orphan_packages" ]]; then
@@ -36,7 +45,7 @@ clean_arch() {
     fi
   fi
 
-  if ! yay -Scc --noconfirm; then
+  if ! echo y | yay -Scc --noconfirm; then
     echo "Error: failed to clean yay caches"
     failed=1
   fi
@@ -53,7 +62,7 @@ clean_arch() {
     echo "for file in $(echo $pacnew_files | tr '\n' ' '); do"
     echo "  if [ -f \"\${file%.pacnew}\" ]; then"
     echo "    echo \"Comparing \${file%.pacnew} with \${file}\""
-    echo "    vim -d \"\${file%.pacnew}\" \"\$file\""
+    echo "    sudo \$EDITOR --diff \"\${file%.pacnew}\" \"\$file\""
     echo "  fi"
     echo "done"
   else
@@ -90,7 +99,6 @@ if command -v reflector &>/dev/null; then
       $sort_args --verbose --save /etc/pacman.d/mirrorlist
   }
 
-  alias mirror="mirror"
   alias mirrord="mirror delay"
   alias mirrors="mirror score"
   alias mirrora="mirror age"
