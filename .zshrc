@@ -3,7 +3,6 @@ ZSH="${HOME}/.dotfiles/zsh"
 ZSH_THEME="pad"
 
 plugins=(
-  pass-cli
   ansible
   archlinux           # https://github.com/ohmyzsh/ohmyzsh/blob/master/plugins/archlinux/README.md
   docker
@@ -11,6 +10,8 @@ plugins=(
   extract
   github
   httpie
+  make
+  pass-cli
   rsync
   thefuck
   vscode
