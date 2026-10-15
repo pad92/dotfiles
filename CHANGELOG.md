@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **CI**: Build downloadable Neovim configuration archives with GitHub Actions
+  and GitLab CI.
+
 ### Changed
 
 - **Installation**: Replace the Dotbot-based installer with an Ansible playbook
