@@ -110,7 +110,6 @@ __pycache__/
 .nox/
 .pylintrc
 .mypy_cache/
-.pytest_cache/
 .hypothesis/
 
 # Node.js
@@ -120,46 +119,31 @@ yarn-debug.log
 yarn-error.log
 
 # Ruby
-*.gem
 .bundle/
 Gemfile.lock
 
 # Go
-*.exe
 *.exe~
-*.dll
-*.so
-*.dylib
-
 # Java
 *.class
 *.jar
 *.war
 *.ear
-target/
 *.hprof
 
 # C/C++
-*.o
 *.obj
-*.exe
 *.out
-*.a
-*.so
-*.dylib
 
 # Rust
-target/
 Cargo.lock
 
 # Haskell
 *.hi
-*.o
 dist-newstyle/
 .stack-work/
 
 # Scala
-target/
 project/target/
 
 # Swift
@@ -169,14 +153,11 @@ DerivedData/
 *.xcscheme
 
 # Emacs
-*~
 .#*
 
 # macOS
-.DS_Store
 .AppleDouble
 .LSOverride
-._*
 .Spotlight-V100
 .Trashes
 .VolumeIcon.icns
@@ -194,11 +175,7 @@ Temporary Items
 .env.*.local
 
 # Backup files
-*~
-*.bak
 *.backup
-*.old
-*.orig
 
 # Distribution files
 dist/*/pkglist-*-*.txt
