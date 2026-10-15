@@ -1,69 +1,70 @@
 # GitLab CI Pipeline
 
-Documentation for [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root. This
-repo is also hosted on **GitHub** ([`.github/workflows/`](../.github/workflows))
-and a self-hosted **Gitea** instance; the forge-specific config stays thin and
-the real work lives in reusable scripts under [`scripts/ci/`](../scripts/ci).
+This page documents the root-level [`.gitlab-ci.yml`](../.gitlab-ci.yml). The
+repository is also hosted on **GitHub** ([`.github/workflows/`](../.github/workflows))
+and a self-hosted **Gitea** instance. Shared CI tasks use scripts from
+[`scripts/ci/`](../scripts/ci).
 
-## 🪜 Stages
+## Stages
 
 ```
 test → validate → package → pages → release
 ```
 
-## 📋 Included templates
+## Included templates
 
 | Template                                  | Provides                             |
 | ----------------------------------------- | ------------------------------------ |
 | `Security/Secret-Detection.gitlab-ci.yml` | Scans commits for leaked secrets.    |
 | `Security/SAST.gitlab-ci.yml`             | Static application security testing. |
 
-## 🧰 Jobs
+## Jobs
 
-| Job              | Stage   | Runs when                          | Purpose                                                                           |
-| ---------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------- |
-| `sast`           | test    | branch pipelines                   | Static security analysis using the included template's default rules.             |
-| `ansible_lint`   | validate | branch and tag pipelines           | Install pinned Ansible tooling and run `make lint-ansible`.                       |
-| `package_vim`    | package | branch and tag pipelines           | Tar `.vim`/`.vimrc` into a `vim.tar.gz` artifact (submodules pulled recursively). |
-| `pages`          | pages   | default branch + doc files change  | Build and deploy the static docs site into `public/`.                             |
-| `build_pages_review` | pages | non-default branch or MR; matching changes | Build the static docs site for validation without deploying it.               |
-| `create_release` | release | a tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`.                                 |
+| Job | Stage | Runs when | Purpose |
+| --- | --- | --- | --- |
+| `sast` | test | Branch pipelines | Run static security analysis with the included template's default rules. |
+| `ansible_lint` | validate | Branch and tag pipelines | Install `make` and the pinned Ansible tools, then run `make lint-ansible`. |
+| `package_vim` | package | Branch and tag pipelines | Package `.vim` and `.vimrc` as `vim.tar.gz`, with submodules fetched recursively. |
+| `package_nvim` | package | Branch and tag pipelines | Package `.config/nvim` as `nvim.tar.gz`. |
+| `pages` | pages | Default branch when documentation files change | Build and deploy the documentation site to `public/`. |
+| `build_pages_review` | pages | Non-default branch or merge request with matching changes | Build the documentation site for review without deploying it. |
+| `create_release` | release | A tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`. |
 
-### 📄 `pages`
+### `pages`
 
-Runs on `alpine:latest`, installs `python3`/`py3-markdown`, then calls
-[`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh) — the same script used by
-the GitHub `deploy-pages.yml` workflow and the local `post-commit` hook, so the
-page list stays in one place.
+This job runs on `alpine:latest`, installs `python3` and `py3-markdown`, and
+calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
+`deploy-pages.yml` workflow and local `post-commit` hook use the same script,
+which keeps the page list in one place.
 
-The pipeline uses two jobs so documentation can be built on branches and merge
-requests but only **deployed** from the default branch. GitLab treats
-`rules:changes` as true on pipelines without a push diff unless a comparison
-ref is set, so tag and scheduled pipelines may also run `build_pages_review`
+The pipeline uses two jobs to build documentation on branches and merge
+requests, while only the default branch deploys it. When a comparison ref is not
+set, GitLab treats `rules:changes` as true on pipelines without a push diff.
+As a result, tag and scheduled pipelines may also run `build_pages_review`
 ([GitLab rules](https://docs.gitlab.com/ci/yaml/#ruleschanges)).
 
 1. `pages` runs on the default branch and is the official Pages deployment.
 2. `build_pages_review` runs on other branches and merge requests, then uploads a
-   short-lived `public/` artifact for validation only. Tag and scheduled
-   pipelines on non-default refs can also run it when there is no push diff.
+   short-lived `public/` artifact for validation. Tag and scheduled pipelines on
+   non-default refs can also run it when no push diff is available.
 
 > [!NOTE]
-> `build_pages.sh` is POSIX `sh` and git-optional, so it runs on the minimal
-> `alpine` image without extra packages.
+> `build_pages.sh` uses POSIX `sh` and does not require Git, so it runs on the
+> minimal `alpine` image without extra packages.
 
-### 🏷️ `create_release`
+### `create_release`
 
-On a `v*` tag it runs
-[`scripts/ci/extract_release_notes.sh`](../scripts/ci/extract_release_notes.sh) to pull
-that version's section out of `CHANGELOG.md`, then hands the notes to
+When a `v*` tag is pushed, this job runs
+[`scripts/ci/extract_release_notes.sh`](../scripts/ci/extract_release_notes.sh)
+to extract that version's section from `CHANGELOG.md`, then passes the notes to
 `release-cli create`.
 
 > [!IMPORTANT]
-> Release notes are read from `CHANGELOG.md` **at the tagged commit**. Make sure
-> the `## [vX.Y.Z]` section exists before pushing the tag, otherwise the release
-> gets a "No specific notes found" placeholder.
+> Release notes come from `CHANGELOG.md` **at the tagged commit**. Add the
+> `## [vX.Y.Z]` section before pushing the tag. Without it, the release uses the
+> placeholder "No specific notes found".
 
-## 🔧 Shared scripts (`scripts/ci/`)
+## Shared scripts (`scripts/ci/`)
 
 | Script                     | Used by                                                             |
 | -------------------------- | ------------------------------------------------------------------- |
@@ -71,13 +72,13 @@ that version's section out of `CHANGELOG.md`, then hands the notes to
 | `extract_release_notes.sh` | GitLab `create_release`, GitHub `release.yml`                       |
 | `gen_pages.py`             | `build_pages.sh`                                                    |
 
-Both shell scripts are **POSIX `sh`** (no Bash-isms) so they run on minimal CI
-images such as this `alpine` job.
+Both shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
+the `alpine` job.
 
-## 🔐 Variables & secrets
+## Variables & secrets
 
-No custom CI/CD variables need to be configured — the pipeline relies only on
-GitLab's predefined variables.
+The pipeline uses GitLab's predefined variables; no custom CI/CD variables are
+needed.
 
 | Name                                    | Used by                              | Source                      | Manual setup |
 | --------------------------------------- | ------------------------------------ | --------------------------- | ------------ |
@@ -86,9 +87,9 @@ GitLab's predefined variables.
 | `CI_COMMIT_BRANCH`, `CI_DEFAULT_BRANCH` | `pages` rules                        | Predefined                  | None         |
 
 > [!NOTE]
-> `release-cli` authenticates to the Releases API with the predefined
-> `CI_JOB_TOKEN`, so no personal access token or _Settings → CI/CD → Variables_
-> entry is required.
+> `release-cli` uses the predefined `CI_JOB_TOKEN` to authenticate with the
+> Releases API. No personal access token or _Settings → CI/CD → Variables_ entry
+> is needed.
 
 The included **SAST** and **Secret-Detection** templates also run with their
 defaults and need no variables.
