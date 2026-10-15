@@ -3,6 +3,7 @@
 clean_arch() {
   local failed=0
   local orphan_packages
+  local -a orphan_package_list
   local pacnew_files
 
   if ! command -v pacman &>/dev/null; then
@@ -39,7 +40,8 @@ clean_arch() {
 
   if [[ -n "$orphan_packages" ]]; then
     echo "Removing orphan packages..."
-    if ! sudo pacman -Rns ${(z)orphan_packages}; then
+    orphan_package_list=("${(@f)orphan_packages}")
+    if ! sudo pacman -Rns "${orphan_package_list[@]}"; then
       echo "Error: failed to remove orphan packages"
       failed=1
     fi
