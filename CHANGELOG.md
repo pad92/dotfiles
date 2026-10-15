@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file.
   Vim plugin updates in the playbook.
 - **CI and scripts**: Move shared CI helpers to `scripts/ci/` and the Vim setup
   script to `scripts/vim.sh`; update workflow and documentation references.
+- **Packages**: Configure Arch's `pacman.conf`, enable `multilib`, and synchronize
+  package databases when the repository is enabled. Build `yay` from the AUR
+  when needed, then install selected AUR packages with the configured action.
+- **Ansible**: Add focused tags for pacman, AUR packages, makepkg, and dotfiles
+  tasks.
 
 ## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
 

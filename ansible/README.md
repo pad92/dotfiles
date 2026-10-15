@@ -16,9 +16,29 @@ matching the hostname, reloads live configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS. Vim plugin updates are opt-in with
 `-e dotfiles_update_vim_plugins=true`.
 
+Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
+running the other setup tasks. The existing `makepkg_config` tag remains
+available as an alias.
+
 Package groups are split by OS family in `roles/packages/vars/`. The package
 role loads the matching file and keeps selection, installation, and
 reconciliation in separate task files.
+
+On Arch Linux and CachyOS, the package role enables `Color`, `CheckSpace`, and
+the standard `multilib` repository in `/etc/pacman.conf`, and sets
+`ParallelDownloads = 5`. When it enables `multilib`, it runs `pacman -Syu`,
+which synchronizes package databases and upgrades installed packages. Use
+`-e packages_upgrade_system=true` to request a full system upgrade whenever
+packages are installed, including when `multilib` is already enabled.
+
+Selected AUR packages are installed with `yay`. If it is missing, the role
+clones its AUR recipe, builds it as the current user, then installs the package
+with Ansible privilege escalation. Set `-e packages_aur_action=ask` to confirm
+AUR builds and installations, or `-e packages_aur_action=skip` to leave AUR
+packages uninstalled.
+Run `./install --tags yay --ask-become-pass` to run the package selection and
+AUR installation flow without installing the selected official repository
+packages.
 
 Package groups are selected automatically from OS defaults and detected GPU
 facts. Configure exact selections by hostname in `host_vars/localhost.yml`; those
@@ -36,8 +56,9 @@ override:
 Conflicting regular files and directories that need a type change are moved to
 a `.bak` path. Existing symbolic links at managed paths are removed without a
 backup; their targets are left untouched. Package installation is additive.
-On Arch Linux, installing selected packages does not upgrade the whole system
-by default. Set `-e packages_upgrade_system=true` to use `pacman -Syu` when
-installing missing packages. Use `--check` to preview package changes and
+On Arch Linux, enabling `multilib` triggers a full `pacman -Syu`. Otherwise,
+installing selected packages does not upgrade the whole system by default. Set
+`-e packages_upgrade_system=true` to use `pacman -Syu` when installing missing
+packages. Use `--check` to preview package changes and
 `-e packages_action=reconcile` to enable explicit, ownership-based removals.
 Use `--check --tags dotfiles` to preview dotfile link changes separately.

@@ -3,6 +3,7 @@
   ansible.builtin.package_facts:
     manager: auto
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Validate installed package inventory
   ansible.builtin.assert:
@@ -11,17 +12,20 @@
       - ansible_facts.packages | length > 0
     fail_msg: "Unable to read a valid package inventory; package state is unchanged."
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Snapshot installed packages
   ansible.builtin.set_fact:
     packages_installed_before: "{{ ansible_facts.packages.keys() | list }}"
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Find missing desired packages
   ansible.builtin.set_fact:
     packages_missing: "{{ packages_desired | difference(packages_installed_before)
       | sort }}"
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Check official Arch repositories for missing packages
   ansible.builtin.command:
@@ -36,6 +40,7 @@
   failed_when: false
   check_mode: false
   when: ansible_facts['os_family'] == 'Archlinux'
+  tags: [yay]
 
 - name: Split Arch packages by repository source
   ansible.builtin.set_fact:
@@ -53,6 +58,7 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Refuse packages requiring disabled multilib
   ansible.builtin.assert:
@@ -60,11 +66,13 @@
       - packages_arch_missing_multilib | length == 0
     fail_msg: >-
       Packages require the multilib repository: {{
-      packages_arch_missing_multilib | join(', ') }}. Enable [multilib], run
+      packages_arch_missing_multilib | join(', ') }}. The standard [multilib]
+      block could not be enabled in /etc/pacman.conf. Enable it manually, run
       pacman -Syu, and rerun the installer.
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Calculate removal candidates for a read-only plan
   ansible.builtin.set_fact:
@@ -93,10 +101,12 @@
         }}"
       saved_state_valid: "{{ packages_state_valid }}"
   when: ansible_check_mode or packages_action == 'plan'
+  tags: [yay]
 
 - name: Stop package changes in plan mode
   ansible.builtin.meta: end_play
   when: ansible_check_mode or packages_action == 'plan'
+  tags: [yay]
 
 - name: Refresh Debian package metadata
   ansible.builtin.apt:
@@ -142,6 +152,7 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_arch_aur | default([]) | length > 0
     - packages_aur_action != 'skip'
+  tags: [yay]
 
 - name: Select an installed AUR helper
   ansible.builtin.set_fact:
@@ -150,12 +161,13 @@
           | selectattr('rc', 'equalto', 0) | map(attribute='item') | first)
          | default('') }}
   when: ansible_facts['os_family'] == 'Archlinux'
+  tags: [yay]
 
-- name: Ask whether to build yay when no AUR helper is installed
+- name: Ask whether to build yay when it is not installed
   ansible.builtin.pause:
     prompt: >-
       AUR packages selected: {{ packages_arch_aur | default([]) | join(', ') }}.
-      No AUR helper is installed. Build and install yay-bin? [Y/n]
+      yay is not installed. Build and install it from the AUR? [Y/n]
   register: packages_aur_helper_prompt
   when:
     - ansible_facts['os_family'] == 'Archlinux'
@@ -163,6 +175,7 @@
     - packages_aur_action != 'skip'
     - packages_aur_helper | default('') | length == 0
     - packages_aur_action == 'ask'
+  tags: [yay]
 
 - name: Decide whether to build an AUR helper
   ansible.builtin.set_fact:
@@ -175,8 +188,10 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_arch_aur | default([]) | length > 0
+  tags: [yay]
 
-- name: Build and install yay-bin
+- name: Build and install yay
+  tags: [yay]
   when:
     - packages_build_aur_helper | default(false) | bool
   block:
@@ -195,7 +210,7 @@
 
     - name: Install yay build dependencies
       ansible.builtin.package:
-        name: [base-devel, git]
+        name: [base-devel, git, go]
         state: present
 
     - name: Create a temporary AUR build directory
@@ -205,42 +220,44 @@
       register: packages_yay_build_dir
       become: false
 
-    - name: Build and install the yay package
+    - name: Build and install yay from the AUR
       block:
-        - name: Clone the yay-bin build recipe
+        - name: Clone the yay build recipe
           ansible.builtin.git:
-            repo: https://aur.archlinux.org/yay-bin.git
-            dest: "{{ packages_yay_build_dir.path }}/yay-bin"
+            repo: https://aur.archlinux.org/yay.git
+            dest: "{{ packages_yay_build_dir.path }}/yay"
             version: master
           become: false
 
-        - name: Build yay-bin as the current user
+        - name: Build yay as the current user
           ansible.builtin.command:
-            argv: [makepkg, --noconfirm, --cleanbuild, --force]
-            chdir: "{{ packages_yay_build_dir.path }}/yay-bin"
+            argv: [makepkg, --noconfirm]
+            chdir: "{{ packages_yay_build_dir.path }}/yay"
           become: false
           changed_when: true
 
-        - name: Find the built yay-bin package
+        - name: Find the built yay package
           ansible.builtin.find:
-            paths: "{{ packages_yay_build_dir.path }}/yay-bin"
-            patterns: "*.pkg.tar.*"
+            paths: "{{ packages_yay_build_dir.path }}/yay"
+            patterns: "yay-*.pkg.tar.*"
             file_type: file
           register: packages_yay_artifacts
+          become: false
 
-        - name: Require a built yay-bin package
+        - name: Require a built yay package
           ansible.builtin.assert:
             that:
               - packages_yay_artifacts.matched == 1
-            fail_msg: "The yay-bin build did not produce exactly one package."
+            fail_msg: "The yay build did not produce exactly one package."
 
-        - name: Install the built yay-bin package
+        - name: Install the built yay package
           ansible.builtin.command:
             argv:
               - pacman
               - -U
               - --noconfirm
               - "{{ packages_yay_artifacts.files[0].path }}"
+          become: true
           changed_when: true
       always:
         - name: Remove the temporary yay build directory
@@ -261,6 +278,7 @@
     - packages_arch_aur | default([]) | length > 0
     - packages_aur_helper | default('') | length == 0
     - not (packages_build_aur_helper | default(false) | bool)
+  tags: [yay]
 
 - name: Confirm installation of AUR packages
   ansible.builtin.pause:
@@ -272,7 +290,8 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_arch_aur | default([]) | length > 0
     - packages_aur_helper | default('') | length > 0
-    - packages_aur_action != 'skip'
+    - packages_aur_action == 'ask'
+  tags: [yay]
 
 - name: Install selected AUR packages
   ansible.builtin.command:
@@ -285,14 +304,17 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_arch_aur | default([]) | length > 0
     - packages_aur_helper | default('') | length > 0
-    - packages_aur_action != 'skip'
-    - packages_aur_install_prompt.user_input | default('') | lower in ['y',
-      'yes']
+    - >-
+      packages_aur_action == 'install' or
+      (packages_aur_action == 'ask' and
+       packages_aur_install_prompt.user_input | default('') | lower in ['y', 'yes'])
+  tags: [yay]
 
 - name: Refresh installed package inventory
   ansible.builtin.package_facts:
     manager: auto
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Validate refreshed package inventory
   ansible.builtin.assert:
@@ -301,17 +323,20 @@
       - ansible_facts.packages | length > 0
     fail_msg: "Unable to validate the package inventory; saved state is unchanged."
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Snapshot installed packages after installation
   ansible.builtin.set_fact:
     packages_installed_after: "{{ ansible_facts.packages.keys() | list }}"
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Find desired packages still missing
   ansible.builtin.set_fact:
     packages_missing_after: >-
       {{ packages_desired | difference(packages_installed_after) | sort }}
   when: packages_selected_groups | length > 0
+  tags: [yay]
 
 - name: Warn when selected packages remain unavailable
   ansible.builtin.debug:
@@ -319,6 +344,7 @@
       Desired packages remain uninstalled; package reconciliation is disabled:
       {{ packages_missing_after | join(', ') }}
   when: packages_missing_after | default([]) | length > 0
+  tags: [yay]
 
 - name: Retain previously owned packages still installed
   ansible.builtin.set_fact:
@@ -327,3 +353,4 @@
           + (packages_desired | difference(packages_installed_before)
              | intersect(packages_installed_after))) | unique | sort }}
   when: packages_selected_groups | length > 0
+  tags: [yay]

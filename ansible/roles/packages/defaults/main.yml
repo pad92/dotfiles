@@ -18,8 +18,8 @@ packages_state_filename: >-
      else 'managed-' + (ansible_facts['os_family'] | lower) + '-packages.json' }}
 packages_action: install
 packages_upgrade_system: false
-packages_aur_action: ask
-packages_aur_helper_preference: [paru, yay]
+packages_aur_action: install
+packages_aur_helper_preference: [yay]
 packages_protected:
   - base
   - base-devel

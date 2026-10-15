@@ -1,7 +1,11 @@
 ---
+- name: Configure Arch package repositories
+  ansible.builtin.import_tasks: pacman.yml
+  tags: [pacman, pacman_config, packages_install, packages_reconcile, yay]
+
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
-  tags: [packages_select, packages_install, packages_reconcile]
+  tags: [packages_select, packages_install, packages_reconcile, yay]
 
 - name: Install selected packages
   ansible.builtin.import_tasks: install.yml
