@@ -17,6 +17,7 @@ unit_tests:
   image: python:3.13-alpine
   before_script:
     - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick
+    - python3 -m pip install --no-cache-dir -r requirements-test.txt
   script:
     - python3 -m unittest discover -s tests -p 'test_*.py'
     - bash tests/awww-monitor-scale.sh
@@ -45,6 +46,15 @@ package_vim:
   artifacts:
     paths:
       - vim.tar.gz
+
+# Job Neovim : Archive la configuration Neovim
+package_nvim:
+  stage: package
+  script:
+    - tar -czf nvim.tar.gz -C ansible/roles/dotfiles/files/home .config/nvim
+  artifacts:
+    paths:
+      - nvim.tar.gz
 
 .pages_build:
   stage: pages
