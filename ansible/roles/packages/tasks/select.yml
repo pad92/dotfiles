@@ -1,0 +1,154 @@
+---
+- name: Load package groups for this OS family
+  ansible.builtin.include_vars:
+    file: "{{ ansible_facts['os_family'] | lower }}.yml"
+
+- name: Validate package action
+  ansible.builtin.assert:
+    that:
+      - packages_action in ['install', 'plan', 'reconcile']
+      - packages_aur_action in ['ask', 'install', 'skip']
+    fail_msg: >-
+      packages_action or packages_aur_action has an unsupported value.
+
+- name: Build package state path
+  ansible.builtin.set_fact:
+    packages_state_path: >-
+      {{ packages_state_directory }}/{{ packages_state_filename }}
+
+- name: Inspect saved package state
+  ansible.builtin.stat:
+    path: "{{ packages_state_path }}"
+  register: packages_state_stat
+
+- name: Read saved package state
+  ansible.builtin.slurp:
+    src: "{{ packages_state_path }}"
+  register: packages_state_file
+  when: packages_state_stat.stat.exists
+
+- name: Validate saved package state
+  ansible.builtin.set_fact:
+    packages_state_data: >-
+      {{ packages_state_file.content | b64decode | parse_package_state_json }}
+  when: packages_state_stat.stat.exists
+
+- name: Initialize package state defaults
+  ansible.builtin.set_fact:
+    packages_state_data: "{{ packages_state_data | default(none) }}"
+    packages_state_valid: "{{ packages_state_data is defined and packages_state_data
+      is not none }}"
+    packages_previous_owned: >-
+      {{ packages_state_data.owned_packages
+         if packages_state_data is defined and packages_state_data is not none
+         else [] }}
+
+- name: Warn when package state is invalid
+  ansible.builtin.debug:
+    msg: "Package state is invalid; automatic removals are disabled."
+  when: packages_state_stat.stat.exists and not packages_state_valid
+
+- name: Build available package groups
+  ansible.builtin.set_fact:
+    packages_available_groups: >-
+      {{ packages_family_groups[ansible_facts['os_family']].keys() | list }}
+
+- name: Require package group definitions
+  ansible.builtin.assert:
+    that:
+      - packages_available_groups | length > 0
+    fail_msg: "No package groups are defined for {{ ansible_facts['distribution'] }}."
+
+- name: Read graphics controllers when lspci is available
+  ansible.builtin.command:
+    argv:
+      - lspci
+      - -Dnn
+  register: packages_lspci
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Classify graphics groups
+  ansible.builtin.set_fact:
+    packages_detected_graphics_groups: "{{ packages_lspci.stdout | detect_graphics_groups
+      }}"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_lspci.rc | default(1) == 0
+
+- name: Find PCI class files when lspci is unavailable
+  ansible.builtin.set_fact:
+    packages_pci_class_files: >-
+      {{ query('ansible.builtin.fileglob',
+         '/sys/bus/pci/devices/*/class') }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_lspci.rc | default(1) != 0
+
+- name: Collect PCI controller identifiers from sysfs
+  ansible.builtin.set_fact:
+    packages_pci_sysfs_devices: >-
+      {{ packages_pci_sysfs_devices | default([]) + [{
+         'class': lookup('ansible.builtin.file', item),
+         'vendor': lookup('ansible.builtin.file',
+             item | regex_replace('/class$', '/vendor')),
+         'device': lookup('ansible.builtin.file',
+             item | regex_replace('/class$', '/device')) }] }}
+  loop: "{{ packages_pci_class_files | default([]) }}"
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Classify AMD graphics from sysfs when lspci is unavailable
+  ansible.builtin.set_fact:
+    packages_detected_graphics_groups: >-
+      {{ packages_pci_sysfs_devices | default([])
+         | detect_sysfs_graphics_groups }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_lspci.rc | default(1) != 0
+
+- name: Warn when graphics detection is incomplete
+  ansible.builtin.debug:
+    msg: "GPU detection is unavailable or incomplete; saved GPU choices are preserved."
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_detected_graphics_groups | default([]) | length == 0
+
+- name: Build default package group selection
+  ansible.builtin.set_fact:
+    packages_group_defaults: >-
+      {{ (packages_default_groups[ansible_facts['os_family']]
+          + (packages_detected_graphics_groups | default([])))
+         | unique | sort }}
+
+- name: Apply package group selection
+  ansible.builtin.set_fact:
+    packages_selected_groups: >-
+      {{ packages_group_selection | default(none)
+         | select_package_groups(ansible_facts['hostname'], packages_host_groups,
+                                packages_group_defaults) }}
+
+- name: Validate selected package groups
+  ansible.builtin.assert:
+    that:
+      - packages_selected_groups is sequence
+      - packages_selected_groups is not string
+      - packages_selected_groups | difference(packages_available_groups) |
+        length == 0
+    fail_msg: >-
+      Unsupported package groups: {{
+      packages_selected_groups | difference(packages_available_groups) | join(', ')
+      }}
+
+- name: Load selected package group contents
+  ansible.builtin.set_fact:
+    packages_group_contents: >-
+      {{ packages_group_contents | default({}) | combine({
+         item: packages_family_groups[ansible_facts['os_family']][item] }) }}
+  loop: "{{ packages_selected_groups }}"
+
+- name: Build desired package list
+  ansible.builtin.set_fact:
+    packages_desired: >-
+      {{ packages_group_contents.values() | flatten | unique | sort }}

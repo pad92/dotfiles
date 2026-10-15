@@ -173,6 +173,7 @@ UCODE='intel-ucode' # for Intel processors, adjust as needed
 pacstrap -K /mnt \
   base \
   base-devel \
+  ansible \
   cryptsetup \
   ${KERNEL} \
   ${KERNEL}-headers \
@@ -406,7 +407,7 @@ helper: the lists contain optional and hardware-specific groups that should not
 all be installed together.
 
 ```sh
-sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --package-plan'
+sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --check'
 sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install'
 ```
 

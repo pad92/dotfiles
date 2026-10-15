@@ -6,7 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-SCRIPT_PATH = Path(__file__).parents[1] / "bin" / "steam-optimize"
+SCRIPT_PATH = (
+    Path(__file__).parents[1]
+    / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
+)
 
 
 class SteamOptimizeTests(unittest.TestCase):

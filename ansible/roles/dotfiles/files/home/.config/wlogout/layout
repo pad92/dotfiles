@@ -1,0 +1,42 @@
+{
+    "label": "lock",
+    "action": "~/.bin/hyprlock-guard.sh hyprlock -c ~/.config/hypr/hyprlock.conf",
+    "text": "Ḻock",
+    "keybind": "l"
+}
+{
+    "label": "carousel",
+    "action": "~/.bin/hyprlock-guard.sh ~/.bin/hyprlock-carousel.sh",
+    "text": "C̱arousel",
+    "keybind": "c"
+}
+{
+    "label": "reboot",
+    "action": "systemctl reboot || loginctl reboot",
+    "text": "Ṟeboot",
+    "keybind": "r"
+}
+{
+    "label": "shutdown",
+    "action": "systemctl poweroff || loginctl poweroff",
+    "text": "S̱hutdown",
+    "keybind": "s"
+}
+{
+    "label": "logout",
+    "action": "uwsm stop || hyprctl dispatch exit",
+    "text": "Logouṯ",
+    "keybind": "t"
+}
+{
+    "label": "suspend",
+    "action": "systemctl suspend || loginctl suspend",
+    "text": "Su̱spend",
+    "keybind": "u"
+}
+{
+    "label": "hibernate",
+    "action": "systemctl hibernate || loginctl hibernate",
+    "text": "H̱ibernate",
+    "keybind": "h"
+}

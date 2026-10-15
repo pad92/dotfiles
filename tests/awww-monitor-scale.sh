@@ -20,8 +20,8 @@ EOF
 chmod +x "$TEST_DIR/bin/awww"
 
 export PATH="$TEST_DIR/bin:$PATH"
-# shellcheck source=../bin/awww.sh
-source "$ROOT_DIR/bin/awww.sh"
+# shellcheck source=../ansible/roles/dotfiles/files/home/.bin/awww.sh
+source "$ROOT_DIR/ansible/roles/dotfiles/files/home/.bin/awww.sh"
 
 fail()
 {

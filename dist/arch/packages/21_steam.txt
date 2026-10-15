@@ -1,6 +1,0 @@
-gamemode
-gamescope
-ludusavi
-mangohud
-proton-cachyos-slr
-steam

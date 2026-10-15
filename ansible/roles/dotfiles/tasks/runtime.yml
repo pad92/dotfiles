@@ -1,0 +1,71 @@
+---
+- name: Check for Vim
+  ansible.builtin.command:
+    argv: [vim, --version]
+  register: dotfiles_vim_check
+  changed_when: false
+  failed_when: false
+  become: false
+  tags: [vim]
+
+- name: Update Vim plugins
+  ansible.builtin.command:
+    argv:
+      - vim
+      - -Nu
+      - "{{ dotfiles_home }}/.vimrc"
+      - -n
+      - -es
+      - -i
+      - NONE
+      - +PluginUpdate
+      - +qall!
+  when:
+    - dotfiles_update_vim_plugins | bool
+    - dotfiles_vim_check.rc == 0
+  changed_when: true
+  become: false
+  tags: [vim]
+
+- name: Rebuild the font cache
+  ansible.builtin.command:
+    argv: [fc-cache, -f]
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [font_cache]
+
+- name: Check whether Mako is running
+  ansible.builtin.command:
+    argv: [pgrep, -x, mako]
+  register: dotfiles_mako_running
+  changed_when: false
+  failed_when: false
+  become: false
+
+- name: Reload Mako configuration
+  ansible.builtin.command:
+    argv: [makoctl, reload]
+  when: dotfiles_mako_running.rc == 0
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [mako_reload]
+
+- name: Check whether Waybar is running
+  ansible.builtin.command:
+    argv: [pgrep, -x, waybar]
+  register: dotfiles_waybar_running
+  changed_when: false
+  failed_when: false
+  become: false
+  tags: [waybar_reload]
+
+- name: Reload Waybar
+  ansible.builtin.command:
+    argv: [pkill, -USR2, -x, waybar]
+  when: dotfiles_waybar_running.rc == 0
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [waybar_reload]

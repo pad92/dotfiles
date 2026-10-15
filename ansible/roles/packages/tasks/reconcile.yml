@@ -1,0 +1,196 @@
+---
+- name: Find obsolete managed graphics packages
+  ansible.builtin.set_fact:
+    packages_graphics_removal_candidates: >-
+      {{ (packages_family_groups[ansible_facts['os_family']] | unneeded_graphics_packages(
+          packages_selected_groups, packages_installed_after, packages_desired))
+         | intersect(packages_owned_after) | sort }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_action == 'reconcile'
+    - packages_state_valid
+    - packages_missing_after | default([]) | length == 0
+
+- name: Find obsolete managed packages
+  ansible.builtin.set_fact:
+    packages_removal_candidates: >-
+      {{ packages_installed_after | package_removal_candidates(
+          packages_desired, packages_owned_after)
+         | difference(packages_graphics_removal_candidates | default([]))
+         | sort }}
+  when:
+    - packages_action == 'reconcile'
+    - packages_state_valid
+    - packages_missing_after | default([]) | length == 0
+
+- name: Preview the complete Arch removal transaction
+  ansible.builtin.command:
+    argv: >-
+      {{ ['pacman', '-Rs', '--print', '--print-format', '%n', '--']
+         + (packages_graphics_removal_candidates | default([]))
+         + (packages_removal_candidates | default([])) }}
+  register: packages_removal_preview
+  changed_when: false
+  failed_when: false
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_candidates | default([]) | length > 0) or
+      (packages_removal_candidates | default([]) | length > 0)
+
+- name: Validate the complete Arch removal transaction
+  ansible.builtin.set_fact:
+    packages_removal_preview_safe: >-
+      {{ packages_removal_preview.rc == 0
+         and packages_removal_preview.stdout_lines | length > 0
+         and (packages_graphics_removal_candidates | default([])
+              + packages_removal_candidates | default([]))
+             | difference(packages_removal_preview.stdout_lines) | length == 0
+         and packages_removal_preview.stdout_lines
+             | safe_removal_preview(packages_desired, packages_protected) }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_candidates | default([]) | length > 0) or
+      (packages_removal_candidates | default([]) | length > 0)
+
+- name: Warn when state prevents package removals
+  ansible.builtin.debug:
+    msg: "No valid ownership state exists; package removal is disabled."
+  when:
+    - packages_action == 'reconcile'
+    - not packages_state_valid
+
+- name: Show managed package removal candidates
+  ansible.builtin.debug:
+    msg:
+      graphics: "{{ packages_graphics_removal_candidates | default([]) }}"
+      other: "{{ packages_removal_candidates | default([]) }}"
+  when: ansible_check_mode or packages_action == 'plan'
+
+- name: Show package state plan
+  ansible.builtin.debug:
+    msg:
+      selected_groups: "{{ packages_selected_groups }}"
+      owned_packages_after: "{{ packages_owned_after | default([]) }}"
+  when: ansible_check_mode or packages_action == 'plan'
+
+- name: Warn when the Arch removal transaction is unsafe
+  ansible.builtin.debug:
+    msg: "Pacman could not produce a safe removal transaction; removals are skipped."
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_candidates | default([]) | length > 0) or
+      (packages_removal_candidates | default([]) | length > 0)
+    - not packages_removal_preview_safe | default(false) | bool
+
+- name: Confirm removal of obsolete graphics packages
+  ansible.builtin.pause:
+    prompt: >-
+      Pacman will remove {{ packages_removal_preview.stdout_lines | join(', ') }}.
+      Type REMOVE to remove managed packages, KEEP to leave them installed and
+      stop managing them, or anything else to cancel.
+  register: packages_graphics_removal_prompt
+  when:
+    - not ansible_check_mode
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_candidates | default([]) | length > 0) or
+      (packages_removal_candidates | default([]) | length > 0)
+    - packages_removal_preview_safe | default(false) | bool
+
+- name: Remove obsolete graphics packages
+  ansible.builtin.command:
+    argv: >-
+      {{ ['pacman', '-Rs', '--']
+         + (packages_graphics_removal_candidates | default([]))
+         + (packages_removal_candidates | default([])) }}
+  when:
+    - not ansible_check_mode
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_candidates | default([]) | length > 0) or
+      (packages_removal_candidates | default([]) | length > 0)
+    - packages_graphics_removal_prompt.user_input | default('') == 'REMOVE'
+  changed_when: true
+
+- name: Release kept Arch packages from ownership state
+  ansible.builtin.set_fact:
+    packages_release_owned: >-
+      {{ (packages_graphics_removal_candidates | default([])
+          + packages_removal_candidates | default([]))
+         if packages_graphics_removal_prompt.user_input | default('') | upper == 'KEEP'
+         else [] }}
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Confirm removal of other managed packages on Debian and Fedora
+  ansible.builtin.pause:
+    prompt: >-
+      Remove obsolete managed packages {{ packages_removal_candidates | join(', ')
+      }}?
+      Type REMOVE to confirm
+  register: packages_family_removal_prompt
+  when:
+    - not ansible_check_mode
+    - ansible_facts['os_family'] != 'Archlinux'
+    - packages_action == 'reconcile'
+    - packages_removal_candidates | default([]) | length > 0
+
+- name: Remove obsolete packages on Debian and Fedora
+  ansible.builtin.package:
+    name: "{{ packages_removal_candidates }}"
+    state: absent
+  when:
+    - not ansible_check_mode
+    - ansible_facts['os_family'] != 'Archlinux'
+    - packages_action == 'reconcile'
+    - packages_removal_candidates | default([]) | length > 0
+    - packages_family_removal_prompt.user_input | default('') == 'REMOVE'
+
+- name: Refresh package inventory after removal
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+    - not ansible_check_mode
+    - packages_action == 'reconcile'
+    - (packages_graphics_removal_prompt.user_input | default('')) == 'REMOVE' or
+      (packages_family_removal_prompt.user_input | default('')) == 'REMOVE'
+
+- name: Snapshot final package inventory
+  ansible.builtin.set_fact:
+    packages_final_inventory: "{{ ansible_facts.packages.keys() | list }}"
+  when:
+    - not ansible_check_mode
+    - packages_selected_groups | length > 0
+
+- name: Release kept Arch packages from ownership state
+  ansible.builtin.set_fact:
+    packages_owned_after: "{{ packages_owned_after | difference(packages_release_owned
+      | default([])) }}"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_release_owned | default([]) | length > 0
+
+- name: Persist managed package state
+  when:
+    - not ansible_check_mode
+    - packages_action != 'plan'
+    - packages_selected_groups | length > 0
+  block:
+    - name: Create private package state directory
+      ansible.builtin.file:
+        path: "{{ packages_state_directory }}"
+        state: directory
+        mode: "0700"
+      become: false
+
+    - name: Write managed package state atomically
+      ansible.builtin.copy:
+        dest: "{{ packages_state_path }}"
+        content: >-
+          {{ {'version': 1,
+              'selected_groups': packages_selected_groups | sort,
+              'owned_packages': packages_owned_after
+                | intersect(packages_final_inventory) | sort}
+             | to_nice_json }}
+        mode: "0600"
+      become: false

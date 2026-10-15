@@ -1,0 +1,12 @@
+---
+- name: Select requested package groups
+  ansible.builtin.import_tasks: select.yml
+  tags: [packages_select, packages_install, packages_reconcile]
+
+- name: Install selected packages
+  ansible.builtin.import_tasks: install.yml
+  tags: [packages_install, packages_reconcile]
+
+- name: Reconcile managed packages
+  ansible.builtin.import_tasks: reconcile.yml
+  tags: [packages_reconcile]

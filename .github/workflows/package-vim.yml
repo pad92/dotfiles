@@ -4,16 +4,16 @@ on:
   push:
     branches: ['main']
     paths:
-      - '.vimrc'
-      - '.vim/**'
-      - 'vim.sh'
+      - 'ansible/roles/dotfiles/files/home/.vimrc'
+      - 'ansible/roles/dotfiles/files/home/.vim/**'
+      - 'scripts/vim.sh'
       - '.github/workflows/package-vim.yml'
   pull_request:
     branches: ['main']
     paths:
-      - '.vimrc'
-      - '.vim/**'
-      - 'vim.sh'
+      - 'ansible/roles/dotfiles/files/home/.vimrc'
+      - 'ansible/roles/dotfiles/files/home/.vim/**'
+      - 'scripts/vim.sh'
 
 concurrency:
   group: vim-${{ github.workflow }}-${{ github.ref }}
@@ -34,7 +34,7 @@ jobs:
           submodules: recursive
 
       - name: Package Vim configuration
-        run: tar -czf vim.tar.gz .vim .vimrc
+        run: tar -czf vim.tar.gz -C ansible/roles/dotfiles/files/home .vim .vimrc
 
       - name: Upload package
         uses: actions/upload-artifact@v4

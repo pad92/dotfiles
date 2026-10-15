@@ -1,0 +1,58 @@
+---
+dotfiles_home: "{{ lookup('env', 'HOME') }}"
+dotfiles_source_root: "{{ role_path }}/files/home"
+dotfiles_zsh_link_dest: .local/share/dotfiles/zsh
+dotfiles_zsh_home: "{{ dotfiles_home }}/{{ dotfiles_zsh_link_dest }}"
+dotfiles_links:
+  - src: .tmux
+    dest: .tmux
+  - src: .vim
+    dest: .vim
+  - src: zsh
+    dest: "{{ dotfiles_zsh_link_dest }}"
+dotfiles_directories:
+  - .bin
+  - .config/alacritty
+  - .config/awww
+  - .config/fastfetch
+  - .config/gtk-3.0
+  - .config/htop
+  - .config/hypr
+  - .config/lact
+  - .config/mako
+  - .config/nvim
+  - .config/nwg-look
+  - .config/pipewire
+  - .config/uwsm
+  - .config/waybar
+  - .config/wireplumber
+  - .config/wlogout
+  - .config/xdg-desktop-portal
+  - .config/yamllint
+  - .config/yay
+dotfiles_systemd_directory: .config/systemd
+dotfiles_files:
+  - .gitconfig
+  - .gtkrc-2.0
+  - .tmux.conf
+  - .vimrc
+  - .zprofile
+  - .zshenv
+  - .config/antigravity-ide-flags.conf
+  - .config/chrome-flags.conf
+  - .config/chromium-flags.conf
+  - .config/code-flags.conf
+  - .config/codium-flags.conf
+  - .config/electron-flags.conf
+  - .config/spotify-launcher.conf
+  - .config/user-dirs.conf
+  - .config/user-dirs.dirs
+  - .config/user-dirs.locale
+  - .config/autostart/nm-applet.desktop
+dotfiles_templates:
+  - src: home/.zshrc.j2
+    dest: .zshrc
+  - src: home/.config/hypr/hyprlock.conf.j2
+    dest: .config/hypr/hyprlock.conf
+dotfiles_waybar_host_config: "config.{{ ansible_facts['hostname'] }}"
+dotfiles_update_vim_plugins: false

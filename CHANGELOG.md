@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Installation**: Replace the Dotbot-based installer with an Ansible playbook
+  for package groups, system setup, and dotfile deployment. Support Arch
+  Linux/CachyOS, Debian/Ubuntu, and Fedora.
+- **Dotfiles**: Move static home configuration into the dotfiles role, render
+  host-aware files from templates, and link the Vim, tmux, and Zsh source trees.
+  Keep submodule initialization, host-specific Waybar selection, and optional
+  Vim plugin updates in the playbook.
+- **CI and scripts**: Move shared CI helpers to `scripts/ci/` and the Vim setup
+  script to `scripts/vim.sh`; update workflow and documentation references.
+
 ## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
 
 ### Added

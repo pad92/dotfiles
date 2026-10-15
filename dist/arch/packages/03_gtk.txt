@@ -1,3 +1,0 @@
-gtk-engine-murrine
-materia-gtk-theme
-papirus-icon-theme

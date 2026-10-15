@@ -1,0 +1,190 @@
+---
+- name: Build managed path lists
+  ansible.builtin.set_fact:
+    dotfiles_link_destinations: >-
+      {{ dotfiles_links | map(attribute='dest') | list }}
+    dotfiles_template_destinations: >-
+      {{ dotfiles_templates | map(attribute='dest') | list }}
+    dotfiles_directory_paths: >-
+      {{ dotfiles_directories + [dotfiles_zsh_link_dest,
+         dotfiles_systemd_directory,
+         dotfiles_systemd_directory + '/user'] }}
+    dotfiles_file_paths: >-
+      {{ dotfiles_files + (dotfiles_templates | map(attribute='dest') | list)
+         + ['.config/waybar/config'] }}
+    dotfiles_managed_paths: >-
+      {{ dotfiles_links | map(attribute='dest') | list
+         + dotfiles_directories
+         + [dotfiles_systemd_directory,
+            dotfiles_systemd_directory + '/user']
+         + dotfiles_files
+         + (dotfiles_templates | map(attribute='dest') | list)
+         + ['.config/waybar/config'] }}
+
+- name: Build parent path list
+  ansible.builtin.set_fact:
+    dotfiles_parent_paths: >-
+      {{ dotfiles_managed_paths | map('dirname') | reject('equalto', '.') |
+         unique | list }}
+
+- name: Inspect managed paths
+  ansible.builtin.stat:
+    path: "{{ dotfiles_home }}/{{ item }}"
+    follow: false
+  loop: "{{ dotfiles_managed_paths }}"
+  register: dotfiles_target_stats
+  loop_control:
+    label: "{{ item }}"
+
+- name: Remove conflicting managed symlinks
+  ansible.builtin.file:
+    path: "{{ dotfiles_home }}/{{ item.item }}"
+    state: absent
+  loop: "{{ dotfiles_target_stats.results }}"
+  when:
+    - item.stat.exists
+    - item.stat.islnk
+    - >-
+      (item.item in dotfiles_link_destinations and
+       item.stat.lnk_source != dotfiles_source_root + '/' +
+       (dotfiles_links | selectattr('dest', 'equalto', item.item) |
+        map(attribute='src') | first)) or
+      (item.item == '.config/waybar/config' and
+       item.stat.lnk_source != dotfiles_home + '/.config/waybar/' +
+       dotfiles_waybar_host_config) or
+      (item.item not in dotfiles_link_destinations and
+       item.item != '.config/waybar/config')
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Inspect backup paths for conflicts
+  ansible.builtin.stat:
+    path: "{{ dotfiles_home }}/{{ item.item }}.bak"
+  loop: "{{ dotfiles_target_stats.results }}"
+  when:
+    - item.stat.exists
+    - >-
+      (not item.stat.islnk and item.item in dotfiles_directory_paths and
+       not item.stat.isdir) or
+      (not item.stat.islnk and item.item in dotfiles_file_paths and
+       item.stat.isdir)
+  register: dotfiles_backup_stats
+
+- name: Refuse to replace existing backup paths
+  ansible.builtin.assert:
+    that:
+      - not item.stat.exists
+    fail_msg: >-
+      Refusing to replace {{ item.item.item }} because its backup path already
+      exists.
+  loop: "{{ dotfiles_backup_stats.results | default([]) }}"
+  when: not item.skipped | default(false)
+  loop_control:
+    label: "{{ item.item.item }}"
+
+- name: Back up conflicting managed paths
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -n
+      - --
+      - "{{ dotfiles_home }}/{{ item.item }}"
+      - "{{ dotfiles_home }}/{{ item.item }}.bak"
+  loop: "{{ dotfiles_target_stats.results }}"
+  when:
+    - item.stat.exists
+    - >-
+      (not item.stat.islnk and item.item in dotfiles_directory_paths and
+       not item.stat.isdir) or
+      (not item.stat.islnk and item.item in dotfiles_file_paths and
+       item.stat.isdir)
+  changed_when: true
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Create parent directories for managed paths
+  ansible.builtin.file:
+    path: "{{ dotfiles_home }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ dotfiles_parent_paths }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Link managed directories into the home directory
+  ansible.builtin.file:
+    src: "{{ dotfiles_source_root }}/{{ item.src }}"
+    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    state: link
+    force: false
+  loop: "{{ dotfiles_links }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Copy static dotfile directories
+  ansible.builtin.copy:
+    src: "home/{{ item }}/"
+    dest: "{{ dotfiles_home }}/{{ item }}/"
+    mode: preserve
+    backup: true
+  loop: "{{ dotfiles_directories }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Copy user systemd units
+  ansible.builtin.copy:
+    src: "home/{{ dotfiles_systemd_directory }}/"
+    dest: "{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/"
+    mode: preserve
+    backup: true
+  register: dotfiles_systemd_units
+  tags: [systemd]
+
+- name: Reload the user systemd manager when units change
+  ansible.builtin.command:
+    argv: [systemctl, --user, daemon-reload]
+  when: dotfiles_systemd_units.changed
+  changed_when: true
+  become: false
+  tags: [systemd]
+
+- name: Copy static dotfiles
+  ansible.builtin.copy:
+    src: "home/{{ item }}"
+    dest: "{{ dotfiles_home }}/{{ item }}"
+    mode: preserve
+    backup: true
+  loop: "{{ dotfiles_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Render host-aware dotfiles
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    mode: preserve
+    backup: true
+  loop: "{{ dotfiles_templates }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Render the Hyprlock carousel helper
+  ansible.builtin.template:
+    src: home/.config/hypr/hyprlock/carousel-image.sh.j2
+    dest: "{{ dotfiles_home }}/.config/hypr/hyprlock/carousel-image.sh"
+    mode: preserve
+    backup: true
+  tags: [hyprlock_carousel]
+
+- name: Check for a host-specific Waybar configuration
+  ansible.builtin.stat:
+    path: "{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}"
+  register: dotfiles_waybar_host_stat
+
+- name: Select the host-specific Waybar configuration
+  ansible.builtin.file:
+    src: "{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}"
+    dest: "{{ dotfiles_home }}/.config/waybar/config"
+    state: link
+    force: true
+  when: dotfiles_waybar_host_stat.stat.exists

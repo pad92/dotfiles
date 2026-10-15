@@ -3,12 +3,12 @@
 Documentation for [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root. This
 repo is also hosted on **GitHub** ([`.github/workflows/`](../.github/workflows))
 and a self-hosted **Gitea** instance; the forge-specific config stays thin and
-the real work lives in reusable scripts under [`.ci_bin/`](../.ci_bin).
+the real work lives in reusable scripts under [`scripts/ci/`](../scripts/ci).
 
 ## 🪜 Stages
 
 ```
-test → package → pages → release
+test → validate → package → pages → release
 ```
 
 ## 📋 Included templates
@@ -23,6 +23,7 @@ test → package → pages → release
 | Job              | Stage   | Runs when                          | Purpose                                                                           |
 | ---------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------- |
 | `sast`           | test    | branch pipelines                   | Static security analysis using the included template's default rules.             |
+| `ansible_lint`   | validate | branch and tag pipelines           | Install pinned Ansible tooling and run `make lint-ansible`.                       |
 | `package_vim`    | package | branch and tag pipelines           | Tar `.vim`/`.vimrc` into a `vim.tar.gz` artifact (submodules pulled recursively). |
 | `pages`          | pages   | default branch + doc files change  | Build and deploy the static docs site into `public/`.                             |
 | `build_pages_review` | pages | non-default branch or MR; matching changes | Build the static docs site for validation without deploying it.               |
@@ -31,7 +32,7 @@ test → package → pages → release
 ### 📄 `pages`
 
 Runs on `alpine:latest`, installs `python3`/`py3-markdown`, then calls
-[`.ci_bin/build_pages.sh`](../.ci_bin/build_pages.sh) — the same script used by
+[`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh) — the same script used by
 the GitHub `deploy-pages.yml` workflow and the local `post-commit` hook, so the
 page list stays in one place.
 
@@ -53,7 +54,7 @@ ref is set, so tag and scheduled pipelines may also run `build_pages_review`
 ### 🏷️ `create_release`
 
 On a `v*` tag it runs
-[`.ci_bin/extract_release_notes.sh`](../.ci_bin/extract_release_notes.sh) to pull
+[`scripts/ci/extract_release_notes.sh`](../scripts/ci/extract_release_notes.sh) to pull
 that version's section out of `CHANGELOG.md`, then hands the notes to
 `release-cli create`.
 
@@ -62,7 +63,7 @@ that version's section out of `CHANGELOG.md`, then hands the notes to
 > the `## [vX.Y.Z]` section exists before pushing the tag, otherwise the release
 > gets a "No specific notes found" placeholder.
 
-## 🔧 Shared scripts (`.ci_bin/`)
+## 🔧 Shared scripts (`scripts/ci/`)
 
 | Script                     | Used by                                                             |
 | -------------------------- | ------------------------------------------------------------------- |

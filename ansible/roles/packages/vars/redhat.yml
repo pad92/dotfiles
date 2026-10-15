@@ -1,0 +1,71 @@
+---
+packages_family_groups:
+  RedHat:
+    01_base:
+      - age
+      - bc
+      - bluez
+      - curl
+      - fastfetch
+      - ffmpeg
+      - git
+      - htop
+      - jq
+      - man-db
+      - man-pages
+      - pipewire
+      - python3
+      - rsync
+      - traceroute
+      - vim-enhanced
+      - zsh
+    02_fonts:
+      - fontawesome-fonts
+      - jetbrains-mono-fonts
+      - terminus-fonts
+      - ubuntu-family-fonts
+    03_gtk:
+      - gtk3
+      - papirus-icon-theme
+    04_printers:
+      - cups
+      - foomatic
+      - gutenprint
+      - system-config-printer
+    10_sre_devops:
+      - age
+      - ansible-core
+      - bat
+      - btop
+      - curl
+      - fd-find
+      - fzf
+      - git
+      - golang
+      - httpie
+      - mtr
+      - nmap
+      - nmap-ncat
+      - openssh-clients
+      - python3
+      - ripgrep
+      - ShellCheck
+      - shfmt
+      - tmux
+      - tree
+      - whois
+      - yamllint
+    11_hyprland:
+      - hyprland
+      - waybar
+      - mako
+      - grim
+      - slurp
+      - wl-clipboard
+    12_containers_docker:
+      - moby-engine
+      - docker-compose
+    13_containers_podman:
+      - buildah
+      - podman
+      - skopeo

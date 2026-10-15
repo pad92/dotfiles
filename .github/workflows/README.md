@@ -2,7 +2,7 @@
 
 This repository is hosted on **GitHub**, **GitLab** (`.gitlab-ci.yml`), and a
 self-hosted **Gitea** instance. The workflows call shared scripts under
-[`.ci_bin/`](../../.ci_bin) for work used by more than one forge.
+[`scripts/ci/`](../../scripts/ci) for work used by more than one forge.
 
 > [!NOTE]
 > A Gitea Actions runner also scans `.github/workflows`, so these files run on
@@ -13,14 +13,14 @@ self-hosted **Gitea** instance. The workflows call shared scripts under
 | File                                   | Trigger                       | Purpose                                                          |
 | -------------------------------------- | ----------------------------- | ---------------------------------------------------------------- |
 | [`deploy-pages.yml`](deploy-pages.yml) | push/PR to `main` (doc paths) | Build the static docs site and deploy it to GitHub Pages.        |
-| [`package-vim.yml`](package-vim.yml)   | push/PR to `main` (Vim paths) | Package `.vim`/`.vimrc` into a `vim.tar.gz` artifact.            |
+| [`package-vim.yml`](package-vim.yml)   | push/PR to `main` (Vim paths) | Package the files under `home/` into a `vim.tar.gz` artifact.    |
 | [`release.yml`](release.yml)           | push tag `v*`                 | Publish a release whose notes are extracted from `CHANGELOG.md`. |
 
 ### 🚀 `deploy-pages.yml`
 
-Installs `markdown` and runs [`.ci_bin/build_pages.sh`](../../.ci_bin/build_pages.sh),
+Installs `markdown` and runs [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh),
 which renders `README.md`, `CHANGELOG.md`, and `dist/arch/install.md` into
-`public/` via [`gen_pages.py`](../../.ci_bin/gen_pages.py). The artifact is
+`public/` via [`gen_pages.py`](../../scripts/ci/gen_pages.py). The artifact is
 uploaded on every run; deployment only happens on `main`.
 
 The page list lives **only** in `build_pages.sh` — the same script backs the
@@ -36,7 +36,7 @@ Checks out submodules recursively and tars the Vim configuration into a
 
 On a `v*` tag it:
 
-1. runs [`.ci_bin/extract_release_notes.sh`](../../.ci_bin/extract_release_notes.sh)
+1. runs [`scripts/ci/extract_release_notes.sh`](../../scripts/ci/extract_release_notes.sh)
    to pull that version's section out of `CHANGELOG.md`;
 2. creates the release via the REST API
    (`POST $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases`) using `jq` + `curl`.
@@ -50,7 +50,7 @@ workflow can publish releases on either forge.
 > Make sure the `## [vX.Y.Z]` section exists before pushing the tag, otherwise
 > the release gets a "No specific notes found" placeholder.
 
-## 🔧 Shared scripts (`.ci_bin/`)
+## 🔧 Shared scripts (`scripts/ci/`)
 
 | Script                     | Used by                                                      |
 | -------------------------- | ------------------------------------------------------------ |

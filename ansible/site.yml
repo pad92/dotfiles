@@ -1,0 +1,27 @@
+---
+- name: Configure this Linux workstation
+  hosts: localhost
+  become: true
+  gather_facts: true
+  vars:
+    dotfiles_repository: "{{ playbook_dir | dirname }}"
+  pre_tasks:
+    - name: Require a supported Linux distribution family
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['system'] == 'Linux'
+          - >-
+            ansible_facts['os_family'] == 'Archlinux' or
+            ansible_facts['distribution'] in ['Debian', 'Ubuntu', 'Fedora']
+        fail_msg: >-
+          This playbook currently supports Arch Linux/CachyOS, Debian/Ubuntu,
+          and Fedora. Add package mappings before using another distribution.
+      tags: [always]
+  roles:
+    - role: packages
+      tags: [packages]
+    - role: system
+      tags: [system]
+    - role: dotfiles
+      become: false
+      tags: [dotfiles]

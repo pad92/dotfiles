@@ -7,9 +7,9 @@ on:
       - 'README.md'
       - 'CHANGELOG.md'
       - 'dist/arch/install.md'
-      - '.ci_bin/style.css'
-      - '.ci_bin/gen_pages.py'
-      - '.ci_bin/build_pages.sh'
+      - 'scripts/ci/style.css'
+      - 'scripts/ci/gen_pages.py'
+      - 'scripts/ci/build_pages.sh'
       - '.github/workflows/README.md'
       - '.gitlab/README.md'
       - '.github/workflows/deploy-pages.yml'
@@ -19,9 +19,9 @@ on:
       - 'README.md'
       - 'CHANGELOG.md'
       - 'dist/arch/install.md'
-      - '.ci_bin/style.css'
-      - '.ci_bin/gen_pages.py'
-      - '.ci_bin/build_pages.sh'
+      - 'scripts/ci/style.css'
+      - 'scripts/ci/gen_pages.py'
+      - 'scripts/ci/build_pages.sh'
       - '.github/workflows/README.md'
       - '.gitlab/README.md'
 
@@ -51,7 +51,7 @@ jobs:
       - name: Generate HTML pages
         run: |
           pip install --quiet markdown
-          sh .ci_bin/build_pages.sh
+          sh scripts/ci/build_pages.sh
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

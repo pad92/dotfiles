@@ -8,9 +8,15 @@ import time
 import unittest
 from pathlib import Path
 
+from jinja2 import Environment
+
 ROOT = Path(__file__).parents[1]
-HELPER = ROOT / ".config/hypr/hyprlock/carousel-image.sh"
-EMPTY = ROOT / ".config/hypr/hyprlock/empty.png"
+HELPER_TEMPLATE = (
+    ROOT
+    / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock/"
+    "carousel-image.sh.j2"
+)
+EMPTY = ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock/empty.png"
 
 
 class CarouselTests(unittest.TestCase):
@@ -18,6 +24,14 @@ class CarouselTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        self.helper = self.root / "carousel-image.sh"
+        self.helper.write_text(
+            Environment().from_string(HELPER_TEMPLATE.read_text()).render(
+                ansible_managed="Managed by Ansible",
+                dotfiles_repository=str(ROOT),
+            )
+        )
+        self.helper.chmod(0o755)
         self.cache = self.root / "hyprlock-carousel"
         self.cache.mkdir()
         self.local = self.root / "photos"
@@ -53,7 +67,7 @@ class CarouselTests(unittest.TestCase):
 
     def run_helper(self, *arguments):
         return subprocess.run(
-            ["bash", str(HELPER), *arguments],
+            ["bash", str(self.helper), *arguments],
             env=self.environment,
             capture_output=True,
             text=True,

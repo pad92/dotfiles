@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+
+set -uo pipefail
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P) || exit 1
+AWWW_SCRIPT="${HOME}/.bin/awww.sh"
+CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/hyprlock-carousel"
+IMAGE_INDEX="${CACHE_DIR}/index"
+IMAGE_LIST="${CACHE_DIR}/images"
+IMAGE_SOURCE="${CACHE_DIR}/source"
+LOCK_FILE="${CACHE_DIR}/lock"
+CAROUSEL_TIMEOUT_SECONDS="${CAROUSEL_TIMEOUT_SECONDS:-25}"
+CAROUSEL_MAX_ATTEMPTS=3
+
+log() {
+    printf '%s\n' "$*" >&2
+}
+
+load_awww() {
+    if [ ! -r "${AWWW_SCRIPT}" ]; then
+        log "Error: '${AWWW_SCRIPT}' is not readable."
+        return 1
+    fi
+
+    # shellcheck source=/dev/null
+    source "${AWWW_SCRIPT}"
+    load_config || return 1
+    validate_config || return 1
+}
+
+refresh_image_list() {
+    local temporary_list
+    local temporary_source
+
+    load_awww || return 1
+
+    for command_name in find mktemp shuf; do
+        if ! command -v "${command_name}" >/dev/null 2>&1; then
+            log "Error: '${command_name}' is not installed or not found in PATH."
+            return 1
+        fi
+    done
+
+    IMAGES=()
+    prepare_images || return 1
+
+    temporary_list="${CACHE_DIR}/.images.$$"
+    temporary_source="${CACHE_DIR}/.source.$$"
+    printf '%s\0' "${IMAGES[@]}" > "${temporary_list}" || return 1
+    printf '%s\n' "${ACTIVE_WALLPAPER_SOURCE}" > "${temporary_source}" || return 1
+    mv -f -- "${temporary_list}" "${IMAGE_LIST}" || return 1
+    mv -f -- "${temporary_source}" "${IMAGE_SOURCE}" || return 1
+    printf '0\n' > "${IMAGE_INDEX}"
+}
+
+render_next_image() {
+    local dimensions="$1"
+    local monitor="$2"
+    local current_image
+    local image_index
+    local next_index
+    local selected_image
+    local image_count
+    local attempt
+    local found=false
+    local temporary_index
+    local temporary_link
+
+    load_awww || return 1
+    require_commands || return 1
+    resolve_metadata_font || return 1
+
+    # Every external operation shares the phase budget, including metadata reads.
+    run_for_active_source() {
+        local remaining=$((CAROUSEL_PHASE_DEADLINE - SECONDS))
+        (( remaining > 0 )) || return 1
+        timeout --kill-after=1s "${remaining}s" "$@"
+    }
+
+    ACTIVE_WALLPAPER_SOURCE=$(cat "${IMAGE_SOURCE}") || return 1
+    IMAGES=()
+    mapfile -d '' IMAGES < "${IMAGE_LIST}"
+    image_count={{ '${#IMAGES[@]}' }}
+    (( image_count > 0 )) || return 1
+
+    image_index=$(cat "${IMAGE_INDEX}" 2>/dev/null || printf '0')
+    if ! [[ "${image_index}" =~ ^[0-9]+$ ]]; then
+        image_index=0
+    fi
+
+    CAROUSEL_PHASE_DEADLINE=$((SECONDS + CAROUSEL_TIMEOUT_SECONDS / 3))
+    if [ "${ACTIVE_WALLPAPER_SOURCE}" != remote ]; then
+        CAROUSEL_PHASE_DEADLINE=$((CAROUSEL_STARTED + CAROUSEL_TIMEOUT_SECONDS - 1))
+    fi
+    for ((attempt = 0; attempt < image_count && attempt < CAROUSEL_MAX_ATTEMPTS; attempt++)); do
+        selected_image="${IMAGES[(image_index + attempt) % image_count]}"
+        if prepare_display_image "${dimensions}" "${selected_image}"; then
+            found=true
+            break
+        fi
+        log "Warning: Skipping unreadable carousel image '${selected_image}'."
+    done
+    if [ "${found}" = false ] && [ "${WALLPAPER_SOURCE}" = auto ] \
+        && [ "${ACTIVE_WALLPAPER_SOURCE}" = remote ]; then
+        log "Warning: Remote carousel images failed; trying local images."
+        CAROUSEL_PHASE_DEADLINE=$((CAROUSEL_STARTED + CAROUSEL_TIMEOUT_SECONDS - 1))
+        load_wallpaper_sources local "${LOCAL_WALLPAPER_DIRS[@]}" || return 1
+        image_count={{ '${#IMAGES[@]}' }}
+        (( image_count > 0 )) || return 1
+        printf '%s\0' "${IMAGES[@]}" > "${IMAGE_LIST}.tmp" || return 1
+        mv -f -- "${IMAGE_LIST}.tmp" "${IMAGE_LIST}" || return 1
+        printf '%s\n' local > "${IMAGE_SOURCE}" || return 1
+        image_index=0
+        for ((attempt = 0; attempt < image_count && attempt < CAROUSEL_MAX_ATTEMPTS; attempt++)); do
+            if prepare_display_image "${dimensions}" "${IMAGES[attempt]}"; then
+                found=true
+                break
+            fi
+        done
+    fi
+    if [ "${found}" = false ]; then
+        printf '%s\n' "$(((image_index + attempt) % image_count))" > "${IMAGE_INDEX}"
+        log "Error: Carousel attempt limit reached; keeping the current background."
+        return 1
+    fi
+    next_index=$(((image_index + attempt + 1) % image_count))
+
+    current_image="${CACHE_DIR}/current-${monitor}"
+    temporary_link="${CACHE_DIR}/.current-${monitor}.$$"
+    temporary_index="${CACHE_DIR}/.index.$$"
+    trap 'rm -f -- "${temporary_link}" "${temporary_index}"' RETURN
+    ln -s -- "${DISPLAY_IMAGE}" "${temporary_link}" || return 1
+    printf '%s\n' "${next_index}" > "${temporary_index}" || return 1
+    mv -Tf -- "${temporary_link}" "${current_image}" || return 1
+    mv -f -- "${temporary_index}" "${IMAGE_INDEX}" || return 1
+    trap - RETURN
+
+    if [ -n "${AWWW_MANAGED_CACHE_DIR-}" ]; then
+        prune_render_cache "${DISPLAY_IMAGE}" || log "Warning: Cache cleanup failed."
+    fi
+
+    printf '%s\n' "${DISPLAY_IMAGE}"
+}
+
+# Reading an atomically published link must never wait for a renderer.
+if [ "${1-}" = "--current" ]; then
+    if [ "$#" -ne 2 ] || ! [[ "$2" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+        log "Usage: $0 --current MONITOR"
+        exit 1
+    fi
+    printf '%s/current-%s\n' "${CACHE_DIR}" "$2"
+    exit 0
+fi
+
+if ! [[ "${CAROUSEL_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ ]] \
+    || (( CAROUSEL_TIMEOUT_SECONDS < 3 )); then
+    log 'Error: CAROUSEL_TIMEOUT_SECONDS must be an integer of at least 3.'
+    exit 1
+fi
+if [ "${1-}" != --bounded-worker ]; then
+    exec timeout --kill-after=2s "${CAROUSEL_TIMEOUT_SECONDS}s" bash "$0" --bounded-worker "$@"
+fi
+shift
+CAROUSEL_STARTED=${SECONDS}
+mkdir -p "${CACHE_DIR}" || exit 1
+exec 9> "${LOCK_FILE}" || exit 1
+flock -w 2 9 || exit 1
+
+if [ "${1-}" = "--refresh" ]; then
+    refresh_image_list
+    exit $?
+fi
+
+if [ "${1-}" = "--font" ]; then
+    load_awww || exit 1
+    if ! command -v magick >/dev/null 2>&1; then
+        log "Error: 'magick' is required to resolve the clock font."
+        exit 1
+    fi
+    resolve_metadata_font || exit 1
+    printf '%s\n' "${AWWW_METADATA_FONT}"
+    exit 0
+fi
+
+if [ "$#" -ne 2 ] || ! [[ "$1" =~ ^[A-Za-z0-9_.-]+$ ]] \
+    || ! [[ "$2" =~ ^[1-9][0-9]*x[1-9][0-9]*$ ]]; then
+    log "Usage: $0 --refresh | --current MONITOR | --font | MONITOR WIDTHxHEIGHT"
+    exit 1
+fi
+
+if [ ! -s "${IMAGE_LIST}" ] || [ ! -s "${IMAGE_SOURCE}" ]; then
+    refresh_image_list || exit 1
+fi
+
+render_next_image "$2" "$1"

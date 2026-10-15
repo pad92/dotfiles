@@ -1,0 +1,35 @@
+---
+- name: Check for makepkg
+  ansible.builtin.stat:
+    path: /usr/bin/makepkg
+  register: system_makepkg
+  when: ansible_facts['os_family'] == 'Archlinux'
+  tags: [makepkg_config]
+
+- name: Create makepkg configuration directory
+  ansible.builtin.file:
+    path: /etc/makepkg.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - system_makepkg.stat.exists
+  tags: [makepkg_config]
+
+- name: Configure native makepkg builds on Arch Linux and CachyOS
+  ansible.builtin.copy:
+    dest: /etc/makepkg.conf.d/zz-dotfiles.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Dotfiles makepkg overrides: tune local builds for this machine.
+      CFLAGS+=" -march=native -mtune=native"
+      CXXFLAGS+=" -march=native -mtune=native"
+      MAKEFLAGS="-j$(( ($(nproc) + 1) / 2 ))"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - system_makepkg.stat.exists
+  tags: [makepkg_config]

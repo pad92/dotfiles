@@ -5,9 +5,12 @@ import time
 import unittest
 from pathlib import Path
 
-PRUNE = runpy.run_path(str(Path(__file__).parents[1] / "bin/awww-cache.py"))[
-    "prune_cache"
-]
+PRUNE = runpy.run_path(
+    str(
+        Path(__file__).parents[1]
+        / "ansible/roles/dotfiles/files/home/.bin/awww-cache.py"
+    )
+)["prune_cache"]
 
 
 class WallpaperCacheTests(unittest.TestCase):

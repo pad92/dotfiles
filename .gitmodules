@@ -1,20 +1,20 @@
 [submodule ".vim/bundle/Vundle.vim"]
-	path = .vim/bundle/Vundle.vim
+	path = ansible/roles/dotfiles/files/home/.vim/bundle/Vundle.vim
 	url = https://github.com/VundleVim/Vundle.vim.git
 	branch = master
-[submodule "dotbot"]
-	path = dotbot
-	url = https://github.com/anishathalye/dotbot
-	ignore = dirty
 [submodule ".tmux/plugins/tpm"]
-	path = .tmux/plugins/tpm
+	path = ansible/roles/dotfiles/files/home/.tmux/plugins/tpm
 	url = https://github.com/tmux-plugins/tpm.git
+	branch = master
 [submodule "zsh/plugins/zsh-syntax-highlighting"]
-	path = zsh/plugins/zsh-syntax-highlighting
+	path = ansible/roles/dotfiles/files/home/zsh/plugins/zsh-syntax-highlighting
 	url = https://github.com/zsh-users/zsh-syntax-highlighting.git
+	branch = master
 [submodule "zsh/plugins/zsh-autosuggestions"]
-	path = zsh/plugins/zsh-autosuggestions
+	path = ansible/roles/dotfiles/files/home/zsh/plugins/zsh-autosuggestions
 	url = https://github.com/zsh-users/zsh-autosuggestions.git
+	branch = master
 [submodule "zsh/plugins/zsh-completions"]
-	path = zsh/plugins/zsh-completions
+	path = ansible/roles/dotfiles/files/home/zsh/plugins/zsh-completions
 	url = https://github.com/zsh-users/zsh-completions.git
+	branch = master

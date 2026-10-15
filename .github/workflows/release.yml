@@ -22,7 +22,7 @@ jobs:
           # newlines survive.
           {
             echo "body<<EOF"
-            sh .ci_bin/extract_release_notes.sh "$GITHUB_REF_NAME"
+            sh scripts/ci/extract_release_notes.sh "$GITHUB_REF_NAME"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
