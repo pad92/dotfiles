@@ -80,6 +80,11 @@ build
 *.dll
 *.exe
 
+# Ansible
+.ansible/
+/.vault
+*.retry
+
 # Dotfiles specific
 ansible/roles/dotfiles/files/home/.config/hypr/*.cache
 ansible/roles/dotfiles/files/home/.config/hypr/*.log
@@ -212,7 +217,3 @@ ansible/roles/dotfiles/files/home/.config/systemd/user/graphical-session.target.
 .agents
 ansible/roles/dotfiles/files/home/.config/uwsm/default-id
 public/
-
-.ansible/
-
-.vault

@@ -23,9 +23,10 @@ reconciliation in separate task files.
 Package groups are selected automatically from OS defaults and detected GPU
 facts. Configure exact selections by hostname in `host_vars/localhost.yml`; those
 lists replace the defaults. `packages_group_selection` remains available as a
-one-run override. When using Vault-encrypted content, pass
-`--vault-password-file .vault` to `./install`; the local password file is
-ignored by Git. Example of a one-run package group override:
+one-run override. The default Vault password file is `.vault`, which is ignored
+by Git. Create it locally when using Vault-encrypted content, or pass
+`--vault-password-file` to override it. Example of a one-run package group
+override:
 
 ```sh
 ./install --ask-become-pass \
