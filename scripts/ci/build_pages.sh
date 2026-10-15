@@ -25,12 +25,11 @@ python3 scripts/ci/gen_pages.py .gitlab/README.md            public/.gitlab/READ
 # Copy static assets referenced by the rendered docs into public/, mirroring
 # their source path so relative links (e.g. the README showcase image) resolve
 # correctly on both GitHub Pages and GitLab Pages.
-for asset in dist/hyprland.webp; do
-    if [ -f "$asset" ]; then
-        mkdir -p "public/$(dirname "$asset")"
-        cp "$asset" "public/$asset"
-    fi
-done
+asset=dist/hyprland.webp
+if [ -f "$asset" ]; then
+    mkdir -p "public/$(dirname "$asset")"
+    cp "$asset" "public/$asset"
+fi
 
 # Serve dot-directories (e.g. .github/) verbatim on GitHub Pages (no Jekyll).
 touch public/.nojekyll

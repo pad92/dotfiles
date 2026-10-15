@@ -1,5 +1,5 @@
-# The following functions append/prepend the specified directory to the path variable specified by name
-# If the directory is already in the path, it is first removed and then appended/prepended.
+# The following functions append/prepend a directory to a named path variable.
+# Existing occurrences are removed before the new position is applied.
 # Examples:
 #
 # Prepend `~/bin` to `$PATH`:
@@ -15,25 +15,38 @@
 # and so on ...
 
 
-# Remove $2 from path with name $1, e.g.
-#   remove_from_path PATH ~/bin
-#   remove_from_path PYTHONPATH ~/lib/python2.7/site-packages
+_is_path_variable_name() {
+  [[ "$1" =~ '^[A-Za-z_][A-Za-z0-9_]*$' ]]
+}
+
 remove_from_path() {
-  local a
-  local p
-  local s
-  local r
-  eval "p=\$$1"  # get value of specified path
-  a=( ${(s/:/)p} )  # turn it into an array
-  # return if $2 isn't in path
-  if [[ ${a[(i)${2}]} -gt ${#a} ]] && return
-  # rebuild path from elements not matching $2
-  for s in $a; do
-    if [[ ! $s == $2 ]]; then
-      [[ -z "$r" ]] && r=$s || r="$r:$s"
+  if (( $# != 2 )); then
+    print -u2 -- 'Usage: remove_from_path VARIABLE DIRECTORY'
+    return 2
+  fi
+
+  local name="$1"
+  local directory="$2"
+  local current result='' entry
+  local -a entries
+
+  if ! _is_path_variable_name "$name"; then
+    print -u2 -- "Invalid path variable name: $name"
+    return 2
+  fi
+
+  current="${(P)name}"
+  entries=("${(@s/:/)current}")
+  for entry in "${entries[@]}"; do
+    [[ "$entry" == "$directory" ]] && continue
+    if [[ -n "$result" ]]; then
+      result+=":$entry"
+    else
+      result="$entry"
     fi
   done
-  eval $1="$r"
+
+  export "$name=$result"
 }
 
 # Add path to start of named path, removing any occurrences
@@ -41,20 +54,36 @@ remove_from_path() {
 #   prepend_path PATH ~/bin
 #   prepend_path PYTHONPATH ~/my-py-stuff
 prepend_path() {
-  # Exit if directory doesn't exit
-  [[ ! -d "$2" ]] && return
-  local p
-  remove_from_path "$1" "$2"
-  eval "p=\$$1"
-  eval export $1="$2:$p"
+  if (( $# != 2 )); then
+    print -u2 -- 'Usage: prepend_path VARIABLE DIRECTORY'
+    return 2
+  fi
+
+  local name="$1"
+  local directory="$2"
+  local current
+
+  [[ -d "$directory" ]] || return 0
+  _is_path_variable_name "$name" || return 2
+  remove_from_path "$name" "$directory" || return
+  current="${(P)name}"
+  export "$name=$directory${current:+:$current}"
 }
 
 # As above, but add to end of path
 append_path() {
-  # Exit if directory doesn't exit
-  [[ ! -d "$2" ]] && return
-  local p
-  remove_from_path "$1" "$2"
-  eval "p=\$$1"
-  eval export $1="$p:$2"
+  if (( $# != 2 )); then
+    print -u2 -- 'Usage: append_path VARIABLE DIRECTORY'
+    return 2
+  fi
+
+  local name="$1"
+  local directory="$2"
+  local current
+
+  [[ -d "$directory" ]] || return 0
+  _is_path_variable_name "$name" || return 2
+  remove_from_path "$name" "$directory" || return
+  current="${(P)name}"
+  export "$name=${current:+$current:}$directory"
 }

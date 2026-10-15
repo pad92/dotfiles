@@ -1,8 +1,9 @@
-import sys
-import os
-import re
 import html as _html
+import os
 import posixpath
+import re
+import sys
+
 import markdown
 
 try:
@@ -12,7 +13,7 @@ try:
     from pygments.util import ClassNotFound as _PygClassNotFound
 
     _HAVE_PYGMENTS = True
-except Exception:  # pragma: no cover - pygments is optional
+except ImportError:  # pragma: no cover - pygments is optional
     _HAVE_PYGMENTS = False
 
 # Site navigation menu: (label, target page relative to the public/ root).
@@ -82,6 +83,20 @@ def minify_html(html):
     for i, block in enumerate(protected):
         html = html.replace(f"\x00{i}\x00", block)
     return html
+
+
+def write_if_changed(path, content):
+    """Write generated text only when its contents differ."""
+    try:
+        with open(path, "r", encoding="utf-8") as current:
+            if current.read() == content:
+                return False
+    except FileNotFoundError:
+        pass
+
+    with open(path, "w", encoding="utf-8") as output:
+        output.write(content)
+    return True
 
 
 def get_alert_resources(alert_type):
@@ -362,8 +377,7 @@ def generate_html(input_file, output_file, title):
             os.makedirs(css_dest_dir, exist_ok=True)
         with open(css_source, "r", encoding="utf-8") as src:
             minified_css = minify_css(src.read() + pygments_css())
-        with open(css_dest, "w", encoding="utf-8") as dst:
-            dst.write(minified_css)
+        write_if_changed(css_dest, minified_css)
 
     brand_href, nav_items = build_nav(output_file)
 
@@ -372,7 +386,7 @@ def generate_html(input_file, output_file, title):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{_html.escape(title)}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css">
     <link rel="stylesheet" href="{css_path}">
@@ -428,13 +442,13 @@ def generate_html(input_file, output_file, title):
 </body>
 </html>"""
 
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(minify_html(template))
+    output_directory = os.path.dirname(output_file) or "."
+    os.makedirs(output_directory, exist_ok=True)
+    write_if_changed(output_file, minify_html(template))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) != 4:
         print("Usage: python3 gen_pages.py <input_file> <output_file> <title>")
         sys.exit(1)
 

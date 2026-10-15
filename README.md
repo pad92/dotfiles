@@ -154,6 +154,9 @@ adds it to `PATH` in Zsh.
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
 
+Package cleanup is opt-in. Pass `--clean-packages` to `backup.sh` to run
+`yay -Sc` on Arch or `apt autoremove --purge` on Debian.
+
 To install the Vim configuration, run [`scripts/vim.sh`](./scripts/vim.sh).
 GitLab CI also builds downloadable [Vim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim)
 and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_nvim)

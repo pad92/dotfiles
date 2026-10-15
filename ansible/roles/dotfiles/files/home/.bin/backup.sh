@@ -4,9 +4,17 @@ set -eu
 
 # --- Verbose option ---
 VERBOSE=false
-case "${1:-}" in
-    -v|--verbose) VERBOSE=true ;;
-esac
+CLEAN_PACKAGES=false
+for argument in "$@"; do
+    case "$argument" in
+        -v|--verbose) VERBOSE=true ;;
+        --clean-packages) CLEAN_PACKAGES=true ;;
+        *)
+            printf 'Usage: %s [-v|--verbose] [--clean-packages]\n' "$0" >&2
+            exit 2
+            ;;
+    esac
+done
 
 # --- Configuration ---
 # shellcheck source=/etc/os-release
@@ -59,9 +67,9 @@ RSYNC_SSH="ssh -o StrictHostKeyChecking=accept-new \
     -o ControlPersist=60"
 
 if [ "$VERBOSE" = true ]; then
-    RSYNC_INFO="--info=progress2,name1,stats2 --itemize-changes"
+    RSYNC_INFO=("--info=progress2,name1,stats2" --itemize-changes)
 else
-    RSYNC_INFO="--info=progress2,name0,stats2"
+    RSYNC_INFO=("--info=progress2,name0,stats2")
 fi
 
 # --- Colours & logging ---
@@ -270,11 +278,15 @@ manage_packages() {
                 log "Orphan packages detected (left installed):" "$C_ORANGE"
                 printf '%s\n' "$orphans"
             fi
-            yay -Sc --noconfirm
+            if [ "$CLEAN_PACKAGES" = true ]; then
+                yay -Sc --noconfirm
+            fi
             pacman -Qqe | awk '{print $1}' > "${PKGLIST_CURRENT}"
             ;;
         *debian*)
-            sudo apt autoremove --purge -y
+            if [ "$CLEAN_PACKAGES" = true ]; then
+                sudo apt autoremove --purge -y
+            fi
             dpkg --get-selections '*' > "${PKGLIST_CURRENT}"
             ;;
     esac
@@ -322,13 +334,12 @@ perform_rsync() {
     fi
     rm -f "$plan_tmp"
 
-    # shellcheck disable=SC2086
     local rsync_rc=0
     if rsync --force --archive --perms --xattrs \
         --no-specials --no-devices --no-links \
         --delete --delete-excluded \
         -e "$RSYNC_SSH" \
-        $RSYNC_INFO \
+        "${RSYNC_INFO[@]}" \
         --exclude-from="$exclude_tmp" \
         "${src}" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/"; then
         :

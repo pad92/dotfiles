@@ -6,8 +6,6 @@
 ldPath=${LD_LIBRARY_PATH}
 unset LD_LIBRARY_PATH
 
-exitcode=0
-
 ffmpegPath="ffmpeg"
 comskipPath="comskip"
 
@@ -100,9 +98,6 @@ else
   outfile="$2"
 fi
 
-outdir=$(dirname "$outfile")
-
-outextension="${outfile##*.}"
 comskipoutput=""
 
 if [[ ! -z "$workdir" ]]; then
@@ -122,7 +117,9 @@ logofile="$workdir${infile%.*}.logo.txt"
 txtfile="$workdir${infile%.*}.txt"
 
 if [ ! -f "$edlfile" ]; then
-  $comskipPath $comskipoutput --ini="$comskipini" "$infile"
+  comskip_args=("$comskipPath")
+  [[ -z "$comskipoutput" ]] || comskip_args+=("$comskipoutput")
+  "${comskip_args[@]}" --ini="$comskipini" "$infile"
   comskipexit=$?
   # comskip exits 1 when it finds no commercials, which is a normal outcome
   # here (an empty/absent EDL is handled below), so only treat >1 as fatal.
