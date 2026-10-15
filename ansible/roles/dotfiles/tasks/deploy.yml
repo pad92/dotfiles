@@ -137,15 +137,7 @@
     dest: "{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/"
     mode: preserve
     backup: true
-  register: dotfiles_systemd_units
-  tags: [systemd]
-
-- name: Reload the user systemd manager when units change
-  ansible.builtin.command:
-    argv: [systemctl, --user, daemon-reload]
-  when: dotfiles_systemd_units.changed
-  changed_when: true
-  become: false
+  notify: Reload the user systemd manager
   tags: [systemd]
 
 - name: Copy static dotfiles
