@@ -18,12 +18,12 @@
 
 - name: Inspect saved package state
   ansible.builtin.stat:
-    path: "{{ packages_state_path }}"
+    path: '{{ packages_state_path }}'
   register: packages_state_stat
 
 - name: Read saved package state
   ansible.builtin.slurp:
-    src: "{{ packages_state_path }}"
+    src: '{{ packages_state_path }}'
   register: packages_state_file
   when: packages_state_stat.stat.exists
 
@@ -35,9 +35,10 @@
 
 - name: Initialize package state defaults
   ansible.builtin.set_fact:
-    packages_state_data: "{{ packages_state_data | default(none) }}"
-    packages_state_valid: "{{ packages_state_data is defined and packages_state_data
-      is not none }}"
+    packages_state_data: '{{ packages_state_data | default(none) }}'
+    packages_state_valid:
+      '{{ packages_state_data is defined and packages_state_data
+      is not none }}'
     packages_previous_owned: >-
       {{ packages_state_data.owned_packages
          if packages_state_data is defined and packages_state_data is not none
@@ -45,7 +46,7 @@
 
 - name: Warn when package state is invalid
   ansible.builtin.debug:
-    msg: "Package state is invalid; automatic removals are disabled."
+    msg: 'Package state is invalid; automatic removals are disabled.'
   when: packages_state_stat.stat.exists and not packages_state_valid
 
 - name: Build available package groups
@@ -72,8 +73,12 @@
 
 - name: Classify graphics groups
   ansible.builtin.set_fact:
-    packages_detected_graphics_groups: "{{ packages_lspci.stdout | detect_graphics_groups
-      }}"
+    packages_detected_graphics_groups:
+      '{{ packages_lspci.stdout | detect_graphics_groups
+      }}'
+    packages_graphics_controllers_found: '{{ packages_lspci.stdout |
+      graphics_controllers_found }}'
+    packages_graphics_detection_available: true
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_lspci.rc | default(1) == 0
@@ -96,8 +101,18 @@
              item | regex_replace('/class$', '/vendor')),
          'device': lookup('ansible.builtin.file',
              item | regex_replace('/class$', '/device')) }] }}
-  loop: "{{ packages_pci_class_files | default([]) }}"
+  loop: '{{ packages_pci_class_files | default([]) }}'
   when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Record graphics detection from sysfs
+  ansible.builtin.set_fact:
+    packages_graphics_controllers_found: '{{ packages_pci_sysfs_devices |
+      default([]) | graphics_controllers_found }}'
+    packages_graphics_detection_available: >-
+      {{ packages_pci_class_files | default([]) | length > 0 }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_lspci.rc | default(1) != 0
 
 - name: Classify AMD graphics from sysfs when lspci is unavailable
   ansible.builtin.set_fact:
@@ -108,12 +123,20 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_lspci.rc | default(1) != 0
 
-- name: Warn when graphics detection is incomplete
-  ansible.builtin.debug:
-    msg: "GPU detection is unavailable or incomplete; saved GPU choices are preserved."
+- name: Validate automatic graphics detection on Arch Linux
+  ansible.builtin.assert:
+    that:
+      - (packages_group_selection is defined and
+        packages_group_selection is not none) or
+        ((packages_graphics_detection_available | default(false) | bool) and
+        (packages_detected_graphics_groups | default([]) | length > 0 or
+        not (packages_graphics_controllers_found | default(false) | bool)))
+    fail_msg: >-
+      Unable to classify every graphics controller automatically. Ensure
+      pciutils and its PCI ID database are available and current, or set
+      packages_group_selection explicitly to choose the required drivers.
   when:
     - ansible_facts['os_family'] == 'Archlinux'
-    - packages_detected_graphics_groups | default([]) | length == 0
 
 - name: Build default package group selection
   ansible.builtin.set_fact:
@@ -127,7 +150,8 @@
     packages_selected_groups: >-
       {{ packages_group_selection | default(none)
          | select_package_groups(ansible_facts['hostname'], packages_host_groups,
-                                packages_group_defaults) }}
+                                packages_group_defaults,
+                                packages_detected_graphics_groups | default([])) }}
 
 - name: Validate selected package groups
   ansible.builtin.assert:
@@ -146,7 +170,7 @@
     packages_group_contents: >-
       {{ packages_group_contents | default({}) | combine({
          item: packages_family_groups[ansible_facts['os_family']][item] }) }}
-  loop: "{{ packages_selected_groups }}"
+  loop: '{{ packages_selected_groups }}'
 
 - name: Build desired package list
   ansible.builtin.set_fact:

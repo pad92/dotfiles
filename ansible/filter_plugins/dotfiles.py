@@ -7,7 +7,6 @@ import json
 import re
 from typing import Any
 
-
 PACKAGE_NAME = re.compile(r"^[a-zA-Z0-9@._+-]+$")
 GRAPHICS_GROUPS = {
     "07_intel_legacy",
@@ -38,15 +37,28 @@ def valid_package_name(value: Any) -> bool:
 
 
 def select_package_groups(
-    explicit: Any, hostname: Any, host_groups: Any, defaults: Any
+    explicit: Any,
+    hostname: Any,
+    host_groups: Any,
+    defaults: Any,
+    detected_graphics_groups: Any = None,
 ) -> Any:
-    """Choose an explicit override, hostname mapping, or automatic defaults."""
+    """Choose package groups and prefer complete automatic graphics detection."""
     if explicit is not None:
         selected = explicit
     elif isinstance(hostname, str) and isinstance(host_groups, dict):
         selected = host_groups.get(hostname, defaults)
     else:
         selected = defaults
+
+    if (
+        explicit is None
+        and isinstance(selected, (list, tuple, set))
+        and isinstance(detected_graphics_groups, (list, tuple, set))
+        and detected_graphics_groups
+    ):
+        selected = [group for group in selected if group not in GRAPHICS_GROUPS]
+        selected += list(detected_graphics_groups)
     return selected
 
 
@@ -196,6 +208,22 @@ def detect_graphics_groups(pci_devices: Any) -> list[str]:
     return sorted(detected)
 
 
+def graphics_controllers_found(pci_devices: Any) -> bool:
+    """Report whether PCI data includes a display controller, even if unknown."""
+    if isinstance(pci_devices, str):
+        return any(
+            re.search(r"\[(0300|0302)\]", line) for line in pci_devices.splitlines()
+        )
+    if isinstance(pci_devices, (list, tuple)):
+        return any(
+            isinstance(device, dict)
+            and isinstance(device.get("class"), str)
+            and device["class"].strip().lower().startswith(("0x0300", "0x0302"))
+            for device in pci_devices
+        )
+    return False
+
+
 def detect_sysfs_graphics_groups(devices: Any) -> list[str]:
     """Use the old no-lspci fallback, which can identify AMD GPUs only."""
     if not isinstance(devices, (list, tuple)) or not devices:
@@ -226,7 +254,10 @@ def package_removal_candidates(
     installed: Any, desired: Any, owned: Any, protected: Any = None
 ) -> list[str]:
     """Return only installed, owned, undesired packages outside the protected set."""
-    if not all(isinstance(packages, (list, set, tuple)) for packages in (installed, desired, owned)):
+    if not all(
+        isinstance(packages, (list, set, tuple))
+        for packages in (installed, desired, owned)
+    ):
         return []
     installed_set = set(installed)
     desired_set = set(desired)
@@ -243,9 +274,7 @@ def package_removal_candidates(
     )
 
 
-def safe_removal_preview(
-    preview: Any, desired: Any, protected: Any = None
-) -> bool:
+def safe_removal_preview(preview: Any, desired: Any, protected: Any = None) -> bool:
     """Accept only a valid pacman transaction that includes every candidate."""
     if not isinstance(preview, (list, tuple, set)) or not preview:
         return False
@@ -271,8 +300,14 @@ def unneeded_graphics_packages(
     """Find installed packages in deselected graphics groups, excluding shared ones."""
     if not isinstance(package_groups, dict):
         return []
-    selected = set(selected_groups) if isinstance(selected_groups, (list, set, tuple)) else set()
-    installed_set = set(installed) if isinstance(installed, (list, set, tuple)) else set()
+    selected = (
+        set(selected_groups)
+        if isinstance(selected_groups, (list, set, tuple))
+        else set()
+    )
+    installed_set = (
+        set(installed) if isinstance(installed, (list, set, tuple)) else set()
+    )
     desired_set = set(desired) if isinstance(desired, (list, set, tuple)) else set()
     packages: set[str] = set()
     for group in GRAPHICS_GROUPS - selected:
@@ -296,6 +331,7 @@ class FilterModule:
             "parse_package_state": parse_package_state,
             "parse_package_state_json": parse_package_state_json,
             "detect_graphics_groups": detect_graphics_groups,
+            "graphics_controllers_found": graphics_controllers_found,
             "detect_sysfs_graphics_groups": detect_sysfs_graphics_groups,
             "protected_package": protected_package,
             "package_removal_candidates": package_removal_candidates,

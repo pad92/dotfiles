@@ -6,10 +6,19 @@ packages_host_groups:
     - 02_fonts
     - 03_gtk
     - 04_printers
-    - 08_intel_modern
-    - 09_nvidia_modern
     - 10_sre_devops
     - 11_hyprland
     - 12_containers_docker
     - 14_iac_opentofu
     - 20_apps
+  PadsTower:
+    - 01_base
+    - 02_fonts
+    - 03_gtk
+    - 04_printers
+    - 10_sre_devops
+    - 11_hyprland
+    - 12_containers_docker
+    - 14_iac_opentofu
+    - 20_apps
+    - 21_steam
