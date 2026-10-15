@@ -28,8 +28,10 @@ unit_tests:
 ansible_lint:
   stage: validate
   image: python:3.13-slim
-  script:
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends make && rm -rf /var/lib/apt/lists/*
     - python -m pip install --no-cache-dir -r requirements-ansible.txt
+  script:
     - make lint-ansible
 
 # Le SAST tourne par défaut sure tous les commits
