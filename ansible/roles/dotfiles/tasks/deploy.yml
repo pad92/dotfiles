@@ -29,18 +29,18 @@
 
 - name: Inspect managed paths
   ansible.builtin.stat:
-    path: "{{ dotfiles_home }}/{{ item }}"
+    path: '{{ dotfiles_home }}/{{ item }}'
     follow: false
-  loop: "{{ dotfiles_managed_paths }}"
+  loop: '{{ dotfiles_managed_paths }}'
   register: dotfiles_target_stats
   loop_control:
-    label: "{{ item }}"
+    label: '{{ item }}'
 
 - name: Remove conflicting managed symlinks
   ansible.builtin.file:
-    path: "{{ dotfiles_home }}/{{ item.item }}"
+    path: '{{ dotfiles_home }}/{{ item.item }}'
     state: absent
-  loop: "{{ dotfiles_target_stats.results }}"
+  loop: '{{ dotfiles_target_stats.results }}'
   when:
     - item.stat.exists
     - item.stat.islnk
@@ -55,12 +55,12 @@
       (item.item not in dotfiles_link_destinations and
        item.item != '.config/waybar/config')
   loop_control:
-    label: "{{ item.item }}"
+    label: '{{ item.item }}'
 
 - name: Inspect backup paths for conflicts
   ansible.builtin.stat:
-    path: "{{ dotfiles_home }}/{{ item.item }}.bak"
-  loop: "{{ dotfiles_target_stats.results }}"
+    path: '{{ dotfiles_home }}/{{ item.item }}.bak'
+  loop: '{{ dotfiles_target_stats.results }}'
   when:
     - item.stat.exists
     - >-
@@ -77,10 +77,10 @@
     fail_msg: >-
       Refusing to replace {{ item.item.item }} because its backup path already
       exists.
-  loop: "{{ dotfiles_backup_stats.results | default([]) }}"
+  loop: '{{ dotfiles_backup_stats.results | default([]) }}'
   when: not item.skipped | default(false)
   loop_control:
-    label: "{{ item.item.item }}"
+    label: '{{ item.item.item }}'
 
 - name: Back up conflicting managed paths
   ansible.builtin.command:
@@ -88,9 +88,9 @@
       - mv
       - -n
       - --
-      - "{{ dotfiles_home }}/{{ item.item }}"
-      - "{{ dotfiles_home }}/{{ item.item }}.bak"
-  loop: "{{ dotfiles_target_stats.results }}"
+      - '{{ dotfiles_home }}/{{ item.item }}'
+      - '{{ dotfiles_home }}/{{ item.item }}.bak'
+  loop: '{{ dotfiles_target_stats.results }}'
   when:
     - item.stat.exists
     - >-
@@ -100,83 +100,99 @@
        item.stat.isdir)
   changed_when: true
   loop_control:
-    label: "{{ item.item }}"
+    label: '{{ item.item }}'
 
 - name: Create parent directories for managed paths
   ansible.builtin.file:
-    path: "{{ dotfiles_home }}/{{ item }}"
+    path: '{{ dotfiles_home }}/{{ item }}'
     state: directory
-    mode: "0755"
-  loop: "{{ dotfiles_parent_paths }}"
+    mode: '0755'
+  loop: '{{ dotfiles_parent_paths }}'
   loop_control:
-    label: "{{ item }}"
+    label: '{{ item }}'
 
 - name: Link managed directories into the home directory
   ansible.builtin.file:
-    src: "{{ dotfiles_source_root }}/{{ item.src }}"
-    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    src: '{{ dotfiles_source_root }}/{{ item.src }}'
+    dest: '{{ dotfiles_home }}/{{ item.dest }}'
     state: link
     force: false
-  loop: "{{ dotfiles_links }}"
+  loop: '{{ dotfiles_links }}'
   loop_control:
-    label: "{{ item.dest }}"
+    label: '{{ item.dest }}'
 
 - name: Copy static dotfile directories
   ansible.builtin.copy:
-    src: "home/{{ item }}/"
-    dest: "{{ dotfiles_home }}/{{ item }}/"
+    src: 'home/{{ item }}/'
+    dest: '{{ dotfiles_home }}/{{ item }}/'
     mode: preserve
     backup: true
-  loop: "{{ dotfiles_directories }}"
+  loop: '{{ dotfiles_directories }}'
   loop_control:
-    label: "{{ item }}"
+    label: '{{ item }}'
 
 - name: Copy user systemd units
   ansible.builtin.copy:
-    src: "home/{{ dotfiles_systemd_directory }}/"
-    dest: "{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/"
+    src: 'home/{{ dotfiles_systemd_directory }}/'
+    dest: '{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/'
+    local_follow: false
     mode: preserve
     backup: true
   notify: Reload the user systemd manager
   tags: [systemd]
 
+- name: Apply pending user systemd unit changes
+  ansible.builtin.meta: flush_handlers
+  tags: [systemd]
+
+- name: Enable and start graphical session units
+  ansible.builtin.systemd_service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+    scope: user
+  loop: '{{ dotfiles_systemd_graphical_units }}'
+  loop_control:
+    label: '{{ item }}'
+  tags: [systemd]
+
 - name: Copy static dotfiles
   ansible.builtin.copy:
-    src: "home/{{ item }}"
-    dest: "{{ dotfiles_home }}/{{ item }}"
+    src: 'home/{{ item }}'
+    dest: '{{ dotfiles_home }}/{{ item }}'
     mode: preserve
     backup: true
-  loop: "{{ dotfiles_files }}"
+  loop: '{{ dotfiles_files }}'
   loop_control:
-    label: "{{ item }}"
+    label: '{{ item }}'
 
 - name: Render host-aware dotfiles
   ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    src: '{{ item.src }}'
+    dest: '{{ dotfiles_home }}/{{ item.dest }}'
     mode: preserve
     backup: true
-  loop: "{{ dotfiles_templates }}"
+  loop: '{{ dotfiles_templates }}'
   loop_control:
-    label: "{{ item.dest }}"
+    label: '{{ item.dest }}'
 
 - name: Render the Hyprlock carousel helper
   ansible.builtin.template:
     src: home/.config/hypr/hyprlock/carousel-image.sh.j2
-    dest: "{{ dotfiles_home }}/.config/hypr/hyprlock/carousel-image.sh"
+    dest: '{{ dotfiles_home }}/.config/hypr/hyprlock/carousel-image.sh'
     mode: preserve
     backup: true
   tags: [hyprlock_carousel]
 
 - name: Check for a host-specific Waybar configuration
   ansible.builtin.stat:
-    path: "{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}"
+    path: '{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}'
   register: dotfiles_waybar_host_stat
 
 - name: Select the host-specific Waybar configuration
   ansible.builtin.file:
-    src: "{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}"
-    dest: "{{ dotfiles_home }}/.config/waybar/config"
+    src: '{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}'
+    dest: '{{ dotfiles_home }}/.config/waybar/config'
     state: link
     force: true
   when: dotfiles_waybar_host_stat.stat.exists
