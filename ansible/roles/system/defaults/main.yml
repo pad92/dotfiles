@@ -1,0 +1,4 @@
+---
+system_initramfs_generator: auto
+system_i915_enable_guc: null
+system_i915_guc_supported: false

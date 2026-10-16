@@ -53,6 +53,30 @@ override:
   -e '{"packages_group_selection":["01_base","03_gtk"]}'
 ```
 
+On Arch Linux, selecting an NVIDIA profile makes the system role manage
+`/etc/modprobe.d/zz-dotfiles-gpu.conf`. Both profiles enable zero-initialized
+system memory and DRM modesetting. The modern profile also enables NVIDIA's
+coarse-grained runtime D3 power management; the legacy profile does not, since
+NVIDIA documents RTD3 support for Turing and newer GPUs. Open kernel modules
+preserve video memory automatically. The role does not force that behavior on
+the proprietary legacy driver, which would require systemd integration and
+adequate temporary storage.
+
+When either NVIDIA profile is selected, Ansible detects `mkinitcpio` or
+`dracut` and regenerates the initramfs after the module configuration changes.
+If both or neither are installed, set `system_initramfs_generator` to
+`mkinitcpio` or `dracut`. GSP firmware is enabled by default on supported GPUs,
+so Ansible does not set it. The i915 GuC option remains at the kernel default,
+matching the commented local setting. To configure it for the modern Intel
+profile, set `system_i915_enable_guc` to `-1`, `0`, `1`, `2`, or `3`; `-1`
+keeps automatic selection, while `1` enables GuC submission and `2` enables
+HuC authentication; `3` enables both. The kernel documents these features and
+notes that support varies by platform. Values `1`, `2`, and `3` also require
+`system_i915_guc_supported: true`, which must only be set after confirming the
+GPU supports the selected operation. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
+[power management documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html),
+and the kernel's [i915 driver documentation](https://docs.kernel.org/gpu/i915.html).
+
 Conflicting regular files and directories that need a type change are moved to
 a `.bak` path. Existing symbolic links at managed paths are removed without a
 backup; their targets are left untouched. Package installation is additive.
