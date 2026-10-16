@@ -1,3 +1,4 @@
+---
 # Documentation GitLab CI : https://docs.gitlab.com/ee/ci/
 
 include:
@@ -6,6 +7,7 @@ include:
 
 stages:
   - test
+  - validate
   - package
   - pages
   - release
@@ -15,12 +17,22 @@ unit_tests:
   image: python:3.13-alpine
   before_script:
     - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick
+    - python3 -m pip install --no-cache-dir -r requirements-test.txt
   script:
     - python3 -m unittest discover -s tests -p 'test_*.py'
     - bash tests/awww-monitor-scale.sh
     - bash tests/hyprlock-playerctlock.sh
     - zsh tests/arch-clean-no-orphans.zsh
     - zsh tests/git-pull-recursive.zsh
+
+ansible_lint:
+  stage: validate
+  image: python:3.13-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends make && rm -rf /var/lib/apt/lists/*
+    - python -m pip install --no-cache-dir -r requirements-ansible.txt
+  script:
+    - make lint-ansible
 
 # Le SAST tourne par défaut sure tous les commits
 sast:
@@ -32,17 +44,26 @@ package_vim:
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - tar -czf vim.tar.gz .vim .vimrc
+    - tar -czf vim.tar.gz -C ansible/roles/dotfiles/files/home .vim .vimrc
   artifacts:
     paths:
       - vim.tar.gz
+
+# Job Neovim : Archive la configuration Neovim
+package_nvim:
+  stage: package
+  script:
+    - tar -czf nvim.tar.gz -C ansible/roles/dotfiles/files/home .config/nvim
+  artifacts:
+    paths:
+      - nvim.tar.gz
 
 .pages_build:
   stage: pages
   image: alpine:latest
   script:
     - apk add --no-cache python3 py3-markdown
-    - sh .ci_bin/build_pages.sh
+    - sh scripts/ci/build_pages.sh
   artifacts:
     paths:
       - public
@@ -56,9 +77,9 @@ pages:
         - 'README.md'
         - 'CHANGELOG.md'
         - 'dist/arch/install.md'
-        - '.ci_bin/style.css'
-        - '.ci_bin/gen_pages.py'
-        - '.ci_bin/build_pages.sh'
+        - 'scripts/ci/style.css'
+        - 'scripts/ci/gen_pages.py'
+        - 'scripts/ci/build_pages.sh'
         - '.github/workflows/README.md'
         - '.gitlab/README.md'
         - '.gitlab-ci.yml'
@@ -72,9 +93,9 @@ build_pages_review:
         - 'README.md'
         - 'CHANGELOG.md'
         - 'dist/arch/install.md'
-        - '.ci_bin/style.css'
-        - '.ci_bin/gen_pages.py'
-        - '.ci_bin/build_pages.sh'
+        - 'scripts/ci/style.css'
+        - 'scripts/ci/gen_pages.py'
+        - 'scripts/ci/build_pages.sh'
         - '.github/workflows/README.md'
         - '.gitlab/README.md'
   artifacts:
@@ -88,5 +109,5 @@ create_release:
   rules:
     - if: $CI_COMMIT_TAG
   script:
-    - sh .ci_bin/extract_release_notes.sh "$CI_COMMIT_TAG" > release_notes.txt
+    - sh scripts/ci/extract_release_notes.sh "$CI_COMMIT_TAG" > release_notes.txt
     - release-cli create --name "$CI_COMMIT_TAG" --description "$(cat release_notes.txt)"

@@ -8,15 +8,15 @@ repos:
       - id: test-gen-pages
         name: test documentation page generator
         language: system
-        entry: python3 .ci_bin/test_gen_pages.py
-        files: ^\.ci_bin/(gen_pages|test_gen_pages)\.py$
+        entry: python3 scripts/ci/test_gen_pages.py
+        files: ^scripts/ci/(gen_pages|test_gen_pages)\.py$
         pass_filenames: false
         stages: [pre-commit]
 
       - id: build-pages
         name: build documentation pages (public/)
         language: system
-        entry: .ci_bin/build_pages.sh
+        entry: scripts/ci/build_pages.sh
         always_run: true
         pass_filenames: false
         stages: [post-commit]
@@ -39,7 +39,7 @@ repos:
       - id: trailing-whitespace
       - id: mixed-line-ending
       - id: end-of-file-fixer
-        exclude: '.config/nvim/lazy-lock.json'
+        exclude: 'ansible/roles/dotfiles/files/home/.config/nvim/lazy-lock.json'
 
       # Script and executable checks
       - id: check-executables-have-shebangs
@@ -56,20 +56,19 @@ repos:
     rev: v1.38.0
     hooks:
       - id: yamllint
-        args: [-c, .config/yamllint/config]
+        args: [-c, ansible/roles/dotfiles/files/home/.config/yamllint/config]
 
   - repo: https://github.com/JohnnyMorganz/StyLua
     rev: v2.3.1
     hooks:
       - id: stylua-github
-        args: [--config-path, .config/nvim/stylua.toml]
+        args: [--config-path, ansible/roles/dotfiles/files/home/.config/nvim/stylua.toml]
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        # dotbot config uses flow sequences yamllint validates; keep prettier off it
-        exclude: '(.config/nvim/lazy-lock.json|^install.conf.yaml$)'
+        exclude: '(ansible/roles/dotfiles/files/home/.config/nvim/lazy-lock.json|^install.conf.yaml$)'
         args:
           [
             --print-width=80,
@@ -87,7 +86,7 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        exclude: '.config/nvim/lazy-lock.json'
+        exclude: 'ansible/roles/dotfiles/files/home/.config/nvim/lazy-lock.json'
 
   - repo: https://github.com/zricethezav/gitleaks
     rev: v8.30.0
@@ -106,16 +105,15 @@ repos:
     hooks:
       - id: flake8
         args: [--max-line-length=88, '--extend-ignore=E203,W503,E501']
-        # bin/steam-optimize is not yet PEP8/black-compliant (pending a
-        # dedicated formatting pass); zsh/ only excludes vendored plugin code.
-        exclude: ^(bin/steam-optimize|zsh/|config/)
+        # steam-optimize has a separate formatting follow-up; exclude vendored Zsh plugins.
+        exclude: ^(ansible/roles/dotfiles/files/home/\.bin/steam-optimize|ansible/roles/dotfiles/files/home/zsh/)
 
   - repo: https://github.com/psf/black
     rev: 26.1.0
     hooks:
       - id: black
         args: [--line-length=88]
-        exclude: ^(bin/steam-optimize|zsh/|config/)
+        exclude: ^(ansible/roles/dotfiles/files/home/\.bin/steam-optimize|ansible/roles/dotfiles/files/home/zsh/)
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
@@ -123,4 +121,4 @@ repos:
       - id: shellcheck
         args: [--severity=warning, --exclude=SC2207, --exclude=SC2034]
         # shellcheck does not support zsh syntax (glob qualifiers, etc.)
-        exclude: '(\.zsh$|^\.zshrc$|^\.zshenv$|^\.zprofile$)'
+        exclude: '(\.zsh$|^home/\.zshrc$|^home/\.zshenv$|^home/\.zprofile$)'

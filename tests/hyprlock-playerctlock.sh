@@ -3,8 +3,8 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
-PLAYER_HELPER=${PLAYER_HELPER:-"$ROOT_DIR/.config/hypr/hyprlock/playerctlock.sh"}
-EMPTY_IMAGE="$ROOT_DIR/.config/hypr/hyprlock/empty.png"
+PLAYER_HELPER=${PLAYER_HELPER:-"$ROOT_DIR/ansible/roles/dotfiles/files/home/.config/hypr/hyprlock/playerctlock.sh"}
+EMPTY_IMAGE="$ROOT_DIR/ansible/roles/dotfiles/files/home/.config/hypr/hyprlock/empty.png"
 TEST_DIR=$(mktemp -d)
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 

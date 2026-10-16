@@ -5,7 +5,7 @@ ROOT_DIR=${0:A:h:h}
 TEST_DIR=$(mktemp -d)
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 mkdir -p "$TEST_DIR/one/.git" "$TEST_DIR/two/.git"
-source "$ROOT_DIR/zsh/functions/git.zsh"
+source "$ROOT_DIR/ansible/roles/dotfiles/files/home/zsh/functions/git.zsh"
 
 git() {
   print -r -- "$*" >> "$TEST_DIR/git-calls"

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 ROOT_DIR=${0:A:h:h}
-source "$ROOT_DIR/zsh/functions/arch.zsh"
+source "$ROOT_DIR/ansible/roles/dotfiles/files/home/zsh/functions/arch.zsh"
 
 pacman() { return 1; }
 yay() { return 0; }

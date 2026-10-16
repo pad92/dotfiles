@@ -1,0 +1,21 @@
+---
+packages_family_group_labels:
+  01_base: Base
+  02_fonts: Fonts
+  03_gtk: GTK
+  04_printers: Printers
+  05_printers_canon: Canon printer drivers
+  06_printers_samsung: Samsung printer drivers
+  07_intel_legacy: Legacy Intel graphics
+  08_amd: AMD graphics
+  08_intel_modern: Intel graphics
+  09_nvidia_legacy: Legacy NVIDIA graphics
+  09_nvidia_modern: NVIDIA graphics
+  10_sre_devops: SRE and DevOps
+  11_hyprland: Hyprland desktop
+  12_containers_docker: Docker
+  13_containers_podman: Podman
+  14_iac_opentofu: OpenTofu
+  15_iac_terraform: Terraform
+  20_apps: Applications
+  21_steam: Steam and games

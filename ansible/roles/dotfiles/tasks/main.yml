@@ -1,0 +1,12 @@
+---
+- name: Initialize Git submodules
+  ansible.builtin.import_tasks: submodules.yml
+  tags: [dotfiles_submodules]
+
+- name: Deploy dotfiles
+  ansible.builtin.import_tasks: deploy.yml
+  tags: [dotfiles_deploy]
+
+- name: Apply runtime changes
+  ansible.builtin.import_tasks: runtime.yml
+  tags: [dotfiles_runtime]

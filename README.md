@@ -1,13 +1,13 @@
 # My Dotfiles
 
-My Linux desktop configuration, primarily for Arch Linux and CachyOS: Hyprland,
-Zsh, Neovim, Alacritty, and tmux, with Waybar and Mako.
+Linux desktop configuration for Arch Linux and CachyOS, built around Hyprland,
+Zsh, Neovim, Alacritty, tmux, Waybar, and Mako.
 
 ![Hyprland desktop with Neovim, Waybar and Fastfetch on CachyOS](./dist/hyprland.webp)
 
 [Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) · [Arch installation guide](./dist/arch/install.md)
 
-## Installation
+## Install
 
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
@@ -15,346 +15,158 @@ cd ~/.dotfiles
 ./install
 ```
 
-Run the installer from a terminal as a regular user with `sudo` access. You can
-choose package groups such as fonts, Hyprland, generation-specific GPU drivers,
-containers, infrastructure tools, and Steam; packages already on the system are
-skipped. Select only the hardware and alternative-tool groups that match the
-machine. Before selecting Steam or any group containing `lib32-*` packages,
-enable `[multilib]` as described in the
-[Arch installation guide](./dist/arch/install.md#package-manager).
+Install `ansible-playbook` first. Run `./install` from a regular user account
+with `sudo` access. The playbook supports Arch Linux and CachyOS, Debian and
+Ubuntu, and Fedora. It installs selected package groups and deploys dotfiles.
+Use `./install --check` to preview changes.
 
-The installer preselects the base, GTK, and Hyprland groups. It also detects PCI
-graphics controllers and preselects the matching AMD, Intel, or NVIDIA driver
-group. Hybrid Intel/NVIDIA systems get both GPU groups. Legacy Intel GPUs (older
-than Broadwell) and legacy NVIDIA GPUs (Maxwell, Pascal, and Volta) are
-distinguished from newer hardware. These are menu defaults, so they can still
-be changed before confirmation. Canon and Samsung printer drivers are separate
-from the generic printer stack, as are Docker and Podman and the OpenTofu and
-Terraform IaC tools.
+Package groups are selected from OS defaults and detected GPU hardware. Set
+`packages_host_groups` in `ansible/host_vars/localhost.yml` to choose groups by
+hostname, or use `-e packages_group_selection=...` for a one-time override.
+GPU groups are added only when all controllers can be classified. Package
+mappings are in `ansible/roles/packages/vars/`.
 
-The installer uses `paru` or `yay` if either is already available. Otherwise, it
-can build `yay-bin` for you. If you decline, it skips the AUR packages.
+On Arch, the installer configures color output, disk-space checks, five parallel
+downloads, and the standard `multilib` repository in `/etc/pacman.conf`. Enabling
+`multilib` triggers `pacman -Syu`. Otherwise, selected official packages are
+installed without a full upgrade by default; use
+`-e packages_upgrade_system=true` to request one.
 
-Package installation is additive by default. Use `./install --package-plan` to
-preview changes without requesting sudo access, or
-`./install --reconcile-packages` to review packages previously installed by the
-dotfiles installer that are no longer selected. Reconciliation never claims
-packages that predated its state file and requires explicit confirmation before
-removal. Previous group selections are restored from state. Detected GPU groups
-replace saved GPU defaults only when every controller can be classified;
-partial detection preserves all saved choices for manual review. If a package
-inventory fails or returns invalid data, installation stops without rewriting
-the saved package state.
-The base, GTK, and Hyprland defaults are then enabled on every run; an empty
-selection after manually clearing the menu still means “skip”.
+Missing AUR packages are built with `yay`. If needed, the playbook installs its
+build dependencies, builds it as the regular user, then installs it with
+privilege escalation. Set `packages_aur_action=ask` to confirm AUR work or
+`packages_aur_action=skip` to skip it.
 
-GPU-driver removal also requires `--reconcile-packages`, recorded ownership,
-and explicit confirmation. Packages installed outside the installer remain
-unmanaged. Removal previews reject desired or protected packages.
+Package installation is additive. Reconciliation removes only packages
+recorded as managed by this installer, after a transaction preview and explicit
+confirmation. Use `./install -e packages_action=reconcile` to review and apply
+reconciliation. Packages installed before the state file was created remain
+unmanaged.
 
-For the editor configuration only:
+The installer also configures native CPU tuning for makepkg on Arch. Packages
+built with these settings may not run on computers with a different CPU.
 
-```sh
-curl -sSL https://gitlab.com/pad92/dotfiles/-/raw/main/vim.sh | bash
-```
+## Ansible tags
 
-A [packaged editor configuration](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim)
-is also available.
+Pass tags with `./install --tags <tag>`. The supported-distribution check always
+runs. Tags on an enclosing role or task group include its subtasks.
 
-## Customization
+| Tag                            | Description                                                                                                               |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `packages`                     | Run the package role.                                                                                                     |
+| `packages_select`              | Select package groups.                                                                                                    |
+| `packages_install`             | Configure Arch repositories and install selected packages.                                                                |
+| `packages_reconcile`           | Configure repositories, install selected packages, and reconcile managed packages.                                        |
+| `pacman`, `pacman_config`      | Configure `/etc/pacman.conf`; aliases.                                                                                    |
+| `yay`                          | Select packages and run the AUR flow. Also runs `pacman` configuration, but skips selected official package installation. |
+| `system`                       | Run system configuration.                                                                                                 |
+| `makepkg`, `makepkg_config`    | Configure makepkg; aliases.                                                                                               |
+| `dotfiles`                     | Run the full dotfiles role.                                                                                               |
+| `dotfiles_submodules`          | Initialize Git submodules.                                                                                                |
+| `dotfiles_deploy`              | Deploy dotfiles and user systemd units.                                                                                   |
+| `dotfiles_runtime`             | Apply runtime changes.                                                                                                    |
+| `vim`                          | Update Vim plugins when `dotfiles_update_vim_plugins=true`.                                                               |
+| `font_cache`                   | Rebuild the font cache.                                                                                                   |
+| `mako_reload`, `waybar_reload` | Reload the service when it is running.                                                                                    |
+| `systemd`                      | Install user units, reload the manager when needed, and enable/start the graphical units listed in Ansible defaults.      |
+| `hyprlock_carousel`            | Render the Hyprlock carousel helper.                                                                                      |
 
-Set your Git identity in `~/.gitconfig.local`, which [`.gitconfig`](./.gitconfig)
-includes without tracking it:
+For example, `./install --tags yay --ask-become-pass` runs the AUR flow, and
+`./install --tags dotfiles_deploy` deploys dotfiles without installing packages.
+The installer forwards other arguments to `ansible-playbook`, including
+`--check`, `--ask-become-pass`, and `-e`.
 
-```ini
-[user]
-    name = Your Name
-    email = your.email@example.com
-    signingkey = your_ssh_or_gpg_key
-```
+## Customize
 
-| Configuration                                                              | What to change                                                      |
-| :------------------------------------------------------------------------- | :------------------------------------------------------------------ |
-| [`.zshenv`](./.zshenv), [`.zprofile`](./.zprofile), [`.zshrc`](./.zshrc)   | Shell environment, desktop login, plugins, and aliases              |
-| [`.config/uwsm/`](./.config/uwsm/)                                         | Shared session environment and compositor-specific GPU settings     |
-| [`.config/hypr/`](./.config/hypr/)                                         | Bindings, window rules, and `hosts/<hostname>.lua` hardware layouts |
-| [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf)                      | Toolkit colors, fonts, GTK/icon themes, and geometry                |
-| [`.config/waybar/`](./.config/waybar/)                                     | Status bar, including per-host configurations                       |
-| [`.config/alacritty/`](./.config/alacritty/), [`.tmux.conf`](./.tmux.conf) | Terminal appearance and tmux bindings                               |
-| [`.config/nvim/`](./.config/nvim/), [`.vimrc`](./.vimrc)                   | Editor settings and plugins                                         |
-| [`.config/awww/`](./.config/awww/)                                         | Local and remote wallpaper sources                                  |
-| `~/.local/share/backgrounds/`                                              | Local images for wallpaper rotation                                 |
+Set Git identity in the untracked `~/.gitconfig.local`; the managed [`.gitconfig`](./ansible/roles/dotfiles/files/home/.gitconfig)
+includes it.
 
-Shell settings include `LANG`, `EDITOR`, and the Oh My Zsh plugin list. The common
-UWSM environment defines `BROWSER`, `TERMINAL`, and `XCURSOR_THEME`, while
-`env-hyprland` contains host-specific GPU settings such as `AQ_DRM_DEVICES` and
-Vulkan drivers. Hyprland host files define
-monitor layouts and workspace mappings; Waybar uses `config.PadsTower` and
-`config.PadsP5560` for different hardware.
+| Configuration      | Location                                                                                                                               |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell and login    | [Zsh files](./ansible/roles/dotfiles/files/home/zsh/) and [`.zshrc`](./ansible/roles/dotfiles/templates/home/.zshrc.j2)                |
+| Hyprland           | [`.config/hypr/`](./ansible/roles/dotfiles/files/home/.config/hypr/)                                                                   |
+| Waybar             | [`.config/waybar/`](./ansible/roles/dotfiles/files/home/.config/waybar/)                                                               |
+| Terminal and tmux  | [Alacritty](./ansible/roles/dotfiles/files/home/.config/alacritty/) and [`.tmux.conf`](./ansible/roles/dotfiles/files/home/.tmux.conf) |
+| Editors            | [Neovim](./ansible/roles/dotfiles/files/home/.config/nvim/) and [Vim](./ansible/roles/dotfiles/files/home/.vimrc)                      |
+| Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                         |
 
-Alacritty settings cover fonts, spacing, opacity, and colors. For Hyprland Lua
-validation and completion, see `.config/hypr/.luarc.json`. Electron 38.2 and
-later use native Wayland by default in a Wayland session, as described in the
-[Electron Wayland notes](https://www.electronjs.org/blog/tech-talk-wayland).
-This repository's `~/.config/electron-flags.conf` contains no required flags.
+Host-aware files are rendered from `ansible/roles/dotfiles/templates/`. Static
+files are copied from `ansible/roles/dotfiles/files/`. Conflicting regular files
+are backed up with a `.bak` suffix; managed symbolic links are removed while
+their targets are left untouched.
 
 ## Shell and editors
 
-Zsh uses Oh My Zsh with `docker`, `ansible`, `git`, `vscode`, and `thefuck`, plus
-autosuggestions and syntax highlighting. It also configures history, prompt
-themes, and `$HOME/.bin` in `PATH`.
+Zsh uses Oh My Zsh, autosuggestions, syntax highlighting, and custom aliases and
+functions in [`zsh/`](./ansible/roles/dotfiles/files/home/zsh/). Notable helpers
+include `arch_update`, `clean_arch`, `extract`, `mtail`, and GPG encrypt/decrypt
+functions. The Neovim setup uses Lua, lazy.nvim, Telescope, Treesitter, Mason,
+and native LSP; it requires Neovim 0.12+. The Vim setup uses Vundle.
 
-### Custom aliases and functions
-
-Aliases live in [`zsh/init/aliases.zsh`](./zsh/init/aliases.zsh), and shell
-functions load from [`zsh/functions/`](./zsh/functions/).
-
-| Alias                            | Command                                 |
-| :------------------------------- | :-------------------------------------- |
-| `terraform`                      | `tofu`, when available                  |
-| `mediasync`                      | Home media server sync script           |
-| `backup`                         | `~/.dotfiles/bin/backup.sh`             |
-| `steam-opt`                      | `steam-optimize`                        |
-| `mirrored`, `mirrors`, `mirrora` | `mirror` sorted by delay, score, or age |
-
-Common functions:
-
-| Command                                      | Purpose                                                                                  |
-| :------------------------------------------- | :--------------------------------------------------------------------------------------- |
-| `arch_update`                                | Run system, firmware, Flatpak, and orphan/cache updates; report failed steps             |
-| `clean_arch`                                 | Remove orphan packages, clean pacman/yay caches, and find `.pacnew` / `.pacsave` files   |
-| `mirror [delay\|score\|age]`                 | Select and rank French Arch mirrors with `reflector`                                     |
-| `extract <file>`                             | Unpack archives including `.tar.bz2`, `.tgz`, `.zip`, `.rar`, and `.7z`                  |
-| `gpg-encrypt <file/dir>` / `gpge`            | Encrypt files or directories recursively; prompt for the GPG email                       |
-| `gpg-decrypt <file/dir>` / `gpgd`            | Decrypt files or directories and extract `.tar.gz.gpg` / `.tgz.gpg` archives             |
-| `md5`, `sha1`, `sha256`, `sha512` `<string>` | Hash a string with OpenSSL                                                               |
-| `ssh-copy-agent-keys [user@host]`            | Select keys from `ssh-agent` and add them to remote `authorized_keys` without duplicates |
-| `ip_a`, `ip_l`, `ip_p`                       | Show all, local, or public IP information                                                |
-| `curl_time <url>`                            | Measure DNS, connection, first-byte, and total HTTP timings                              |
-| `meteo`                                      | Show the weather through `wttr.in`                                                       |
-| `transfer <file>`                            | Upload to `transfer.sh` and return a shareable URL                                       |
-| `youtubeEncode <file>`                       | Encode video with `libx264` and AAC for YouTube                                          |
-| `radio`                                      | Listen to radio from the terminal                                                        |
-| `calc "<expr>"`                              | Evaluate expressions with `bc`                                                           |
-| `src`                                        | Reload the shell configuration                                                           |
-
-Maintenance functions live in `arch.zsh`; archive and encryption helpers live
-in `archive.zsh` and `crypt.zsh`. The GPG helpers preserve modification times
-and offer to delete source files. Encryption uses `--trust-model always`;
-decryption also restores timestamps when extracting archives.
-
-### Shell shortcuts
-
-Configured in [`zsh/init/key-bindings.zsh`](./zsh/init/key-bindings.zsh):
-
-| Shortcut               | Action                               |
-| :--------------------- | :----------------------------------- |
-| `Ctrl+R`               | Search backward through history      |
-| `Ctrl+X Ctrl+E`        | Edit the command in `$EDITOR`        |
-| `Ctrl+Left/Right`      | Move by word                         |
-| `Alt+L` (`Esc L`)      | Run `ls`                             |
-| `Alt+W` (`Esc W`)      | Cut text between the cursor and mark |
-| `Alt+M`                | Copy the previous shell word         |
-| `Up/Down` after typing | Search history by the typed prefix   |
-| `PageUp/PageDown`      | Navigate history                     |
-| `Home/End`             | Move to the start/end of the line    |
-| `Shift+Tab`            | Cycle completion backward            |
-| `Space`                | Expand history references            |
-
-### Follow several logs
-
-[`mtail`](./zsh/functions/mtail.zsh) prefixes lines with the filename and uses
-`tail -F` to follow files across rotation. It prints the last 10 lines and scans
-for new matches every second. Quote globs to include future files:
+The `mtail` function follows current and future log files across rotation. Quote
+globs to include files created later:
 
 ```zsh
-mtail                              # Defaults to *.log
-mtail app.log worker.log           # Specific files
-mtail '*.log' '/var/log/app/*.log'  # Current and future matches
-mtail 'my app.log'                 # Spaces in filenames
+mtail '*.log' '/var/log/app/*.log'
 ```
-
-`Ctrl+C` stops the followers without closing Zsh. Requires `awk` and standard
-command-line tools, not `inotify-tools`.
-
-### Editors
-
-[Neovim](./.config/nvim/) is configured in Lua:
-
-- `lazy.nvim` manages plugins and lazy loading.
-- Telescope searches files, buffers, and symbols.
-- `nvim-treesitter` on its `main` branch provides highlighting, indentation,
-  and folding. This setup requires Neovim 0.12+.
-- Native LSP (`vim.lsp.config` / `vim.lsp.enable`, available since 0.11) works
-  with Mason and `nvim-cmp`. `LspAttach` sets navigation, diagnostic, and
-  formatting shortcuts.
-- Gitsigns shows changes in the margin and provides hunk navigation, staging,
-  and blame commands.
-- Gruvbox, Lualine, and vertical indentation guides define the appearance.
-
-The [older Vim setup](./.vimrc) uses Vundle, a custom status line, filetype
-settings, `vim-gitgutter`, and `vim-fugitive`. Alacritty is the terminal;
-tmux includes session-management and layout-persistence plugins.
 
 ## Desktop
 
-The Hyprland configuration uses Lua and requires **Hyprland 0.55+**.
-The theme starts in [`hyprtoolkit.conf`](./.config/hypr/hyprtoolkit.conf).
-`include/toolkit.lua` parses it, `config.lua` consumes it, and
-`conf/autostart.lua` applies GTK/libadwaita settings through `gsettings`.
-Lock-screen colors remain separate, as described below.
+The Hyprland configuration uses Lua and requires Hyprland 0.55+. See the
+[session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY startup,
+GNOME Keyring PAM, UWSM, and systemd session setup.
 
-For TTY startup, see the
-[session installation guide](./dist/arch/install.md#gnome-keyring-pam-setup).
-It covers GNOME Keyring PAM configuration in `/etc/pam.d/login`, UWSM setup,
-Zsh startup files, and systemd session services. The
-[upstream systemd guide](https://wiki.hypr.land/Useful-Utilities/Systemd-start/)
-provides further context.
+| Shortcut                            | Action                                           |
+| :---------------------------------- | :----------------------------------------------- |
+| `SUPER + Return`                    | Terminal                                         |
+| `SUPER + E / C / W / M`             | File manager / editor / browser / music player   |
+| `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
+| `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
+| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
+| `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
+| `Print` / `SUPER + P`               | Screenshot                                       |
 
-### Main shortcuts
+`awww.sh` selects wallpapers per monitor from local files or configured NFS/CIFS
+mounts. Copy its sample to `~/.config/awww/awww.conf` to configure sources.
+Renders are cached under a managed directory with a 2 GiB default quota;
+references are preserved. ImageMagick is required. `awww.service` starts with
+Hyprland and `awww_random.timer` changes wallpapers every 30 minutes.
 
-| Shortcut                                  | Action                                         |
-| :---------------------------------------- | :--------------------------------------------- |
-| `SUPER + Return`                          | Terminal                                       |
-| `SUPER + E / C / W / M`                   | File manager / editor / browser / music player |
-| `SUPER + Shift + Return`                  | Password manager                               |
-| `SUPER + Shift + Q`                       | Close window                                   |
-| `SUPER + [0-9]` / `SUPER + Shift + [0-9]` | Focus workspace / move window to workspace     |
-| `SUPER + Arrows` or Vim keys              | Move focus; add `Shift` to move the window     |
-| `SUPER + F` / `SUPER + ALT + Space`       | Toggle fullscreen / floating                   |
-| `SUPER + L` / `SUPER + Delete`            | Lock / logout menu                             |
-| `SUPER + ALT + Right`                     | Change wallpaper                               |
-| `SUPER + PgUp/PgDn` / `SUPER + Home`      | Zoom in/out / reset                            |
-| `Print` / `SUPER + P`                     | Screenshot                                     |
-
-Media and brightness keys control volume, playback, and screen brightness.
-Left-click Waybar's audio module to switch to the next output sink. Right-click it
-to open `pavucontrol`.
-
-### LACT profiles
-
-[`.config/lact/config.yaml`](./.config/lact/config.yaml) is a profile template for
-PadsTower's GPU (`1002:73df-1462:3980-0000:0d:00.0`). The installer does not copy
-it to `/etc/lact/config.yaml`. To use it, first back up your LACT configuration,
-verify the GPU identifier in LACT, and manually merge the relevant profiles.
-Review the fan curves for your hardware before applying them.
-
-### Wallpapers and lock screen
-
-[`awww.sh`](./bin/awww.sh) selects a different image for each monitor from local
-files or an existing NFS/CIFS mount. Photos keep their aspect ratio, use a
-blurred copy as background, and show their date and city when the metadata is
-available. Rendered images account for each monitor's scale factor on mixed-DPI
-setups. In `auto` mode, an unavailable, empty, or slow remote source falls back
-to local images.
-
-Copy the sample to create the Git-ignored configuration. The script reloads it
-each time it runs and uses the sample itself when the local file is absent.
-
-```sh
-cp ~/.config/awww/awww.conf-sample ~/.config/awww/awww.conf
-```
-
-The sample documents multiple local and remote source directories, NFS/CIFS
-mounts, timeouts, and troubleshooting commands.
-
-Generated renders live in `managed-v1/` under `AWWW_RENDER_CACHE_DIR`. The cache
-removes unreferenced renders older than 30 days and evicts the oldest remaining
-renders above `AWWW_RENDER_CACHE_MAX_BYTES` (2 GiB by default). Wallpaper and
-carousel references are preserved, even if they alone exceed the quota; the
-script then prints a warning. Files outside this managed directory, including
-older renders from previous versions, are left for manual cleanup. ImageMagick
-is required even with effects disabled, to reject missing or corrupt images.
-
-Put fallback images in `~/.local/share/backgrounds/`. For example, this command
-copies images tagged `paysage` from another directory:
-
-```sh
-exiftool -q -if '$Keywords =~ /paysage/' -r ${SRC_DIR} \
-    -o "${XDG_DATA_HOME:-$HOME/.local/share}/backgrounds/"
-```
-
-`awww.service` starts with Hyprland, and `awww_random.timer` changes wallpapers
-every 30 minutes. Apply changes with:
-
-```sh
-systemctl --user restart awww_random.service
-```
-
-[Hyprlock](./.config/hypr/hyprlock.conf) shows the time, system batteries, and
-current media. Player text and artwork refresh every 3 seconds; battery status
-refreshes every 10 seconds.
-
-Choose **Carousel** in Wlogout to lock with photos from the configured AWWW
-sources. The background advances every minute and uses AWWW's blur and metadata
-settings. Each image update tries at most three images per source. In `auto`
-mode, failed remote reads fall back to local images. A helper invocation has a
-25-second deadline, followed by at most two seconds for forced termination;
-`CAROUSEL_TIMEOUT_SECONDS` can override the deadline (minimum 3 seconds).
-If the update fails, the previous background remains available.
-
-For media playing in Firefox or Chrome, the source label reads `xesam:url` and
-shows the service name instead of the browser. Known services such as Deezer and
-YouTube get their own icon. Other valid domains use a globe, while missing or
-invalid URLs fall back to the browser name.
-
-The [helper scripts](./.config/hypr/hyprlock/) read metadata with `playerctl`,
-download HTTPS covers with `curl`, and resize them to 150 × 150 with ImageMagick.
-Downloads and conversions have size, time, and resource limits. Covers are
-cached by URL under `$XDG_RUNTIME_DIR`, or in a private `${TMPDIR:-/tmp}`
-directory when no runtime directory is available. A cached cover stays on
-screen if refreshing that same URL fails or Firefox deletes its temporary image.
-When there is no usable cover for the current URL, Hyprlock displays a
-transparent image.
-
-Battery readings come from `/sys/class/power_supply` and exclude peripherals.
-Colors and positions are configured in `hyprlock.conf`.
+Hyprlock displays time, battery, and media information. Its carousel option
+uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2)
+for details. The LACT profile in the repository is a template and is not copied
+to `/etc/lact/config.yaml`; verify the GPU identifier and review fan curves
+before applying it.
 
 ## Scripts
 
-See [`bin/`](./bin/) for the full collection.
+The playbook deploys [`~/.bin/`](./ansible/roles/dotfiles/files/home/.bin/) and
+adds it to `PATH` in Zsh.
 
-| Script                                                     | Purpose                                                                                                                                                                                                                                       |
-| :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`steam-optimize`](./bin/steam-optimize) (`steam-opt`)     | Python 3 game launcher with monitor detection, RADV/Vulkan ICD/Mesa layer settings, per-game overrides, Gamescope, and session cleanup                                                                                                        |
-| [`backup.sh`](./bin/backup.sh) (`backup`)                  | Back up with rsync and SSH agent authentication, report Arch orphans without removing them, estimate added and deleted file sizes and full sizes of changed files, and apply [exclude patterns](./dist/backup_excludes.txt) to remote pruning |
-| [`awww.sh`](./bin/awww.sh)                                 | Select a wallpaper per monitor from local files or an available NFS/CIFS mount                                                                                                                                                                |
-| [`razer_dpi.py`](./bin/razer_dpi.py)                       | Manage Razer mouse DPI                                                                                                                                                                                                                        |
-| [`hypr-screenshot.sh`](./bin/hypr-screenshot.sh)           | Capture the desktop showcase in a nested compositor with `make screenshot`                                                                                                                                                                    |
-| [`comcut`](./bin/comcut), [`comskip.sh`](./bin/comskip.sh) | Detect and remove commercial breaks with comskip/ffmpeg, adapted from [comchap](https://github.com/BrettSheleski/comchap)                                                                                                                     |
-| [`diff-cmd`](./bin/diff-cmd)                               | Compare a command's output for two arguments using the `IN` placeholder                                                                                                                                                                       |
-| [`vscodium_ext.sh`](./bin/vscodium_ext.sh)                 | Install VSCodium extensions                                                                                                                                                                                                                   |
+| Script                                                                                                                           | Purpose                                          |
+| :------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------- |
+| [`steam-optimize`](./ansible/roles/dotfiles/files/home/.bin/steam-optimize)                                                      | Configure per-game Vulkan and Gamescope options. |
+| [`backup.sh`](./ansible/roles/dotfiles/files/home/.bin/backup.sh)                                                                | Back up files with rsync over SSH.               |
+| [`awww.sh`](./ansible/roles/dotfiles/files/home/.bin/awww.sh)                                                                    | Select and render wallpapers.                    |
+| [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
+| [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Capture the desktop showcase.                    |
+| [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
+| [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
+| [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
+
+Package cleanup is opt-in. Pass `--clean-packages` to `backup.sh` to run
+`yay -Sc` on Arch or `apt autoremove --purge` on Debian.
+
+To install the Vim configuration, run [`scripts/vim.sh`](./scripts/vim.sh).
+GitLab CI also builds downloadable [Vim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim)
+and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_nvim)
+configuration archives.
 
 ## CI and releases
 
-The repository is mirrored on GitHub, GitLab, and a self-hosted Gitea instance.
-All three use shared scripts in [`.ci_bin/`](./.ci_bin/).
+GitHub, GitLab, and Gitea use shared scripts in [`scripts/ci/`](./scripts/ci/).
+See the [GitHub workflow documentation](./.github/workflows/README.md) and
+[GitLab CI documentation](./.gitlab/README.md). Tags matching `v*` publish a
+release using the matching changelog section.
 
-| Forge  | Pipeline                                     | Documentation                                     |
-| :----- | :------------------------------------------- | :------------------------------------------------ |
-| GitHub | [`.github/workflows/`](./.github/workflows/) | [Workflows README](./.github/workflows/README.md) |
-| GitLab | [`.gitlab-ci.yml`](./.gitlab-ci.yml)         | [GitLab CI README](./.gitlab/README.md)           |
-| Gitea  | Reuses `.github/workflows/`                  | See the Workflows README                          |
-
-[`.ci_bin/build_pages.sh`](./.ci_bin/build_pages.sh) builds the README,
-changelog, installation guide, and CI documentation into a static site. It also
-backs the local `post-commit` preview hook. The CI pages are published at
-`/github/workflows/README.md/` and `/.gitlab/README.md/`; the GitHub path loses its
-leading dot because `actions/upload-pages-artifact` strips `.github` from the
-published archive.
-
-Tags matching `v*` publish a release using the matching changelog section,
-extracted by [`.ci_bin/extract_release_notes.sh`](./.ci_bin/extract_release_notes.sh).
-
-## Application ecosystem
-
-| Category              | Tools                      |
-| :-------------------- | :------------------------- |
-| Shell                 | Zsh                        |
-| Editors               | Neovim, Vim, VSCode        |
-| Terminal and sessions | Alacritty, tmux            |
-| Desktop tools         | Waybar, hyprlauncher, Mako |
-| Passwords             | Proton Pass CLI            |
-| System information    | Fastfetch, Htop            |
-
-_Maintained by [pad](https://gitlab.com/pad92)🐐 with ❤️ since 2015 (11+ years)_
+_Maintained by [pad](https://gitlab.com/pad92)🐐 since 2015._

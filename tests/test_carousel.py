@@ -8,9 +8,16 @@ import time
 import unittest
 from pathlib import Path
 
+from jinja2 import Environment
+
 ROOT = Path(__file__).parents[1]
-HELPER = ROOT / ".config/hypr/hyprlock/carousel-image.sh"
-EMPTY = ROOT / ".config/hypr/hyprlock/empty.png"
+HELPER_TEMPLATE = (
+    ROOT
+    / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock/"
+    "carousel-image.sh.j2"
+)
+EMPTY = ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock/empty.png"
+AWWW_BIN = ROOT / "ansible/roles/dotfiles/files/home/.bin"
 
 
 class CarouselTests(unittest.TestCase):
@@ -18,6 +25,18 @@ class CarouselTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        self.helper = self.root / "carousel-image.sh"
+        self.helper.write_text(
+            Environment().from_string(HELPER_TEMPLATE.read_text()).render(
+                ansible_managed="Managed by Ansible",
+            )
+        )
+        self.helper.chmod(0o755)
+        self.home = self.root / "home"
+        self.user_bin = self.home / ".bin"
+        self.user_bin.mkdir(parents=True)
+        for script_name in ("awww.sh", "awww-cache.py"):
+            (self.user_bin / script_name).symlink_to(AWWW_BIN / script_name)
         self.cache = self.root / "hyprlock-carousel"
         self.cache.mkdir()
         self.local = self.root / "photos"
@@ -33,6 +52,7 @@ class CarouselTests(unittest.TestCase):
             "AWWW_BLURRED_BACKGROUND=false\nAWWW_METADATA_OVERLAY=false\n"
         )
         self.environment = os.environ | {
+            "HOME": str(self.home),
             "AWWW_CONFIG_FILE": str(self.config),
             "XDG_CACHE_HOME": str(self.root),
             "PATH": f"{self.commands}:{os.environ['PATH']}",
@@ -53,7 +73,7 @@ class CarouselTests(unittest.TestCase):
 
     def run_helper(self, *arguments):
         return subprocess.run(
-            ["bash", str(HELPER), *arguments],
+            ["bash", str(self.helper), *arguments],
             env=self.environment,
             capture_output=True,
             text=True,

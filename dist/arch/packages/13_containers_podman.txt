@@ -1,3 +1,0 @@
-buildah
-podman
-skopeo

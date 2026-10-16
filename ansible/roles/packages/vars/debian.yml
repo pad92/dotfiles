@@ -1,0 +1,66 @@
+---
+packages_family_groups:
+  Debian:
+    01_base:
+      - age
+      - bc
+      - bluez
+      - curl
+      - fastfetch
+      - ffmpeg
+      - git
+      - htop
+      - jq
+      - man-db
+      - manpages
+      - pipewire
+      - python3
+      - rsync
+      - traceroute
+      - vim
+      - zsh
+    02_fonts:
+      - fonts-font-awesome
+      - fonts-jetbrains-mono
+      - fonts-terminus
+      - fonts-ubuntu
+    03_gtk:
+      - '{{ packages_debian_gtk3_package }}'
+      - papirus-icon-theme
+    04_printers:
+      - cups
+      - foomatic-db
+      - printer-driver-gutenprint
+      - system-config-printer
+    10_sre_devops:
+      - ansible
+      - ansible-lint
+      - age
+      - bat
+      - btop
+      - curl
+      - fd-find
+      - fzf
+      - git
+      - golang
+      - httpie
+      - mtr-tiny
+      - nmap
+      - netcat-openbsd
+      - openssh-client
+      - python3
+      - ripgrep
+      - shellcheck
+      - shfmt
+      - tmux
+      - tree
+      - whois
+      - yamllint
+    12_containers_docker:
+      - docker.io
+      - docker-buildx
+      - docker-compose-v2
+    13_containers_podman:
+      - buildah
+      - podman
+      - skopeo

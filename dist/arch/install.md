@@ -173,6 +173,7 @@ UCODE='intel-ucode' # for Intel processors, adjust as needed
 pacstrap -K /mnt \
   base \
   base-devel \
+  ansible \
   cryptsetup \
   ${KERNEL} \
   ${KERNEL}-headers \
@@ -377,8 +378,12 @@ sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/
 pacman -Syu
 ```
 
-`multilib` must be enabled before running the dotfiles installer because the
-base and Steam package groups contain `lib32-*` packages.
+The Ansible installer enables `Color`, `CheckSpace`, and `multilib` in
+`/etc/pacman.conf`, and sets `ParallelDownloads = 5`. When it enables
+`multilib`, it runs `pacman -Syu`, which syncs package databases and upgrades
+installed packages. Run `pacman -Syu` separately when you want a full system
+upgrade and `multilib` is already enabled. The base and Steam groups include
+`lib32-*` packages from `multilib`.
 
 ### Dotfiles
 
@@ -406,7 +411,7 @@ helper: the lists contain optional and hardware-specific groups that should not
 all be installed together.
 
 ```sh
-sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --package-plan'
+sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --check'
 sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install'
 ```
 

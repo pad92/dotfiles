@@ -23,28 +23,30 @@ Desktop.ini
 *.diff
 
 # Editor files
-.vim/.netrwhist
-.vim/backup
-.vim/swap
-.vim/view
-.vim/session
-.vim/tags
-.vim/undo
-.vim/autoload/plug.vim
-.vim/bundle/*
-.vim/bundle/.vundle
-!.vim/bundle/Vundle.vim/*
-.tmux/plugins/*
-!.tmux/plugins/tpm/*
+ansible/roles/dotfiles/files/home/.vim/.netrwhist
+ansible/roles/dotfiles/files/home/.vim/backup
+ansible/roles/dotfiles/files/home/.vim/swap
+ansible/roles/dotfiles/files/home/.vim/view
+ansible/roles/dotfiles/files/home/.vim/session
+ansible/roles/dotfiles/files/home/.vim/tags
+ansible/roles/dotfiles/files/home/.vim/undo
+ansible/roles/dotfiles/files/home/.vim/autoload/plug.vim
+ansible/roles/dotfiles/files/home/.vim/bundle/*
+ansible/roles/dotfiles/files/home/.vim/bundle/.vundle
+!ansible/roles/dotfiles/files/home/.vim/bundle/Vundle.vim/
+!ansible/roles/dotfiles/files/home/.vim/bundle/Vundle.vim/*
+ansible/roles/dotfiles/files/home/.tmux/plugins/*
+!ansible/roles/dotfiles/files/home/.tmux/plugins/tpm/
+!ansible/roles/dotfiles/files/home/.tmux/plugins/tpm/*
 
 # Config files that may contain secrets or be system-specific
-.config/awww/awww.conf
-.config/nitrogen/bg-saved.cfg
-.config/gtk-3.0/bookmarks
-.config/gtk-3.0/servers
-.config/sway/config.d/outputs/*.conf
-.config/rofi/*.cache
-.config/rofi/*.rasi.cache
+ansible/roles/dotfiles/files/home/.config/awww/awww.conf
+ansible/roles/dotfiles/files/home/.config/nitrogen/bg-saved.cfg
+ansible/roles/dotfiles/files/home/.config/gtk-3.0/bookmarks
+ansible/roles/dotfiles/files/home/.config/gtk-3.0/servers
+ansible/roles/dotfiles/files/home/.config/sway/config.d/outputs/*.conf
+ansible/roles/dotfiles/files/home/.config/rofi/*.cache
+ansible/roles/dotfiles/files/home/.config/rofi/*.rasi.cache
 *-config.yml
 
 # Package manager files
@@ -78,13 +80,18 @@ build
 *.dll
 *.exe
 
+# Ansible
+.ansible/
+/.vault
+*.retry
+
 # Dotfiles specific
-.config/hypr/*.cache
-.config/hypr/*.log
-.config/waybar/config
-.config/waybar/state
-.config/waybar/*.cache
-.config/wlogout/*.cache
+ansible/roles/dotfiles/files/home/.config/hypr/*.cache
+ansible/roles/dotfiles/files/home/.config/hypr/*.log
+ansible/roles/dotfiles/files/home/.config/waybar/config
+ansible/roles/dotfiles/files/home/.config/waybar/state
+ansible/roles/dotfiles/files/home/.config/waybar/*.cache
+ansible/roles/dotfiles/files/home/.config/wlogout/*.cache
 
 # Vim-related
 .viminfo
@@ -103,7 +110,6 @@ __pycache__/
 .nox/
 .pylintrc
 .mypy_cache/
-.pytest_cache/
 .hypothesis/
 
 # Node.js
@@ -113,46 +119,31 @@ yarn-debug.log
 yarn-error.log
 
 # Ruby
-*.gem
 .bundle/
 Gemfile.lock
 
 # Go
-*.exe
 *.exe~
-*.dll
-*.so
-*.dylib
-
 # Java
 *.class
 *.jar
 *.war
 *.ear
-target/
 *.hprof
 
 # C/C++
-*.o
 *.obj
-*.exe
 *.out
-*.a
-*.so
-*.dylib
 
 # Rust
-target/
 Cargo.lock
 
 # Haskell
 *.hi
-*.o
 dist-newstyle/
 .stack-work/
 
 # Scala
-target/
 project/target/
 
 # Swift
@@ -162,14 +153,11 @@ DerivedData/
 *.xcscheme
 
 # Emacs
-*~
 .#*
 
 # macOS
-.DS_Store
 .AppleDouble
 .LSOverride
-._*
 .Spotlight-V100
 .Trashes
 .VolumeIcon.icns
@@ -187,11 +175,7 @@ Temporary Items
 .env.*.local
 
 # Backup files
-*~
-*.bak
 *.backup
-*.old
-*.orig
 
 # Distribution files
 dist/*/pkglist-*-*.txt
@@ -201,12 +185,12 @@ dist/*/pkglist-*-*.diff
 99-nvidia.conf
 
 # User-specific config
-.config/xfce4/panel/launcher-*.desktop
-.config/hypr/host-specific.conf
-.config/hypr/host-specific.lua
-.config/systemd/user/default.target.wants/gamemoded.service
-.config/systemd/user/graphical-session.target.wants/hypridle.service
+ansible/roles/dotfiles/files/home/.config/xfce4/panel/launcher-*.desktop
+ansible/roles/dotfiles/files/home/.config/hypr/host-specific.conf
+ansible/roles/dotfiles/files/home/.config/hypr/host-specific.lua
+ansible/roles/dotfiles/files/home/.config/systemd/user/default.target.wants/gamemoded.service
+ansible/roles/dotfiles/files/home/.config/systemd/user/graphical-session.target.wants/hypridle.service
 *.db
 .agents
-.config/uwsm/default-id
+ansible/roles/dotfiles/files/home/.config/uwsm/default-id
 public/
