@@ -5,7 +5,7 @@
 
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
-  tags: [packages_select, packages_install, packages_reconcile, yay]
+  tags: [packages_select, packages_install, packages_reconcile, yay, gpu_modules]
 
 - name: Install selected packages
   ansible.builtin.import_tasks: install.yml

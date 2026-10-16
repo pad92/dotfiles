@@ -33,3 +33,78 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - system_makepkg.stat.exists
   tags: [makepkg, makepkg_config]
+
+- name: Check for supported initramfs generators
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /usr/bin/mkinitcpio
+    - /usr/bin/dracut
+  register: system_initramfs_tools
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+  tags: [gpu_modules]
+
+- name: Select the initramfs generator
+  ansible.builtin.set_fact:
+    system_initramfs_generator_effective: >-
+      {{ system_initramfs_generator
+         if system_initramfs_generator | default('auto') != 'auto'
+         else ('mkinitcpio'
+               if system_initramfs_tools.results[0].stat.exists
+               else 'dracut') }}
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+  tags: [gpu_modules]
+
+- name: Validate initramfs generator selection
+  ansible.builtin.assert:
+    that:
+      - system_initramfs_generator_effective in ['mkinitcpio', 'dracut']
+      - system_initramfs_generator != 'auto' or
+        (system_initramfs_tools.results[0].stat.exists !=
+         system_initramfs_tools.results[1].stat.exists)
+      - (system_initramfs_generator_effective == 'mkinitcpio' and
+        system_initramfs_tools.results[0].stat.exists) or
+        (system_initramfs_generator_effective == 'dracut' and
+        system_initramfs_tools.results[1].stat.exists)
+    fail_msg: >-
+      Set system_initramfs_generator to mkinitcpio or dracut when detection
+      is ambiguous or neither supported generator is installed.
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+  tags: [gpu_modules]
+
+- name: Configure NVIDIA kernel module options
+  ansible.builtin.template:
+    src: gpu-modprobe.conf.j2
+    dest: /etc/modprobe.d/zz-dotfiles-gpu.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+    - >-
+      packages_selected_groups | default([]) | intersect([
+        '09_nvidia_legacy', '09_nvidia_modern'
+      ]) | length > 0
+  notify: Regenerate Arch initramfs
+  tags: [gpu_modules]
+
+- name: Remove NVIDIA kernel module options when no NVIDIA profile is selected
+  ansible.builtin.file:
+    path: /etc/modprobe.d/zz-dotfiles-gpu.conf
+    state: absent
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+    - >-
+      packages_selected_groups | default([]) | intersect([
+        '09_nvidia_legacy', '09_nvidia_modern'
+      ]) | length == 0
+  notify: Regenerate Arch initramfs
+  tags: [gpu_modules]

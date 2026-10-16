@@ -1,0 +1,9 @@
+---
+- name: Regenerate Arch initramfs
+  ansible.builtin.command:
+    argv: >-
+      {{ ['mkinitcpio', '-P']
+         if system_initramfs_generator_effective == 'mkinitcpio'
+         else ['dracut', '--regenerate-all', '--force'] }}
+  changed_when: not ansible_check_mode
+  when: not ansible_check_mode

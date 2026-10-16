@@ -53,6 +53,24 @@ override:
   -e '{"packages_group_selection":["01_base","03_gtk"]}'
 ```
 
+On Arch Linux, selecting an NVIDIA profile makes the system role manage
+`/etc/modprobe.d/zz-dotfiles-gpu.conf`. Both profiles enable zero-initialized
+system memory and DRM modesetting. The modern profile also enables NVIDIA's
+coarse-grained runtime D3 power management; the legacy profile does not, since
+NVIDIA documents RTD3 support for Turing and newer GPUs. Open kernel modules
+preserve video memory automatically. The role does not force that behavior on
+the proprietary legacy driver, which would require systemd integration and
+adequate temporary storage.
+
+When either NVIDIA profile is selected, Ansible detects `mkinitcpio` or
+`dracut` and regenerates the initramfs after the module configuration changes.
+If both or neither are installed, set `system_initramfs_generator` to
+`mkinitcpio` or `dracut`. GSP firmware is enabled by default on supported GPUs,
+so Ansible does not set it. The local `i915 enable_guc=3` setting is commented
+out and is not applied. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
+[power management documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html),
+and the kernel's [i915 driver documentation](https://docs.kernel.org/gpu/i915.html).
+
 Conflicting regular files and directories that need a type change are moved to
 a `.bak` path. Existing symbolic links at managed paths are removed without a
 backup; their targets are left untouched. Package installation is additive.
