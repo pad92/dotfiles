@@ -64,8 +64,9 @@
   when:
     - item.stat.exists
     - >-
-      (not item.stat.islnk and item.item in dotfiles_directory_paths and
-       not item.stat.isdir) or
+      (not item.stat.islnk and
+       ((item.item in dotfiles_directory_paths and not item.stat.isdir) or
+        (item.item in dotfiles_link_destinations and item.stat.isdir))) or
       (not item.stat.islnk and item.item in dotfiles_file_paths and
        item.stat.isdir)
   register: dotfiles_backup_stats
@@ -94,8 +95,9 @@
   when:
     - item.stat.exists
     - >-
-      (not item.stat.islnk and item.item in dotfiles_directory_paths and
-       not item.stat.isdir) or
+      (not item.stat.islnk and
+       ((item.item in dotfiles_directory_paths and not item.stat.isdir) or
+        (item.item in dotfiles_link_destinations and item.stat.isdir))) or
       (not item.stat.islnk and item.item in dotfiles_file_paths and
        item.stat.isdir)
   changed_when: true

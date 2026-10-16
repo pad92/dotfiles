@@ -48,6 +48,7 @@ ansible/roles/dotfiles/files/home/.config/sway/config.d/outputs/*.conf
 ansible/roles/dotfiles/files/home/.config/rofi/*.cache
 ansible/roles/dotfiles/files/home/.config/rofi/*.rasi.cache
 *-config.yml
+ansible/group_vars/all/vault.yml
 
 # Package manager files
 .node_modules
