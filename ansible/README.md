@@ -66,8 +66,14 @@ When either NVIDIA profile is selected, Ansible detects `mkinitcpio` or
 `dracut` and regenerates the initramfs after the module configuration changes.
 If both or neither are installed, set `system_initramfs_generator` to
 `mkinitcpio` or `dracut`. GSP firmware is enabled by default on supported GPUs,
-so Ansible does not set it. The local `i915 enable_guc=3` setting is commented
-out and is not applied. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
+so Ansible does not set it. The i915 GuC option remains at the kernel default,
+matching the commented local setting. To configure it for the modern Intel
+profile, set `system_i915_enable_guc` to `-1`, `0`, `1`, `2`, or `3`; `-1`
+keeps automatic selection, while `1` enables GuC submission and `2` enables
+HuC authentication; `3` enables both. The kernel documents these features and
+notes that support varies by platform. Values `1`, `2`, and `3` also require
+`system_i915_guc_supported: true`, which must only be set after confirming the
+GPU supports the selected operation. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
 [power management documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html),
 and the kernel's [i915 driver documentation](https://docs.kernel.org/gpu/i915.html).
 

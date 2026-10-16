@@ -8,6 +8,10 @@ TEMPLATE = (
     Path(__file__).parents[1]
     / "ansible/roles/system/templates/gpu-modprobe.conf.j2"
 )
+I915_TEMPLATE = (
+    Path(__file__).parents[1]
+    / "ansible/roles/system/templates/i915-modprobe.conf.j2"
+)
 
 
 class GpuModprobeTemplateTests(unittest.TestCase):
@@ -34,6 +38,16 @@ class GpuModprobeTemplateTests(unittest.TestCase):
         self.assertNotIn("NVreg_UseKernelSuspendNotifiers", config)
         self.assertIn("NVreg_InitializeSystemMemoryAllocations=1", config)
         self.assertIn("options nvidia_drm modeset=1", config)
+
+    def test_i915_guc_option_is_rendered_only_when_explicitly_configured(self):
+        template = Environment().from_string(
+            I915_TEMPLATE.read_text(encoding="utf-8")
+        )
+
+        self.assertIn(
+            "options i915 enable_guc=3",
+            template.render(system_i915_enable_guc=3),
+        )
 
 
 if __name__ == "__main__":

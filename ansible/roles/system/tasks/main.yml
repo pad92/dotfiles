@@ -108,3 +108,47 @@
       ]) | length == 0
   notify: Regenerate Arch initramfs
   tags: [gpu_modules]
+
+- name: Validate i915 GuC setting
+  ansible.builtin.assert:
+    that:
+      - system_i915_enable_guc | string in ['-1', '0', '1', '2', '3']
+      - "'08_intel_modern' in packages_selected_groups"
+      - system_i915_enable_guc | string in ['-1', '0'] or
+        system_i915_guc_supported is sameas true
+    fail_msg: >-
+      system_i915_enable_guc must be -1, 0, 1, 2, or 3 and requires the
+      08_intel_modern profile. Values 1, 2, and 3 also require
+      system_i915_guc_supported=true for verified compatible hardware.
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+    - system_i915_enable_guc is not none
+  tags: [gpu_modules]
+
+- name: Configure i915 kernel module options
+  ansible.builtin.template:
+    src: i915-modprobe.conf.j2
+    dest: /etc/modprobe.d/zz-dotfiles-i915.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+    - system_i915_enable_guc is not none
+    - "'08_intel_modern' in packages_selected_groups"
+  notify: Regenerate Arch initramfs
+  tags: [gpu_modules]
+
+- name: Remove i915 kernel module options when not explicitly configured
+  ansible.builtin.file:
+    path: /etc/modprobe.d/zz-dotfiles-i915.conf
+    state: absent
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+    - system_i915_enable_guc is none or
+      '08_intel_modern' not in packages_selected_groups
+  notify: Regenerate Arch initramfs
+  tags: [gpu_modules]
