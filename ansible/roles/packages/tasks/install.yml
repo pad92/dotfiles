@@ -71,7 +71,7 @@
       - packages_arch_missing_multilib | default([]) | length == 0
     fail_msg: >-
       Packages require the multilib repository: {{
-      packages_arch_missing_multilib | join(', ') }}. The standard [multilib]
+      packages_arch_missing_multilib | default([]) | join(', ') }}. The standard [multilib]
       block could not be enabled in /etc/pacman.conf. Enable it manually, run
       pacman -Syu, and rerun the installer.
   when:
