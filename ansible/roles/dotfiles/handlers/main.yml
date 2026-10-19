@@ -4,3 +4,28 @@
     argv: [systemctl, --user, daemon-reload]
   changed_when: true
   become: false
+
+- name: Rebuild the font cache
+  ansible.builtin.command:
+    argv: [fc-cache, -f]
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [font_cache]
+
+- name: Reload Mako configuration
+  ansible.builtin.shell:
+    cmd: pgrep -x mako >/dev/null && makoctl reload
+    executable: /bin/sh
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [mako_reload]
+
+- name: Reload Waybar
+  ansible.builtin.command:
+    argv: [pkill, -USR2, -x, waybar]
+  changed_when: true
+  failed_when: false
+  become: false
+  tags: [waybar_reload]

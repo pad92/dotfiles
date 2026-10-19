@@ -132,6 +132,10 @@
   loop: '{{ dotfiles_directories }}'
   loop_control:
     label: '{{ item }}'
+  notify:
+    - Rebuild the font cache
+    - Reload Mako configuration
+    - Reload Waybar
 
 - name: Copy user systemd units
   ansible.builtin.copy:
