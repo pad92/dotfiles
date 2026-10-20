@@ -16,7 +16,11 @@ hl.bind(config.mainMod .. " + E", hl.dsp.exec_cmd(config.apps.file), { descripti
 hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.apps.editor), { description = "Code editor" })
 hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.apps.browser), { description = "Browser" })
 hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { description = "Music Player" })
-hl.bind(config.mainMod .. " + D", hl.dsp.exec_cmd(config.apps.menu .. " -t"), { description = "Application menu" })
+hl.bind(
+  config.mainMod .. " + D",
+  hl.dsp.exec_cmd(config.apps.menu .. " -f desktop -t"),
+  { description = "Application menu" }
+)
 hl.bind(
   config.mainMod .. " + SHIFT + Return",
   hl.dsp.exec_cmd(config.apps.password_manager),
