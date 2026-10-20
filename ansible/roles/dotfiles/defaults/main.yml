@@ -30,6 +30,9 @@ dotfiles_directories:
   - .config/xdg-desktop-portal
   - .config/yamllint
   - .config/yay
+dotfiles_directory_handlers:
+  .config/mako: [Reload Mako configuration]
+  .config/waybar: [Reload Waybar]
 dotfiles_systemd_directory: .config/systemd
 dotfiles_systemd_graphical_units:
   - awww.service

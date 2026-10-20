@@ -13,8 +13,9 @@ installs selected package groups, copies static dotfiles, renders host-aware
 templates, links the Vim, tmux, and Zsh source trees, initializes Git submodules
 at the revisions recorded by the repository, selects a Waybar configuration
 matching the hostname, reloads live configuration, and configures makepkg for
-local CPU builds on Arch Linux and CachyOS. Vim plugin updates are opt-in with
-`-e dotfiles_update_vim_plugins=true`.
+local CPU builds on Arch Linux and CachyOS without generating separate debug
+packages. Packages built with native CPU flags may not run on a different CPU.
+Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
 
 Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains

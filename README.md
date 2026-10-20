@@ -43,8 +43,9 @@ confirmation. Use `./install -e packages_action=reconcile` to review and apply
 reconciliation. Packages installed before the state file was created remain
 unmanaged.
 
-The installer also configures native CPU tuning for makepkg on Arch. Packages
-built with these settings may not run on computers with a different CPU.
+The installer configures makepkg for native CPU builds on Arch Linux and
+CachyOS and disables separate debug packages. Packages built with native CPU
+flags may not run on computers with a different CPU.
 
 ## Ansible tags
 
@@ -66,7 +67,6 @@ runs. Tags on an enclosing role or task group include its subtasks.
 | `dotfiles_deploy`              | Deploy dotfiles and user systemd units.                                                                                   |
 | `dotfiles_runtime`             | Apply runtime changes.                                                                                                    |
 | `vim`                          | Update Vim plugins when `dotfiles_update_vim_plugins=true`.                                                               |
-| `font_cache`                   | Rebuild the font cache.                                                                                                   |
 | `mako_reload`, `waybar_reload` | Reload the service when it is running.                                                                                    |
 | `systemd`                      | Install user units, reload the manager when needed, and enable/start the graphical units listed in Ansible defaults.      |
 | `hyprlock_carousel`            | Render the Hyprlock carousel helper.                                                                                      |

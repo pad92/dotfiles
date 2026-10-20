@@ -16,8 +16,11 @@ All notable changes to this project will be documented in this file.
   Linux/CachyOS, Debian/Ubuntu, and Fedora.
 - **Dotfiles**: Move static home configuration into the dotfiles role, render
   host-aware files from templates, and link the Vim, tmux, and Zsh source trees.
-  Keep submodule initialization, host-specific Waybar selection, and optional
-  Vim plugin updates in the playbook.
+  Back up conflicting regular files and directories before deployment, and stop
+  when a required backup already exists. Reload Mako and Waybar only after their
+  configuration changes, and reload the user systemd manager after unit changes.
+  Skip Vim checks and plugin updates unless explicitly enabled, and remove the
+  `font_cache` tag.
 - **CI and scripts**: Move shared CI helpers to `scripts/ci/` and the Vim setup
   script to `scripts/vim.sh`; update workflow and documentation references.
 - **Packages**: Enable `ILoveCandy` in `/etc/pacman.conf` on Arch Linux and
@@ -26,6 +29,8 @@ All notable changes to this project will be documented in this file.
   when needed, then install selected AUR packages with the configured action.
 - **Ansible**: Add focused tags for pacman, AUR packages, makepkg, and dotfiles
   tasks.
+- **Arch builds**: Use native CPU flags for makepkg and disable debug package
+  output.
 
 ## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
 
