@@ -13,8 +13,9 @@ installs selected package groups, copies static dotfiles, renders host-aware
 templates, links the Vim, tmux, and Zsh source trees, initializes Git submodules
 at the revisions recorded by the repository, selects a Waybar configuration
 matching the hostname, reloads live configuration, and configures makepkg for
-local CPU builds on Arch Linux and CachyOS. Vim plugin updates are opt-in with
-`-e dotfiles_update_vim_plugins=true`.
+local CPU builds on Arch Linux and CachyOS without generating separate debug
+packages. Packages built with native CPU flags may not run on a different CPU.
+Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
 
 Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
@@ -24,9 +25,10 @@ Package groups are split by OS family in `roles/packages/vars/`. The package
 role loads the matching file and keeps selection, installation, and
 reconciliation in separate task files.
 
-On Arch Linux and CachyOS, the package role enables `Color`, `CheckSpace`, and
-the standard `multilib` repository in `/etc/pacman.conf`, and sets
-`ParallelDownloads = 5`. When it enables `multilib`, it runs `pacman -Syu`,
+On Arch Linux and CachyOS, the package role sets `Color`, `ILoveCandy`, and
+`CheckSpace`, enables the standard `multilib` repository, and sets
+`ParallelDownloads = 5` in `/etc/pacman.conf`. On CachyOS, it also enables
+`PrettyProgressBar`. Enabling `multilib` triggers `pacman -Syu`,
 which synchronizes package databases and upgrades installed packages. Use
 `-e packages_upgrade_system=true` to request a full system upgrade whenever
 packages are installed, including when `multilib` is already enabled.

@@ -2,6 +2,7 @@
 - name: Check for Vim
   ansible.builtin.command:
     argv: [vim, --version]
+  when: dotfiles_update_vim_plugins | bool
   register: dotfiles_vim_check
   changed_when: false
   failed_when: false
@@ -13,7 +14,7 @@
     argv:
       - vim
       - -Nu
-      - "{{ dotfiles_home }}/.vimrc"
+      - '{{ dotfiles_home }}/.vimrc'
       - -n
       - -es
       - -i
