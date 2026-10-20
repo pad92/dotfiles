@@ -24,9 +24,10 @@ Package groups are split by OS family in `roles/packages/vars/`. The package
 role loads the matching file and keeps selection, installation, and
 reconciliation in separate task files.
 
-On Arch Linux and CachyOS, the package role enables `Color`, `CheckSpace`, and
-the standard `multilib` repository in `/etc/pacman.conf`, and sets
-`ParallelDownloads = 5`. When it enables `multilib`, it runs `pacman -Syu`,
+On Arch Linux and CachyOS, the package role sets `Color`, `ILoveCandy`, and
+`CheckSpace`, enables the standard `multilib` repository, and sets
+`ParallelDownloads = 5` in `/etc/pacman.conf`. On CachyOS, it also enables
+`PrettyProgressBar`. Enabling `multilib` triggers `pacman -Syu`,
 which synchronizes package databases and upgrades installed packages. Use
 `-e packages_upgrade_system=true` to request a full system upgrade whenever
 packages are installed, including when `multilib` is already enabled.

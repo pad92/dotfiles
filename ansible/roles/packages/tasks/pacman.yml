@@ -8,6 +8,20 @@
     backup: true
   when: ansible_facts['os_family'] == 'Archlinux'
 
+- name: Configure pacman progress bar options
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: '^[# \t]*{{ item.option }}[ \t]*$'
+    line: '{{ item.option }}'
+    insertafter: '^\[options\]$'
+    backup: true
+  loop:
+    - option: ILoveCandy
+      distributions: [Archlinux, CachyOS]
+    - option: PrettyProgressBar
+      distributions: [CachyOS]
+  when: ansible_facts['distribution'] in item.distributions
+
 - name: Enable pacman disk-space checks
   ansible.builtin.lineinfile:
     path: /etc/pacman.conf
