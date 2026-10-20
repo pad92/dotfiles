@@ -68,10 +68,11 @@ package_nvim:
     paths:
       - public
 
-# Job Pages : Génère et déploie la documentation sur la branche par défaut
+# Job Pages : Génère et déploie la documentation sur main et les tags de release
 pages:
   extends: .pages_build
   rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - 'README.md'
@@ -88,6 +89,8 @@ pages:
 build_pages_review:
   extends: .pages_build
   rules:
+    - if: $CI_COMMIT_TAG
+      when: never
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       changes:
         - 'README.md'
