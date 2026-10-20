@@ -7,12 +7,14 @@ ANSIBLE_PLAYBOOK ?= ansible-playbook
 ANSIBLE_LINT ?= ansible-lint
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
+ANSIBLE_BACKUP_ROOT ?= $(HOME)
 ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/inventory.yml \
 	ansible/host_vars/*.yml ansible/group_vars/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml)
 
-.PHONY: help lint lint-ansible test test-python test-shell screenshot
+.PHONY: help lint lint-ansible test test-python test-shell screenshot \
+	ansible-backup-ls ansible-backup-rm
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -35,6 +37,12 @@ test-shell: ## Run the shell integration tests
 	bash tests/hyprlock-playerctlock.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
+
+ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (default: HOME)
+	@$(PYTHON) scripts/ansible_backup_files.py list --root "$(ANSIBLE_BACKUP_ROOT)"
+
+ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
+	@$(PYTHON) scripts/ansible_backup_files.py remove --root "$(ANSIBLE_BACKUP_ROOT)"
 
 screenshot: ## Render an isolated Hyprland showcase to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \
