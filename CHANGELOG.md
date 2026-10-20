@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v6.0.1](https://gitlab.com/pad92/dotfiles/-/releases/v6.0.1)
+
+### Fixed
+
+- **GitLab Pages**: Deploy the documentation site from release tags and skip
+  the review build in tag pipelines.
+
 ## [v6.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.0.0)
 
 ### Added
