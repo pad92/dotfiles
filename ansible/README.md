@@ -88,3 +88,8 @@ installing selected packages does not upgrade the whole system by default. Set
 packages. Use `--check` to preview package changes and
 `-e packages_action=reconcile` to enable explicit, ownership-based removals.
 Use `--check --tags dotfiles` to preview dotfile link changes separately.
+
+Use `make ansible-backup-ls` to list backups created for Ansible-managed
+dotfiles, or `make ansible-backup-rm` to review and remove them after a
+confirmation prompt. Both targets use `$HOME` by default; set
+`ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.

@@ -397,9 +397,11 @@ sudo -u "${MYUSER}" -i bash -c '
 
 ### AUR packages
 
-The dotfiles installer uses `paru` or `yay` when available. If neither is
-installed, it can offer to build `yay-bin`; declining skips AUR packages.
-Review AUR build files before installing them. See the
+The installer uses `yay` when it is installed. If selected AUR packages need
+it and it is missing, the installer builds `yay` from the AUR as the regular
+user, then installs it. Set `-e packages_aur_action=ask` to confirm the helper
+build and AUR package installation, or `-e packages_aur_action=skip` to skip
+AUR packages. Review AUR build files before installing them. See the
 [ArchWiki AUR guidance](https://wiki.archlinux.org/title/Arch_User_Repository)
 for the security model and recommended workflow.
 
@@ -457,8 +459,11 @@ consider the security implications of membership in the `docker` group.
 ## Nvidia
 
 Select the matching NVIDIA driver group in the dotfiles installer. It separates
-legacy and modern hardware; avoid mixing both groups. Rebuild the initramfs only
-if your chosen driver setup requires it.
+legacy and modern hardware; avoid mixing both groups. Ansible manages the
+NVIDIA module options and regenerates the initramfs when its configuration
+changes. It detects `mkinitcpio` or `dracut`; if both or neither are installed,
+set `system_initramfs_generator` to the one in use. For manual driver changes,
+follow the driver's initramfs instructions.
 
 ## Nvidia Prime
 

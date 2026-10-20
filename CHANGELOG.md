@@ -4,33 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v6.0.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.0.0)
+
 ### Added
 
 - **CI**: Build downloadable Neovim configuration archives with GitHub Actions
   and GitLab CI.
+- **Ansible**: Add configurable NVIDIA kernel options, capability-gated i915
+  GuC settings, and automatic initramfs regeneration when those settings change.
+- **Ansible**: Add `make ansible-backup-ls` to list Ansible-managed dotfile
+  backups and `make ansible-backup-rm` to remove them after confirmation.
 
 ### Changed
 
-- **Installation**: Replace the Dotbot-based installer with an Ansible playbook
-  for package groups, system setup, and dotfile deployment. Support Arch
+- **Breaking — installation**: Replace the Dotbot installer with Ansible for
+  package selection, system setup, and dotfile deployment. Support Arch
   Linux/CachyOS, Debian/Ubuntu, and Fedora.
 - **Dotfiles**: Move static home configuration into the dotfiles role, render
   host-aware files from templates, and link the Vim, tmux, and Zsh source trees.
   Back up conflicting regular files and directories before deployment, and stop
-  when a required backup already exists. Reload Mako and Waybar only after their
-  configuration changes, and reload the user systemd manager after unit changes.
-  Skip Vim checks and plugin updates unless explicitly enabled, and remove the
-  `font_cache` tag.
+  when a required backup already exists. Reload Mako, Waybar, and the user
+  systemd manager only after related files change. Skip Vim checks and plugin
+  updates unless explicitly enabled, and remove the `font_cache` tag.
 - **CI and scripts**: Move shared CI helpers to `scripts/ci/` and the Vim setup
   script to `scripts/vim.sh`; update workflow and documentation references.
-- **Packages**: Enable `ILoveCandy` in `/etc/pacman.conf` on Arch Linux and
-  CachyOS, and `PrettyProgressBar` on CachyOS. Enable `multilib` and synchronize
-  package databases when the repository is enabled. Build `yay` from the AUR
-  when needed, then install selected AUR packages with the configured action.
-- **Ansible**: Add focused tags for pacman, AUR packages, makepkg, and dotfiles
-  tasks.
-- **Arch builds**: Use native CPU flags for makepkg and disable debug package
-  output.
+- **Packages**: Select GPU profiles from detected hardware and support explicit
+  package reconciliation. Configure pacman progress options (`ILoveCandy` on
+  Arch Linux, `PrettyProgressBar` on CachyOS), enable `multilib` when needed,
+  and build `yay` from the AUR to install selected packages.
+- **Arch builds**: Use native CPU flags for makepkg and disable debug packages.
+- **Ansible**: Add focused tags for pacman, AUR, makepkg, and dotfiles tasks.
 
 ## [v5.6.0](https://gitlab.com/pad92/dotfiles/-/releases/v5.6.0)
 

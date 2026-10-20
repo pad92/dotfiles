@@ -18,7 +18,8 @@ cd ~/.dotfiles
 Install `ansible-playbook` first. Run `./install` from a regular user account
 with `sudo` access. The playbook supports Arch Linux and CachyOS, Debian and
 Ubuntu, and Fedora. It installs selected package groups and deploys dotfiles.
-Use `./install --check` to preview changes.
+Use `./install --check` to preview package changes. Add `--tags dotfiles` to
+preview dotfile changes without running package tasks.
 
 Package groups are selected from OS defaults and detected GPU hardware. Set
 `packages_host_groups` in `ansible/host_vars/localhost.yml` to choose groups by
@@ -52,24 +53,28 @@ flags may not run on computers with a different CPU.
 Pass tags with `./install --tags <tag>`. The supported-distribution check always
 runs. Tags on an enclosing role or task group include its subtasks.
 
-| Tag                            | Description                                                                                                               |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
-| `packages`                     | Run the package role.                                                                                                     |
-| `packages_select`              | Select package groups.                                                                                                    |
-| `packages_install`             | Configure Arch repositories and install selected packages.                                                                |
-| `packages_reconcile`           | Configure repositories, install selected packages, and reconcile managed packages.                                        |
-| `pacman`, `pacman_config`      | Configure `/etc/pacman.conf`; aliases.                                                                                    |
-| `yay`                          | Select packages and run the AUR flow. Also runs `pacman` configuration, but skips selected official package installation. |
-| `system`                       | Run system configuration.                                                                                                 |
-| `makepkg`, `makepkg_config`    | Configure makepkg; aliases.                                                                                               |
-| `dotfiles`                     | Run the full dotfiles role.                                                                                               |
-| `dotfiles_submodules`          | Initialize Git submodules.                                                                                                |
-| `dotfiles_deploy`              | Deploy dotfiles and user systemd units.                                                                                   |
-| `dotfiles_runtime`             | Apply runtime changes.                                                                                                    |
-| `vim`                          | Update Vim plugins when `dotfiles_update_vim_plugins=true`.                                                               |
-| `mako_reload`, `waybar_reload` | Reload the service when it is running.                                                                                    |
-| `systemd`                      | Install user units, reload the manager when needed, and enable/start the graphical units listed in Ansible defaults.      |
-| `hyprlock_carousel`            | Render the Hyprlock carousel helper.                                                                                      |
+| Tag                         | Description                                                                                                               |
+| :-------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `packages`                  | Run the package role.                                                                                                     |
+| `packages_select`           | Select package groups.                                                                                                    |
+| `packages_install`          | Configure Arch repositories and install selected packages.                                                                |
+| `packages_reconcile`        | Configure repositories, install selected packages, and reconcile managed packages.                                        |
+| `pacman`, `pacman_config`   | Configure `/etc/pacman.conf`; aliases.                                                                                    |
+| `yay`                       | Select packages and run the AUR flow. Also runs `pacman` configuration, but skips selected official package installation. |
+| `system`                    | Run system configuration.                                                                                                 |
+| `gpu_modules`               | Select package groups and configure NVIDIA/i915 kernel module settings.                                                   |
+| `makepkg`, `makepkg_config` | Configure makepkg; aliases.                                                                                               |
+| `dotfiles`                  | Run the full dotfiles role.                                                                                               |
+| `dotfiles_submodules`       | Initialize Git submodules.                                                                                                |
+| `dotfiles_deploy`           | Deploy dotfiles and user systemd units.                                                                                   |
+| `dotfiles_runtime`          | Check Vim and update its plugins only when `dotfiles_update_vim_plugins=true`.                                            |
+| `vim`                       | Update Vim plugins when `dotfiles_update_vim_plugins=true`.                                                               |
+| `systemd`                   | Install user units, reload the manager when needed, and enable/start the graphical units listed in Ansible defaults.      |
+| `hyprlock_carousel`         | Render the Hyprlock carousel helper.                                                                                      |
+
+Mako and Waybar reload handlers run automatically when notified by changed
+configuration. Their internal `mako_reload` and `waybar_reload` handler tags
+are not standalone `--tags` options.
 
 For example, `./install --tags yay --ask-become-pass` runs the AUR flow, and
 `./install --tags dotfiles_deploy` deploys dotfiles without installing packages.
@@ -94,6 +99,11 @@ Host-aware files are rendered from `ansible/roles/dotfiles/templates/`. Static
 files are copied from `ansible/roles/dotfiles/files/`. Conflicting regular files
 are backed up with a `.bak` suffix; managed symbolic links are removed while
 their targets are left untouched.
+
+Use `make ansible-backup-ls` to list backups created for Ansible-managed
+dotfiles, or `make ansible-backup-rm` to review and remove them after a
+confirmation prompt. Both targets use `$HOME` by default; set
+`ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.
 
 ## Shell and editors
 
@@ -134,9 +144,9 @@ Hyprland and `awww_random.timer` changes wallpapers every 30 minutes.
 
 Hyprlock displays time, battery, and media information. Its carousel option
 uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2)
-for details. The LACT profile in the repository is a template and is not copied
-to `/etc/lact/config.yaml`; verify the GPU identifier and review fan curves
-before applying it.
+for details. The LACT profile is deployed to `~/.config/lact/config.yaml`, not
+`/etc/lact/config.yaml`. Verify the GPU identifier and review the fan curves
+before relying on it.
 
 ## Scripts
 
