@@ -20,15 +20,15 @@ test → validate → package → pages → release
 
 ## Jobs
 
-| Job | Stage | Runs when | Purpose |
-| --- | --- | --- | --- |
-| `sast` | test | Branch pipelines | Run static security analysis with the included template's default rules. |
-| `ansible_lint` | validate | Branch and tag pipelines | Install `make` and the pinned Ansible tools, then run `make lint-ansible`. |
-| `package_vim` | package | Branch and tag pipelines | Package `.vim` and `.vimrc` as `vim.tar.gz`, with submodules fetched recursively. |
-| `package_nvim` | package | Branch and tag pipelines | Package `.config/nvim` as `nvim.tar.gz`. |
-| `pages` | pages | Default branch when documentation files change | Build and deploy the documentation site to `public/`. |
-| `build_pages_review` | pages | Non-default branch or merge request with matching changes | Build the documentation site for review without deploying it. |
-| `create_release` | release | A tag is pushed (`$CI_COMMIT_TAG`) | Publish a release with notes from `CHANGELOG.md`. |
+| Job                  | Stage    | Runs when                                                                 | Purpose                                                                           |
+| -------------------- | -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `sast`               | test     | Branch pipelines                                                          | Run static security analysis with the included template's default rules.          |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                  | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.        |
+| `package_vim`        | package  | Branch and tag pipelines                                                  | Package `.vim` and `.vimrc` as `vim.tar.gz`, with submodules fetched recursively. |
+| `package_nvim`       | package  | Branch and tag pipelines                                                  | Package `.config/nvim` as `nvim.tar.gz`.                                          |
+| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag | Build and deploy the documentation site to `public/`.                             |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                 | Build the documentation site for review without deploying it.                     |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                        | Publish a release with notes from `CHANGELOG.md`.                                 |
 
 ### `pages`
 
@@ -37,16 +37,17 @@ calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script,
 which keeps the page list in one place.
 
-The pipeline uses two jobs to build documentation on branches and merge
-requests, while only the default branch deploys it. When a comparison ref is not
-set, GitLab treats `rules:changes` as true on pipelines without a push diff.
-As a result, tag and scheduled pipelines may also run `build_pages_review`
+The `pages` job deploys documentation from the default branch when a documented
+file changes, and from `vX.Y.Z` release tags. The `build_pages_review` job builds
+documentation on non-default branches and merge requests without deploying it.
+GitLab treats `rules:changes` as true on pipelines without a push diff, so the
+review job explicitly skips tag pipelines
 ([GitLab rules](https://docs.gitlab.com/ci/yaml/#ruleschanges)).
 
-1. `pages` runs on the default branch and is the official Pages deployment.
+1. `pages` runs on the default branch after documentation changes and on release
+   tags. It publishes the site from that commit.
 2. `build_pages_review` runs on other branches and merge requests, then uploads a
-   short-lived `public/` artifact for validation. Tag and scheduled pipelines on
-   non-default refs can also run it when no push diff is available.
+   short-lived `public/` artifact for validation only.
 
 > [!NOTE]
 > `build_pages.sh` uses POSIX `sh` and does not require Git, so it runs on the
