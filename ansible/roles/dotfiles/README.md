@@ -17,10 +17,11 @@ managed paths are replaced when they point elsewhere. To restore a backup, move
 the deployed path aside, then move the `.bak` path back.
 
 `dotfiles_directory_handlers` maps copied directories to reload handlers. The
-defaults reload Mako or Waybar only when that application's configuration
-changes. Selecting a different host-specific Waybar configuration also reloads
-Waybar. The role reloads the user systemd manager after unit changes and before
-starting the configured services. A user systemd manager must be running.
+defaults restart Hyprlauncher or reload Mako and Waybar when their configuration
+directories change. Selecting a different host-specific Waybar configuration
+also reloads Waybar. The role reloads the user systemd manager after unit
+changes and before starting the configured services. A user systemd manager
+must be running.
 
 Set `dotfiles_update_vim_plugins=true` to check for Vim and update its plugins.
 By default, the role skips both commands.

@@ -5,6 +5,29 @@
   changed_when: true
   become: false
 
+- name: Restart Hyprlauncher
+  ansible.builtin.shell:
+    cmd: |
+      if ! pgrep -x hyprlauncher >/dev/null; then
+        exit 0
+      fi
+
+      pkill -TERM -x hyprlauncher || true
+      attempts=0
+      while pgrep -x hyprlauncher >/dev/null; do
+        attempts=$((attempts + 1))
+        if [ "$attempts" -ge 50 ]; then
+          echo "Hyprlauncher did not stop after SIGTERM" >&2
+          exit 1
+        fi
+        sleep 0.1
+      done
+
+      uwsm app -- hyprlauncher -d
+    executable: /bin/sh
+  changed_when: true
+  become: false
+
 - name: Reload Mako configuration
   ansible.builtin.shell:
     cmd: pgrep -x mako >/dev/null && makoctl reload

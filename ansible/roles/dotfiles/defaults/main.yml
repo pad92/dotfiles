@@ -31,6 +31,7 @@ dotfiles_directories:
   - .config/yamllint
   - .config/yay
 dotfiles_directory_handlers:
+  .config/hypr: [Restart Hyprlauncher]
   .config/mako: [Reload Mako configuration]
   .config/waybar: [Reload Waybar]
 dotfiles_systemd_directory: .config/systemd
