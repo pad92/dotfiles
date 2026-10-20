@@ -1,4 +1,10 @@
 ---
+- name: Apply managed sysctl policy
+  ansible.builtin.command:
+    argv: [sysctl, -p, /etc/sysctl.d/hardening.conf]
+  changed_when: not ansible_check_mode
+  when: not ansible_check_mode
+
 - name: Regenerate Arch initramfs
   ansible.builtin.command:
     argv: >-

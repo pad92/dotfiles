@@ -21,6 +21,40 @@ Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
 available as an alias.
 
+The `ssh_client_hardening` tag hashes host names when the system SSH client
+adds new entries to `known_hosts`. Existing entries are not converted. It does
+not change the SSH server configuration.
+
+The `kernel_hardening` tag takes ownership of
+`/etc/sysctl.d/hardening.conf`; Ansible saves a timestamped backup before
+replacing the manually maintained file. It retains the filesystem protections,
+ASLR, ptrace and kernel-address restrictions, Docker forwarding, inotify and
+file limits, and raises `vm.max_map_count` to `1048576` for desktop and Proton
+workloads. It uses loose reverse-path filtering for asymmetric VPN routes,
+disables shared-media redirects, and keeps IPv6 enabled by default so LAN and
+VPN interfaces can configure it. Set `system_ipv6_enabled_by_hostname` in
+`host_vars` to override the policy per machine. The current inventory keeps
+IPv6 enabled on `PadsTower` and disables it on `PadsP5560`. Disabling IPv6 sets
+the `all` and `default` sysctls so existing and future interfaces follow the
+host policy.
+
+Ansible leaves `vm.mmap_rnd_bits` at `32` only when that value is already
+active, since some supported kernels reject it. The role writes the
+user-namespace setting only when the kernel exposes it. It sets
+`net.core.bpf_jit_harden` to `2` when available, and persists unprivileged BPF
+as the reversible value `2` in `/etc/sysctl.d/zz-dotfiles-bpf.conf`. The role
+also applies that BPF setting immediately when its active value is `0`; a
+running kernel already locked at `1` keeps that value until reboot.
+
+The migration removes `kernel.kexec_load_disabled=1`, which cannot be undone
+until reboot, and leaves TCP timestamps enabled with their randomized offsets.
+It also drops interface-specific IPv6 overrides, which did not apply safely to
+all desktop hosts. Reboot once after the migration to clear these old runtime
+settings. Ansible does not reboot the workstation.
+
+Run either tag with `./install --tags ssh_client_hardening --ask-become-pass`
+or `./install --tags kernel_hardening --ask-become-pass`.
+
 Package groups are split by OS family in `roles/packages/vars/`. The package
 role loads the matching file and keeps selection, installation, and
 reconciliation in separate task files.

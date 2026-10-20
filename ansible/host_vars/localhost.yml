@@ -22,3 +22,8 @@ packages_host_groups:
     - 14_iac_opentofu
     - 20_apps
     - 21_steam
+
+# IPv6 is enabled by default; override it only on hosts that need it disabled.
+system_ipv6_enabled_by_hostname:
+  PadsP5560: false
+  PadsTower: true

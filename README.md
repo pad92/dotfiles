@@ -62,6 +62,8 @@ runs. Tags on an enclosing role or task group include its subtasks.
 | `pacman`, `pacman_config`   | Configure `/etc/pacman.conf`; aliases.                                                                                    |
 | `yay`                       | Select packages and run the AUR flow. Also runs `pacman` configuration, but skips selected official package installation. |
 | `system`                    | Run system configuration.                                                                                                 |
+| `ssh_client_hardening`      | Hash host names when the system SSH client adds new known-hosts entries.                                                        |
+| `kernel_hardening`          | Apply desktop-compatible kernel protections through sysctl.                                                                  |
 | `gpu_modules`               | Select package groups and configure NVIDIA/i915 kernel module settings.                                                   |
 | `makepkg`, `makepkg_config` | Configure makepkg; aliases.                                                                                               |
 | `dotfiles`                  | Run the full dotfiles role.                                                                                               |

@@ -1,4 +1,6 @@
 ---
 system_initramfs_generator: auto
+system_ipv6_enabled_default: true
+system_ipv6_enabled_by_hostname: {}
 system_i915_enable_guc: null
 system_i915_guc_supported: false
