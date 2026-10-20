@@ -25,18 +25,23 @@ The `ssh_client_hardening` tag hashes host names when the system SSH client
 adds new entries to `known_hosts`. Existing entries are not converted. It does
 not change the SSH server configuration.
 
-The `kernel_hardening` tag takes ownership of
-`/etc/sysctl.d/hardening.conf`; Ansible saves a timestamped backup before
-replacing the manually maintained file. It retains the filesystem protections,
-ASLR, ptrace and kernel-address restrictions, Docker forwarding, inotify and
-file limits, and raises `vm.max_map_count` to `1048576` for desktop and Proton
-workloads. It uses loose reverse-path filtering for asymmetric VPN routes,
-disables shared-media redirects, and keeps IPv6 enabled by default so LAN and
-VPN interfaces can configure it. Set `system_ipv6_enabled_by_hostname` in
-`host_vars` to override the policy per machine. The current inventory keeps
+The `kernel_hardening` tag manages `/etc/sysctl.d/hardening.conf` and saves a
+timestamped backup before replacing it. The policy keeps the filesystem
+protections, ASLR, ptrace and kernel-address restrictions, Docker forwarding,
+inotify and file limits. It uses loose reverse-path filtering for asymmetric
+VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
+so LAN and VPN interfaces can configure it. Set
+`system_ipv6_enabled_by_hostname` in `host_vars` to override the policy per
+machine. The current inventory keeps
 IPv6 enabled on `PadsTower` and disables it on `PadsP5560`. Disabling IPv6 sets
 the `all` and `default` sysctls so existing and future interfaces follow the
 host policy.
+
+When `21_steam` is selected, the role adds the gaming sysctls to
+`hardening.conf`, including `vm.max_map_count = 2147483642`. It backs up the
+old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
+`<filename>.dotfiles-backup` before removing them. If that backup already
+exists, Ansible keeps a timestamped copy before replacing it.
 
 Ansible leaves `vm.mmap_rnd_bits` at `32` only when that value is already
 active, since some supported kernels reject it. The role writes the
