@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Hyprland**: Open Hyprlauncher on the desktop finder with `SUPER+D`, with
+  frequently used applications ranked first.
+
 ## [v6.0.1](https://gitlab.com/pad92/dotfiles/-/releases/v6.0.1)
 
 ### Fixed
