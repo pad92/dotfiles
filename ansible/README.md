@@ -102,9 +102,11 @@ system defaults for sysctl, udev, and other components
 
 When `21_steam` is selected, Ansible enables and starts `ananicy-cpp` and
 `power-profiles-daemon`. Configuration stops if auto-cpufreq, TLP, or tuned is
-active or enabled, so the administrator can resolve the competing power
-managers. An existing `ananicy-cpp` service, such as on PadsTower, is kept running.
-The rules and daemon configuration come from the selected packages.
+active or enabled. Resolve that conflict before rerunning the playbook. Once
+the check passes, Ansible removes any systemd mask from
+`power-profiles-daemon.service` before enabling it. An existing `ananicy-cpp`
+service is kept running. The selected packages provide the rules and daemon
+configuration.
 
 To install the selected groups and configure gaming services, run:
 
@@ -124,6 +126,12 @@ full run or with `--tags kernel_hardening`. The `steam-optimize` launcher uses
 profile manager. It sets a 12 GB Mesa shader cache for AMD or
 a 12 GB proprietary-driver cache for NVIDIA; game profiles can override those
 values. Arc Raiders uses a 20 GB Mesa cache.
+
+To select the Steam account configuration, `steam-optimize` first reads the
+most recently used account from `loginusers.vdf`. If that account cannot be
+matched to a local configuration, it uses the sole `localconfig.vdf` when
+exactly one exists. With multiple configurations and no match, it leaves the
+account selection unresolved.
 
 Avoid adding `gamemoderun` while `ananicy-cpp` is active: both can change process
 priorities ([CachyOS gaming guide](https://wiki.cachyos.org/fr/configuration/gaming/)).

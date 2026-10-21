@@ -28,6 +28,11 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- Enable and start `hypridle.service` when deploying user systemd units.
+- Unmask `power-profiles-daemon.service` before enabling it for `21_steam`,
+  after checking for competing CPU power managers.
+- Fix a `steam-optimize` crash when only one local Steam account configuration
+  exists and the most recently used account cannot be identified.
 - Remove the Hyprland music shortcut left behind after Spotify was removed;
   its missing command caused a configuration error at startup.
 - Use relative links for the local wallpaper and Proton Pass user units.

@@ -29,6 +29,11 @@
     - tuned.service
     - tuned-ppd.service
 
+- name: Unmask the selected gaming power manager
+  ansible.builtin.systemd_service:
+    name: power-profiles-daemon.service
+    masked: false
+
 - name: Enable the gaming services
   ansible.builtin.systemd_service:
     name: '{{ item }}'

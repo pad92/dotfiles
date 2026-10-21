@@ -72,6 +72,31 @@ class SteamOptimizeTests(unittest.TestCase):
 
         self.assertEqual(result, str(expected))
 
+    def test_active_localconfig_without_loginusers(self):
+        for account_ids in [[], ["1234"], ["1234", "9999"]]:
+            with self.subTest(
+                account_ids=account_ids
+            ), tempfile.TemporaryDirectory() as directory:
+                steam_root = Path(directory)
+                paths = []
+                for account_id in account_ids:
+                    path = (
+                        steam_root
+                        / "userdata"
+                        / account_id
+                        / "config"
+                        / "localconfig.vdf"
+                    )
+                    path.parent.mkdir(parents=True)
+                    path.touch()
+                    paths.append(str(path))
+
+                result = self.script["find_active_localconfig_path"](
+                    str(steam_root), SimpleNamespace()
+                )
+
+                self.assertEqual(result, paths[0] if len(paths) == 1 else None)
+
     def test_hybrid_gpu_uses_only_nvidia_specific_environment(self):
         original_isdir = os.path.isdir
 

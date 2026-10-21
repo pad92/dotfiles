@@ -45,24 +45,24 @@ for configuration, package ownership, and system settings.
 
 Use `./install --tags <tag>`. The supported-distribution check always runs.
 
-| Tags | Action |
-| --- | --- |
-| `packages` | Run package selection, installation, and reconciliation tasks. |
-| `packages_select` | Select package groups. |
-| `packages_install`, `packages_reconcile` | Configure repositories and install packages; the latter also runs reconciliation. |
-| `pacman`, `pacman_config` | Configure `/etc/pacman.conf`. |
-| `yay` | Configure pacman and run the AUR flow; selected official packages are not installed by this tag. |
-| `system` | Run system configuration. |
-| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls. |
-| `gpu_modules` | Select GPU groups and configure NVIDIA/i915 kernel modules. |
-| `makepkg`, `makepkg_config` | Configure native Arch builds. |
-| `amd_cpu_performance` | Apply supported AMD CPU settings. |
-| `gaming` | Check dependencies and configure services for the selected Steam group. |
-| `dotfiles` | Run the full dotfiles role. |
-| `dotfiles_submodules`, `dotfiles_deploy` | Initialize submodules or deploy configuration. |
-| `dotfiles_runtime`, `vim` | Check Vim and update plugins when `dotfiles_update_vim_plugins=true`. |
-| `systemd` | Deploy user units, aliases, masks, and activation links; enable and start the configured graphical units. |
-| `hyprlock_carousel` | Render the lock-screen carousel helper. |
+| Tags                                       | Action                                                                                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `packages`                                 | Run package selection, installation, and reconciliation tasks.                                            |
+| `packages_select`                          | Select package groups.                                                                                    |
+| `packages_install`, `packages_reconcile`   | Configure repositories and install packages; the latter also runs reconciliation.                         |
+| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                                             |
+| `yay`                                      | Configure pacman and run the AUR flow; selected official packages are not installed by this tag.          |
+| `system`                                   | Run system configuration.                                                                                 |
+| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                                                         |
+| `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                                               |
+| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                                             |
+| `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                                                         |
+| `gaming`                                   | Check dependencies and configure services for the selected Steam group.                                   |
+| `dotfiles`                                 | Run the full dotfiles role.                                                                               |
+| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy configuration.                                                            |
+| `dotfiles_runtime`, `vim`                  | Check Vim and update plugins when `dotfiles_update_vim_plugins=true`.                                     |
+| `systemd`                                  | Deploy user units, aliases, masks, and activation links; enable and start the configured graphical units. |
+| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                                                   |
 
 Configuration changes notify their handlers. Active audio services reload when
 supported, otherwise restart. Changed unit definitions and drop-ins restart
@@ -70,12 +70,19 @@ only the affected active units after `daemon-reload`; changes to symbolic links
 only reload the manager. Mako and Waybar reload automatically; their internal
 handler tags are not standalone commands.
 
+The default graphical units include `hypridle.service`. Run
+`./install --tags systemd` to deploy user units and enable the configured list
+in `dotfiles_systemd_graphical_units`. Hypridle requires `WAYLAND_DISPLAY` in
+the user systemd environment to start.
+
 ## Gaming and AMD CPUs
 
 Select `21_steam`, then run `./install --tags packages,gaming --ask-become-pass`.
 The group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
 Ansible enables both services and stops configuration if another known CPU
-power manager is active or enabled. CachyOS adds its Ananicy rules, Proton,
+power manager is active or enabled. Once this check passes, it removes any
+systemd mask from `power-profiles-daemon.service` before enabling it.
+CachyOS adds its Ananicy rules, Proton,
 and `cachyos-settings`, which provides `game-performance`; these packages are
 not selected on plain Arch. `steam-optimize` also works without
 `game-performance` and sets shader-cache limits for AMD and NVIDIA.
@@ -92,14 +99,14 @@ and [gaming setup](./ansible/README.md#gaming) for overrides and dependencies.
 Set Git identity in the untracked `~/.gitconfig.local`; the managed [`.gitconfig`](./ansible/roles/dotfiles/files/home/.gitconfig)
 includes it.
 
-| Configuration | Location |
+| Configuration      | Location                                                                                                                               |
 | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
-| Shell and login | [Zsh files](./ansible/roles/dotfiles/files/home/zsh/) and [`.zshrc`](./ansible/roles/dotfiles/templates/home/.zshrc.j2) |
-| Hyprland | [`.config/hypr/`](./ansible/roles/dotfiles/files/home/.config/hypr/) |
-| Waybar | [`.config/waybar/`](./ansible/roles/dotfiles/files/home/.config/waybar/) |
-| Terminal and tmux | [Alacritty](./ansible/roles/dotfiles/files/home/.config/alacritty/) and [`.tmux.conf`](./ansible/roles/dotfiles/files/home/.tmux.conf) |
-| Editors | [Neovim](./ansible/roles/dotfiles/files/home/.config/nvim/) and [Vim](./ansible/roles/dotfiles/files/home/.vimrc) |
-| Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample) |
+| Shell and login    | [Zsh files](./ansible/roles/dotfiles/files/home/zsh/) and [`.zshrc`](./ansible/roles/dotfiles/templates/home/.zshrc.j2)                |
+| Hyprland           | [`.config/hypr/`](./ansible/roles/dotfiles/files/home/.config/hypr/)                                                                   |
+| Waybar             | [`.config/waybar/`](./ansible/roles/dotfiles/files/home/.config/waybar/)                                                               |
+| Terminal and tmux  | [Alacritty](./ansible/roles/dotfiles/files/home/.config/alacritty/) and [`.tmux.conf`](./ansible/roles/dotfiles/files/home/.tmux.conf) |
+| Editors            | [Neovim](./ansible/roles/dotfiles/files/home/.config/nvim/) and [Vim](./ansible/roles/dotfiles/files/home/.vimrc)                      |
+| Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                         |
 
 Host-aware files are rendered from `ansible/roles/dotfiles/templates/`. Static
 files are copied from `ansible/roles/dotfiles/files/`. Conflicting managed paths are backed up before replacement. Unit symlinks
@@ -132,15 +139,15 @@ The Hyprland configuration uses Lua and requires Hyprland 0.55+. See the
 [session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY startup,
 GNOME Keyring PAM, UWSM, and systemd session setup.
 
-| Shortcut | Action |
+| Shortcut                            | Action                                           |
 | :---------------------------------- | :----------------------------------------------- |
-| `SUPER + Return` | Terminal |
-| `SUPER + E / C / W` | File manager / editor / browser |
-| `SUPER + [0-9]` | Switch workspace; add `Shift` to move the window |
-| `SUPER + Arrows` or Vim keys | Change focus; add `Shift` to move the window |
-| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating |
-| `SUPER + L` / `SUPER + Delete` | Lock / logout menu |
-| `Print` / `SUPER + P` | Screenshot |
+| `SUPER + Return`                    | Terminal                                         |
+| `SUPER + E / C / W`                 | File manager / editor / browser                  |
+| `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
+| `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
+| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
+| `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
+| `Print` / `SUPER + P`               | Screenshot                                       |
 
 `awww.sh` selects wallpapers per monitor from local files or configured NFS/CIFS
 mounts. Copy its sample to `~/.config/awww/awww.conf` to configure sources.
@@ -159,16 +166,16 @@ before relying on it.
 The playbook deploys [`~/.bin/`](./ansible/roles/dotfiles/files/home/.bin/) and
 adds it to `PATH` in Zsh.
 
-| Script | Purpose |
+| Script                                                                                                                           | Purpose                                          |
 | :------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------- |
-| [`steam-optimize`](./ansible/roles/dotfiles/files/home/.bin/steam-optimize) | Configure per-game Vulkan and Gamescope options. |
-| [`backup.sh`](./ansible/roles/dotfiles/files/home/.bin/backup.sh) | Back up files with rsync over SSH. |
-| [`awww.sh`](./ansible/roles/dotfiles/files/home/.bin/awww.sh) | Select and render wallpapers. |
-| [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py) | Configure Razer mouse DPI. |
-| [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh) | Capture the desktop showcase. |
-| [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks. |
-| [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd) | Compare command output for two arguments. |
-| [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh) | Install VSCodium extensions. |
+| [`steam-optimize`](./ansible/roles/dotfiles/files/home/.bin/steam-optimize)                                                      | Configure per-game Vulkan and Gamescope options. |
+| [`backup.sh`](./ansible/roles/dotfiles/files/home/.bin/backup.sh)                                                                | Back up files with rsync over SSH.               |
+| [`awww.sh`](./ansible/roles/dotfiles/files/home/.bin/awww.sh)                                                                    | Select and render wallpapers.                    |
+| [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
+| [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Capture the desktop showcase.                    |
+| [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
+| [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
+| [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
 
 Package cleanup is opt-in. Pass `--clean-packages` to `backup.sh` to run
 `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
