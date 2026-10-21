@@ -1,0 +1,84 @@
+# Managed by Ansible. Desktop hardening based on the previous local policy.
+
+# Protect shared files and reduce kernel information exposure.
+fs.protected_hardlinks = 1
+fs.protected_symlinks = 1
+fs.protected_fifos = 1
+fs.protected_regular = 1
+fs.suid_dumpable = 0
+
+kernel.core_uses_pid = 1
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+kernel.randomize_va_space = 2
+kernel.yama.ptrace_scope = 1
+kernel.sysrq = 244
+{% if system_optional_sysctls.results[0].stat.exists %}
+kernel.unprivileged_userns_clone = 1
+{% endif %}
+{% if system_optional_sysctls.results[3].stat.exists %}
+net.core.bpf_jit_harden = 2
+{% endif %}
+
+# Enable forwarding for local container networking. Reverse-path filtering uses
+# loose mode so asymmetric VPN routes remain usable.
+net.ipv4.ip_forward = 1
+net.ipv4.conf.all.rp_filter = 2
+net.ipv4.conf.default.rp_filter = 2
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.secure_redirects = 0
+net.ipv4.conf.default.secure_redirects = 0
+net.ipv4.conf.all.shared_media = 0
+net.ipv4.conf.default.shared_media = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+net.ipv4.icmp_ratelimit = 100
+net.ipv4.icmp_ratemask = 88089
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_rfc1337 = 1
+
+# Keep IPv6 enabled by default; hosts can override this policy in host vars.
+{% set system_ipv6_enabled = system_ipv6_enabled_by_hostname.get(ansible_facts['hostname'], system_ipv6_enabled_default) %}
+net.ipv6.conf.all.disable_ipv6 = {{ 0 if system_ipv6_enabled else 1 }}
+net.ipv6.conf.default.disable_ipv6 = {{ 0 if system_ipv6_enabled else 1 }}
+{% if system_ipv6_enabled %}
+net.ipv6.conf.all.forwarding = 0
+net.ipv6.conf.default.forwarding = 0
+net.ipv6.conf.all.accept_source_route = 0
+net.ipv6.conf.default.accept_source_route = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv6.conf.default.accept_redirects = 0
+{% endif %}
+
+# Desktop resource limits.
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_user_watches = 524288
+vm.mmap_min_addr = 65536
+vm.mmap_rnd_compat_bits = 16
+fs.file-max = 2097152
+{% if system_mmap_rnd_bits is defined and system_mmap_rnd_bits.stdout | default('') | trim == '32' %}
+vm.mmap_rnd_bits = 32
+{% endif %}
+
+# Steam and Proton tuning.
+{% set system_selected_groups = packages_group_selection
+   if packages_group_selection is defined and packages_group_selection is not none
+   else packages_selected_groups | default(packages_host_groups.get(ansible_facts['hostname'], [])) %}
+{% if '21_steam' in system_selected_groups %}
+vm.max_map_count = 2147483642
+vm.swappiness = 10
+vm.dirty_ratio = 10
+vm.dirty_background_ratio = 5
+kernel.sched_autogroup_enabled = 0
+kernel.sched_cfs_bandwidth_slice_us = 3000
+net.core.netdev_max_backlog = 5000
+{% endif %}
