@@ -85,7 +85,6 @@ get_web_source_info()
         deezer.com|*.deezer.com) printf 'Deezer \uE077 \n' ;;
         music.youtube.com) echo "YouTube Music  " ;;
         youtube.com|*.youtube.com|youtu.be) echo "YouTube  " ;;
-        spotify.com|*.spotify.com) echo "Spotify  " ;;
         soundcloud.com|*.soundcloud.com) echo "SoundCloud  " ;;
         twitch.tv|*.twitch.tv) echo "Twitch  " ;;
         netflix.com|*.netflix.com) echo "Netflix 󰝆 " ;;
@@ -113,7 +112,6 @@ get_source_info()
             media_url=$(get_metadata "xesam:url")
             get_web_source_info "$media_url" || echo "Chrome  "
             ;;
-        *spotify*) echo "Spotify  " ;;
         *) echo "" ;;
     esac
 }

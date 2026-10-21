@@ -470,16 +470,6 @@ follow the driver's initramfs instructions.
 The NVIDIA package groups include `nvidia-prime`. Select the driver group that
 matches the GPU rather than installing a second driver set manually.
 
-## Spotify
-
-For Spotify client versions that store preferences in
-`~/.config/spotify/Users/<user>-user/prefs`, add this setting to disable desktop
-notifications. Preserve the file's other settings.
-
-```ini
-ui.track_notifications_enabled=false
-```
-
 ## GNOME Keyring PAM Setup
 
 For TTY logins, append these entries to the matching sections in

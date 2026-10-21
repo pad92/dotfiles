@@ -346,7 +346,7 @@ All notable changes to this project will be documented in this file.
 - **Waybar**:
   - Split config into per-host files (`config.PadsTower`, `config.PadsP5560`). Desktop omits battery, backlight, and Intel temperature modules.
   - Remove unused weather module (`custom/weather`) configuration.
-  - Remove dead `#custom-spotify`/`#custom-weather` CSS selectors.
+  - Remove the unused `#custom-weather` CSS selector.
 - **Alacritty**:
   - Vendor the single in-use `base16-material-darker-256` theme under `themes/` and drop the 2 MB `base16-alacritty` submodule.
 - **GTK**:
@@ -378,13 +378,13 @@ All notable changes to this project will be documented in this file.
 - **Alacritty**:
   - Remove stale base16 auto-backup file.
 - **Submodules**:
-  - Prune five stale `.gitmodules` entries left over from the i3/X11 era: `zsh-notify`, `i3blocks-contrib`, `i3spotifystatus`, `gruvbox-rofi`, and `base16-alacritty`.
+  - Prune five stale `.gitmodules` entries from the i3/X11 setup, including `zsh-notify`, `i3blocks-contrib`, `gruvbox-rofi`, and `base16-alacritty`.
 - **X11**:
   - Remove vestigial `.Xresources` and `.screenrc` (byobu/screen) leftovers on the all-Wayland setup.
 - **Hyprland**:
   - Remove the orphan `hyprpaper.conf` (wallpapers are handled by `awww`).
 - **Waybar**:
-  - Remove three unused module scripts (`modules/headsetcontrol`, `modules/spotify`, `modules/mediaplayer.py`). `headsetcontrol` is superseded by the inline `exec` in `audio.json`.
+  - Remove three unused Waybar scripts, including `modules/headsetcontrol` and `modules/mediaplayer.py`. The inline `exec` in `audio.json` replaces `headsetcontrol`.
   - Remove the unused `network` module config from `conf/network.json` and its CSS: it duplicated the `nm-applet` tray indicator.
 
 ## [v5.3.2](https://gitlab.com/pad92/dotfiles/-/releases/v5.3.2)
@@ -418,7 +418,7 @@ All notable changes to this project will be documented in this file.
   - Migrate from deprecated `vim.loop` to `vim.uv` API, consolidate backup/writebackup options removing redundant swap directory setup, and change `nvim-cmp` confirm behavior to not auto-select the first completion item.
 - **Waybar**:
   - Remove legacy Sway workspace, mode, and taskbar module definitions from configuration; retain Hyprland-only modules.
-  - Fix `spotify` module string comparison, variable quoting, icon, and JSON output (now uses `jq`); fix `headsetcontrol` shebang to `bash`.
+  - Set the `headsetcontrol` shebang to `bash`.
 - **Zsh**:
   - Harden `.zshrc` with proper variable quoting, remove duplicate `compinit` call, remove bash-specific `HISTCONTROL`/`HISTIGNORE` variables, and fix `fastfetch` detection using `command -v`.
   - Refactor and simplify system update function in `arch.zsh` to improve error handling and command checks.
@@ -481,7 +481,7 @@ All notable changes to this project will be documented in this file.
 - **Zsh & Utilities**:
   - Add a custom `ssh-copy-agent-keys` function in `zsh/functions/ssh.zsh` to interactively select public keys loaded in the local `ssh-agent` and copy them to a remote server while avoiding duplicates.
 - **Neovim & Editors**:
-  - Implement a fully modular Lua-based Neovim configuration (`lazy.nvim`, Telescope, Treesitter, Lualine) and add native Wayland support configurations for Antigravity IDE.
+  - Build a modular Lua configuration for Neovim with `lazy.nvim`, Telescope, Treesitter, and Lualine.
 - **Hyprland & Display**:
   - Refactor monitor/workspace setups to host-specific modular configurations (`hosts/PadsTower.lua`, `hosts/PadsP5560.lua`), update keybindings, and enable tearing support for low-latency gaming.
 - **UWSM & Session Startup**:

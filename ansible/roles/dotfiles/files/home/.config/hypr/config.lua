@@ -14,7 +14,6 @@ local config = {
     editor = uwsm .. "vscodium",
     file = uwsm .. "nautilus",
     browser = uwsm .. (os.getenv("BROWSER") or "firefox"),
-    music = uwsm .. "spotify-launcher",
     password_manager = uwsm .. "proton-pass",
     menu = "hyprlauncher",
   },

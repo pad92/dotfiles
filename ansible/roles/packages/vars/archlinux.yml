@@ -257,7 +257,6 @@ packages_family_groups:
       - pavucontrol
       - proton-pass-cli-bin
       - seahorse
-      - spotify-launcher
       - telegram-desktop
       - tree-sitter-cli
       - vlc
