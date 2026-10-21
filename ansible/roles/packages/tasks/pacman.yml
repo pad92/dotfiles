@@ -11,16 +11,14 @@
 - name: Configure pacman progress bar options
   ansible.builtin.lineinfile:
     path: /etc/pacman.conf
-    regexp: '^[# \t]*{{ item.option }}[ \t]*$'
-    line: '{{ item.option }}'
+    regexp: '^[# \t]*{{ packages_pacman_option }}[ \t]*$'
+    line: '{{ packages_pacman_option }}'
     insertafter: '^\[options\]$'
     backup: true
-  loop:
-    - option: ILoveCandy
-      distributions: [Archlinux, CachyOS]
-    - option: PrettyProgressBar
-      distributions: [CachyOS]
-  when: ansible_facts['distribution'] in item.distributions
+  loop: '{{ packages_pacman_progress_options }}'
+  loop_control:
+    loop_var: packages_pacman_option
+  when: ansible_facts['os_family'] == 'Archlinux'
 
 - name: Enable pacman disk-space checks
   ansible.builtin.lineinfile:

@@ -4,3 +4,5 @@ system_ipv6_enabled_default: true
 system_ipv6_enabled_by_hostname: {}
 system_i915_enable_guc: null
 system_i915_guc_supported: false
+system_amd_pstate_epp: balance_performance
+system_amd_x3d_mode: null

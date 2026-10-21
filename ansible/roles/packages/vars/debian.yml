@@ -1,4 +1,6 @@
 ---
+packages_default_groups: [01_base, 03_gtk]
+packages_state_filename: managed-debian-packages.json
 packages_family_groups:
   Debian:
     01_base:
@@ -64,3 +66,7 @@ packages_family_groups:
       - buildah
       - podman
       - skopeo
+packages_debian_gtk3_package: >-
+  {{ 'libgtk-3-0t64'
+     if ansible_facts['distribution_major_version'] | int >= 13
+     else 'libgtk-3-0' }}

@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 PACKAGE_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/archlinux.yml"
+CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
 FILTERS = importlib.util.module_from_spec(SPEC)
@@ -25,7 +26,6 @@ PROHIBITED_PACKAGE_NAMES = {
     "man",
     "mlocate",
     "p7zip",
-    "power-profiles-daemon",
     "tlp",
     "xf86-video-intel",
 }
@@ -35,7 +35,8 @@ class ArchPackageGroupTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.groups = yaml.safe_load(PACKAGE_VARS.read_text(encoding="utf-8"))[
-            "packages_family_groups"]["Archlinux"]
+            "packages_family_groups"
+        ]["Archlinux"]
 
     def test_lists_are_sorted_unique_and_well_formed(self):
         for group_name, packages in self.groups.items():
@@ -56,6 +57,42 @@ class ArchPackageGroupTests(unittest.TestCase):
     def test_prohibited_package_names_are_not_reintroduced(self):
         packages = {package for group in self.groups.values() for package in group}
         self.assertTrue(PROHIBITED_PACKAGE_NAMES.isdisjoint(packages))
+
+    def test_steam_contains_the_complete_gaming_stack(self):
+        steam = set(self.groups["21_steam"])
+        self.assertTrue(
+            {
+                "ananicy-cpp",
+                "power-profiles-daemon",
+                "python-gobject",
+            }.issubset(steam)
+        )
+        self.assertTrue(
+            {
+                "cachyos-ananicy-rules",
+                "cachyos-settings",
+                "proton-cachyos-slr",
+            }.isdisjoint(steam)
+        )
+        self.assertNotIn("gamemode", steam)
+        for name, packages in self.groups.items():
+            if name != "21_steam":
+                self.assertNotIn("power-profiles-daemon", packages)
+
+    def test_cachyos_only_gaming_packages_are_distribution_overrides(self):
+        overrides = yaml.safe_load(CACHYOS_VARS.read_text(encoding="utf-8"))[
+            "packages_distribution_family_group_overrides"
+        ]
+        cachyos_steam = overrides["Archlinux"]["21_steam"]
+
+        self.assertTrue(
+            {
+                "cachyos-ananicy-rules",
+                "cachyos-settings",
+                "proton-cachyos-slr",
+            }.issubset(cachyos_steam)
+        )
+        self.assertTrue(set(self.groups["21_steam"]).issubset(cachyos_steam))
 
     def test_sysfs_fallback_does_not_guess_nvidia_generation(self):
         devices = [{"class": "0x030000", "vendor": "0x10de", "device": "0x1b80"}]

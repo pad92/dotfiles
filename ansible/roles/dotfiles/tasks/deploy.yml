@@ -169,27 +169,6 @@
   when: dotfiles_waybar_host_stat.stat.isreg | default(false)
   notify: Reload Waybar
 
-- name: Copy user systemd units
-  ansible.builtin.copy:
-    src: 'home/{{ dotfiles_systemd_directory }}/'
-    dest: '{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/'
-    local_follow: false
-    mode: preserve
-    backup: true
-  notify: Reload the user systemd manager
-  tags: [systemd]
-
-- name: Apply pending user systemd unit changes
-  ansible.builtin.meta: flush_handlers
-  tags: [systemd]
-
-- name: Enable and start graphical session units
-  ansible.builtin.systemd_service:
-    name: '{{ item }}'
-    enabled: true
-    state: started
-    scope: user
-  loop: '{{ dotfiles_systemd_graphical_units }}'
-  loop_control:
-    label: '{{ item }}'
+- name: Deploy user systemd units
+  ansible.builtin.import_tasks: user_systemd.yml
   tags: [systemd]

@@ -60,9 +60,80 @@ settings. Ansible does not reboot the workstation.
 Run either tag with `./install --tags ssh_client_hardening --ask-become-pass`
 or `./install --tags kernel_hardening --ask-become-pass`.
 
-Package groups are split by OS family in `roles/packages/vars/`. The package
-role loads the matching file and keeps selection, installation, and
-reconciliation in separate task files.
+### AMD CPU performance
+
+The `amd_cpu_performance` tag uses the CPU vendor from Ansible facts and the
+controls exposed by the kernel. With AMD P-State in active mode, it selects
+`powersave` before applying `system_amd_pstate_epp` (default:
+`balance_performance`). Both values must be available on the CPU policy.
+Here, `powersave` lets EPP guide the CPU's performance and energy use.
+
+Ansible skips direct EPP changes while a known power manager is active or
+enabled (`power-profiles-daemon`, auto-cpufreq, TLP, or tuned). This preserves
+the manager's selected profile, including a game's temporary performance profile.
+Set `system_amd_pstate_epp: null` to disable direct EPP management entirely.
+
+The X3D CCD mode stays unchanged unless `system_amd_x3d_mode` is set to `cache`
+or `frequency` and the kernel exposes the AMD X3D control. Choose the mode for
+the workloads of the target machine. Ansible does not change Core Performance
+Boost or the kernel boot parameters.
+
+Apply the runtime settings with:
+
+```sh
+./install --tags amd_cpu_performance --ask-become-pass
+```
+
+These writes are not persisted across reboot. See the
+[CachyOS CPU tuning guide](https://wiki.cachyos.org/fr/configuration/general_system_tweaks/)
+for firmware requirements and the effect of power profiles.
+
+### Gaming
+
+The `21_steam` group selects Steam, Gamescope, MangoHud, `ananicy-cpp`,
+`power-profiles-daemon`, and `python-gobject` on Arch Linux and CachyOS. On
+CachyOS, it also selects Proton CachyOS SLR, `cachyos-ananicy-rules`, and
+`cachyos-settings`, which provides `game-performance`. These CachyOS packages
+are added only when Ansible facts identify the distribution as CachyOS. Ansible
+requires them to be available in configured CachyOS repositories instead of
+trying to build them from the AUR. `cachyos-settings` also installs CachyOS
+system defaults for sysctl, udev, and other components
+([package documentation](https://wiki.cachyos.org/fr/features/cachyos_settings/)).
+
+When `21_steam` is selected, Ansible enables and starts `ananicy-cpp` and
+`power-profiles-daemon`. Configuration stops if auto-cpufreq, TLP, or tuned is
+active or enabled, so the administrator can resolve the competing power
+managers. An existing `ananicy-cpp` service, such as on PadsTower, is kept running.
+The rules and daemon configuration come from the selected packages.
+
+To install the selected groups and configure gaming services, run:
+
+```sh
+./install --tags packages,gaming --ask-become-pass
+```
+
+The `gaming` tag alone configures services after checking that their packages
+are installed. It uses the usual package group selection; it does not select
+`21_steam` automatically. Deselecting Steam does not stop existing services.
+GameMode is excluded from the package list. An already installed copy is only
+eligible for removal through `packages_action=reconcile` if Ansible owns it.
+
+The group's sysctl policy raises `vm.max_map_count` for Proton games during a
+full run or with `--tags kernel_hardening`. The `steam-optimize` launcher uses
+`game-performance` on CachyOS; on Arch Linux it launches without that CachyOS
+profile manager. It sets a 12 GB Mesa shader cache for AMD or
+a 12 GB proprietary-driver cache for NVIDIA; game profiles can override those
+values. Arc Raiders uses a 20 GB Mesa cache.
+
+Avoid adding `gamemoderun` while `ananicy-cpp` is active: both can change process
+priorities ([CachyOS gaming guide](https://wiki.cachyos.org/fr/configuration/gaming/)).
+`ENABLE_LAYER_MESA_ANTI_LAG` remains a per-game option because compatibility
+varies between games.
+
+Package groups start with the OS-family file in `roles/packages/vars/`. The
+package role then loads the first matching exact-version, major-version, or
+distribution override. Selection, installation, and reconciliation stay in
+separate task files.
 
 On Arch Linux and CachyOS, the package role sets `Color`, `ILoveCandy`, and
 `CheckSpace`, enables the standard `multilib` repository, and sets

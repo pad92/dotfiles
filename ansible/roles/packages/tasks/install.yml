@@ -65,6 +65,18 @@
     - packages_missing | default([]) | length > 0
   tags: [yay]
 
+- name: Require CachyOS gaming packages in configured repositories
+  ansible.builtin.assert:
+    that:
+      - >-
+        packages_arch_aur | default([])
+        | intersect(packages_cachyos_repository_packages | default([])) | length == 0
+    fail_msg: >-
+      CachyOS packages required by 21_steam are missing from configured
+      repositories. Check the CachyOS repository configuration and package databases.
+  when: ansible_facts['distribution'] == 'CachyOS'
+  tags: [yay]
+
 - name: Refuse packages requiring disabled multilib
   ansible.builtin.assert:
     that:

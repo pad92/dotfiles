@@ -15,7 +15,6 @@ hl.bind(config.mainMod .. " + Return", hl.dsp.exec_cmd(config.apps.term), { desc
 hl.bind(config.mainMod .. " + E", hl.dsp.exec_cmd(config.apps.file), { description = "File manager" })
 hl.bind(config.mainMod .. " + C", hl.dsp.exec_cmd(config.apps.editor), { description = "Code editor" })
 hl.bind(config.mainMod .. " + W", hl.dsp.exec_cmd(config.apps.browser), { description = "Browser" })
-hl.bind(config.mainMod .. " + M", hl.dsp.exec_cmd(config.apps.music), { description = "Music Player" })
 hl.bind(
   config.mainMod .. " + D",
   hl.dsp.exec_cmd(config.apps.menu .. " -f desktop -t"),

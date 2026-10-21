@@ -1,13 +1,38 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Added
+
+- AMD P-State EPP configuration based on CPU facts and available kernel controls,
+  with rollback on failure. Skip EPP changes when a known power manager is active
+  or enabled; make X3D CCD mode opt-in. Settings apply until reboot.
+
 ### Changed
 
-- **Hyprland**: Restart Hyprlauncher after deploying its configuration. Open
-  the desktop finder with `SUPER+D`, with frequently used apps ranked first.
+- Load Ansible package variables by OS family, distribution, and version.
+  Split system tasks by function and user systemd deployment into its own file.
+- Replace GameMode in `21_steam` with `ananicy-cpp` and `power-profiles-daemon`;
+  manage their services with Ansible. Select CachyOS rules, Proton, and
+  `cachyos-settings` only on CachyOS, using its configured repositories.
+- Let `steam-optimize` launch without `game-performance`. Set a 12 GB default
+  shader cache for AMD and NVIDIA, with per-game overrides.
+- Reload active audio services after configuration changes, or restart when
+  reload is unavailable. Restart only active user units whose definitions or
+  drop-ins changed; preserve masks, aliases, and activation links.
+- Restart Hyprlauncher after deploying its configuration. Open the desktop
+  finder with `SUPER+D`, with frequently used apps ranked first.
+- Point the `mediasync` shell alias to `~/.local/bin/mediasync`.
+
+### Fixed
+
+- Remove the Hyprland music shortcut left behind after Spotify was removed;
+  its missing command caused a configuration error at startup.
+- Use relative links for the local wallpaper and Proton Pass user units.
+  Preserve existing files that conflict with managed unit symlinks.
+- Remove the GTK 2 include for the absent `~/.gtkrc-2.0.mine` file.
 
 ## [v6.0.1](https://gitlab.com/pad92/dotfiles/-/releases/v6.0.1)
 

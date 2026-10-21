@@ -1,0 +1,39 @@
+---
+- name: Read installed gaming packages
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Require the gaming service dependencies
+  ansible.builtin.assert:
+    that:
+      - >-
+        packages_gaming_required_packages
+        | difference(ansible_facts.packages.keys() | list) | length == 0
+    fail_msg: >-
+      Install the complete 21_steam group before configuring gaming services.
+      Run with --tags packages,gaming and check for skipped AUR packages.
+
+- name: Read CPU power manager states
+  ansible.builtin.include_tasks: power_manager_facts.yml
+
+- name: Require a single CPU power manager
+  ansible.builtin.assert:
+    that:
+      - item not in system_active_power_managers
+    fail_msg: >-
+      {{ item }} is active or enabled. Stop and disable it before selecting
+      power-profiles-daemon for gaming; both would control CPU power.
+  loop:
+    - auto-cpufreq.service
+    - tlp.service
+    - tuned.service
+    - tuned-ppd.service
+
+- name: Enable the gaming services
+  ansible.builtin.systemd_service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+  loop:
+    - ananicy-cpp.service
+    - power-profiles-daemon.service

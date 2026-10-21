@@ -1,0 +1,5 @@
+---
+packages_debian_gtk3_package: >-
+  {{ 'libgtk-3-0t64'
+     if ansible_facts['distribution_version'] is version('24.04', '>=')
+     else 'libgtk-3-0' }}

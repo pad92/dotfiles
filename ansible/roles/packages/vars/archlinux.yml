@@ -1,4 +1,9 @@
 ---
+packages_default_groups: [01_base, 03_gtk, 11_hyprland]
+packages_state_filename: arch-packages.json
+packages_aur_helper_preference: [yay]
+packages_pacman_progress_options:
+  - ILoveCandy
 packages_family_groups:
   Archlinux:
     01_base:
@@ -264,10 +269,11 @@ packages_family_groups:
       - vscodium-bin-marketplace
       - wget
     21_steam:
+      - ananicy-cpp
       - discord
-      - gamemode
       - gamescope
       - ludusavi
       - mangohud
-      - proton-cachyos-slr
+      - power-profiles-daemon
+      - python-gobject
       - steam

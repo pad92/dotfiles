@@ -33,7 +33,9 @@ dotfiles_directories:
 dotfiles_directory_handlers:
   .config/hypr: [Restart Hyprlauncher]
   .config/mako: [Reload Mako configuration]
+  .config/pipewire: [Apply changed user audio configuration]
   .config/waybar: [Reload Waybar]
+  .config/wireplumber: [Apply changed user audio configuration]
 dotfiles_systemd_directory: .config/systemd
 dotfiles_systemd_graphical_units:
   - awww.service

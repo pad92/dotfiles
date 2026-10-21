@@ -7,14 +7,35 @@ from types import SimpleNamespace
 from unittest import mock
 
 SCRIPT_PATH = (
-    Path(__file__).parents[1]
-    / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
 )
 
 
 class SteamOptimizeTests(unittest.TestCase):
     def setUp(self):
         self.script = runpy.run_path(str(SCRIPT_PATH), run_name="steam_optimize")
+
+    def test_arch_launch_does_not_require_cachyos_game_performance(self):
+        launch = self.script["build_launch_command"](["game", "--fullscreen"], None)
+
+        self.assertEqual(
+            launch,
+            [
+                "systemd-inhibit",
+                "--what=idle",
+                "--who=steam-optimize",
+                "--why=Steam game running",
+                "game",
+                "--fullscreen",
+            ],
+        )
+
+    def test_cachyos_launch_uses_game_performance(self):
+        launch = self.script["build_launch_command"](
+            ["game"], "/usr/bin/game-performance"
+        )
+
+        self.assertEqual(launch[4:], ["/usr/bin/game-performance", "game"])
 
     def test_active_localconfig_converts_steam_id_to_account_id(self):
         account_id = 1234

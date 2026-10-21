@@ -1,0 +1,69 @@
+---
+- name: Validate AMD performance settings
+  ansible.builtin.assert:
+    that:
+      - >-
+        system_amd_pstate_epp is none or system_amd_pstate_epp in
+        ['performance', 'balance_performance', 'balance_power', 'power']
+      - system_amd_x3d_mode is none or system_amd_x3d_mode in ['frequency', 'cache']
+    fail_msg: Choose a supported EPP preference and X3D mode, or null to leave them unchanged.
+
+- name: Check for AMD P-State
+  ansible.builtin.stat:
+    path: /sys/devices/system/cpu/amd_pstate/status
+  register: system_amd_pstate_control
+
+- name: Read the AMD P-State mode
+  ansible.builtin.slurp:
+    src: /sys/devices/system/cpu/amd_pstate/status
+  register: system_amd_pstate_status
+  when: system_amd_pstate_control.stat.exists
+
+- name: Read CPU power manager states
+  ansible.builtin.include_tasks: power_manager_facts.yml
+
+- name: Discover EPP controls on unmanaged AMD P-State CPUs
+  ansible.builtin.find:
+    paths: /sys/devices/system/cpu/cpufreq
+    patterns: energy_performance_preference
+    recurse: true
+    file_type: file
+  register: system_amd_epp_files
+  when:
+    - system_amd_pstate_epp is not none
+    - system_amd_pstate_status.content | default('') | b64decode | trim == 'active'
+    - system_active_power_managers | length == 0
+
+- name: Configure each supported AMD EPP policy
+  ansible.builtin.include_tasks:
+    file: amd_epp_policy.yml
+    apply:
+      tags: [amd_cpu_performance]
+  loop: '{{ system_amd_epp_files.files | default([]) }}'
+  loop_control:
+    loop_var: system_amd_policy
+    label: '{{ system_amd_policy.path | dirname }}'
+
+- name: Check for the AMD X3D CCD control
+  ansible.builtin.stat:
+    path: /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode
+  register: system_amd_x3d_control
+  when: system_amd_x3d_mode is not none
+
+- name: Read the AMD X3D CCD mode
+  ansible.builtin.slurp:
+    src: /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode
+  register: system_amd_x3d_current
+  when:
+    - system_amd_x3d_mode is not none
+    - system_amd_x3d_control.stat.exists
+
+- name: Set the requested AMD X3D CCD mode
+  ansible.builtin.command:
+    argv: [tee, /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode]
+    stdin: '{{ system_amd_x3d_mode }}'
+  when:
+    - system_amd_x3d_mode is not none
+    - system_amd_x3d_control.stat.exists
+    - system_amd_x3d_current.content | b64decode | trim != system_amd_x3d_mode
+  changed_when: true
