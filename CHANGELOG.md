@@ -4,6 +4,8 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
+
 ### Added
 
 - Show the power-profiles-daemon profile and ananicy-cpp service state in the
@@ -41,6 +43,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- Load LACT test filters explicitly with an isolated Ansible configuration.
+  This fixes GitLab CI failures when Ansible ignores `ansible.cfg` in a
+  world-writable checkout.
 - Normalize directory paths before the local deployment comparison so `./`
   prefixes and trailing slashes cannot cause files to be skipped.
 - Refuse to replace a symlink used for LACT configuration. Accept custom or
