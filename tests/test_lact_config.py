@@ -178,6 +178,9 @@ class LactDeploymentTests(unittest.TestCase):
             ]
             playbook = work / "play.yml"
             playbook.write_text(yaml.safe_dump(play))
+            # CI may ignore the repository config in a world-writable checkout.
+            ansible_config = work / "ansible.cfg"
+            ansible_config.write_text("[defaults]\n")
 
             def run(*arguments, expected_success=True):
                 result = subprocess.run(
@@ -191,7 +194,12 @@ class LactDeploymentTests(unittest.TestCase):
                         *arguments,
                     ],
                     cwd=ROOT,
-                    env={**os.environ, "ANSIBLE_LOCAL_TEMP": str(work / "tmp")},
+                    env={
+                        **os.environ,
+                        "ANSIBLE_CONFIG": str(ansible_config),
+                        "ANSIBLE_FILTER_PLUGINS": str(ROOT / "ansible/filter_plugins"),
+                        "ANSIBLE_LOCAL_TEMP": str(work / "tmp"),
+                    },
                     capture_output=True,
                     text=True,
                     timeout=60,
