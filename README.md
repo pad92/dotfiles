@@ -15,73 +15,84 @@ cd ~/.dotfiles
 ./install
 ```
 
-Install `ansible-playbook` first. Run `./install` from a regular user account
-with `sudo` access. The playbook supports Arch Linux and CachyOS, Debian and
-Ubuntu, and Fedora. It installs selected package groups and deploys dotfiles.
-Use `./install --check` to preview package changes. Add `--tags dotfiles` to
-preview dotfile changes without running package tasks.
+Install `ansible-playbook` first, then run `./install` as a regular user with
+`sudo` access. The playbook supports Arch Linux/CachyOS, Debian/Ubuntu, and
+Fedora. It installs packages and deploys the configuration to your home.
 
-Package groups are selected from OS defaults and detected GPU hardware. Set
-`packages_host_groups` in `ansible/host_vars/localhost.yml` to choose groups by
-hostname, or use `-e packages_group_selection=...` for a one-time override.
-GPU groups are added only when all controllers can be classified. Package
-mappings are in `ansible/roles/packages/vars/`.
+Preview packages with `./install --check`, or dotfiles with
+`./install --check --tags dotfiles`. Arguments pass through to
+`ansible-playbook`, including `--ask-become-pass` and `-e`.
 
-On Arch, the installer configures color output, disk-space checks, five parallel
-downloads, and the standard `multilib` repository in `/etc/pacman.conf`. Enabling
-`multilib` triggers `pacman -Syu`. Otherwise, selected official packages are
-installed without a full upgrade by default; use
-`-e packages_upgrade_system=true` to request one.
+Package selection uses OS defaults and detected GPUs. Set `packages_host_groups`
+in `ansible/host_vars/localhost.yml` for each hostname, or pass
+`-e packages_group_selection=...` for one run. Automatic GPU selection requires
+all controllers to be identified. Package variables load by OS family, then
+use the first matching exact-version, major-version, or distribution override.
 
-Missing AUR packages are built with `yay`. If needed, the playbook installs its
-build dependencies, builds it as the regular user, then installs it with
-privilege escalation. Set `packages_aur_action=ask` to confirm AUR work or
-`packages_aur_action=skip` to skip it.
+On Arch, Ansible configures pacman, enables standard `multilib`, and runs
+`pacman -Syu` when that repository is newly enabled. Otherwise, a full upgrade
+requires `-e packages_upgrade_system=true`. Missing AUR packages use `yay`,
+which Ansible can build as the regular user. Choose `packages_aur_action=ask`
+to confirm AUR work or `skip` to leave it out. Native makepkg builds disable
+debug packages and may not run on a different CPU.
 
-Package installation is additive. Reconciliation removes only packages
-recorded as managed by this installer, after a transaction preview and explicit
-confirmation. Use `./install -e packages_action=reconcile` to review and apply
-reconciliation. Packages installed before the state file was created remain
-unmanaged.
+Installation is additive. Use `./install -e packages_action=reconcile` to
+preview and confirm removals of packages recorded as managed by this installer.
+Pre-existing packages remain unmanaged. See the [Ansible guide](./ansible/README.md)
+for configuration, package ownership, and system settings.
 
-The installer configures makepkg for native CPU builds on Arch Linux and
-CachyOS and disables separate debug packages. Packages built with native CPU
-flags may not run on computers with a different CPU.
+## Ansible tasks
 
-## Ansible tags
+Use `./install --tags <tag>`. The supported-distribution check always runs.
 
-Pass tags with `./install --tags <tag>`. The supported-distribution check always
-runs. Tags on an enclosing role or task group include its subtasks.
+| Tags                                       | Action                                                                                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `packages`                                 | Run package selection, installation, and reconciliation tasks.                                            |
+| `packages_select`                          | Select package groups.                                                                                    |
+| `packages_install`, `packages_reconcile`   | Configure repositories and install packages; the latter also runs reconciliation.                         |
+| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                                             |
+| `yay`                                      | Configure pacman and run the AUR flow; selected official packages are not installed by this tag.          |
+| `system`                                   | Run system configuration.                                                                                 |
+| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                                                         |
+| `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                                               |
+| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                                             |
+| `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                                                         |
+| `gaming`                                   | Check dependencies and configure services for the selected Steam group.                                   |
+| `dotfiles`                                 | Run the full dotfiles role.                                                                               |
+| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy configuration.                                                            |
+| `dotfiles_runtime`, `vim`                  | Check Vim and update plugins when `dotfiles_update_vim_plugins=true`.                                     |
+| `systemd`                                  | Deploy user units, aliases, masks, and activation links; enable and start the configured graphical units. |
+| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                                                   |
 
-| Tag                         | Description                                                                                                               |
-| :-------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
-| `packages`                  | Run the package role.                                                                                                     |
-| `packages_select`           | Select package groups.                                                                                                    |
-| `packages_install`          | Configure Arch repositories and install selected packages.                                                                |
-| `packages_reconcile`        | Configure repositories, install selected packages, and reconcile managed packages.                                        |
-| `pacman`, `pacman_config`   | Configure `/etc/pacman.conf`; aliases.                                                                                    |
-| `yay`                       | Select packages and run the AUR flow. Also runs `pacman` configuration, but skips selected official package installation. |
-| `system`                    | Run system configuration.                                                                                                 |
-| `ssh_client_hardening`      | Hash host names when the system SSH client adds new known-hosts entries.                                                        |
-| `kernel_hardening`          | Apply desktop-compatible kernel protections through sysctl.                                                                  |
-| `gpu_modules`               | Select package groups and configure NVIDIA/i915 kernel module settings.                                                   |
-| `makepkg`, `makepkg_config` | Configure makepkg; aliases.                                                                                               |
-| `dotfiles`                  | Run the full dotfiles role.                                                                                               |
-| `dotfiles_submodules`       | Initialize Git submodules.                                                                                                |
-| `dotfiles_deploy`           | Deploy dotfiles and user systemd units.                                                                                   |
-| `dotfiles_runtime`          | Check Vim and update its plugins only when `dotfiles_update_vim_plugins=true`.                                            |
-| `vim`                       | Update Vim plugins when `dotfiles_update_vim_plugins=true`.                                                               |
-| `systemd`                   | Install user units, reload the manager when needed, and enable/start the graphical units listed in Ansible defaults.      |
-| `hyprlock_carousel`         | Render the Hyprlock carousel helper.                                                                                      |
+Configuration changes notify their handlers. Active audio services reload when
+supported, otherwise restart. Changed unit definitions and drop-ins restart
+only the affected active units after `daemon-reload`; changes to symbolic links
+only reload the manager. Mako and Waybar reload automatically; their internal
+handler tags are not standalone commands.
 
-Mako and Waybar reload handlers run automatically when notified by changed
-configuration. Their internal `mako_reload` and `waybar_reload` handler tags
-are not standalone `--tags` options.
+The default graphical units include `hypridle.service`. Run
+`./install --tags systemd` to deploy user units and enable the configured list
+in `dotfiles_systemd_graphical_units`. Hypridle requires `WAYLAND_DISPLAY` in
+the user systemd environment to start.
 
-For example, `./install --tags yay --ask-become-pass` runs the AUR flow, and
-`./install --tags dotfiles_deploy` deploys dotfiles without installing packages.
-The installer forwards other arguments to `ansible-playbook`, including
-`--check`, `--ask-become-pass`, and `-e`.
+## Gaming and AMD CPUs
+
+Select `21_steam`, then run `./install --tags packages,gaming --ask-become-pass`.
+The group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
+Ansible enables both services and stops configuration if another known CPU
+power manager is active or enabled. Once this check passes, it removes any
+systemd mask from `power-profiles-daemon.service` before enabling it.
+CachyOS adds its Ananicy rules, Proton,
+and `cachyos-settings`, which provides `game-performance`; these packages are
+not selected on plain Arch. `steam-optimize` also works without
+`game-performance` and sets shader-cache limits for AMD and NVIDIA.
+
+The `amd_cpu_performance` tag uses CPU facts and kernel controls. It applies
+`balance_performance` EPP through the `powersave` governor only when AMD P-State
+is active and no known power manager is active or enabled. X3D CCD mode is
+opt-in. These CPU settings last until reboot; a failed EPP update restores the
+original governor and preference. See [AMD options](./ansible/README.md#amd-cpu-performance)
+and [gaming setup](./ansible/README.md#gaming) for overrides and dependencies.
 
 ## Customize
 
@@ -98,9 +109,9 @@ includes it.
 | Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                         |
 
 Host-aware files are rendered from `ansible/roles/dotfiles/templates/`. Static
-files are copied from `ansible/roles/dotfiles/files/`. Conflicting regular files
-are backed up with a `.bak` suffix; managed symbolic links are removed while
-their targets are left untouched.
+files are copied from `ansible/roles/dotfiles/files/`. Conflicting managed paths are backed up before replacement. Unit symlinks
+are preserved as links; deployment stops if a regular file or directory occupies
+one of their destinations.
 
 Use `make ansible-backup-ls` to list backups created for Ansible-managed
 dotfiles, or `make ansible-backup-rm` to review and remove them after a
@@ -131,7 +142,7 @@ GNOME Keyring PAM, UWSM, and systemd session setup.
 | Shortcut                            | Action                                           |
 | :---------------------------------- | :----------------------------------------------- |
 | `SUPER + Return`                    | Terminal                                         |
-| `SUPER + E / C / W / M`             | File manager / editor / browser / music player   |
+| `SUPER + E / C / W`                 | File manager / editor / browser                  |
 | `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
 | `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
 | `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
@@ -146,9 +157,11 @@ Hyprland and `awww_random.timer` changes wallpapers every 30 minutes.
 
 Hyprlock displays time, battery, and media information. Its carousel option
 uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2)
-for details. The LACT profile is deployed to `~/.config/lact/config.yaml`, not
-`/etc/lact/config.yaml`. Verify the GPU identifier and review the fan curves
-before relying on it.
+for details. The `lact` tag manages `/etc/lact/config.yaml` using GPU identifiers
+reported by the running LACT daemon. It repairs identifier casing, preserves
+existing profiles and fan curves, backs up changes and restarts `lactd` when
+needed. New profiles use the detected AMD GPUs without custom fan curves.
+The old home-directory LACT file is no longer deployed or used by this role.
 
 ## Scripts
 
@@ -181,4 +194,4 @@ See the [GitHub workflow documentation](./.github/workflows/README.md) and
 [GitLab CI documentation](./.gitlab/README.md). Tags matching `v*` publish a
 release using the matching changelog section.
 
-_Maintained by [pad](https://gitlab.com/pad92)🐐 since 2015._
+_Maintained by [pad](https://gitlab.com/pad92) since 2015._

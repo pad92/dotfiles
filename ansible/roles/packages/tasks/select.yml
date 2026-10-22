@@ -1,8 +1,4 @@
 ---
-- name: Load package groups for this OS family
-  ansible.builtin.include_vars:
-    file: "{{ ansible_facts['os_family'] | lower }}.yml"
-
 - name: Validate package action
   ansible.builtin.assert:
     that:
@@ -141,7 +137,7 @@
 - name: Build default package group selection
   ansible.builtin.set_fact:
     packages_group_defaults: >-
-      {{ (packages_default_groups[ansible_facts['os_family']]
+      {{ (packages_default_groups
           + (packages_detected_graphics_groups | default([])))
          | unique | sort }}
 

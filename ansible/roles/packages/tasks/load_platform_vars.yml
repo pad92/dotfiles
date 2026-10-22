@@ -1,0 +1,25 @@
+---
+- name: Load package variables for this OS family
+  ansible.builtin.include_vars:
+    file: '{{ ansible_facts["os_family"] | lower }}.yml'
+
+- name: Load the most specific distribution variables
+  ansible.builtin.include_vars:
+    file: '{{ item }}'
+  with_first_found:
+    - files:
+        - >-
+          {{ 'vars/' ~ (ansible_facts["distribution"] | lower) ~ '-'
+             ~ (ansible_facts["distribution_version"] | lower) ~ '.yml' }}
+        - >-
+          {{ 'vars/' ~ (ansible_facts["distribution"] | lower) ~ '-'
+             ~ (ansible_facts["distribution_major_version"] | lower) ~ '.yml' }}
+        - 'vars/{{ ansible_facts["distribution"] | lower }}.yml'
+      skip: true
+
+- name: Apply distribution overrides to family package groups
+  ansible.builtin.set_fact:
+    packages_family_groups: >-
+      {{ packages_family_groups | combine(
+           packages_distribution_family_group_overrides | default({}),
+           recursive=true) }}

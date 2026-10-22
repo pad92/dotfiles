@@ -5,6 +5,29 @@
   changed_when: true
   become: false
 
+- name: Apply changed managed user units
+  ansible.builtin.command:
+    argv: >-
+      {{ ['systemctl', '--user', '--no-block', 'try-restart'] +
+         (dotfiles_user_unit_copies.results | default([])
+          | selectattr('changed') | map(attribute='item')
+          | map('regex_replace', '\.d/.*$', '') | unique | list) }}
+  changed_when: true
+  become: false
+
+- name: Apply changed user audio configuration
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - --no-block
+      - try-reload-or-restart
+      - pipewire.service
+      - pipewire-pulse.service
+      - wireplumber.service
+  changed_when: true
+  become: false
+
 - name: Restart Hyprlauncher
   ansible.builtin.shell:
     cmd: |
@@ -23,7 +46,7 @@
         sleep 0.1
       done
 
-      uwsm app -- hyprlauncher -d
+      uwsm app -t service -- hyprlauncher -d
     executable: /bin/sh
   changed_when: true
   become: false

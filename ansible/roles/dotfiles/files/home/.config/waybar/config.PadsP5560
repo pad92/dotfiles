@@ -13,6 +13,7 @@
     "temperature#gpu",
     "backlight",
     "battery",
+    "custom/lact-profile",
     "custom/headsetcontrol",
     "tray"
   ],

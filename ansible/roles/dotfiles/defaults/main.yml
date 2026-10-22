@@ -18,7 +18,6 @@ dotfiles_directories:
   - .config/gtk-3.0
   - .config/htop
   - .config/hypr
-  - .config/lact
   - .config/mako
   - .config/nvim
   - .config/nwg-look
@@ -33,11 +32,14 @@ dotfiles_directories:
 dotfiles_directory_handlers:
   .config/hypr: [Restart Hyprlauncher]
   .config/mako: [Reload Mako configuration]
+  .config/pipewire: [Apply changed user audio configuration]
   .config/waybar: [Reload Waybar]
+  .config/wireplumber: [Apply changed user audio configuration]
 dotfiles_systemd_directory: .config/systemd
 dotfiles_systemd_graphical_units:
   - awww.service
   - awww_random.timer
+  - hypridle.service
   - mako.service
   - waybar.service
 dotfiles_files:

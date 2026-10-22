@@ -1,0 +1,20 @@
+---
+- name: Configure SSH client hardening
+  ansible.builtin.file:
+    path: /etc/ssh/ssh_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [ssh_client_hardening]
+
+- name: Set SSH client hardening defaults
+  ansible.builtin.copy:
+    dest: /etc/ssh/ssh_config.d/60-dotfiles-hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Hash host names when new known-hosts entries are added.
+      HashKnownHosts yes
+  tags: [ssh_client_hardening]

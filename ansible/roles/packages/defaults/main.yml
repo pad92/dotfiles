@@ -1,25 +1,15 @@
 ---
-packages_default_groups:
-  Archlinux: [01_base, 03_gtk, 11_hyprland]
-  Debian: [01_base, 03_gtk]
-  RedHat: [01_base, 03_gtk]
 packages_host_groups: {}
-packages_debian_gtk3_package: >-
-  {{ 'libgtk-3-0t64'
-     if (ansible_facts['distribution'] == 'Debian'
-         and ansible_facts['distribution_major_version'] | int >= 13)
-        or (ansible_facts['distribution'] == 'Ubuntu'
-            and ansible_facts['distribution_version'] is version('24.04', '>='))
-     else 'libgtk-3-0' }}
 packages_state_directory: "{{ lookup('env', 'XDG_STATE_HOME') | default(lookup('env',
   'HOME') + '/.local/state', true) }}/dotfiles"
-packages_state_filename: >-
-  {{ 'arch-packages.json' if ansible_facts['os_family'] == 'Archlinux'
-     else 'managed-' + (ansible_facts['os_family'] | lower) + '-packages.json' }}
 packages_action: install
 packages_upgrade_system: false
 packages_aur_action: install
 packages_aur_helper_preference: [yay]
+packages_gaming_required_packages:
+  - ananicy-cpp
+  - power-profiles-daemon
+  - python-gobject
 packages_protected:
   - base
   - base-devel

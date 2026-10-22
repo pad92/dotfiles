@@ -1,0 +1,107 @@
+---
+- name: Check whether optional desktop sysctls are available
+  ansible.builtin.stat:
+    path: '{{ item.path }}'
+  loop:
+    - name: user namespaces
+      path: /proc/sys/kernel/unprivileged_userns_clone
+    - name: unprivileged BPF
+      path: /proc/sys/kernel/unprivileged_bpf_disabled
+    - name: mmap randomization
+      path: /proc/sys/vm/mmap_rnd_bits
+    - name: BPF JIT hardening
+      path: /proc/sys/net/core/bpf_jit_harden
+  register: system_optional_sysctls
+  tags: [kernel_hardening]
+
+- name: Read the active mmap randomization setting
+  ansible.builtin.command:
+    argv: [sysctl, -n, vm.mmap_rnd_bits]
+  register: system_mmap_rnd_bits
+  changed_when: false
+  when: system_optional_sysctls.results[2].stat.exists
+  tags: [kernel_hardening]
+
+- name: Read the active unprivileged BPF setting
+  ansible.builtin.command:
+    argv: [sysctl, -n, kernel.unprivileged_bpf_disabled]
+  register: system_unprivileged_bpf_disabled
+  changed_when: false
+  when: system_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Manage the desktop sysctl policy
+  ansible.builtin.template:
+    src: hardening.conf.j2
+    dest: /etc/sysctl.d/hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Apply managed sysctl policy
+  tags: [kernel_hardening]
+
+- name: Remove the superseded dotfiles sysctl drop-in
+  ansible.builtin.file:
+    path: /etc/sysctl.d/zz-dotfiles-hardening.conf
+    state: absent
+  tags: [kernel_hardening]
+
+- name: Check for legacy gaming sysctl drop-ins
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  register: system_legacy_gaming_sysctls
+  tags: [kernel_hardening]
+
+- name: Back up legacy gaming sysctl files
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: '{{ item }}.dotfiles-backup'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  loop_control:
+    index_var: system_legacy_gaming_sysctl_index
+  when: >-
+    system_legacy_gaming_sysctls.results[
+    system_legacy_gaming_sysctl_index].stat.exists
+  tags: [kernel_hardening]
+
+- name: Remove legacy gaming sysctl files
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  tags: [kernel_hardening]
+
+- name: Persist reversible unprivileged BPF restriction
+  ansible.builtin.template:
+    src: unprivileged-bpf.conf.j2
+    dest: /etc/sysctl.d/zz-dotfiles-bpf.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  when: >-
+    system_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Apply reversible unprivileged BPF restriction
+  ansible.builtin.command:
+    argv: [sysctl, -w, kernel.unprivileged_bpf_disabled=2]
+  changed_when: true
+  when:
+    - system_optional_sysctls.results[1].stat.exists
+    - system_unprivileged_bpf_disabled.stdout | default('') | trim == '0'
+    - not ansible_check_mode
+  tags: [kernel_hardening]

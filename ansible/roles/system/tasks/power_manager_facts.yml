@@ -1,0 +1,25 @@
+---
+- name: Read installed services
+  ansible.builtin.service_facts:
+
+- name: Query known CPU power managers
+  ansible.builtin.systemd_service:
+    name: '{{ item }}'
+  loop: >-
+    {{ system_cpu_power_managers
+       | intersect(ansible_facts.services.keys() | list) }}
+  register: system_power_manager_status
+
+- name: Record active CPU power managers
+  ansible.builtin.set_fact:
+    system_active_power_managers: >-
+      {{ (system_power_manager_status.results | default([])
+          | selectattr('status.ActiveState', 'defined')
+          | selectattr('status.ActiveState', 'equalto', 'active')
+          | map(attribute='item') | list
+          + system_power_manager_status.results | default([])
+          | selectattr('item', 'in',
+              (ansible_facts.services | dict2items
+               | selectattr('value.status', 'in', ['enabled', 'enabled-runtime'])
+               | map(attribute='key') | list))
+          | map(attribute='item') | list) | unique }}

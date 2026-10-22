@@ -1,4 +1,6 @@
 ---
+packages_default_groups: [01_base, 03_gtk]
+packages_state_filename: managed-redhat-packages.json
 packages_family_groups:
   RedHat:
     01_base:

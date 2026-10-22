@@ -1,0 +1,31 @@
+---
+packages_pacman_progress_options:
+  - ILoveCandy
+  - PrettyProgressBar
+
+packages_distribution_family_group_overrides:
+  Archlinux:
+    21_steam:
+      - ananicy-cpp
+      - cachyos-ananicy-rules
+      - cachyos-settings
+      - discord
+      - gamescope
+      - ludusavi
+      - mangohud
+      - power-profiles-daemon
+      - proton-cachyos-slr
+      - python-gobject
+      - steam
+
+packages_cachyos_repository_packages:
+  - cachyos-ananicy-rules
+  - cachyos-settings
+  - proton-cachyos-slr
+
+packages_gaming_required_packages:
+  - ananicy-cpp
+  - cachyos-ananicy-rules
+  - cachyos-settings
+  - power-profiles-daemon
+  - python-gobject

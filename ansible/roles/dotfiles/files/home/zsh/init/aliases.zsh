@@ -5,7 +5,7 @@ if command -v tofu &>/dev/null; then
 fi
 
 ## Medias Sync
-_mediasync="${HOME}/Documents/git/git.home.lan/pascal/tools/mediasync.py"
+_mediasync="${HOME}/.local/bin/mediasync"
 [ -x "$_mediasync" ] && alias mediasync="$_mediasync"
 unset _mediasync
 

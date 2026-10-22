@@ -1,11 +1,23 @@
 ---
-- name: Configure Arch package repositories
-  ansible.builtin.import_tasks: pacman.yml
-  tags: [pacman, pacman_config, packages_install, packages_reconcile, yay]
+- name: Load platform package variables
+  ansible.builtin.import_tasks: load_platform_vars.yml
+  tags:
+    - packages_select
+    - packages_install
+    - packages_reconcile
+    - pacman
+    - pacman_config
+    - yay
+    - gpu_modules
+    - gaming
 
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
-  tags: [packages_select, packages_install, packages_reconcile, yay, gpu_modules]
+  tags: [packages_select, packages_install, packages_reconcile, yay, gpu_modules, gaming]
+
+- name: Configure Arch package repositories
+  ansible.builtin.import_tasks: pacman.yml
+  tags: [pacman, pacman_config, packages_install, packages_reconcile, yay]
 
 - name: Install selected packages
   ansible.builtin.import_tasks: install.yml

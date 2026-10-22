@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # steam-optimize: Sets up performance environment variables and game-specific
-# overrides before delegating execution to game-performance.
+# overrides before delegating execution to game-performance when available.
 # View logs with: journalctl -t steam-optimize -f
 
 # https://notes.depad.fr/linux/2026/05/steam-optimize-le-wrapper-ultime-pour-le-gaming-sous-linux/
@@ -29,6 +29,7 @@ COMMON_ENV_VARS = {
 # AMD/Radeon specific environment variables
 AMD_ENV_VARS = {
     "AMD_VULKAN_ICD": "RADV",  # Sets Vulkan ICD to RADV driver for AMD GPUs.
+    "MESA_SHADER_CACHE_MAX_SIZE": "12G",  # Keeps more AMD shader cache entries on disk.
 }
 
 # NVIDIA specific environment variables
@@ -36,6 +37,7 @@ NVIDIA_ENV_VARS = {
     "__GLX_VENDOR_LIBRARY_NAME": "nvidia",  # Forces NVIDIA proprietary OpenGL driver.
     "__NV_PRIME_RENDER_OFFLOAD": "1",  # Offloads rendering to NVIDIA GPU.
     "__VK_LAYER_NV_optimus": "NVIDIA_only",  # Vulkan layer for hybrid laptops offloading.
+    "__GL_SHADER_DISK_CACHE_SIZE": "12000000000",  # Raises NVIDIA's shader cache limit to 12 GB.
     "PROTON_ENABLE_NVAPI": "1",  # Enables NVIDIA NVAPI (needed for DLSS/Reflex).
     "PROTON_HIDE_NVIDIA_GPU": "0",  # Exposes NVIDIA GPU (required for NVAPI/DLSS).
 }
@@ -184,6 +186,20 @@ def run_silent(cmd):
         return result.returncode == 0
     except OSError:
         return False
+
+
+def build_launch_command(
+    game_command: list[str], game_performance: str | None
+) -> list[str]:
+    """Build an inhibited launch, using CachyOS game-performance when present."""
+    return [
+        "systemd-inhibit",
+        "--what=idle",
+        "--who=steam-optimize",
+        "--why=Steam game running",
+        *([game_performance] if game_performance else []),
+        *game_command,
+    ]
 
 
 def get_current_mouse_dpi():
@@ -742,7 +758,7 @@ def find_active_localconfig_path(steam_root, vdf_module):
             return candidate
 
     if len(localconfig_paths) == 1:
-        return localconfig_paths[0]
+        return next(iter(localconfig_paths))
     return None
 
 
@@ -1322,9 +1338,13 @@ def main():
     else:
         collector.gamescope = "Disabled"
 
-    if not shutil.which("game-performance"):
-        log_error("game-performance not found in PATH")
-        sys.exit(1)
+    game_performance = shutil.which("game-performance")
+    if game_performance:
+        log_info_silent(f"Launching through {game_performance}")
+    else:
+        log_warn(
+            "game-performance not found; launching without a CachyOS performance profile"
+        )
 
     _game_proc = None
 
@@ -1343,7 +1363,8 @@ def main():
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGHUP, _signal_handler)
 
-    log_info_silent(f"Launching: game-performance {' '.join(cmd)}")
+    launch_command = build_launch_command(cmd, game_performance)
+    log_info_silent(f"Launching: {' '.join(launch_command[4:])}")
     hyprland_start()
 
     collector.collecting = False
@@ -1372,16 +1393,7 @@ def main():
     hypr_success = True
     game_rc = 1
     try:
-        _game_proc = subprocess.Popen(
-            [
-                "systemd-inhibit",
-                "--what=idle",
-                "--who=steam-optimize",
-                "--why=Steam game running",
-                "game-performance",
-            ]
-            + cmd
-        )
+        _game_proc = subprocess.Popen(launch_command)
         game_rc = _game_proc.wait()
     finally:
         hypr_success = hyprland_end()

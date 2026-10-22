@@ -1,0 +1,108 @@
+---
+- name: Find managed user unit files and drop-ins
+  ansible.builtin.find:
+    paths: '{{ dotfiles_source_root }}/{{ dotfiles_systemd_directory }}/user'
+    recurse: true
+    file_type: any
+  delegate_to: localhost
+  become: false
+  register: dotfiles_user_unit_sources
+
+- name: Create user unit directories
+  ansible.builtin.file:
+    path: '{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/user/{{ item }}'
+    state: directory
+    mode: '0755'
+  loop: >-
+    {{ ['.'] + (dotfiles_user_unit_sources.files | selectattr('isdir')
+       | map(attribute='path')
+       | map('relpath', dotfiles_source_root + '/' + dotfiles_systemd_directory + '/user')
+       | sort | list) }}
+
+- name: Copy user unit files and drop-ins individually
+  ansible.builtin.copy:
+    src: '{{ dotfiles_source_root }}/{{ dotfiles_systemd_directory }}/user/{{ item }}'
+    dest: '{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/user/{{ item }}'
+    mode: preserve
+    backup: true
+  loop: >-
+    {{ dotfiles_user_unit_sources.files | selectattr('isreg') | map(attribute='path')
+       | map('relpath', dotfiles_source_root + '/' + dotfiles_systemd_directory + '/user')
+       | sort | list }}
+  register: dotfiles_user_unit_copies
+  notify:
+    - Reload the user systemd manager
+    - Apply changed managed user units
+
+- name: Read managed user unit symlink targets
+  ansible.builtin.stat:
+    path: '{{ item.path }}'
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ dotfiles_user_unit_sources.files | selectattr("islnk") | list }}'
+  loop_control:
+    label: '{{ item.path }}'
+  delegate_to: localhost
+  become: false
+  register: dotfiles_user_unit_links
+
+- name: Inspect destinations for managed user unit symlinks
+  ansible.builtin.stat:
+    path: >-
+      {{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/user/{{
+         item.item.path | relpath(dotfiles_source_root + '/' +
+         dotfiles_systemd_directory + '/user') }}
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ dotfiles_user_unit_links.results }}'
+  loop_control:
+    label: '{{ item.item.path }}'
+  register: dotfiles_user_unit_link_destinations
+
+- name: Preserve files conflicting with managed user unit symlinks
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - not item.stat.exists or item.stat.islnk
+    fail_msg: >-
+      Refusing to replace the destination of {{ item.item.item.path }} with a symlink.
+      Move the existing file or directory before deploying this unit link.
+  loop: '{{ dotfiles_user_unit_link_destinations.results }}'
+  loop_control:
+    label: >-
+      {{ item.item.item.path | relpath(dotfiles_source_root + '/' +
+         dotfiles_systemd_directory + '/user') }}
+
+- name: Deploy user unit aliases, masks and activation links
+  ansible.builtin.file:
+    src: '{{ item.stat.lnk_target }}'
+    dest: >-
+      {{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/user/{{
+         item.item.path | relpath(dotfiles_source_root + '/' +
+         dotfiles_systemd_directory + '/user') }}
+    state: link
+    follow: false
+    # Some packaged units may not exist yet; preserve their dangling links.
+    force: true
+  loop: '{{ dotfiles_user_unit_links.results }}'
+  loop_control:
+    label: '{{ item.item.path }}'
+  notify: Reload the user systemd manager
+
+- name: Apply pending user systemd unit changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start graphical session units
+  ansible.builtin.systemd_service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+    no_block: true
+    scope: user
+  loop: '{{ dotfiles_systemd_graphical_units }}'
+  loop_control:
+    label: '{{ item }}'

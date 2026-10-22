@@ -1,282 +1,34 @@
 ---
-- name: Configure SSH client hardening
-  ansible.builtin.file:
-    path: /etc/ssh/ssh_config.d
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
+- name: Configure LACT using detected GPU identifiers
+  ansible.builtin.import_tasks: lact.yml
+  when: packages_action | default('install') != 'plan'
+  tags: [lact]
+
+- name: Configure gaming services
+  ansible.builtin.import_tasks: gaming.yml
+  when:
+    - ansible_facts["os_family"] == "Archlinux"
+    - "'21_steam' in (packages_selected_groups | default([]))"
+    - packages_action | default('install') != 'plan'
+  tags: [gaming]
+
+- name: Apply SSH client hardening
+  ansible.builtin.import_tasks: ssh_hardening.yml
   tags: [ssh_client_hardening]
 
-- name: Set SSH client hardening defaults
-  ansible.builtin.copy:
-    dest: /etc/ssh/ssh_config.d/60-dotfiles-hardening.conf
-    owner: root
-    group: root
-    mode: '0644'
-    content: |
-      # Hash host names when new known-hosts entries are added.
-      HashKnownHosts yes
-  tags: [ssh_client_hardening]
-
-- name: Check whether optional desktop sysctls are available
-  ansible.builtin.stat:
-    path: '{{ item.path }}'
-  loop:
-    - name: user namespaces
-      path: /proc/sys/kernel/unprivileged_userns_clone
-    - name: unprivileged BPF
-      path: /proc/sys/kernel/unprivileged_bpf_disabled
-    - name: mmap randomization
-      path: /proc/sys/vm/mmap_rnd_bits
-    - name: BPF JIT hardening
-      path: /proc/sys/net/core/bpf_jit_harden
-  register: system_optional_sysctls
+- name: Apply kernel hardening
+  ansible.builtin.import_tasks: kernel_hardening.yml
   tags: [kernel_hardening]
 
-- name: Read the active mmap randomization setting
-  ansible.builtin.command:
-    argv: [sysctl, -n, vm.mmap_rnd_bits]
-  register: system_mmap_rnd_bits
-  changed_when: false
-  when: system_optional_sysctls.results[2].stat.exists
-  tags: [kernel_hardening]
-
-- name: Read the active unprivileged BPF setting
-  ansible.builtin.command:
-    argv: [sysctl, -n, kernel.unprivileged_bpf_disabled]
-  register: system_unprivileged_bpf_disabled
-  changed_when: false
-  when: system_optional_sysctls.results[1].stat.exists
-  tags: [kernel_hardening]
-
-- name: Manage the desktop sysctl policy
-  ansible.builtin.template:
-    src: hardening.conf.j2
-    dest: /etc/sysctl.d/hardening.conf
-    owner: root
-    group: root
-    mode: '0644'
-    backup: true
-  notify: Apply managed sysctl policy
-  tags: [kernel_hardening]
-
-- name: Remove the superseded dotfiles sysctl drop-in
-  ansible.builtin.file:
-    path: /etc/sysctl.d/zz-dotfiles-hardening.conf
-    state: absent
-  tags: [kernel_hardening]
-
-- name: Check for legacy gaming sysctl drop-ins
-  ansible.builtin.stat:
-    path: '{{ item }}'
-  loop:
-    - /etc/sysctl.d/80-gamecompatibility.conf
-    - /etc/sysctl.d/99-cachyos-gaming.conf
-  register: system_legacy_gaming_sysctls
-  tags: [kernel_hardening]
-
-- name: Back up legacy gaming sysctl files
-  ansible.builtin.copy:
-    src: '{{ item }}'
-    dest: '{{ item }}.dotfiles-backup'
-    remote_src: true
-    backup: true
-    owner: root
-    group: root
-    mode: '0644'
-  loop:
-    - /etc/sysctl.d/80-gamecompatibility.conf
-    - /etc/sysctl.d/99-cachyos-gaming.conf
-  loop_control:
-    index_var: system_legacy_gaming_sysctl_index
-  when: >-
-    system_legacy_gaming_sysctls.results[
-    system_legacy_gaming_sysctl_index].stat.exists
-  tags: [kernel_hardening]
-
-- name: Remove legacy gaming sysctl files
-  ansible.builtin.file:
-    path: '{{ item }}'
-    state: absent
-  loop:
-    - /etc/sysctl.d/80-gamecompatibility.conf
-    - /etc/sysctl.d/99-cachyos-gaming.conf
-  tags: [kernel_hardening]
-
-- name: Persist reversible unprivileged BPF restriction
-  ansible.builtin.template:
-    src: unprivileged-bpf.conf.j2
-    dest: /etc/sysctl.d/zz-dotfiles-bpf.conf
-    owner: root
-    group: root
-    mode: '0644'
-    backup: true
-  when: >-
-    system_optional_sysctls.results[1].stat.exists
-  tags: [kernel_hardening]
-
-- name: Apply reversible unprivileged BPF restriction
-  ansible.builtin.command:
-    argv: [sysctl, -w, kernel.unprivileged_bpf_disabled=2]
-  changed_when: true
-  when:
-    - system_optional_sysctls.results[1].stat.exists
-    - system_unprivileged_bpf_disabled.stdout | default('') | trim == '0'
-    - not ansible_check_mode
-  tags: [kernel_hardening]
-
-- name: Check for makepkg
-  ansible.builtin.stat:
-    path: /usr/bin/makepkg
-  register: system_makepkg
-  when: ansible_facts['os_family'] == 'Archlinux'
+- name: Configure makepkg
+  ansible.builtin.import_tasks: makepkg.yml
   tags: [makepkg, makepkg_config]
 
-- name: Create makepkg configuration directory
-  ansible.builtin.file:
-    path: /etc/makepkg.conf.d
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - system_makepkg.stat.exists
-  tags: [makepkg, makepkg_config]
-
-- name: Configure native makepkg builds on Arch Linux and CachyOS
-  ansible.builtin.copy:
-    dest: /etc/makepkg.conf.d/zz-dotfiles.conf
-    owner: root
-    group: root
-    mode: '0644'
-    content: |
-      # Dotfiles makepkg overrides: tune local builds for this machine.
-      CFLAGS+=" -march=native -mtune=native"
-      CXXFLAGS+=" -march=native -mtune=native"
-      MAKEFLAGS="-j$(( ($(nproc) + 1) / 2 ))"
-      OPTIONS+=( '!debug' )
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - system_makepkg.stat.exists
-  tags: [makepkg, makepkg_config]
-
-- name: Check for supported initramfs generators
-  ansible.builtin.stat:
-    path: '{{ item }}'
-  loop:
-    - /usr/bin/mkinitcpio
-    - /usr/bin/dracut
-  register: system_initramfs_tools
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
+- name: Configure GPU kernel modules
+  ansible.builtin.import_tasks: gpu_modules.yml
   tags: [gpu_modules]
 
-- name: Select the initramfs generator
-  ansible.builtin.set_fact:
-    system_initramfs_generator_effective: >-
-      {{ system_initramfs_generator
-         if system_initramfs_generator | default('auto') != 'auto'
-         else ('mkinitcpio'
-               if system_initramfs_tools.results[0].stat.exists
-               else 'dracut') }}
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-  tags: [gpu_modules]
-
-- name: Validate initramfs generator selection
-  ansible.builtin.assert:
-    that:
-      - system_initramfs_generator_effective in ['mkinitcpio', 'dracut']
-      - system_initramfs_generator != 'auto' or
-        (system_initramfs_tools.results[0].stat.exists !=
-        system_initramfs_tools.results[1].stat.exists)
-      - (system_initramfs_generator_effective == 'mkinitcpio' and
-        system_initramfs_tools.results[0].stat.exists) or
-        (system_initramfs_generator_effective == 'dracut' and
-        system_initramfs_tools.results[1].stat.exists)
-    fail_msg: >-
-      Set system_initramfs_generator to mkinitcpio or dracut when detection
-      is ambiguous or neither supported generator is installed.
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-  tags: [gpu_modules]
-
-- name: Configure NVIDIA kernel module options
-  ansible.builtin.template:
-    src: gpu-modprobe.conf.j2
-    dest: /etc/modprobe.d/zz-dotfiles-gpu.conf
-    owner: root
-    group: root
-    mode: '0644'
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-    - >-
-      packages_selected_groups | default([]) | intersect([
-        '09_nvidia_legacy', '09_nvidia_modern'
-      ]) | length > 0
-  notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
-
-- name: Remove NVIDIA kernel module options when no NVIDIA profile is selected
-  ansible.builtin.file:
-    path: /etc/modprobe.d/zz-dotfiles-gpu.conf
-    state: absent
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-    - >-
-      packages_selected_groups | default([]) | intersect([
-        '09_nvidia_legacy', '09_nvidia_modern'
-      ]) | length == 0
-  notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
-
-- name: Validate i915 GuC setting
-  ansible.builtin.assert:
-    that:
-      - system_i915_enable_guc | string in ['-1', '0', '1', '2', '3']
-      - "'08_intel_modern' in packages_selected_groups"
-      - system_i915_enable_guc | string in ['-1', '0'] or
-        system_i915_guc_supported is sameas true
-    fail_msg: >-
-      system_i915_enable_guc must be -1, 0, 1, 2, or 3 and requires the
-      08_intel_modern profile. Values 1, 2, and 3 also require
-      system_i915_guc_supported=true for verified compatible hardware.
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-    - system_i915_enable_guc is not none
-  tags: [gpu_modules]
-
-- name: Configure i915 kernel module options
-  ansible.builtin.template:
-    src: i915-modprobe.conf.j2
-    dest: /etc/modprobe.d/zz-dotfiles-i915.conf
-    owner: root
-    group: root
-    mode: '0644'
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-    - system_i915_enable_guc is not none
-    - "'08_intel_modern' in packages_selected_groups"
-  notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
-
-- name: Remove i915 kernel module options when not explicitly configured
-  ansible.builtin.file:
-    path: /etc/modprobe.d/zz-dotfiles-i915.conf
-    state: absent
-  when:
-    - ansible_facts['os_family'] == 'Archlinux'
-    - packages_selected_groups is defined
-    - system_i915_enable_guc is none or
-      '08_intel_modern' not in packages_selected_groups
-  notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
+- name: Configure supported AMD CPU controls
+  ansible.builtin.import_tasks: amd_cpu_performance.yml
+  when: "'AuthenticAMD' in (ansible_facts['processor'] | default([]))"
+  tags: [amd_cpu_performance]
