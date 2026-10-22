@@ -1,4 +1,9 @@
 ---
+- name: Restart LACT
+  ansible.builtin.systemd_service:
+    name: lactd.service
+    state: restarted
+
 - name: Apply managed sysctl policy
   ansible.builtin.command:
     argv: [sysctl, -p, /etc/sysctl.d/hardening.conf]

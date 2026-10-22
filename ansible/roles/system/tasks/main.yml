@@ -1,4 +1,9 @@
 ---
+- name: Configure LACT using detected GPU identifiers
+  ansible.builtin.import_tasks: lact.yml
+  when: packages_action | default('install') != 'plan'
+  tags: [lact]
+
 - name: Configure gaming services
   ansible.builtin.import_tasks: gaming.yml
   when:

@@ -157,9 +157,11 @@ Hyprland and `awww_random.timer` changes wallpapers every 30 minutes.
 
 Hyprlock displays time, battery, and media information. Its carousel option
 uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2)
-for details. The LACT profile is deployed to `~/.config/lact/config.yaml`, not
-`/etc/lact/config.yaml`. Verify the GPU identifier and review the fan curves
-before relying on it.
+for details. The `lact` tag manages `/etc/lact/config.yaml` using GPU identifiers
+reported by the running LACT daemon. It repairs identifier casing, preserves
+existing profiles and fan curves, backs up changes and restarts `lactd` when
+needed. New profiles use the detected AMD GPUs without custom fan curves.
+The old home-directory LACT file is no longer deployed or used by this role.
 
 ## Scripts
 

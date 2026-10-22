@@ -65,6 +65,7 @@
 
 - name: Preserve files conflicting with managed user unit symlinks
   ansible.builtin.assert:
+    quiet: true
     that:
       - not item.stat.exists or item.stat.islnk
     fail_msg: >-
@@ -72,7 +73,9 @@
       Move the existing file or directory before deploying this unit link.
   loop: '{{ dotfiles_user_unit_link_destinations.results }}'
   loop_control:
-    label: '{{ item.item.item.path }}'
+    label: >-
+      {{ item.item.item.path | relpath(dotfiles_source_root + '/' +
+         dotfiles_systemd_directory + '/user') }}
 
 - name: Deploy user unit aliases, masks and activation links
   ansible.builtin.file:

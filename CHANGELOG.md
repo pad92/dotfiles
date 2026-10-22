@@ -6,11 +6,20 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- Show the power-profiles-daemon profile and ananicy-cpp service state in the
+  Waybar LACT tooltip, including missing services and read errors.
+
 - AMD P-State EPP configuration based on CPU facts and available kernel controls,
   with rollback on failure. Skip EPP changes when a known power manager is active
   or enabled; make X3D CCD mode opt-in. Settings apply until reboot.
 
 ### Changed
+
+- Speed up repeated local `dotfiles_deploy` runs with one checksum comparison
+  before copying static directories. Skip unchanged directories while keeping
+  Ansible backups, targeted reloads and the regular copy path as a fallback.
+- Keep successful user-unit symlink checks concise instead of printing nested
+  file metadata for every item.
 
 - Simplify user service handlers with systemd `try-restart` and
   `try-reload-or-restart`. Queue service jobs without blocking Ansible and
@@ -31,6 +40,19 @@ Release history and changes planned for the next version.
 - Point the `mediasync` shell alias to `~/.local/bin/mediasync`.
 
 ### Fixed
+
+- Normalize directory paths before the local deployment comparison so `./`
+  prefixes and trailing slashes cannot cause files to be skipped.
+- Refuse to replace a symlink used for LACT configuration. Accept custom or
+  empty default profile sets on a first installation.
+
+- Discover LACT GPU identifiers from the daemon and repair mismatched casing
+  while preserving existing profiles. Manage the system configuration with
+  backups under the `lact` tag instead of deploying a hardware-specific home
+  configuration. Include cpupower and system76-power in CPU power-manager
+  conflict checks.
+- Discover optional AMD X3D controls instead of assuming a fixed ACPI device
+  instance.
 
 - Enable and start `hypridle.service` when deploying user systemd units.
 - Unmask `power-profiles-daemon.service` before enabling it for `21_steam`,

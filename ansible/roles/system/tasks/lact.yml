@@ -1,0 +1,90 @@
+---
+- name: Discover the installed LACT service
+  ansible.builtin.service_facts:
+
+- name: Configure LACT when its daemon is installed
+  when: "'lactd.service' in ansible_facts.services"
+  block:
+    - name: Enable and start the LACT daemon
+      ansible.builtin.systemd_service:
+        name: lactd.service
+        enabled: true
+        state: started
+
+    - name: Read canonical GPU identifiers from LACT
+      ansible.builtin.command:
+        argv: [timeout, 10s, lact, cli, list]
+      register: system_lact_gpu_listing
+      changed_when: false
+      check_mode: false
+
+    - name: Read the driver for each detected LACT GPU
+      ansible.builtin.command:
+        argv: [timeout, 10s, lact, cli, --gpu-id, '{{ item }}', info]
+      loop: '{{ system_lact_gpu_listing.stdout | lact_gpu_ids }}'
+      register: system_lact_gpu_info
+      changed_when: false
+      check_mode: false
+
+    - name: Select GPUs controlled by amdgpu
+      ansible.builtin.set_fact:
+        system_lact_amd_gpu_ids: >-
+          {{ system_lact_gpu_info.results | selectattr('stdout', 'search',
+             '(?m)^Driver Used: amdgpu\s*$') | map(attribute='item') | list }}
+
+    - name: Preserve LACT configuration when no supported GPU is detected
+      ansible.builtin.debug:
+        msg: No amdgpu device was reported by LACT; its configuration is unchanged.
+      when: system_lact_amd_gpu_ids | length == 0
+
+    - name: Deploy profiles for the detected AMD GPUs
+      when: system_lact_amd_gpu_ids | length > 0
+      block:
+        - name: Inspect the system LACT configuration
+          ansible.builtin.stat:
+            path: '{{ system_lact_config_path }}'
+          register: system_lact_config_stat
+
+        - name: Preserve LACT configuration links and non-file paths
+          ansible.builtin.assert:
+            quiet: true
+            that:
+              - >-
+                not system_lact_config_stat.stat.exists or
+                system_lact_config_stat.stat.isreg | default(false)
+            fail_msg: >-
+              {{ system_lact_config_path }} must be a regular file, not a symlink
+              or directory. Set system_lact_config_path to the intended regular
+              configuration file before deploying LACT.
+
+        - name: Read the existing LACT settings
+          ansible.builtin.slurp:
+            src: '{{ system_lact_config_path }}'
+          register: system_lact_config_content
+          when: system_lact_config_stat.stat.exists
+
+        - name: Validate and merge the discovered LACT identifiers
+          ansible.builtin.set_fact:
+            system_lact_config: >-
+              {{ (system_lact_config_content.content | b64decode | from_yaml
+                  if system_lact_config_stat.stat.exists else {})
+                 | lact_config(system_lact_gpu_listing.stdout | lact_gpu_ids,
+                               system_lact_amd_gpu_ids, system_lact_profiles) }}
+
+        - name: Create the system LACT configuration directory
+          ansible.builtin.file:
+            path: '{{ system_lact_config_path | dirname }}'
+            state: directory
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: Write the validated LACT profiles with a backup
+          ansible.builtin.copy:
+            content: '{{ system_lact_config | to_nice_yaml(indent=2, sort_keys=false) }}'
+            dest: '{{ system_lact_config_path }}'
+            owner: root
+            group: root
+            mode: '0644'
+            backup: true
+          notify: Restart LACT

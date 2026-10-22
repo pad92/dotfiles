@@ -44,26 +44,46 @@
     loop_var: system_amd_policy
     label: '{{ system_amd_policy.path | dirname }}'
 
-- name: Check for the AMD X3D CCD control
+- name: Check for the AMD X3D driver
   ansible.builtin.stat:
-    path: /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode
-  register: system_amd_x3d_control
+    path: /sys/bus/platform/drivers/amd_x3d_vcache
+  register: system_amd_x3d_driver
   when: system_amd_x3d_mode is not none
 
-- name: Read the AMD X3D CCD mode
-  ansible.builtin.slurp:
-    src: /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode
-  register: system_amd_x3d_current
+- name: Discover AMD X3D CCD controls without assuming a device instance
+  ansible.builtin.command:
+    argv:
+      - find
+      - -L
+      - /sys/bus/platform/drivers/amd_x3d_vcache
+      - -mindepth
+      - '2'
+      - -maxdepth
+      - '2'
+      - -type
+      - f
+      - -name
+      - amd_x3d_mode
+  register: system_amd_x3d_controls
+  changed_when: false
+  check_mode: false
   when:
     - system_amd_x3d_mode is not none
-    - system_amd_x3d_control.stat.exists
+    - system_amd_x3d_driver.stat.exists
+
+- name: Read the discovered AMD X3D CCD modes
+  ansible.builtin.slurp:
+    src: '{{ item }}'
+  loop: '{{ system_amd_x3d_controls.stdout_lines | default([]) }}'
+  register: system_amd_x3d_current
 
 - name: Set the requested AMD X3D CCD mode
   ansible.builtin.command:
-    argv: [tee, /sys/bus/platform/drivers/amd_x3d_vcache/AMDI0101:00/amd_x3d_mode]
+    argv: [tee, '{{ item.item }}']
     stdin: '{{ system_amd_x3d_mode }}'
+  loop: '{{ system_amd_x3d_current.results }}'
+  loop_control:
+    label: '{{ item.item }}'
   when:
-    - system_amd_x3d_mode is not none
-    - system_amd_x3d_control.stat.exists
-    - system_amd_x3d_current.content | b64decode | trim != system_amd_x3d_mode
+    - item.content | b64decode | trim != system_amd_x3d_mode
   changed_when: true

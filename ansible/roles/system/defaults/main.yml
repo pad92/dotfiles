@@ -6,3 +6,20 @@ system_i915_enable_guc: null
 system_i915_guc_supported: false
 system_amd_pstate_epp: balance_performance
 system_amd_x3d_mode: null
+system_cpu_power_managers:
+  - power-profiles-daemon.service
+  - auto-cpufreq.service
+  - tlp.service
+  - tuned.service
+  - tuned-ppd.service
+  - cpupower.service
+  - system76-power.service
+system_lact_config_path: /etc/lact/config.yaml
+# Fan curves remain hardware defaults unless already customized in LACT.
+system_lact_profiles:
+  Balance:
+    performance_level: auto
+  Silence:
+    performance_level: auto
+  Jeux-perf:
+    performance_level: high

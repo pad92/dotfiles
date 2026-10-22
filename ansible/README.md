@@ -120,6 +120,28 @@ are installed. It uses the usual package group selection; it does not select
 GameMode is excluded from the package list. An already installed copy is only
 eligible for removal through `packages_action=reconcile` if Ansible owns it.
 
+The `lact` tag manages `/etc/lact/config.yaml` when `lactd.service` is installed.
+It reads the exact GPU identifiers and drivers from LACT, then creates missing
+`Balance`, `Silence` and `Jeux-perf` profiles for detected AMD GPUs. New profiles
+keep automatic fan control; `Balance` and `Silence` use automatic performance
+levels, while `Jeux-perf` uses `high`. Customize the fan curves in LACT as needed.
+Existing profile settings, automation and profile selection are preserved.
+Identifier casing is repaired, but an unknown GPU or conflicting entries stop
+the deployment before the configuration is written. A symlink or directory at
+`system_lact_config_path` is also refused; select the intended regular file
+explicitly instead. Changes receive a backup
+and restart `lactd`.
+
+```sh
+./install --tags lact --ask-become-pass
+```
+
+`--check` requires an already running LACT daemon for discovery. The legacy
+`~/.config/lact/config.yaml` is left untouched and is no longer deployed.
+With LACT 0.7.5+ and PPD 0.30+, LACT disables PPD's conflicting `amdgpu_dpm`
+action automatically ([LACT documentation](https://github.com/ilya-zlobintsev/LACT#power-profiles-daemon-note)).
+Check `powerprofilesctl list-actions` and `journalctl -u lactd -b` after deployment.
+
 The group's sysctl policy raises `vm.max_map_count` for Proton games during a
 full run or with `--tags kernel_hardening`. The `steam-optimize` launcher uses
 `game-performance` on CachyOS; on Arch Linux it launches without that CachyOS

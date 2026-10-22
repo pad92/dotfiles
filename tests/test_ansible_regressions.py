@@ -192,7 +192,8 @@ if 'show' in args:
                 ],
             }
         ]
-        self.run_play(plays)
+        initial = self.run_play(plays)
+        self.assertNotIn('"atime":', initial.stdout)
         target = self.directory / "target/.config/systemd/user"
         for name, destination in links.items():
             self.assertTrue((target / name).is_symlink(), name)

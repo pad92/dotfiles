@@ -117,12 +117,45 @@
   loop_control:
     label: '{{ item.dest }}'
 
-- name: Copy static dotfile directories
+- name: Compare local static directories in one pass
+  ansible.builtin.command:
+    argv: >-
+      {{ ['rsync', '--dry-run', '--recursive', '--checksum', '--perms',
+          '--copy-links', '--relative', '--out-format=%i %n', '--'] +
+         (dotfiles_directories | map('normpath') | unique |
+          map('regex_replace', '^',
+          dotfiles_source_root + '/./') | list) + [dotfiles_home + '/'] }}
+  when:
+    - ansible_connection | default('ssh') == 'local'
+    - dotfiles_directories | length > 0
+  register: dotfiles_directory_scan
+  changed_when: false
+  failed_when: false
+  # This is a read-only rsync probe, including during an Ansible dry run.
+  check_mode: false
+
+- name: Explain fallback to individual file comparisons
+  ansible.builtin.debug:
+    msg: >-
+      Local directory comparison unavailable; using Ansible copy checks:
+      {{ dotfiles_directory_scan.stderr | default(dotfiles_directory_scan.msg | default('')) }}
+  when:
+    - not dotfiles_directory_scan.skipped | default(false)
+    - dotfiles_directory_scan.rc | default(1) != 0
+
+- name: Copy changed static dotfile directories
   ansible.builtin.include_tasks:
     file: copy-directory.yml
     apply:
       tags: [dotfiles, dotfiles_deploy]
-  loop: '{{ dotfiles_directories }}'
+  loop: "{{ dotfiles_directories | map('normpath') | unique | list }}"
+  # Existing directory modes are not managed by recursive copy. Ignore their
+  # metadata here, but retain new directories and all file changes.
+  when: >-
+    dotfiles_directory_scan.rc | default(1) != 0 or
+    (dotfiles_directory_scan.stdout_lines | reject('match', '^\.d') |
+     select('match', '^.{12}' + (dotfiles_directory | regex_escape) + '(/|$)') |
+     list | length > 0)
   loop_control:
     loop_var: dotfiles_directory
     label: '{{ dotfiles_directory }}'

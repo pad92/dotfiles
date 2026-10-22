@@ -23,11 +23,9 @@
     fail_msg: >-
       {{ item }} is active or enabled. Stop and disable it before selecting
       power-profiles-daemon for gaming; both would control CPU power.
-  loop:
-    - auto-cpufreq.service
-    - tlp.service
-    - tuned.service
-    - tuned-ppd.service
+  loop: >-
+    {{ system_cpu_power_managers |
+       reject('equalto', 'power-profiles-daemon.service') | list }}
 
 - name: Unmask the selected gaming power manager
   ansible.builtin.systemd_service:

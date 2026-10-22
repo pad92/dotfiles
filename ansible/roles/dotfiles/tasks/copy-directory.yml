@@ -1,7 +1,7 @@
 ---
 - name: Copy static directory {{ dotfiles_directory }}
   ansible.builtin.copy:
-    src: 'home/{{ dotfiles_directory }}/'
+    src: '{{ dotfiles_source_root }}/{{ dotfiles_directory }}/'
     dest: '{{ dotfiles_home }}/{{ dotfiles_directory }}/'
     mode: preserve
     backup: true
