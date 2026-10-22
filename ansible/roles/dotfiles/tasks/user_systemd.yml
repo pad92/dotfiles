@@ -98,6 +98,7 @@
     name: '{{ item }}'
     enabled: true
     state: started
+    no_block: true
     scope: user
   loop: '{{ dotfiles_systemd_graphical_units }}'
   loop_control:

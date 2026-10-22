@@ -5,55 +5,28 @@
   changed_when: true
   become: false
 
-- name: Read active states for managed user units
-  ansible.builtin.systemd_service:
-    name: '{{ item }}'
-    scope: user
-  loop: >-
-    {{ dotfiles_user_unit_copies.results | default([])
-       | selectattr('changed') | map(attribute='item')
-       | map('regex_replace', '\.d/.*$', '') | unique | list }}
-  register: dotfiles_managed_user_unit_states
-  changed_when: false
+- name: Apply changed managed user units
+  ansible.builtin.command:
+    argv: >-
+      {{ ['systemctl', '--user', '--no-block', 'try-restart'] +
+         (dotfiles_user_unit_copies.results | default([])
+          | selectattr('changed') | map(attribute='item')
+          | map('regex_replace', '\.d/.*$', '') | unique | list) }}
+  changed_when: true
   become: false
-  listen: Apply changed managed user units
 
-- name: Apply changed active managed user units
-  ansible.builtin.systemd_service:
-    name: '{{ item.item }}'
-    # Unit definitions (ExecStart, Environment, etc.) require a new process.
-    state: restarted
-    scope: user
-  loop: '{{ dotfiles_managed_user_unit_states.results | default([]) }}'
-  when: item.status.ActiveState | default('inactive') == 'active'
+- name: Apply changed user audio configuration
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - --no-block
+      - try-reload-or-restart
+      - pipewire.service
+      - pipewire-pulse.service
+      - wireplumber.service
+  changed_when: true
   become: false
-  listen: Apply changed managed user units
-
-- name: Read active states for user audio services
-  ansible.builtin.systemd_service:
-    name: '{{ item }}'
-    scope: user
-  loop:
-    - pipewire.service
-    - pipewire-pulse.service
-    - wireplumber.service
-  register: dotfiles_user_audio_service_states
-  changed_when: false
-  become: false
-  listen: Apply changed user audio configuration
-
-- name: Apply changed active user audio services
-  ansible.builtin.systemd_service:
-    name: '{{ item.item }}'
-    state: >-
-      {{ 'reloaded'
-         if item.status.CanReload | default('no') == 'yes'
-         else 'restarted' }}
-    scope: user
-  loop: '{{ dotfiles_user_audio_service_states.results | default([]) }}'
-  when: item.status.ActiveState | default('inactive') == 'active'
-  become: false
-  listen: Apply changed user audio configuration
 
 - name: Restart Hyprlauncher
   ansible.builtin.shell:
@@ -73,7 +46,7 @@
         sleep 0.1
       done
 
-      uwsm app -- hyprlauncher -d
+      uwsm app -t service -- hyprlauncher -d
     executable: /bin/sh
   changed_when: true
   become: false

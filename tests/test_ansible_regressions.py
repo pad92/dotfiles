@@ -36,6 +36,35 @@ class AnsibleRegressionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result
 
+    def test_hyprlauncher_relaunch_detaches_from_ansible(self):
+        handlers = yaml.safe_load((ROLES / "dotfiles/handlers/main.yml").read_text())
+        handler = next(h for h in handlers if h["name"] == "Restart Hyprlauncher")
+        binary = self.directory / "bin"
+        binary.mkdir()
+        # Simulate a running launcher which exits after SIGTERM.
+        commands = {
+            "pgrep": 'test ! -f "$STOP_MARKER"',
+            "pkill": 'touch "$STOP_MARKER"',
+            "uwsm": ('test "$*" = "app -t service -- hyprlauncher -d" || exit 42'),
+        }
+        for name, command in commands.items():
+            path = binary / name
+            path.write_text("#!/bin/sh\n" + command + "\n")
+            path.chmod(0o755)
+        result = subprocess.run(
+            ["/bin/sh", "-c", handler["ansible.builtin.shell"]["cmd"]],
+            env={
+                **os.environ,
+                "PATH": f"{binary}:{os.environ['PATH']}",
+                "STOP_MARKER": str(self.directory / "stopped"),
+            },
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_family_and_distribution_variables_produce_default_groups(self):
         selection = yaml.safe_load((ROLES / "packages/tasks/select.yml").read_text())
         default_task = next(
@@ -79,9 +108,9 @@ class AnsibleRegressionTests(unittest.TestCase):
                             "distribution_version": version,
                             "distribution_major_version": major,
                         },
-                        "packages_detected_graphics_groups": ["08_amd"]
-                        if family == "Archlinux"
-                        else [],
+                        "packages_detected_graphics_groups": (
+                            ["08_amd"] if family == "Archlinux" else []
+                        ),
                         "expected_groups": expected,
                         "expected_gtk": gtk,
                     },
@@ -100,7 +129,7 @@ class AnsibleRegressionTests(unittest.TestCase):
             )
         self.run_play(plays, ",".join(f"case{i}" for i in range(len(cases))) + ",")
 
-    def test_only_changed_active_units_restart_including_dropins(self):
+    def test_changed_units_use_try_restart_including_dropins(self):
         source = self.directory / "source/.config/systemd/user"
         source.mkdir(parents=True)
         for unit in [
@@ -178,12 +207,11 @@ if 'show' in args:
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         actions = [args for args in calls if "show" not in args]
         self.assertEqual(actions[0], ["--user", "daemon-reload"])
+        self.assertEqual(len(actions), 2)
+        self.assertEqual(actions[1][:3], ["--user", "--no-block", "try-restart"])
         self.assertCountEqual(
-            actions[1:],
-            [
-                ["--user", "restart", "awww_random.timer"],
-                ["--user", "restart", "mako.service"],
-            ],
+            actions[1][3:],
+            ["awww_random.timer", "mako.service", "hypridle.service"],
         )
         # Changing only an alias must reload the manager, without restarting units.
         log.write_text("")

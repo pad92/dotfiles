@@ -12,6 +12,10 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- Simplify user service handlers with systemd `try-restart` and
+  `try-reload-or-restart`. Queue service jobs without blocking Ansible and
+  relaunch Hyprlauncher as a UWSM service instead of waiting for its process.
+
 - Load Ansible package variables by OS family, distribution, and version.
   Split system tasks by function and user systemd deployment into its own file.
 - Replace GameMode in `21_steam` with `ananicy-cpp` and `power-profiles-daemon`;
