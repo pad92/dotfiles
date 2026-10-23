@@ -63,8 +63,6 @@ net.ipv6.conf.default.accept_redirects = 0
 fs.inotify.max_user_instances = 1024
 fs.inotify.max_user_watches = 524288
 vm.mmap_min_addr = 65536
-vm.mmap_rnd_compat_bits = 16
-fs.file-max = 2097152
 {% if system_mmap_rnd_bits is defined and system_mmap_rnd_bits.stdout | default('') | trim == '32' %}
 vm.mmap_rnd_bits = 32
 {% endif %}
@@ -75,10 +73,4 @@ vm.mmap_rnd_bits = 32
    else packages_selected_groups | default(packages_host_groups.get(ansible_facts['hostname'], [])) %}
 {% if '21_steam' in system_selected_groups %}
 vm.max_map_count = 2147483642
-vm.swappiness = 10
-vm.dirty_ratio = 10
-vm.dirty_background_ratio = 5
-kernel.sched_autogroup_enabled = 0
-kernel.sched_cfs_bandwidth_slice_us = 3000
-net.core.netdev_max_backlog = 5000
 {% endif %}

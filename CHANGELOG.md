@@ -8,6 +8,9 @@ Release history and changes planned for the next version.
 
 - Name LACT profiles after their PowerMizer modes and replace the Waybar
   gamepad icon with the existing chip icon.
+- Keep the Steam sysctl policy focused on `vm.max_map_count`; leave general
+  VM, scheduler, network backlog, file-handle, and compatibility mmap settings
+  to the kernel or distribution defaults.
 
 ### Fixed
 

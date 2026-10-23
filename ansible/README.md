@@ -28,7 +28,7 @@ not change the SSH server configuration.
 The `kernel_hardening` tag manages `/etc/sysctl.d/hardening.conf` and saves a
 timestamped backup before replacing it. The policy keeps the filesystem
 protections, ASLR, ptrace and kernel-address restrictions, Docker forwarding,
-inotify and file limits. It uses loose reverse-path filtering for asymmetric
+and inotify limits. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
 so LAN and VPN interfaces can configure it. Set
 `system_ipv6_enabled_by_hostname` in `host_vars` to override the policy per
@@ -37,11 +37,17 @@ IPv6 enabled on `PadsTower` and disables it on `PadsP5560`. Disabling IPv6 sets
 the `all` and `default` sysctls so existing and future interfaces follow the
 host policy.
 
-When `21_steam` is selected, the role adds the gaming sysctls to
-`hardening.conf`, including `vm.max_map_count = 2147483642`. It backs up the
-old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
+When `21_steam` is selected, the role adds
+`vm.max_map_count = 2147483642` to `hardening.conf`. Proton documents this
+value for games that need more mappings than the kernel default. The role backs
+up the old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
 `<filename>.dotfiles-backup` before removing them. If that backup already
 exists, Ansible keeps a timestamped copy before replacing it.
+
+The gaming policy leaves swappiness, dirty page writeback, scheduler behavior,
+network backlog, file-handle limits, and compatibility-mode mmap randomization
+at their kernel or distribution defaults. These settings are not required for
+Proton and can affect general desktop workloads.
 
 Ansible leaves `vm.mmap_rnd_bits` at `32` only when that value is already
 active, since some supported kernels reject it. The role writes the
