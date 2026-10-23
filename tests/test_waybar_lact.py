@@ -14,9 +14,9 @@ API = runpy.run_path(str(MODULE))
 class LactTooltipTests(unittest.TestCase):
     def run_query(self, arguments, **kwargs):
         if arguments == ["lact", "cli", "profile", "list"]:
-            output = "Default\nBalance\nSilence\nJeux-perf\n"
+            output = "Default\nAuto\nAdaptive\nPreferMaximumPerformance\n"
         elif arguments == ["lact", "cli", "profile", "get"]:
-            output = "Balance\n"
+            output = "Auto\n"
         elif arguments == ["powerprofilesctl", "get"]:
             output = "balanced\n"
         else:
@@ -26,9 +26,9 @@ class LactTooltipTests(unittest.TestCase):
     def test_services_only_appear_in_tooltip(self):
         with patch("subprocess.run", side_effect=self.run_query):
             result = API["status"]()
-        self.assertEqual(result["class"], "balance")
+        self.assertEqual(result["class"], "auto")
         self.assertNotIn("balanced", result["text"])
-        self.assertIn("LACT : Balance", result["tooltip"])
+        self.assertIn("LACT : Auto", result["tooltip"])
         self.assertIn("Profil d’énergie : balanced", result["tooltip"])
         self.assertIn("ananicy-cpp : active (running)", result["tooltip"])
 
@@ -54,7 +54,7 @@ class LactTooltipTests(unittest.TestCase):
 
         with patch("subprocess.run", side_effect=query):
             result = API["status"]()
-        self.assertEqual(result["class"], "balance")
+        self.assertEqual(result["class"], "auto")
         self.assertIn("&lt;bus error&gt;", result["tooltip"])
 
     def test_unavailable_lact_hides_the_indicator(self):
@@ -65,6 +65,6 @@ class LactTooltipTests(unittest.TestCase):
         with patch("subprocess.run", side_effect=self.run_query) as run:
             API["cycle_profile"]()
         self.assertEqual(
-            run.call_args.args[0], ["lact", "cli", "profile", "set", "Silence"]
+            run.call_args.args[0], ["lact", "cli", "profile", "set", "Adaptive"]
         )
         self.assertTrue(all(call.args[0][0] == "lact" for call in run.call_args_list))

@@ -17,9 +17,16 @@ system_cpu_power_managers:
 system_lact_config_path: /etc/lact/config.yaml
 # Fan curves remain hardware defaults unless already customized in LACT.
 system_lact_profiles:
-  Balance:
+  Auto:
     performance_level: auto
-  Silence:
+  Adaptive:
     performance_level: auto
-  Jeux-perf:
+  PreferMaximumPerformance:
     performance_level: high
+system_lact_nvidia_profiles:
+  Auto:
+    power_mizer_mode: Auto
+  Adaptive:
+    power_mizer_mode: Adaptive
+  PreferMaximumPerformance:
+    power_mizer_mode: PreferMaximumPerformance

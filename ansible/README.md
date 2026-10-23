@@ -121,16 +121,22 @@ GameMode is excluded from the package list. An already installed copy is only
 eligible for removal through `packages_action=reconcile` if Ansible owns it.
 
 The `lact` tag manages `/etc/lact/config.yaml` when `lactd.service` is installed.
-It reads the exact GPU identifiers and drivers from LACT, then creates missing
-`Balance`, `Silence` and `Jeux-perf` profiles for detected AMD GPUs. New profiles
-keep automatic fan control; `Balance` and `Silence` use automatic performance
-levels, while `Jeux-perf` uses `high`. Customize the fan curves in LACT as needed.
-Existing profile settings, automation and profile selection are preserved.
-Identifier casing is repaired, but an unknown GPU or conflicting entries stop
-the deployment before the configuration is written. A symlink or directory at
-`system_lact_config_path` is also refused; select the intended regular file
-explicitly instead. Changes receive a backup
-and restart `lactd`.
+It reads GPU identifiers and drivers from LACT, then creates missing `Auto`,
+`Adaptive` and `PreferMaximumPerformance` profiles for AMD and NVIDIA GPUs.
+These names match LACT's NVIDIA PowerMizer modes. AMD profiles use automatic
+performance levels for `Auto` and `Adaptive`, then `high` for
+`PreferMaximumPerformance`. NVIDIA profiles use the matching PowerMizer mode.
+Profiles do not override fan control. Intel GPUs keep their existing settings.
+Existing `Balance`, `Silence`, `Performance` and `Jeux-perf` profiles are
+renamed and removed under their old names. Their settings move to the new name
+when it is unused; an existing profile with the new name takes priority. The
+current selection follows the rename. Defaults fill only missing GPU entries
+in existing profiles. Other settings and automation are preserved.
+When no named profile exists, `Auto` becomes active after the profiles are added.
+Identifier casing is repaired; an unknown GPU or conflicting entries stop
+deployment before the configuration is written. A symlink or directory at
+`system_lact_config_path` is also refused. Changes are backed up and restart
+`lactd`.
 
 ```sh
 ./install --tags lact --ask-become-pass

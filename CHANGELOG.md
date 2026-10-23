@@ -4,6 +4,16 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Changed
+
+- Name LACT profiles after their PowerMizer modes and replace the Waybar
+  gamepad icon with the existing chip icon.
+
+### Fixed
+
+- Create the Waybar LACT profiles on systems with NVIDIA GPUs, using NVIDIA
+  PowerMizer modes while preserving the existing AMD profile settings.
+
 ## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
 
 ### Added
