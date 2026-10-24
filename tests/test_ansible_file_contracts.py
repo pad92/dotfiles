@@ -50,7 +50,11 @@ class FileContractTests(unittest.TestCase):
             "--check",
             "-e",
             "dotfiles_backup_action=remove",
-            environment={"ANSIBLE_BACKUP_ROOT": str(home)},
+            environment={
+                "ANSIBLE_BACKUP_ROOT": str(home),
+                # This check only exercises role defaults, not encrypted host vars.
+                "ANSIBLE_VARS_ENABLED": "",
+            },
         )
         self.assertIn(str(backup), output)
         self.assertEqual(backup.read_text(), "keep")

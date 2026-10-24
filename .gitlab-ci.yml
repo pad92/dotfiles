@@ -33,6 +33,8 @@ ansible_lint:
       apt-get update && apt-get install -y --no-install-recommends make
       && rm -rf /var/lib/apt/lists/*
     - python -m pip install --no-cache-dir -r requirements-ansible.txt
+    - export ANSIBLE_CONFIG="$CI_PROJECT_DIR/ansible.cfg"
+    - ansible-galaxy collection install -r ansible/requirements.yml
   script:
     - make lint-ansible
 
