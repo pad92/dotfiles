@@ -4,37 +4,35 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Added
+
+- Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop the
+  user service and prevent it from starting automatically.
+- Add NVIDIA PowerMizer profiles to Waybar while keeping the existing AMD
+  profiles.
+
 ### Changed
 
-- Make hypridle activation configurable by hostname. Disabled hosts stop the
-  user service and disable automatic startup; other hosts retain the default.
-
-- Deploy dotfiles and backups one path at a time through Ansible modules, and
-  report paths changed by package builds, Git submodules, sysfs controls, and
-  initramfs generation.
-- Manage Pacman operations, sysctl values, and Vim plugin checkouts with Ansible
-  modules. Limit the backup helper to read-only path collection.
-- Name LACT profiles after their PowerMizer modes and replace the Waybar
-  gamepad icon with the existing chip icon.
-- Keep the Steam sysctl policy focused on `vm.max_map_count`; leave general
-  VM, scheduler, network backlog, file-handle, and compatibility mmap settings
-  to the kernel or distribution defaults.
+- Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
+  checkouts, submodules, and sysfs controls through Ansible modules. The backup
+  helper now only collects paths.
+- Report paths changed by package builds and Git submodules. Initramfs reporting
+  covers the configured output directories.
+- Name LACT profiles after their PowerMizer modes and use the existing chip icon
+  in Waybar.
+- Limit the Steam sysctl policy to `vm.max_map_count`; leave general VM,
+  scheduler, network backlog, file-handle, and compatibility mmap settings at
+  their kernel or distribution defaults.
 
 ### Fixed
 
-- Install Git in the CI test image and give Ansible fixtures explicit module
-  paths and a temporary configuration, including in world-writable checkouts.
-
-- Preserve conflict backups atomically and deploy hidden files, empty directories
-  and source links without following cycles indefinitely.
-- Repair submodule path reporting, first Vim clones, backup/sysctl check mode and
-  initramfs notifications. Avoid refreshing Arch package databases when a system
-  upgrade is disabled.
-- Check production file modules against temporary fixtures, including partial
-  failures, metadata changes and refusal to overwrite existing backups.
-
-- Create the Waybar LACT profiles on systems with NVIDIA GPUs, using NVIDIA
-  PowerMizer modes while preserving the existing AMD profile settings.
+- Preserve conflict backups atomically and deploy hidden files, empty
+  directories, and source links without following cycles indefinitely.
+- Fix submodule path reporting, first Vim clones, backup and sysctl check mode,
+  and initramfs change notifications. Avoid refreshing Arch package databases
+  when a system upgrade is disabled.
+- Install Git in the CI test image and configure Ansible's module paths and
+  temporary configuration for world-writable checkouts.
 
 ## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
 
