@@ -39,7 +39,24 @@ class X3dDiscoveryTests(unittest.TestCase):
             )
             tasks = all_tasks[start:]
             tasks[0]["ansible.builtin.stat"]["path"] = str(driver)
-            tasks[1]["ansible.builtin.command"]["argv"][2] = str(driver)
+            tasks[1]["ansible.builtin.find"]["paths"] = str(driver)
+            library = work / "library"
+            library.mkdir()
+            (library / "dotfiles_sysfs.py").write_text("""#!/usr/bin/python
+from pathlib import Path
+from ansible.module_utils.basic import AnsibleModule
+
+module = AnsibleModule(argument_spec={
+    "path": {"type": "path", "required": True},
+    "value": {"type": "str", "required": True},
+}, supports_check_mode=True)
+path = Path(module.params["path"])
+value = module.params["value"].strip()
+changed = path.read_text().strip() != value
+if changed and not module.check_mode:
+    path.write_text(value + "\\n")
+module.exit_json(changed=changed, path=str(path), changed_files=[str(path)] if changed else [])
+""")
             play = [
                 {
                     "hosts": "localhost",
@@ -56,7 +73,11 @@ class X3dDiscoveryTests(unittest.TestCase):
                 result = subprocess.run(
                     ["ansible-playbook", "-i", "localhost,", str(path), *arguments],
                     cwd=ROOT,
-                    env={**os.environ, "ANSIBLE_LOCAL_TEMP": str(work / "tmp")},
+                    env={
+                        **os.environ,
+                        "ANSIBLE_LOCAL_TEMP": str(work / "tmp"),
+                        "ANSIBLE_LIBRARY": str(library),
+                    },
                     capture_output=True,
                     text=True,
                     timeout=60,

@@ -38,7 +38,25 @@
     group: root
     mode: '0644'
     backup: true
-  notify: Apply managed sysctl policy
+  tags: [kernel_hardening]
+
+- name: Parse the intended desktop sysctl settings
+  ansible.builtin.set_fact:
+    system_hardening_policy_entries: >-
+      {{ lookup('ansible.builtin.template', 'hardening.conf.j2') |
+         regex_findall('(?m)^\s*([A-Za-z0-9_.]+)\s*=\s*([^#\n]+)') }}
+  tags: [kernel_hardening]
+
+- name: Apply desktop sysctl settings through the sysctl module
+  ansible.posix.sysctl:
+    name: '{{ item.0 }}'
+    value: '{{ item.1 | trim }}'
+    sysctl_file: /etc/sysctl.d/hardening.conf
+    sysctl_set: true
+    reload: false
+  loop: '{{ system_hardening_policy_entries }}'
+  loop_control:
+    label: '/etc/sysctl.d/hardening.conf: {{ item.0 }}'
   tags: [kernel_hardening]
 
 - name: Remove the superseded dotfiles sysctl drop-in
@@ -97,9 +115,12 @@
   tags: [kernel_hardening]
 
 - name: Apply reversible unprivileged BPF restriction
-  ansible.builtin.command:
-    argv: [sysctl, -w, kernel.unprivileged_bpf_disabled=2]
-  changed_when: true
+  ansible.posix.sysctl:
+    name: kernel.unprivileged_bpf_disabled
+    value: '2'
+    sysctl_file: /etc/sysctl.d/zz-dotfiles-bpf.conf
+    sysctl_set: true
+    reload: false
   when:
     - system_optional_sysctls.results[1].stat.exists
     - system_unprivileged_bpf_disabled.stdout | default('') | trim == '0'

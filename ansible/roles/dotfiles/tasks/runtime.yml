@@ -1,29 +1,49 @@
 ---
-- name: Check for Vim
-  ansible.builtin.command:
-    argv: [vim, --version]
-  when: dotfiles_update_vim_plugins | bool
-  register: dotfiles_vim_check
-  changed_when: false
-  failed_when: false
+- name: Update Vim plugins # noqa: latest[git] -- opt-in task tracks upstream plugin revisions.
+  ansible.builtin.git:
+    repo: '{{ item.repo }}'
+    dest: '{{ dotfiles_home }}/.vim/bundle/{{ item.dest }}'
+    version: HEAD
+    update: true
+    force: false
+  loop: '{{ dotfiles_vim_plugins }}'
+  loop_control:
+    label: '{{ dotfiles_home }}/.vim/bundle/{{ item.dest }}'
+  register: dotfiles_vim_plugin_updates
+  when:
+    - dotfiles_update_vim_plugins | bool
   become: false
   tags: [vim]
 
-- name: Update Vim plugins
+- name: Collect changed Vim plugin files
   ansible.builtin.command:
-    argv:
-      - vim
-      - -Nu
-      - '{{ dotfiles_home }}/.vimrc'
-      - -n
-      - -es
-      - -i
-      - NONE
-      - +PluginUpdate
-      - +qall!
+    argv: >-
+      {{ ['git', 'diff', '--name-only', '--no-renames', item.before, item.after]
+         if item.before | default('', true) | length > 0
+         else ['git', 'ls-files'] }}
+    chdir: '{{ dotfiles_home }}/.vim/bundle/{{ item.item.dest }}'
+  loop: >-
+    {{ dotfiles_vim_plugin_updates.results | default([])
+       | selectattr('changed') | list }}
+  loop_control:
+    label: '{{ item.item.dest }}'
+  register: dotfiles_vim_plugin_file_lists
+  changed_when: false
   when:
     - dotfiles_update_vim_plugins | bool
-    - dotfiles_vim_check.rc == 0
-  changed_when: true
+    - not ansible_check_mode
   become: false
+  tags: [vim]
+
+- name: Report changed Vim plugin files # noqa: no-handler -- report module results immediately.
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.stdout_lines | map('regex_replace', '^',
+         dotfiles_home + '/.vim/bundle/' + item.item.item.dest + '/') | list }}
+  loop: >-
+    {{ dotfiles_vim_plugin_file_lists.results | default([])
+       | rejectattr('skipped', 'defined') | list }}
+  loop_control:
+    label: '{{ item.item.item.dest }}'
+  when: not ansible_check_mode
   tags: [vim]

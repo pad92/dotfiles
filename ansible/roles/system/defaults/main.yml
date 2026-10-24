@@ -1,5 +1,6 @@
 ---
 system_initramfs_generator: auto
+system_initramfs_report_roots: [/boot, /efi]
 system_ipv6_enabled_default: true
 system_ipv6_enabled_by_hostname: {}
 system_i915_enable_guc: null

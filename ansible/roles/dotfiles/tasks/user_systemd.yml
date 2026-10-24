@@ -1,4 +1,15 @@
 ---
+- name: Resolve the hostname-specific hypridle setting
+  ansible.builtin.set_fact:
+    dotfiles_hypridle_enabled: >-
+      {{ dotfiles_hypridle_enabled_by_hostname.get(
+         ansible_facts['hostname'] | default(''), dotfiles_hypridle_enabled_default) }}
+
+- name: Validate the hypridle switch
+  ansible.builtin.assert:
+    that: dotfiles_hypridle_enabled is boolean
+    fail_msg: Use YAML true or false for the hostname-specific hypridle setting.
+
 - name: Find managed user unit files and drop-ins
   ansible.builtin.find:
     paths: '{{ dotfiles_source_root }}/{{ dotfiles_systemd_directory }}/user'
@@ -93,6 +104,24 @@
     label: '{{ item.item.path }}'
   notify: Reload the user systemd manager
 
+- name: Reload user units and inspect hypridle before disabling it
+  ansible.builtin.systemd_service:
+    name: hypridle.service
+    scope: user
+    daemon_reload: true
+  register: dotfiles_hypridle_service
+  when: not dotfiles_hypridle_enabled
+
+- name: Stop and disable hypridle for this hostname
+  ansible.builtin.systemd_service:
+    name: hypridle.service
+    scope: user
+    enabled: false
+    state: stopped
+  when:
+    - not dotfiles_hypridle_enabled
+    - dotfiles_hypridle_service.status.LoadState | default('not-found') != 'not-found'
+
 - name: Apply pending user systemd unit changes
   ansible.builtin.meta: flush_handlers
 
@@ -104,5 +133,6 @@
     no_block: true
     scope: user
   loop: '{{ dotfiles_systemd_graphical_units }}'
+  when: item != 'hypridle.service' or dotfiles_hypridle_enabled
   loop_control:
     label: '{{ item }}'

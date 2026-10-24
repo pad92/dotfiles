@@ -16,6 +16,20 @@ matching the hostname, reloads live configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS without generating separate debug
 packages. Packages built with native CPU flags may not run on a different CPU.
 Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
+Dotfile copies, templates, backups, and removals use Ansible file modules.
+Directory deployments show each changed file. Custom modules report files
+written by sysfs controls, submodule updates, package builds, and initramfs
+generation. Conflict backups use an atomic move that refuses existing targets.
+AUR installation uses a dedicated module for yay/paru, without Pacman's
+unsupported `--print-format` calls.
+
+The yay bootstrap keeps makepkg's package, source, build and log destinations
+inside its temporary build tree. Initramfs reporting inventories
+`system_initramfs_report_roots` (default: `/boot`, `/efi`). Add any custom image
+or hook output directories, including targets outside those trees, to this list.
+Unreadable inventory paths fail the task instead of producing a partial success.
+Package transaction internals and arbitrary external hooks are not a complete
+filesystem audit; the reported paths cover the declared output trees.
 
 Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
@@ -242,6 +256,7 @@ packages. Use `--check` to preview package changes and
 Use `--check --tags dotfiles` to preview dotfile link changes separately.
 
 Use `make ansible-backup-ls` to list backups created for Ansible-managed
-dotfiles, or `make ansible-backup-rm` to review and remove them after a
-confirmation prompt. Both targets use `$HOME` by default; set
+dotfiles, or `make ansible-backup-rm` to review and remove them through an
+Ansible file task after a confirmation prompt. The helper script only collects
+the candidate paths. Both targets use `$HOME` by default; set
 `ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.

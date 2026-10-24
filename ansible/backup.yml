@@ -1,0 +1,51 @@
+---
+- name: List or remove Ansible-managed dotfile backups
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dotfiles_home: >-
+      {{ lookup("env", "ANSIBLE_BACKUP_ROOT") |
+         default(lookup("env", "HOME"), true) }}
+  tasks:
+    - name: Collect managed backup paths
+      ansible.builtin.command:
+        argv:
+          - '{{ ansible_playbook_python }}'
+          - '{{ playbook_dir }}/../scripts/ansible_backup_files.py'
+          - list
+          - --root
+          - '{{ dotfiles_home }}'
+          - --json
+      register: dotfiles_backup_listing
+      changed_when: false
+      check_mode: false
+
+    - name: Decode managed backup paths
+      ansible.builtin.set_fact:
+        dotfiles_backup_paths: '{{ dotfiles_backup_listing.stdout | from_json }}'
+
+    - name: Show managed backup paths
+      ansible.builtin.debug:
+        msg: '{{ dotfiles_backup_paths }}'
+
+    - name: Confirm backup removal
+      ansible.builtin.pause:
+        prompt: Type REMOVE to delete the listed backups
+      register: dotfiles_backup_confirmation
+      when:
+        - not ansible_check_mode
+        - dotfiles_backup_paths | length > 0
+        - dotfiles_backup_action | default("list") == "remove"
+
+    - name: Remove managed backups through Ansible
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop: '{{ dotfiles_backup_paths }}'
+      loop_control:
+        label: '{{ item }}'
+      when: >-
+        dotfiles_backup_action | default('list') == 'remove' and
+        (ansible_check_mode or
+         dotfiles_backup_confirmation.user_input | default('') == 'REMOVE')

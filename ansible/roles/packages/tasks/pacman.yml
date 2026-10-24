@@ -48,9 +48,9 @@
   when: ansible_facts['os_family'] == 'Archlinux'
 
 - name: Synchronize databases and upgrade installed packages after enabling multilib
-  ansible.builtin.command:
-    argv: [pacman, -Syu, --noconfirm]
+  community.general.pacman:
+    update_cache: true
+    upgrade: true
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_pacman_multilib.changed
-  changed_when: true

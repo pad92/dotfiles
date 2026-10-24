@@ -6,6 +6,14 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- Make hypridle activation configurable by hostname. Disabled hosts stop the
+  user service and disable automatic startup; other hosts retain the default.
+
+- Deploy dotfiles and backups one path at a time through Ansible modules, and
+  report paths changed by package builds, Git submodules, sysfs controls, and
+  initramfs generation.
+- Manage Pacman operations, sysctl values, and Vim plugin checkouts with Ansible
+  modules. Limit the backup helper to read-only path collection.
 - Name LACT profiles after their PowerMizer modes and replace the Waybar
   gamepad icon with the existing chip icon.
 - Keep the Steam sysctl policy focused on `vm.max_map_count`; leave general
@@ -13,6 +21,14 @@ Release history and changes planned for the next version.
   to the kernel or distribution defaults.
 
 ### Fixed
+
+- Preserve conflict backups atomically and deploy hidden files, empty directories
+  and source links without following cycles indefinitely.
+- Repair submodule path reporting, first Vim clones, backup/sysctl check mode and
+  initramfs notifications. Avoid refreshing Arch package databases when a system
+  upgrade is disabled.
+- Check production file modules against temporary fixtures, including partial
+  failures, metadata changes and refusal to overwrite existing backups.
 
 - Create the Waybar LACT profiles on systems with NVIDIA GPUs, using NVIDIA
   PowerMizer modes while preserving the existing AMD profile settings.

@@ -1,8 +1,55 @@
 ---
-- name: Copy static directory {{ dotfiles_directory }}
+- name: Collect directory contents including source links for {{ dotfiles_directory }}
+  dotfiles_tree:
+    path: '{{ dotfiles_source_root }}/{{ dotfiles_directory }}'
+  delegate_to: localhost
+  become: false
+  register: dotfiles_directory_contents
+
+- name: Inspect destination directory permissions
+  ansible.builtin.stat:
+    path: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ dotfiles_directory_contents.files | selectattr("isdir") | list }}'
+  loop_control:
+    label: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+  register: dotfiles_directory_stats
+
+- name: Create destination subdirectories for {{ dotfiles_directory }}
+  ansible.builtin.file:
+    path: '{{ dotfiles_home }}/{{ item.item.path | relpath(dotfiles_source_root) }}'
+    state: directory
+    mode: '{{ item.stat.mode | default(item.item.mode) }}'
+  loop: '{{ dotfiles_directory_stats.results }}'
+  loop_control:
+    label: '{{ dotfiles_home }}/{{ item.item.path | relpath(dotfiles_source_root) }}'
+  notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+
+- name: Copy files individually from {{ dotfiles_directory }}
   ansible.builtin.copy:
-    src: '{{ dotfiles_source_root }}/{{ dotfiles_directory }}/'
-    dest: '{{ dotfiles_home }}/{{ dotfiles_directory }}/'
+    src: '{{ item.path }}'
+    dest: >-
+      {{ dotfiles_home }}/{{ item.path |
+         relpath(dotfiles_source_root) }}
     mode: preserve
     backup: true
+  loop: '{{ dotfiles_directory_contents.files | selectattr("isreg") | list }}'
+  loop_control:
+    label: >-
+      {{ dotfiles_home }}/{{ item.path |
+         relpath(dotfiles_source_root) }}
+  notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+
+- name: Preserve dangling and cyclic source links in {{ dotfiles_directory }}
+  ansible.builtin.file:
+    src: '{{ item.lnk_target }}'
+    path: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+    state: link
+    follow: false
+    force: false
+  loop: '{{ dotfiles_directory_contents.files | selectattr("islnk") | list }}'
+  loop_control:
+    label: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
   notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'

@@ -57,24 +57,8 @@ class AnsibleBackupTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             backups.validate_relative_path("/tmp/outside")
 
-    def test_removes_files_and_directories_only_after_selection(self):
-        file_backup = self.home / ".zshrc.bak"
-        file_backup.write_text("backup")
-        directory_backup = self.home / ".bin.bak"
-        directory_backup.mkdir()
-        (directory_backup / "old-file").write_text("backup")
-        backups.remove_backups([file_backup, directory_backup])
-        self.assertFalse(file_backup.exists())
-        self.assertFalse(directory_backup.exists())
-
-    def test_removes_symlink_without_following_target(self):
-        target = self.root / "keep"
-        target.write_text("keep")
-        link = self.home / ".zshrc.bak"
-        link.symlink_to(target)
-        backups.remove_backups([link])
-        self.assertFalse(link.exists())
-        self.assertTrue(target.exists())
+    def test_backup_collector_has_no_removal_operation(self):
+        self.assertFalse(hasattr(backups, "remove_backups"))
 
 
 if __name__ == "__main__":

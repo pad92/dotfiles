@@ -1,4 +1,4 @@
-"""Exercise local deployment, backups and selective reloads in a temporary home."""
+"""Exercise individual file deployment, backups and reloads in a temporary home."""
 
 import os
 import shutil
@@ -12,12 +12,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@unittest.skipUnless(
-    shutil.which("ansible-playbook") and shutil.which("rsync"),
-    "requires ansible-playbook and rsync",
-)
+@unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 class DotfilesDeployTests(unittest.TestCase):
-    def test_local_scan_preserves_copy_behavior(self):
+    def test_individual_file_copy_preserves_deployment_behavior(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
             role = work / "dotfiles"
@@ -39,6 +36,10 @@ class DotfilesDeployTests(unittest.TestCase):
             (source / ".config/test-systemd/user").mkdir(parents=True)
             mako = source / ".config/mako/config"
             mako.write_text("original\n")
+            (mako.parent / ".hidden").write_text("hidden\n")
+            (mako.parent / "alias").symlink_to("config")
+            (source / ".config/empty-root").mkdir()
+
             home = work / "home"
             play = [
                 {
@@ -48,9 +49,13 @@ class DotfilesDeployTests(unittest.TestCase):
                     "vars": {
                         "dotfiles_home": str(home),
                         "dotfiles_repository": str(ROOT),
-                        "dotfiles_directories": ["./.config/mako/", ".config/waybar"],
+                        "dotfiles_directories": [
+                            "./.config/mako/",
+                            ".config/waybar",
+                            ".config/empty-root",
+                        ],
                         "dotfiles_files": [".gitconfig"],
-                        "dotfiles_links": [],
+                        "dotfiles_links": [{"src": ".vim", "dest": ".vim"}],
                         "dotfiles_templates": [],
                         "dotfiles_systemd_graphical_units": [],
                         "dotfiles_systemd_directory": ".config/test-systemd",
@@ -91,8 +96,23 @@ class DotfilesDeployTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
 
-            run()
+            run("--check")
+            self.assertFalse(home.exists())
+            conflict = home / ".vim"
+            conflict.mkdir(parents=True, mode=0o700)
+            (conflict / "local").write_text("preserve me")
+            inode = conflict.stat().st_ino
+            self.assertIn("Replacement tasks are deferred", run("--check"))
+            self.assertFalse((home / ".vim.bak").exists())
+            output = run()
+            self.assertEqual((home / ".vim.bak").stat().st_ino, inode)
+            self.assertEqual((home / ".vim.bak/local").read_text(), "preserve me")
+
+            self.assertEqual((home / ".config/mako/.hidden").read_text(), "hidden\n")
+            self.assertEqual((home / ".config/mako/alias").read_text(), "original\n")
+            self.assertTrue((home / ".config/empty-root").is_dir())
             target = home / ".config/mako/config"
+            self.assertTrue(target.exists(), output)
             self.assertEqual(target.read_text(), "original\n")
             self.assertRegex(run(), r"changed=0\b")
 
@@ -104,7 +124,7 @@ class DotfilesDeployTests(unittest.TestCase):
             unmanaged.write_text("keep me\n")
             output = run("--check")
             self.assertEqual(target.read_text(), "modified\n")
-            self.assertIn("Copy static directory .config/mako", output)
+            self.assertIn("Copy files individually from .config/mako", output)
             output = run()
             self.assertEqual(target.read_text(), "original\n")
             self.assertTrue(
@@ -117,26 +137,24 @@ class DotfilesDeployTests(unittest.TestCase):
             self.assertIn("RUNNING HANDLER [", output)
             self.assertIn("dotfiles : Reload Mako configuration", output)
             self.assertNotIn("dotfiles : Reload Waybar", output)
-            self.assertNotIn("Copy static directory .config/waybar", output)
+            self.assertNotRegex(
+                output,
+                r"changed: \[localhost\].*home/\.config/waybar",
+            )
 
             # File modes and empty directories are part of deployment too.
             target.chmod(0o600)
+            target.parent.chmod(0o700)
             (source / ".config/mako/empty").mkdir()
             run()
             self.assertEqual(target.stat().st_mode & 0o777, mako.stat().st_mode & 0o777)
             self.assertTrue((home / ".config/mako/empty").is_dir())
+            self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
             self.assertRegex(run(), r"changed=0\b")
 
-            # A failed probe cannot suppress regular copies or their notifications.
-            binary = work / "bin"
-            binary.mkdir()
-            rsync = binary / "rsync"
-            rsync.write_text("#!/bin/sh\necho 'probe unavailable' >&2\nexit 23\n")
-            rsync.chmod(0o755)
-            play[0]["environment"] = {"PATH": f"{binary}:{os.environ['PATH']}"}
-            playbook.write_text(yaml.safe_dump(play))
+            # Each source file is checked and reported through its own copy task.
             mako.write_text("updated\n")
             output = run()
-            self.assertIn("probe unavailable", output)
+            self.assertIn(str(target), output)
             self.assertEqual(target.read_text(), "updated\n")
             self.assertRegex(run(), r"changed=0\b")

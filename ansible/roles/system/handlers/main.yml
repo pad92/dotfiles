@@ -4,17 +4,14 @@
     name: lactd.service
     state: restarted
 
-- name: Apply managed sysctl policy
-  ansible.builtin.command:
-    argv: [sysctl, -p, /etc/sysctl.d/hardening.conf]
-  changed_when: not ansible_check_mode
-  when: not ansible_check_mode
-
 - name: Regenerate Arch initramfs
-  ansible.builtin.command:
-    argv: >-
-      {{ ['mkinitcpio', '-P']
-         if system_initramfs_generator_effective == 'mkinitcpio'
-         else ['dracut', '--regenerate-all', '--force'] }}
-  changed_when: not ansible_check_mode
-  when: not ansible_check_mode
+  dotfiles_initramfs:
+    generator: '{{ system_initramfs_generator_effective }}'
+    report_roots: '{{ system_initramfs_report_roots }}'
+  register: system_initramfs_result
+  notify: Report regenerated initramfs files
+
+- name: Report regenerated initramfs files
+  ansible.builtin.debug:
+    msg: '{{ system_initramfs_result.changed_files }}'
+  when: system_initramfs_result.changed_files | length > 0
