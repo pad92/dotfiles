@@ -56,7 +56,7 @@
 
 - name: Warn when state prevents package removals
   ansible.builtin.debug:
-    msg: "No valid ownership state exists; package removal is disabled."
+    msg: 'No valid ownership state exists; package removal is disabled.'
   when:
     - packages_action == 'reconcile'
     - not packages_state_valid
@@ -64,20 +64,20 @@
 - name: Show managed package removal candidates
   ansible.builtin.debug:
     msg:
-      graphics: "{{ packages_graphics_removal_candidates | default([]) }}"
-      other: "{{ packages_removal_candidates | default([]) }}"
+      graphics: '{{ packages_graphics_removal_candidates | default([]) }}'
+      other: '{{ packages_removal_candidates | default([]) }}'
   when: ansible_check_mode or packages_action == 'plan'
 
 - name: Show package state plan
   ansible.builtin.debug:
     msg:
-      selected_groups: "{{ packages_selected_groups }}"
-      owned_packages_after: "{{ packages_owned_after | default([]) }}"
+      selected_groups: '{{ packages_selected_groups }}'
+      owned_packages_after: '{{ packages_owned_after | default([]) }}'
   when: ansible_check_mode or packages_action == 'plan'
 
 - name: Warn when the Arch removal transaction is unsafe
   ansible.builtin.debug:
-    msg: "Pacman could not produce a safe removal transaction; removals are skipped."
+    msg: 'Pacman could not produce a safe removal transaction; removals are skipped.'
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_action == 'reconcile'
@@ -100,18 +100,18 @@
     - packages_removal_preview_safe | default(false) | bool
 
 - name: Remove obsolete graphics packages
-  ansible.builtin.command:
-    argv: >-
-      {{ ['pacman', '-Rs', '--']
-         + (packages_graphics_removal_candidates | default([]))
+  community.general.pacman:
+    name: >-
+      {{ (packages_graphics_removal_candidates | default([]))
          + (packages_removal_candidates | default([])) }}
+    state: absent
+    extra_args: --recursive
   when:
     - not ansible_check_mode
     - packages_action == 'reconcile'
     - (packages_graphics_removal_candidates | default([]) | length > 0) or
       (packages_removal_candidates | default([]) | length > 0)
     - packages_graphics_removal_prompt.user_input | default('') == 'REMOVE'
-  changed_when: true
 
 - name: Release kept Arch packages from ownership state
   ansible.builtin.set_fact:
@@ -137,7 +137,7 @@
 
 - name: Remove obsolete packages on Debian and Fedora
   ansible.builtin.package:
-    name: "{{ packages_removal_candidates }}"
+    name: '{{ packages_removal_candidates }}'
     state: absent
   when:
     - not ansible_check_mode
@@ -157,15 +157,16 @@
 
 - name: Snapshot final package inventory
   ansible.builtin.set_fact:
-    packages_final_inventory: "{{ ansible_facts.packages.keys() | list }}"
+    packages_final_inventory: '{{ ansible_facts.packages.keys() | list }}'
   when:
     - not ansible_check_mode
     - packages_selected_groups | length > 0
 
 - name: Release kept Arch packages from ownership state
   ansible.builtin.set_fact:
-    packages_owned_after: "{{ packages_owned_after | difference(packages_release_owned
-      | default([])) }}"
+    packages_owned_after:
+      '{{ packages_owned_after | difference(packages_release_owned
+      | default([])) }}'
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_release_owned | default([]) | length > 0
@@ -178,19 +179,19 @@
   block:
     - name: Create private package state directory
       ansible.builtin.file:
-        path: "{{ packages_state_directory }}"
+        path: '{{ packages_state_directory }}'
         state: directory
-        mode: "0700"
+        mode: '0700'
       become: false
 
     - name: Write managed package state atomically
       ansible.builtin.copy:
-        dest: "{{ packages_state_path }}"
+        dest: '{{ packages_state_path }}'
         content: >-
           {{ {'version': 1,
               'selected_groups': packages_selected_groups | sort,
               'owned_packages': packages_owned_after
                 | intersect(packages_final_inventory) | sort}
              | to_nice_json }}
-        mode: "0600"
+        mode: '0600'
       become: false

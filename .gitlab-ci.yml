@@ -16,7 +16,7 @@ unit_tests:
   stage: test
   image: python:3.13-alpine
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git
     - python3 -m pip install --no-cache-dir -r requirements-test.txt
   script:
     - python3 -m unittest discover -s tests -p 'test_*.py'
@@ -29,7 +29,9 @@ ansible_lint:
   stage: validate
   image: python:3.13-slim
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends make && rm -rf /var/lib/apt/lists/*
+    - >-
+      apt-get update && apt-get install -y --no-install-recommends make
+      && rm -rf /var/lib/apt/lists/*
     - python -m pip install --no-cache-dir -r requirements-ansible.txt
   script:
     - make lint-ansible

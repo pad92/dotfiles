@@ -16,6 +16,20 @@ matching the hostname, reloads live configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS without generating separate debug
 packages. Packages built with native CPU flags may not run on a different CPU.
 Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
+Dotfile copies, templates, backups, and removals use Ansible file modules.
+Directory deployments show each changed file. Custom modules report files
+written by sysfs controls, submodule updates, package builds, and initramfs
+generation. Conflict backups use an atomic move that refuses existing targets.
+AUR installation uses a dedicated module for yay/paru, without Pacman's
+unsupported `--print-format` calls.
+
+The yay bootstrap keeps makepkg's package, source, build and log destinations
+inside its temporary build tree. Initramfs reporting inventories
+`system_initramfs_report_roots` (default: `/boot`, `/efi`). Add any custom image
+or hook output directories, including targets outside those trees, to this list.
+Unreadable inventory paths fail the task instead of producing a partial success.
+Package transaction internals and arbitrary external hooks are not a complete
+filesystem audit; the reported paths cover the declared output trees.
 
 Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
@@ -28,7 +42,7 @@ not change the SSH server configuration.
 The `kernel_hardening` tag manages `/etc/sysctl.d/hardening.conf` and saves a
 timestamped backup before replacing it. The policy keeps the filesystem
 protections, ASLR, ptrace and kernel-address restrictions, Docker forwarding,
-inotify and file limits. It uses loose reverse-path filtering for asymmetric
+and inotify limits. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
 so LAN and VPN interfaces can configure it. Set
 `system_ipv6_enabled_by_hostname` in `host_vars` to override the policy per
@@ -37,11 +51,17 @@ IPv6 enabled on `PadsTower` and disables it on `PadsP5560`. Disabling IPv6 sets
 the `all` and `default` sysctls so existing and future interfaces follow the
 host policy.
 
-When `21_steam` is selected, the role adds the gaming sysctls to
-`hardening.conf`, including `vm.max_map_count = 2147483642`. It backs up the
-old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
+When `21_steam` is selected, the role adds
+`vm.max_map_count = 2147483642` to `hardening.conf`. Proton documents this
+value for games that need more mappings than the kernel default. The role backs
+up the old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
 `<filename>.dotfiles-backup` before removing them. If that backup already
 exists, Ansible keeps a timestamped copy before replacing it.
+
+The gaming policy leaves swappiness, dirty page writeback, scheduler behavior,
+network backlog, file-handle limits, and compatibility-mode mmap randomization
+at their kernel or distribution defaults. These settings are not required for
+Proton and can affect general desktop workloads.
 
 Ansible leaves `vm.mmap_rnd_bits` at `32` only when that value is already
 active, since some supported kernels reject it. The role writes the
@@ -121,16 +141,22 @@ GameMode is excluded from the package list. An already installed copy is only
 eligible for removal through `packages_action=reconcile` if Ansible owns it.
 
 The `lact` tag manages `/etc/lact/config.yaml` when `lactd.service` is installed.
-It reads the exact GPU identifiers and drivers from LACT, then creates missing
-`Balance`, `Silence` and `Jeux-perf` profiles for detected AMD GPUs. New profiles
-keep automatic fan control; `Balance` and `Silence` use automatic performance
-levels, while `Jeux-perf` uses `high`. Customize the fan curves in LACT as needed.
-Existing profile settings, automation and profile selection are preserved.
-Identifier casing is repaired, but an unknown GPU or conflicting entries stop
-the deployment before the configuration is written. A symlink or directory at
-`system_lact_config_path` is also refused; select the intended regular file
-explicitly instead. Changes receive a backup
-and restart `lactd`.
+It reads GPU identifiers and drivers from LACT, then creates missing `Auto`,
+`Adaptive` and `PreferMaximumPerformance` profiles for AMD and NVIDIA GPUs.
+These names match LACT's NVIDIA PowerMizer modes. AMD profiles use automatic
+performance levels for `Auto` and `Adaptive`, then `high` for
+`PreferMaximumPerformance`. NVIDIA profiles use the matching PowerMizer mode.
+Profiles do not override fan control. Intel GPUs keep their existing settings.
+Existing `Balance`, `Silence`, `Performance` and `Jeux-perf` profiles are
+renamed and removed under their old names. Their settings move to the new name
+when it is unused; an existing profile with the new name takes priority. The
+current selection follows the rename. Defaults fill only missing GPU entries
+in existing profiles. Other settings and automation are preserved.
+When no named profile exists, `Auto` becomes active after the profiles are added.
+Identifier casing is repaired; an unknown GPU or conflicting entries stop
+deployment before the configuration is written. A symlink or directory at
+`system_lact_config_path` is also refused. Changes are backed up and restart
+`lactd`.
 
 ```sh
 ./install --tags lact --ask-become-pass
@@ -230,6 +256,7 @@ packages. Use `--check` to preview package changes and
 Use `--check --tags dotfiles` to preview dotfile link changes separately.
 
 Use `make ansible-backup-ls` to list backups created for Ansible-managed
-dotfiles, or `make ansible-backup-rm` to review and remove them after a
-confirmation prompt. Both targets use `$HOME` by default; set
+dotfiles, or `make ansible-backup-rm` to review and remove them through an
+Ansible file task after a confirmation prompt. The helper script only collects
+the candidate paths. Both targets use `$HOME` by default; set
 `ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.

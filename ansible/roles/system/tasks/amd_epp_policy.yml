@@ -23,12 +23,11 @@
 
 - name: Apply EPP preference for powersave governor
   block:
-    - name: Select powersave before setting EPP
-      ansible.builtin.command:
-        argv: [tee, '{{ system_amd_policy.path | dirname }}/scaling_governor']
-        stdin: powersave
+    - name: Select powersave at {{ (system_amd_policy.path | dirname) + '/scaling_governor' }}
+      dotfiles_sysfs:
+        path: '{{ system_amd_policy.path | dirname }}/scaling_governor'
+        value: powersave
       when: system_amd_policy_governor.content | b64decode | trim != 'powersave'
-      changed_when: true
 
     # AMD P-State exposes different EPP choices for each governor.
     - name: Read EPP preferences with the selected governor
@@ -53,35 +52,30 @@
         src: '{{ system_amd_policy.path }}'
       register: system_amd_policy_epp
 
-    - name: Set the requested EPP preference
-      ansible.builtin.command:
-        argv: [tee, '{{ system_amd_policy.path }}']
-        stdin: '{{ system_amd_pstate_epp }}'
+    - name: Set EPP preference at {{ system_amd_policy.path }}
+      dotfiles_sysfs:
+        path: '{{ system_amd_policy.path }}'
+        value: '{{ system_amd_pstate_epp }}'
       when: system_amd_policy_epp.content | b64decode | trim != system_amd_pstate_epp
-      changed_when: true
   rescue:
-    - name: Restore the original governor after an EPP failure
-      ansible.builtin.command:
-        argv:
-          - tee
-          - '{{ system_amd_policy.path | dirname }}/scaling_governor'
-        stdin: '{{ system_amd_policy_governor.content | b64decode | trim }}'
+    - name: Restore governor at {{ (system_amd_policy.path | dirname) + '/scaling_governor' }}
+      dotfiles_sysfs:
+        path: '{{ system_amd_policy.path | dirname }}/scaling_governor'
+        value: '{{ system_amd_policy_governor.content | b64decode | trim }}'
       when: system_amd_policy_governor.content | b64decode | trim != 'powersave'
-      changed_when: true
 
     - name: Read EPP after restoring the governor
       ansible.builtin.slurp:
         src: '{{ system_amd_policy.path }}'
       register: system_amd_policy_restored_epp
 
-    - name: Restore the original EPP preference
-      ansible.builtin.command:
-        argv: [tee, '{{ system_amd_policy.path }}']
-        stdin: '{{ system_amd_policy_original_epp.content | b64decode | trim }}'
+    - name: Restore EPP preference at {{ system_amd_policy.path }}
+      dotfiles_sysfs:
+        path: '{{ system_amd_policy.path }}'
+        value: '{{ system_amd_policy_original_epp.content | b64decode | trim }}'
       when: >-
         system_amd_policy_restored_epp.content | b64decode | trim !=
         system_amd_policy_original_epp.content | b64decode | trim
-      changed_when: true
 
     - name: Report the EPP configuration failure
       ansible.builtin.fail:

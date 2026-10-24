@@ -36,6 +36,8 @@ dotfiles_directory_handlers:
   .config/waybar: [Reload Waybar]
   .config/wireplumber: [Apply changed user audio configuration]
 dotfiles_systemd_directory: .config/systemd
+dotfiles_hypridle_enabled_default: true
+dotfiles_hypridle_enabled_by_hostname: {}
 dotfiles_systemd_graphical_units:
   - awww.service
   - awww_random.timer
@@ -64,3 +66,18 @@ dotfiles_templates:
     dest: .config/hypr/hyprlock.conf
 dotfiles_waybar_host_config: "config.{{ ansible_facts['hostname'] }}"
 dotfiles_update_vim_plugins: false
+dotfiles_vim_plugins:
+  - repo: https://github.com/VundleVim/Vundle.vim.git
+    dest: Vundle.vim
+  - repo: https://github.com/morhetz/gruvbox.git
+    dest: gruvbox
+  - repo: https://github.com/airblade/vim-gitgutter.git
+    dest: vim-gitgutter
+  - repo: https://github.com/tpope/vim-fugitive.git
+    dest: vim-fugitive
+  - repo: https://github.com/suan/vim-instant-markdown.git
+    dest: vim-instant-markdown
+  - repo: https://github.com/chrisbra/colorizer.git
+    dest: colorizer
+  - repo: https://github.com/editorconfig/editorconfig-vim.git
+    dest: editorconfig-vim

@@ -1,15 +1,10 @@
 ---
 - name: Initialize Git submodules at their recorded revisions
-  ansible.builtin.command:
-    argv:
-      - git
-      - -C
-      - "{{ dotfiles_repository }}"
-      - submodule
-      - update
-      - --init
-      - --recursive
+  dotfiles_submodule_update:
+    path: '{{ dotfiles_repository }}'
   register: dotfiles_submodule_update
-  changed_when: >-
-    'Submodule path' in dotfiles_submodule_update.stdout or
-    'Cloning into' in dotfiles_submodule_update.stderr
+
+- name: Report changed submodule paths # noqa: no-handler -- report results immediately.
+  ansible.builtin.debug:
+    msg: '{{ dotfiles_submodule_update.changed_files }}'
+  when: dotfiles_submodule_update.changed

@@ -8,7 +8,7 @@ ANSIBLE_LINT ?= ansible-lint
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
 ANSIBLE_BACKUP_ROOT ?= $(HOME)
-ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/inventory.yml \
+ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/backup.yml ansible/inventory.yml \
 	ansible/host_vars/*.yml ansible/group_vars/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml)
@@ -39,10 +39,10 @@ test-shell: ## Run the shell integration tests
 	zsh tests/git-pull-recursive.zsh
 
 ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (default: HOME)
-	@$(PYTHON) scripts/ansible_backup_files.py list --root "$(ANSIBLE_BACKUP_ROOT)"
+	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml
 
 ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
-	@$(PYTHON) scripts/ansible_backup_files.py remove --root "$(ANSIBLE_BACKUP_ROOT)"
+	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml -e dotfiles_backup_action=remove
 
 screenshot: ## Render an isolated Hyprland showcase to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \

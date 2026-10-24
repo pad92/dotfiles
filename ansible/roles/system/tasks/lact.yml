@@ -26,19 +26,26 @@
       changed_when: false
       check_mode: false
 
-    - name: Select GPUs controlled by amdgpu
+    - name: Select GPUs supported by the LACT profile defaults
       ansible.builtin.set_fact:
         system_lact_amd_gpu_ids: >-
           {{ system_lact_gpu_info.results | selectattr('stdout', 'search',
-             '(?m)^Driver Used: amdgpu\s*$') | map(attribute='item') | list }}
+             '(?m)^Driver Used: amdgpu(?:\s|$)') | map(attribute='item') | list }}
+        system_lact_nvidia_gpu_ids: >-
+          {{ system_lact_gpu_info.results | selectattr('stdout', 'search',
+             '(?m)^Driver Used: nvidia(?:\s|$)') | map(attribute='item') | list }}
 
-    - name: Preserve LACT configuration when no supported GPU is detected
+    - name: Preserve LACT configuration when no profiled GPU is detected
       ansible.builtin.debug:
-        msg: No amdgpu device was reported by LACT; its configuration is unchanged.
-      when: system_lact_amd_gpu_ids | length == 0
+        msg: No AMD or NVIDIA GPU was reported by LACT; its configuration is unchanged.
+      when:
+        - system_lact_amd_gpu_ids | length == 0
+        - system_lact_nvidia_gpu_ids | length == 0
 
-    - name: Deploy profiles for the detected AMD GPUs
-      when: system_lact_amd_gpu_ids | length > 0
+    - name: Deploy profiles for detected AMD and NVIDIA GPUs
+      when: >-
+        system_lact_amd_gpu_ids | length > 0 or
+        system_lact_nvidia_gpu_ids | length > 0
       block:
         - name: Inspect the system LACT configuration
           ansible.builtin.stat:
@@ -69,7 +76,9 @@
               {{ (system_lact_config_content.content | b64decode | from_yaml
                   if system_lact_config_stat.stat.exists else {})
                  | lact_config(system_lact_gpu_listing.stdout | lact_gpu_ids,
-                               system_lact_amd_gpu_ids, system_lact_profiles) }}
+                               system_lact_amd_gpu_ids, system_lact_profiles,
+                               system_lact_nvidia_gpu_ids,
+                               system_lact_nvidia_profiles) }}
 
         - name: Create the system LACT configuration directory
           ansible.builtin.file:

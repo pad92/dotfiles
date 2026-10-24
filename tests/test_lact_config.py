@@ -18,9 +18,9 @@ SPEC = importlib.util.spec_from_file_location(
 LACT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LACT)
 PROFILES = {
-    "Balance": {"performance_level": "auto"},
-    "Silence": {"performance_level": "auto"},
-    "Jeux-perf": {"performance_level": "high"},
+    "Auto": {"performance_level": "auto"},
+    "Adaptive": {"performance_level": "auto"},
+    "PreferMaximumPerformance": {"performance_level": "high"},
 }
 
 
@@ -71,7 +71,7 @@ class LactConfigTests(unittest.TestCase):
 
     def test_new_profiles_only_target_supported_gpus_without_fan_overrides(self):
         result = LACT.lact_config({}, ["GPU-Ab", "GPU-Cd"], ["GPU-Ab"], PROFILES)
-        self.assertEqual(result["current_profile"], "Balance")
+        self.assertEqual(result["current_profile"], "Auto")
         for name, profile in result["profiles"].items():
             self.assertEqual(profile["gpus"], {"GPU-Ab": PROFILES[name]})
 
@@ -221,7 +221,7 @@ class LactDeploymentTests(unittest.TestCase):
             output = run()
             self.assertIn("restart observed", output)
             migrated = yaml.safe_load(config.read_text())
-            self.assertIn("GPU-Ab", migrated["profiles"]["Balance"]["gpus"])
+            self.assertIn("GPU-Ab", migrated["profiles"]["Auto"]["gpus"])
             backups = list(config.parent.glob("config.yaml.*~"))
             self.assertEqual(len(backups), 1)
             self.assertEqual(yaml.safe_load(backups[0].read_text()), original)

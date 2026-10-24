@@ -28,35 +28,42 @@ class AmdEppPolicyTests(unittest.TestCase):
             "energy_performance_available_preferences": "performance",
         }.items():
             (self.policy / name).write_text(content + "\n")
-        binary = self.directory / "bin"
-        binary.mkdir()
         self.available_preferences = self.directory / "available-preferences"
         self.available_preferences.write_text("performance balance_performance power\n")
-        tee = binary / "tee"
-        tee.write_text("""#!/usr/bin/env python3
-import sys
+        library = self.directory / "library"
+        library.mkdir()
+        (library / "dotfiles_sysfs.py").write_text("""#!/usr/bin/python
+import os
 from pathlib import Path
-path = Path(sys.argv[1])
-value = sys.stdin.read()
+from ansible.module_utils.basic import AnsibleModule
+
+module = AnsibleModule(argument_spec={
+    "path": {"type": "path", "required": True},
+    "value": {"type": "str", "required": True},
+}, supports_check_mode=True)
+path = Path(module.params["path"])
+value = module.params["value"].strip()
+current = path.read_text().strip()
+if current == value:
+    module.exit_json(changed=False, path=str(path), changed_files=[])
+if module.check_mode:
+    module.exit_json(changed=True, path=str(path), changed_files=[str(path)])
 if path.name == "energy_performance_preference":
     failure = path.parent / "reject-epp-once"
     if failure.exists():
         failure.unlink()
         path.write_text("power\\n")
-        sys.exit("Simulated EPP write failure")
+        module.fail_json(msg="Simulated EPP write failure")
     if (path.parent / "scaling_governor").read_text().strip() != "powersave":
-        sys.exit("EPP requires powersave")
+        module.fail_json(msg="EPP requires powersave")
 else:
-    # Simulate governor-dependent EPP choices and a preference reset.
-    choices = Path(__file__).resolve().parents[1] / "available-preferences"
-    (path.parent / "energy_performance_available_preferences").write_text(
-        choices.read_text() if value.strip() == "powersave" else "performance\\n"
-    )
+    choices = Path(os.environ["DOTFILES_TEST_PREFERENCES"])
+    available = path.parent / "energy_performance_available_preferences"
+    available.write_text(choices.read_text() if value == "powersave" else "performance\\n")
     (path.parent / "energy_performance_preference").write_text("performance\\n")
-path.write_text(value)
-print(value, end="")
+path.write_text(value + "\\n")
+module.exit_json(changed=True, path=str(path), changed_files=[str(path)])
 """)
-        tee.chmod(0o755)
         self.playbook = self.directory / "play.yml"
         self.playbook.write_text(
             yaml.safe_dump(
@@ -65,7 +72,9 @@ print(value, end="")
                         "hosts": "localhost",
                         "gather_facts": False,
                         "connection": "local",
-                        "environment": {"PATH": f"{binary}:{os.environ['PATH']}"},
+                        "environment": {
+                            "DOTFILES_TEST_PREFERENCES": str(self.available_preferences)
+                        },
                         "vars": {
                             "system_amd_policy": {
                                 "path": str(
@@ -84,7 +93,12 @@ print(value, end="")
         return subprocess.run(
             ["ansible-playbook", "-i", "localhost,", str(self.playbook), *arguments],
             cwd=ROOT,
-            env={**os.environ, "ANSIBLE_LOCAL_TEMP": str(self.directory / "ansible")},
+            env={
+                **os.environ,
+                "ANSIBLE_LOCAL_TEMP": str(self.directory / "ansible"),
+                "ANSIBLE_LIBRARY": str(self.directory / "library"),
+                "DOTFILES_TEST_PREFERENCES": str(self.available_preferences),
+            },
             text=True,
             capture_output=True,
             timeout=60,

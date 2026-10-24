@@ -7,11 +7,11 @@ import json
 import subprocess
 import sys
 
-PROFILES = ("Balance", "Silence", "Jeux-perf")
+PROFILES = ("Auto", "Adaptive", "PreferMaximumPerformance")
 PROFILE_DISPLAY = {
-    "Balance": ("", "balance"),
-    "Silence": ("Zzz", "silence"),
-    "Jeux-perf": ("", "jeux-perf"),
+    "Auto": ("", "auto"),
+    "Adaptive": ("", "adaptive"),
+    "PreferMaximumPerformance": ("", "prefer-maximum-performance"),
 }
 
 

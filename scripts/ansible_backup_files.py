@@ -1,11 +1,10 @@
-"""List and remove backups created for paths managed by the Ansible roles."""
+"""List backups created for paths managed by the Ansible roles."""
 
 import argparse
 import json
 import os
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -211,27 +210,11 @@ def timestamp_siblings(target: Path) -> set[Path]:
     return backups
 
 
-def remove_backups(backups: list[Path]) -> None:
-    unsafe_parents = [
-        backup.parent for backup in backups if has_symlink_component(backup.parent)
-    ]
-    if unsafe_parents:
-        raise RuntimeError(
-            "Refusing to remove backups through symbolic-link paths: "
-            + ", ".join(map(str, unsafe_parents))
-        )
-
-    for backup in backups:
-        if backup.is_symlink() or not backup.is_dir():
-            backup.unlink()
-        else:
-            shutil.rmtree(backup)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("list", "remove"))
+    parser.add_argument("action", choices=("list",))
     parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--json", action="store_true")
     parser.add_argument(
         "-e",
         "--extra-vars",
@@ -251,6 +234,9 @@ def main() -> int:
     except (OSError, RuntimeError, ValueError, TypeError) as error:
         print(f"Unable to enumerate backups: {error}", file=sys.stderr)
         return 1
+    if arguments.json:
+        print(json.dumps([str(path) for path in backups]))
+        return 0
     if not backups:
         print(f"No Ansible-managed backups found under {root}.")
         return 0
@@ -258,23 +244,6 @@ def main() -> int:
     for backup in backups:
         print(shlex.quote(str(backup)))
 
-    if arguments.action == "list":
-        return 0
-
-    try:
-        answer = input("Remove these backups? [y/N] ")
-    except EOFError:
-        answer = ""
-    if answer.strip().lower() not in {"y", "yes"}:
-        print("Cancelled.")
-        return 0
-
-    try:
-        remove_backups(backups)
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
-        print(f"Unable to remove backup: {error}", file=sys.stderr)
-        return 1
-    print(f"Removed {len(backups)} Ansible-managed backup(s).")
     return 0
 
 

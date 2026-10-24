@@ -27,3 +27,8 @@ packages_host_groups:
 system_ipv6_enabled_by_hostname:
   PadsP5560: false
   PadsTower: true
+
+# Stop and disable hypridle on a host by setting its value to false.
+dotfiles_hypridle_enabled_by_hostname:
+  PadsP5560: false
+  PadsTower: false

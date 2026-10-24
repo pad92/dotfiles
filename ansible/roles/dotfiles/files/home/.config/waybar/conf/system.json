@@ -2,7 +2,7 @@
   "clock": {
     "locale": "fr_FR.UTF-8",
     "format": "{:L%a %d %b %Y  %H:%M}",
-    "tooltip-format": "{calendar}"
+    "tooltip-format": "<tt>{calendar}</tt>"
   },
   "cpu": {
     "format": "{usage}% "

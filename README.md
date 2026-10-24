@@ -160,8 +160,10 @@ uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible
 for details. The `lact` tag manages `/etc/lact/config.yaml` using GPU identifiers
 reported by the running LACT daemon. It repairs identifier casing, preserves
 existing profiles and fan curves, backs up changes and restarts `lactd` when
-needed. New profiles use the detected AMD GPUs without custom fan curves.
-The old home-directory LACT file is no longer deployed or used by this role.
+needed. New `Auto`, `Adaptive` and `PreferMaximumPerformance` profiles use
+detected AMD and NVIDIA GPUs without custom fan curves. Their names follow
+LACT's PowerMizer modes. Intel GPU settings are left unchanged. The old
+home-directory LACT file is no longer deployed or used by this role.
 
 ## Scripts
 

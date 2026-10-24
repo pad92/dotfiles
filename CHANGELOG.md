@@ -4,6 +4,36 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Added
+
+- Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop the
+  user service and prevent it from starting automatically.
+- Add NVIDIA PowerMizer profiles to Waybar while keeping the existing AMD
+  profiles.
+
+### Changed
+
+- Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
+  checkouts, submodules, and sysfs controls through Ansible modules. The backup
+  helper now only collects paths.
+- Report paths changed by package builds and Git submodules. Initramfs reporting
+  covers the configured output directories.
+- Name LACT profiles after their PowerMizer modes and use the existing chip icon
+  in Waybar.
+- Limit the Steam sysctl policy to `vm.max_map_count`; leave general VM,
+  scheduler, network backlog, file-handle, and compatibility mmap settings at
+  their kernel or distribution defaults.
+
+### Fixed
+
+- Preserve conflict backups atomically and deploy hidden files, empty
+  directories, and source links without following cycles indefinitely.
+- Fix submodule path reporting, first Vim clones, backup and sysctl check mode,
+  and initramfs change notifications. Avoid refreshing Arch package databases
+  when a system upgrade is disabled.
+- Install Git in the CI test image and configure Ansible's module paths and
+  temporary configuration for world-writable checkouts.
+
 ## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
 
 ### Added
