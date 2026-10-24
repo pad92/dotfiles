@@ -22,6 +22,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- Install Git in the CI test image and give Ansible fixtures explicit module
+  paths and a temporary configuration, including in world-writable checkouts.
+
 - Preserve conflict backups atomically and deploy hidden files, empty directories
   and source links without following cycles indefinitely.
 - Repair submodule path reporting, first Vim clones, backup/sysctl check mode and

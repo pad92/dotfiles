@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,8 +25,7 @@ class FileContractTests(unittest.TestCase):
             ["ansible-playbook", "-i", "localhost,", str(path), *arguments],
             cwd=ROOT,
             env={
-                **os.environ,
-                "ANSIBLE_LOCAL_TEMP": str(self.work / "tmp"),
+                **ansible_test_environment(self.work),
                 **(environment or {}),
             },
             capture_output=True,

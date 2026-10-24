@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,7 +88,7 @@ class DotfilesDeployTests(unittest.TestCase):
                         *arguments,
                     ],
                     cwd=ROOT,
-                    env={**os.environ, "ANSIBLE_LOCAL_TEMP": str(work / "tmp")},
+                    env=ansible_test_environment(work),
                     capture_output=True,
                     text=True,
                     timeout=120,
