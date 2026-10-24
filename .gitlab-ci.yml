@@ -34,6 +34,8 @@ ansible_lint:
       && rm -rf /var/lib/apt/lists/*
     - python -m pip install --no-cache-dir -r requirements-ansible.txt
     - export ANSIBLE_CONFIG="$CI_PROJECT_DIR/ansible.cfg"
+    # The lint job does not decrypt Vault data but the config requires this file.
+    - printf '%s\n' 'ci-lint-placeholder' > .vault
     - ansible-galaxy collection install -r ansible/requirements.yml
   script:
     - make lint-ansible
