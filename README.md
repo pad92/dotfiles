@@ -12,15 +12,15 @@ Zsh, Neovim, Alacritty, tmux, Waybar, and Mako.
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./install
+make install
 ```
 
-Install `ansible-playbook` first, then run `./install` as a regular user with
+Install `ansible-playbook` first, then run `make install` as a regular user with
 `sudo` access. The playbook supports Arch Linux/CachyOS, Debian/Ubuntu, and
 Fedora. It installs packages and deploys the configuration to your home.
 
-Preview packages with `./install --check`, or dotfiles with
-`./install --check --tags dotfiles`. Arguments pass through to
+Preview packages with `make install ANSIBLE_ARGS=--check`, or dotfiles with
+`make install ANSIBLE_ARGS="--check --tags dotfiles"`. Options pass through to
 `ansible-playbook`, including `--ask-become-pass` and `-e`.
 
 Package selection uses OS defaults and detected GPUs. Set `packages_host_groups`
@@ -36,14 +36,14 @@ which Ansible can build as the regular user. Choose `packages_aur_action=ask`
 to confirm AUR work or `skip` to leave it out. Native makepkg builds disable
 debug packages and may not run on a different CPU.
 
-Installation is additive. Use `./install -e packages_action=reconcile` to
+Installation is additive. Use `make install ANSIBLE_ARGS="-e packages_action=reconcile"` to
 preview and confirm removals of packages recorded as managed by this installer.
 Pre-existing packages remain unmanaged. See the [Ansible guide](./ansible/README.md)
 for configuration, package ownership, and system settings.
 
 ## Ansible tasks
 
-Use `./install --tags <tag>`. The supported-distribution check always runs.
+Use `make install ANSIBLE_ARGS="--tags <tag>"`. The supported-distribution check always runs.
 
 | Tags                                       | Action                                                                                                    |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -71,13 +71,13 @@ only reload the manager. Mako and Waybar reload automatically; their internal
 handler tags are not standalone commands.
 
 The default graphical units include `hypridle.service`. Run
-`./install --tags systemd` to deploy user units and enable the configured list
+`make install ANSIBLE_ARGS="--tags systemd"` to deploy user units and enable the configured list
 in `dotfiles_systemd_graphical_units`. Hypridle requires `WAYLAND_DISPLAY` in
 the user systemd environment to start.
 
 ## Gaming and AMD CPUs
 
-Select `21_steam`, then run `./install --tags packages,gaming --ask-become-pass`.
+Select `21_steam`, then run `make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"`.
 The group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
 Ansible enables both services and stops configuration if another known CPU
 power manager is active or enabled. Once this check passes, it removes any

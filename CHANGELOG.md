@@ -13,6 +13,8 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- Move the Ansible launcher into `make install`; pass playbook options through
+  `ANSIBLE_ARGS`.
 - Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
   checkouts, submodules, and sysfs controls through Ansible modules. The backup
   helper now only collects paths.
