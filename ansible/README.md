@@ -1,11 +1,10 @@
 # Ansible setup
 
-Install `ansible-playbook` before using this setup. `./install` is a thin
-launcher for the local playbook. Arguments pass straight through to
-`ansible-playbook`:
+Install `ansible-playbook` before using this setup. The `make install` target
+runs the local playbook. Pass options through `ANSIBLE_ARGS`:
 
 ```sh
-./install --ask-become-pass
+make install ANSIBLE_ARGS=--ask-become-pass
 ```
 
 The playbook supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora. It
@@ -31,7 +30,7 @@ Unreadable inventory paths fail the task instead of producing a partial success.
 Package transaction internals and arbitrary external hooks are not a complete
 filesystem audit; the reported paths cover the declared output trees.
 
-Run `./install --tags makepkg --ask-become-pass` to configure makepkg without
+Run `make install ANSIBLE_ARGS="--tags makepkg --ask-become-pass"` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
 available as an alias.
 
@@ -77,8 +76,8 @@ It also drops interface-specific IPv6 overrides, which did not apply safely to
 all desktop hosts. Reboot once after the migration to clear these old runtime
 settings. Ansible does not reboot the workstation.
 
-Run either tag with `./install --tags ssh_client_hardening --ask-become-pass`
-or `./install --tags kernel_hardening --ask-become-pass`.
+Run either tag with `make install ANSIBLE_ARGS="--tags ssh_client_hardening --ask-become-pass"`
+or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
 
 ### AMD CPU performance
 
@@ -101,7 +100,7 @@ Boost or the kernel boot parameters.
 Apply the runtime settings with:
 
 ```sh
-./install --tags amd_cpu_performance --ask-become-pass
+make install ANSIBLE_ARGS="--tags amd_cpu_performance --ask-become-pass"
 ```
 
 These writes are not persisted across reboot. See the
@@ -131,7 +130,7 @@ configuration.
 To install the selected groups and configure gaming services, run:
 
 ```sh
-./install --tags packages,gaming --ask-become-pass
+make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"
 ```
 
 The `gaming` tag alone configures services after checking that their packages
@@ -159,7 +158,7 @@ deployment before the configuration is written. A symlink or directory at
 `lactd`.
 
 ```sh
-./install --tags lact --ask-become-pass
+make install ANSIBLE_ARGS="--tags lact --ask-become-pass"
 ```
 
 `--check` requires an already running LACT daemon for discovery. The legacy
@@ -204,7 +203,7 @@ clones its AUR recipe, builds it as the current user, then installs the package
 with Ansible privilege escalation. Set `-e packages_aur_action=ask` to confirm
 AUR builds and installations, or `-e packages_aur_action=skip` to leave AUR
 packages uninstalled.
-Run `./install --tags yay --ask-become-pass` to run the package selection and
+Run `make install ANSIBLE_ARGS="--tags yay --ask-become-pass"` to run the package selection and
 AUR installation flow without installing the selected official repository
 packages.
 
@@ -217,8 +216,7 @@ by Git. Create it locally when using Vault-encrypted content, or pass
 override:
 
 ```sh
-./install --ask-become-pass \
-  -e '{"packages_group_selection":["01_base","03_gtk"]}'
+make install ANSIBLE_ARGS="--ask-become-pass -e '{\"packages_group_selection\":[\"01_base\",\"03_gtk\"]}'"
 ```
 
 On Arch Linux, selecting an NVIDIA profile makes the system role manage

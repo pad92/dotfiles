@@ -413,8 +413,8 @@ helper: the lists contain optional and hardware-specific groups that should not
 all be installed together.
 
 ```sh
-sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install --check'
-sudo -u "${MYUSER}" -i bash -c '~/.dotfiles/install'
+sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make install ANSIBLE_ARGS=--check'
+sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make install'
 ```
 
 ```sh

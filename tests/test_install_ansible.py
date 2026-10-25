@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).parents[1]
 FILTER_PATH = ROOT / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
@@ -33,18 +32,25 @@ class PackageStateTests(unittest.TestCase):
         )
 
     def test_valid_state_is_normalized(self):
-        state = FILTERS.parse_package_state_json(json.dumps({
-            "version": 1,
-            "selected_groups": ["03_gtk", "01_base", "01_base"],
-            "owned_packages": ["vim", "git", "vim"],
-        }))
+        state = FILTERS.parse_package_state_json(
+            json.dumps(
+                {
+                    "version": 1,
+                    "selected_groups": ["03_gtk", "01_base", "01_base"],
+                    "owned_packages": ["vim", "git", "vim"],
+                }
+            )
+        )
         self.assertEqual(state["selected_groups"], ["01_base", "03_gtk"])
         self.assertEqual(state["owned_packages"], ["git", "vim"])
 
     def test_invalid_state_fails_closed(self):
-        for content in ("not json", "[]", '{"version":2}',
-                        '{"version":1,"selected_groups":["bad group"],'
-                        '"owned_packages":[]}'):
+        for content in (
+            "not json",
+            "[]",
+            '{"version":2}',
+            '{"version":1,"selected_groups":["bad group"],' '"owned_packages":[]}',
+        ):
             with self.subTest(content=content):
                 self.assertIsNone(FILTERS.parse_package_state_json(content))
 
@@ -88,23 +94,31 @@ class GraphicsDetectionTests(unittest.TestCase):
         self.assertEqual(FILTERS.detect_sysfs_graphics_groups(devices), [])
 
 
-class InstallerLauncherTests(unittest.TestCase):
+class InstallerTargetTests(unittest.TestCase):
     def test_forwards_arguments_to_ansible_playbook(self):
         with tempfile.TemporaryDirectory() as temporary:
             bin_dir = Path(temporary)
             capture = bin_dir / "arguments"
             mock = bin_dir / "ansible-playbook"
             mock.write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$ANSIBLE_CONFIG\" \"$@\" > \"$CAPTURE\"\n"
+                '#!/bin/sh\nprintf \'%s\\n\' "$ANSIBLE_CONFIG" "$@" > "$CAPTURE"\n'
             )
             mock.chmod(0o755)
             env = os.environ.copy()
-            env.update({
-                "PATH": f"{bin_dir}:{env['PATH']}",
-                "CAPTURE": str(capture),
-            })
+            env.update(
+                {
+                    "PATH": f"{bin_dir}:{env['PATH']}",
+                    "CAPTURE": str(capture),
+                }
+            )
             result = subprocess.run(
-                [str(ROOT / "install"), "--check", "-e", "packages_action=plan"],
+                [
+                    "make",
+                    "--no-print-directory",
+                    "install",
+                    f"ANSIBLE_PLAYBOOK={mock}",
+                    "ANSIBLE_ARGS=--check -e packages_action=plan",
+                ],
                 cwd=ROOT,
                 env=env,
                 text=True,

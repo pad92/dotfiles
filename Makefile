@@ -4,6 +4,7 @@
 SCREENSHOT ?= dist/hyprland.webp
 PYTHON ?= python3
 ANSIBLE_PLAYBOOK ?= ansible-playbook
+ANSIBLE_ARGS ?=
 ANSIBLE_LINT ?= ansible-lint
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
@@ -13,12 +14,15 @@ ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/backup.yml ansible/inv
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml)
 
-.PHONY: help lint lint-ansible test test-python test-shell screenshot \
+.PHONY: help install lint lint-ansible test test-python test-shell screenshot \
 	ansible-backup-ls ansible-backup-rm
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+install: ## Run the Ansible setup (pass options with ANSIBLE_ARGS)
+	ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/site.yml" $(ANSIBLE_ARGS)
 
 lint: lint-ansible ## Lint and syntax-check the Ansible project
 

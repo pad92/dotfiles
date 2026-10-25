@@ -1,6 +1,0 @@
-#!/bin/sh
-set -eu
-
-repository=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-export ANSIBLE_CONFIG="$repository/ansible.cfg"
-exec ansible-playbook "$repository/ansible/site.yml" "$@"
