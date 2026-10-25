@@ -16,7 +16,7 @@ unit_tests:
   stage: test
   image: python:3.13-alpine
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git make
     - python3 -m pip install --no-cache-dir -r requirements-test.txt
   script:
     - python3 -m unittest discover -s tests -p 'test_*.py'
