@@ -27,20 +27,23 @@ hl.bind(
 )
 
 -- Focus & move
-local focus_map = {
-  { "Left", "l" },
-  { "Right", "r" },
-  { "Up", "u" },
-  { "Down", "d" },
-  { "BracketLeft", "l" },
-  { "BracketRight", "r" },
+local direction_bindings = {
+  { key = "Left", direction = "l", move = true },
+  { key = "Right", direction = "r", move = true },
+  { key = "Up", direction = "u", move = true },
+  { key = "Down", direction = "d", move = true },
+  { key = "BracketLeft", direction = "l" },
+  { key = "BracketRight", direction = "r" },
 }
-for _, pair in ipairs(focus_map) do
-  hl.bind(config.mainMod .. " + " .. pair[1], hl.dsp.focus({ direction = pair[2] }))
-end
+for _, binding in ipairs(direction_bindings) do
+  hl.bind(config.mainMod .. " + " .. binding.key, hl.dsp.focus({ direction = binding.direction }))
 
-for _, pair in ipairs({ { "Left", "l" }, { "Right", "r" }, { "Up", "u" }, { "Down", "d" } }) do
-  hl.bind(config.mainMod .. " + SHIFT + " .. pair[1], hl.dsp.window.move({ direction = pair[2] }))
+  if binding.move then
+    hl.bind(
+      config.mainMod .. " + SHIFT + " .. binding.key,
+      hl.dsp.window.move({ direction = binding.direction })
+    )
+  end
 end
 
 -- Audio & media

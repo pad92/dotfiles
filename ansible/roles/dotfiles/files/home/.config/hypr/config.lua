@@ -66,7 +66,7 @@ local config = {
       disable_while_typing = true,
       scroll_factor = 0.5,
       tap_and_drag = true,
-      drag_lock = false,
+      drag_lock = 0,
     },
     cursor = {
       no_hardware_cursors = false,

@@ -11,12 +11,16 @@ local monitors = {
   common.asus_monitor("2560x1440@60"), -- capped for productivity
 }
 
-hl.monitor(common.dell_monitor)
 for _, monitor in ipairs(monitors) do
   hl.monitor(monitor)
 end
 
 hl.config({
+  input = {
+    touchdevice = {
+      output = "eDP-1",
+    },
+  },
   decoration = {
     blur = { enabled = false },
     shadow = { enabled = false },

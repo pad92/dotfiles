@@ -5,7 +5,6 @@ local monitors = {
   common.asus_monitor("2560x1440@144"),
 }
 
-hl.monitor(common.dell_monitor)
 for _, monitor in ipairs(monitors) do
   hl.monitor(monitor)
 end
