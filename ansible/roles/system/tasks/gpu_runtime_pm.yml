@@ -1,0 +1,41 @@
+---
+- name: Detect battery-powered hybrid graphics
+  ansible.builtin.script:
+    cmd: detect-hybrid-laptop.sh
+    executable: /bin/sh
+  register: system_hybrid_laptop_detection
+  changed_when: false
+  check_mode: false
+
+- name: Validate hybrid graphics detection result
+  ansible.builtin.assert:
+    that:
+      - system_hybrid_laptop_detection.stdout | trim in ['true', 'false', 'unknown']
+
+- name: Report incomplete hybrid graphics detection
+  ansible.builtin.debug:
+    msg: >-
+      Hybrid graphics detection is incomplete; the runtime PM rule is preserved.
+      Check the power supply metadata and GPU drivers, then rerun the gpu_modules tasks.
+  when:
+    - system_hybrid_laptop_detection.stdout | trim == 'unknown'
+    - "'09_nvidia_modern' in packages_selected_groups"
+
+- name: Configure automatic runtime PM on modern NVIDIA hybrid laptops
+  ansible.builtin.copy:
+    src: 80-dotfiles-nvidia-runtime-pm.rules
+    dest: /etc/udev/rules.d/80-dotfiles-nvidia-runtime-pm.rules
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - system_hybrid_laptop_detection.stdout | trim == 'true'
+    - "'09_nvidia_modern' in packages_selected_groups"
+
+- name: Remove managed runtime PM rule when hardware is not eligible
+  ansible.builtin.file:
+    path: /etc/udev/rules.d/80-dotfiles-nvidia-runtime-pm.rules
+    state: absent
+  when: >-
+    system_hybrid_laptop_detection.stdout | trim == 'false' or
+    '09_nvidia_modern' not in packages_selected_groups

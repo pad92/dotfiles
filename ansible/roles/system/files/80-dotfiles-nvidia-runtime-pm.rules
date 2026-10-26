@@ -1,0 +1,2 @@
+# Installed only on detected hybrid laptops. Match the bound driver, not PCI IDs.
+ACTION=="add|bind", SUBSYSTEM=="pci", DRIVER=="nvidia", TEST=="power/control", ATTR{power/control}="auto"

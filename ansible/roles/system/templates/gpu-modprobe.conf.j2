@@ -1,6 +1,3 @@
 # Managed by dotfiles. Local changes will be overwritten.
 options nvidia NVreg_InitializeSystemMemoryAllocations=1
 options nvidia_drm modeset=1
-{% if '09_nvidia_modern' in packages_selected_groups %}
-options nvidia NVreg_DynamicPowerManagement=0x01
-{% endif %}
