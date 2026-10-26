@@ -1,8 +1,10 @@
 local yay = rawget(_G, "yay")
 
 local suspicious = {
-  { "curl[%s]+[^%s]-|[%s]*[sb]h", "pipe from curl into shell" },
-  { "wget[%s]+[^%s]-|[%s]*[sb]h", "pipe from wget into shell" },
+  { "curl[^|]*|[%s]*sh", "pipe from curl into shell" },
+  { "curl[^|]*|[%s]*bash", "pipe from curl into shell" },
+  { "wget[^|]*|[%s]*sh", "pipe from wget into shell" },
+  { "wget[^|]*|[%s]*bash", "pipe from wget into shell" },
   { "base64[%s]+-%-decode", "base64 decode" },
   { "base64[%s]+-d", "base64 decode" },
   { "eval[%s]*%$[%s]*%(", "eval on command substitution" },
