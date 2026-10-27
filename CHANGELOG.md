@@ -39,6 +39,7 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- Set Proton Pass's D-Bus keyring for local Zsh sessions.
 - Preserve conflict backups atomically and deploy hidden files, empty
   directories, and source links without following cycles indefinitely.
 - Fix submodule path reporting, first Vim clones, backup and sysctl check mode,
