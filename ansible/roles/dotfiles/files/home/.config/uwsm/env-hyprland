@@ -1,19 +1,11 @@
-# GPU configuration specific to Hyprland/Aquamarine.
-# Never use /dev/dri/by-path here: ':' is Aquamarine's device-list separator.
-case "$(hostname)" in
-    PadsP5560)
-        # Intel iGPU first, NVIDIA dGPU second.
-        export LIBVA_DRIVER_NAME=iHD
-        export __GLX_VENDOR_LIBRARY_NAME=mesa
-        export DRI_PRIME=0
-        export AQ_DRM_DEVICES="/dev/dri/card1:/dev/dri/card0"
-        export VK_DRIVER_FILES="/usr/share/vulkan/icd.d/intel_icd.json"
-
-        # NVIDIA offload optimizations.
-        export NVD_BACKEND=direct
-        export __GL_GSYNC_ALLOWED=1
-        ;;
-    PadsTower)
-        export AQ_DRM_DEVICES="/dev/dri/card1"
-        ;;
-esac
+# Resolve DRM nodes at session startup; card numbers are not stable across boots.
+if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/gpu-devices.sh" ]; then
+    # shellcheck source=ansible/roles/dotfiles/files/home/.config/uwsm/gpu-devices.sh
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/gpu-devices.sh"
+    if gpu_devices=$(hypr_gpu_devices); then
+        export AQ_DRM_DEVICES="$gpu_devices"
+    fi
+    unset gpu_devices
+    unset -f hypr_gpu_devices
+fi
+# Leave application driver selection automatic so prime-run can enable offload.

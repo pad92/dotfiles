@@ -38,8 +38,11 @@ The `ssh_client_hardening` tag hashes host names when the system SSH client
 adds new entries to `known_hosts`. Existing entries are not converted. It does
 not change the SSH server configuration.
 
-The `kernel_hardening` tag manages `/etc/sysctl.d/hardening.conf` and saves a
-timestamped backup before replacing it. The policy keeps the filesystem
+The `kernel_hardening` tag manages `/etc/sysctl.d/60-dotfiles-hardening.conf`
+and `/etc/sysctl.d/70-dotfiles-bpf.conf`. Their numeric prefixes place local
+policy after package defaults in `/usr/lib/sysctl.d/`, following systemd's
+recommended filename ordering. The role backs up its former drop-ins before
+removing them. The policy keeps the filesystem
 protections, ASLR, ptrace and kernel-address restrictions, Docker forwarding,
 and inotify limits. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
@@ -51,7 +54,7 @@ the `all` and `default` sysctls so existing and future interfaces follow the
 host policy.
 
 When `21_steam` is selected, the role adds
-`vm.max_map_count = 2147483642` to `hardening.conf`. Proton documents this
+`vm.max_map_count = 2147483642` to `60-dotfiles-hardening.conf`. Proton documents this
 value for games that need more mappings than the kernel default. The role backs
 up the old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` files as
 `<filename>.dotfiles-backup` before removing them. If that backup already
@@ -66,7 +69,7 @@ Ansible leaves `vm.mmap_rnd_bits` at `32` only when that value is already
 active, since some supported kernels reject it. The role writes the
 user-namespace setting only when the kernel exposes it. It sets
 `net.core.bpf_jit_harden` to `2` when available, and persists unprivileged BPF
-as the reversible value `2` in `/etc/sysctl.d/zz-dotfiles-bpf.conf`. The role
+as the reversible value `2` in `/etc/sysctl.d/70-dotfiles-bpf.conf`. The role
 also applies that BPF setting immediately when its active value is `0`; a
 running kernel already locked at `1` keeps that value until reboot.
 
@@ -221,9 +224,18 @@ make install ANSIBLE_ARGS="--ask-become-pass -e '{\"packages_group_selection\":[
 
 On Arch Linux, selecting an NVIDIA profile makes the system role manage
 `/etc/modprobe.d/zz-dotfiles-gpu.conf`. Both profiles enable zero-initialized
-system memory and DRM modesetting. The modern profile also enables NVIDIA's
-coarse-grained runtime D3 power management; the legacy profile does not, since
-NVIDIA documents RTD3 support for Turing and newer GPUs. Open kernel modules
+system memory and DRM modesetting. Runtime D3 uses the NVIDIA driver's default:
+supported Ampere and newer notebooks use fine-grained power management.
+Ansible installs a runtime PM udev rule only when sysfs reports a host battery,
+an Intel or AMD boot VGA GPU, a separate NVIDIA GPU, and the modern
+NVIDIA package profile is selected. The rule matches the bound driver and sets
+PCI `power/control` to `auto`; it contains no device-specific identifiers.
+Reboot after deployment to apply the module configuration and udev rule.
+Peripheral batteries marked `Device` are excluded. If battery metadata or GPU
+detection is incomplete, Ansible preserves the existing rule and reports that detection
+must be retried after the drivers load. A first installation may therefore
+require another run of the `gpu_modules` tasks after reboot.
+Open kernel modules
 preserve video memory automatically. The role does not force that behavior on
 the proprietary legacy driver, which would require systemd integration and
 adequate temporary storage.
@@ -242,6 +254,24 @@ notes that support varies by platform. Values `1`, `2`, and `3` also require
 GPU supports the selected operation. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
 [power management documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html),
 and the kernel's [i915 driver documentation](https://docs.kernel.org/gpu/i915.html).
+
+UWSM discovers DRM cards at session startup and places the unique boot VGA
+card first, followed by the remaining GPUs. The firmware's boot selection
+does not establish whether a card is integrated or dedicated. If several GPUs
+are present without a unique boot VGA card, UWSM leaves GPU selection unchanged
+and prints a diagnostic so Aquamarine can use its default or an existing override.
+The resulting Aquamarine device list uses the current DRM nodes without storing
+card numbers or PCI addresses. If discovery finds no usable cards, UWSM leaves
+GPU selection unchanged. This selection is evaluated at login; reconnect the
+session after changing the GPU hardware.
+
+Application driver selection remains automatic, including Vulkan and VA-API.
+Use `prime-run application` for workloads that need NVIDIA. Remove any previous
+session-wide `VK_DRIVER_FILES` override before testing offload. Keep LACT on
+`Auto` for normal office use. After deployment and reboot, check idle runtime
+suspension, application offload, external displays and suspend/resume. An active
+GPU workload or a monitoring client can keep the NVIDIA device awake; runtime
+PM configuration alone does not establish an autonomy improvement.
 
 Conflicting regular files and directories that need a type change are moved to
 a `.bak` path. Existing symbolic links at managed paths are removed without a

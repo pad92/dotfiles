@@ -185,3 +185,58 @@ class FileContractTests(unittest.TestCase):
             ],
             "--check",
         )
+
+    def test_superseded_sysctl_files_are_backed_up_before_removal(self):
+        sysctl_dir = self.work / "sysctl.d"
+        sysctl_dir.mkdir()
+        old_files = [
+            "hardening.conf",
+            "zz-dotfiles-hardening.conf",
+            "zz-dotfiles-bpf.conf",
+        ]
+        for name in old_files:
+            (sysctl_dir / name).write_text(f"old {name}\n")
+
+        tasks = yaml.safe_load(
+            (ROOT / "ansible/roles/system/tasks/kernel_hardening.yml").read_text()
+        )
+        migration_start = next(
+            index
+            for index, task in enumerate(tasks)
+            if task["name"] == "Check for superseded dotfiles sysctl files"
+        )
+        migration_tasks = yaml.safe_load(
+            yaml.safe_dump(tasks[migration_start:]).replace(
+                "/etc/sysctl.d", str(sysctl_dir)
+            )
+        )
+        for task in migration_tasks:
+            if "ansible.builtin.copy" in task:
+                task["ansible.builtin.copy"].pop("owner", None)
+                task["ansible.builtin.copy"].pop("group", None)
+
+        output = self.run_play(
+            [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "system_optional_sysctls": {
+                            "results": [
+                                {"stat": {"exists": True}},
+                                {"stat": {"exists": True}},
+                                {"stat": {"exists": True}},
+                                {"stat": {"exists": True}},
+                            ]
+                        }
+                    },
+                    "tasks": migration_tasks,
+                }
+            ]
+        )
+        for name in old_files:
+            self.assertFalse((sysctl_dir / name).exists(), output)
+            self.assertEqual(
+                (sysctl_dir / f"{name}.dotfiles-backup").read_text(), f"old {name}\n"
+            )

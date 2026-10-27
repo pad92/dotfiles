@@ -33,7 +33,7 @@
 - name: Manage the desktop sysctl policy
   ansible.builtin.template:
     src: hardening.conf.j2
-    dest: /etc/sysctl.d/hardening.conf
+    dest: /etc/sysctl.d/60-dotfiles-hardening.conf
     owner: root
     group: root
     mode: '0644'
@@ -51,18 +51,12 @@
   ansible.posix.sysctl:
     name: '{{ item.0 }}'
     value: '{{ item.1 | trim }}'
-    sysctl_file: /etc/sysctl.d/hardening.conf
+    sysctl_file: /etc/sysctl.d/60-dotfiles-hardening.conf
     sysctl_set: true
     reload: false
   loop: '{{ system_hardening_policy_entries }}'
   loop_control:
-    label: '/etc/sysctl.d/hardening.conf: {{ item.0 }}'
-  tags: [kernel_hardening]
-
-- name: Remove the superseded dotfiles sysctl drop-in
-  ansible.builtin.file:
-    path: /etc/sysctl.d/zz-dotfiles-hardening.conf
-    state: absent
+    label: '/etc/sysctl.d/60-dotfiles-hardening.conf: {{ item.0 }}'
   tags: [kernel_hardening]
 
 - name: Check for legacy gaming sysctl drop-ins
@@ -105,7 +99,7 @@
 - name: Persist reversible unprivileged BPF restriction
   ansible.builtin.template:
     src: unprivileged-bpf.conf.j2
-    dest: /etc/sysctl.d/zz-dotfiles-bpf.conf
+    dest: /etc/sysctl.d/70-dotfiles-bpf.conf
     owner: root
     group: root
     mode: '0644'
@@ -118,11 +112,52 @@
   ansible.posix.sysctl:
     name: kernel.unprivileged_bpf_disabled
     value: '2'
-    sysctl_file: /etc/sysctl.d/zz-dotfiles-bpf.conf
+    sysctl_file: /etc/sysctl.d/70-dotfiles-bpf.conf
     sysctl_set: true
     reload: false
   when:
     - system_optional_sysctls.results[1].stat.exists
     - system_unprivileged_bpf_disabled.stdout | default('') | trim == '0'
     - not ansible_check_mode
+  tags: [kernel_hardening]
+
+- name: Check for superseded dotfiles sysctl files
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /etc/sysctl.d/hardening.conf
+    - /etc/sysctl.d/zz-dotfiles-hardening.conf
+    - /etc/sysctl.d/zz-dotfiles-bpf.conf
+  register: system_superseded_sysctls
+  tags: [kernel_hardening]
+
+- name: Back up superseded dotfiles sysctl files
+  ansible.builtin.copy:
+    src: '{{ item.stat.path }}'
+    dest: '{{ item.stat.path }}.dotfiles-backup'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0644'
+  loop: '{{ system_superseded_sysctls.results }}'
+  loop_control:
+    label: '{{ item.stat.path }}'
+  when:
+    - item.stat.exists
+    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+      system_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Remove superseded dotfiles sysctl files after backup
+  ansible.builtin.file:
+    path: '{{ item.stat.path }}'
+    state: absent
+  loop: '{{ system_superseded_sysctls.results }}'
+  loop_control:
+    label: '{{ item.stat.path }}'
+  when:
+    - item.stat.exists
+    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+      system_optional_sysctls.results[1].stat.exists
   tags: [kernel_hardening]

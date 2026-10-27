@@ -43,6 +43,13 @@
     - packages_selected_groups is defined
   tags: [gpu_modules]
 
+- name: Configure hardware-detected hybrid runtime power management
+  ansible.builtin.import_tasks: gpu_runtime_pm.yml
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+  tags: [gpu_modules]
+
 - name: Configure NVIDIA kernel module options
   ansible.builtin.template:
     src: gpu-modprobe.conf.j2
