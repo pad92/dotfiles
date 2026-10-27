@@ -51,7 +51,12 @@ package_vim:
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   rules:
-    - changes:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - 'ansible/roles/dotfiles/files/home/.vim/**/*'
+        - 'ansible/roles/dotfiles/files/home/.vimrc'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
+      changes:
         - 'ansible/roles/dotfiles/files/home/.vim/**/*'
         - 'ansible/roles/dotfiles/files/home/.vimrc'
   script:

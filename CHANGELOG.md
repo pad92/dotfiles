@@ -6,6 +6,11 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- Add GitLab IaC scanning for Ansible configuration.
+- Detect hybrid graphics at deployment and session startup, and enable NVIDIA
+  runtime power management on supported battery-powered laptops.
+- Keep the Proton Pass SSH agent running as a user service and select its
+  D-Bus keyring in shells that use it.
 - Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop the
   user service and prevent it from starting automatically.
 - Add NVIDIA PowerMizer profiles to Waybar while keeping the existing AMD
@@ -13,6 +18,12 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- Route all GitLab jobs, including included scanner jobs, to the `chataigne`
+  runner and use the current built-in SAST and Secret Detection templates.
+- Package Vim configuration only on branch pushes and merge requests that
+  change `.vim/` or `.vimrc`.
+- Use the detected boot GPU to order DRM devices for Hyprland, allowing
+  application-level GPU offload to choose its own driver.
 - Move the Ansible launcher into `make install`; pass playbook options through
   `ANSIBLE_ARGS`.
 - Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
@@ -33,8 +44,14 @@ Release history and changes planned for the next version.
 - Fix submodule path reporting, first Vim clones, backup and sysctl check mode,
   and initramfs change notifications. Avoid refreshing Arch package databases
   when a system upgrade is disabled.
-- Install Git in the CI test image and configure Ansible's module paths and
-  temporary configuration for world-writable checkouts.
+- Detect `curl` and `wget` commands piped to `sh` or `bash` in the yay PKGBUILD
+  scan hook.
+- Correct Hyprland touch-device output and directional bindings, and use the
+  numeric `drag_lock` value expected by Hyprland.
+- Install `make` in the CI test image, install the pinned Ansible collections,
+  and provide the lint job's placeholder Vault password file. Install Git and
+  configure Ansible's module paths and temporary configuration for
+  world-writable checkouts.
 
 ## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
 
