@@ -2,8 +2,13 @@
 # Documentation GitLab CI : https://docs.gitlab.com/ee/ci/
 
 include:
-  - template: Security/Secret-Detection.gitlab-ci.yml
-  - template: Security/SAST.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/SAST-IaC.gitlab-ci.yml
+
+default:
+  tags:
+    - chataigne
 
 stages:
   - test
@@ -40,15 +45,20 @@ ansible_lint:
   script:
     - make lint-ansible
 
-# Le SAST tourne par défaut sure tous les commits
-sast:
-  stage: test
-
 # Job Vim : Se lance uniquement si la conf Vim change
 package_vim:
   stage: package
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - 'ansible/roles/dotfiles/files/home/.vim/**/*'
+        - 'ansible/roles/dotfiles/files/home/.vimrc'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
+      changes:
+        - 'ansible/roles/dotfiles/files/home/.vim/**/*'
+        - 'ansible/roles/dotfiles/files/home/.vimrc'
   script:
     - tar -czf vim.tar.gz -C ansible/roles/dotfiles/files/home .vim .vimrc
   artifacts:

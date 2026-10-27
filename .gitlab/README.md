@@ -13,22 +13,25 @@ test → validate → package → pages → release
 
 ## Included templates
 
-| Template                                  | Provides                             |
-| ----------------------------------------- | ------------------------------------ |
-| `Security/Secret-Detection.gitlab-ci.yml` | Scans commits for leaked secrets.    |
-| `Security/SAST.gitlab-ci.yml`             | Static application security testing. |
+| Template                              | Provides                                               |
+| ------------------------------------- | ------------------------------------------------------ |
+| `Jobs/Secret-Detection.gitlab-ci.yml` | Scans commits for leaked secrets.                      |
+| `Jobs/SAST.gitlab-ci.yml`             | Static application security testing.                   |
+| `Jobs/SAST-IaC.gitlab-ci.yml`         | Scans infrastructure configuration, including Ansible. |
+
+All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 ## Jobs
 
-| Job                  | Stage    | Runs when                                                                 | Purpose                                                                           |
-| -------------------- | -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `sast`               | test     | Branch pipelines                                                          | Run static security analysis with the included template's default rules.          |
-| `ansible_lint`       | validate | Branch and tag pipelines                                                  | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.        |
-| `package_vim`        | package  | Branch and tag pipelines                                                  | Package `.vim` and `.vimrc` as `vim.tar.gz`, with submodules fetched recursively. |
-| `package_nvim`       | package  | Branch and tag pipelines                                                  | Package `.config/nvim` as `nvim.tar.gz`.                                          |
-| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag | Build and deploy the documentation site to `public/`.                             |
-| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                 | Build the documentation site for review without deploying it.                     |
-| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                        | Publish a release with notes from `CHANGELOG.md`.                                 |
+| Job                  | Stage    | Runs when                                                                 | Purpose                                                                     |
+| -------------------- | -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Security scanners    | test     | Scanner template rules match                                              | Scan source, infrastructure configuration, and commits for security issues. |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                  | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.  |
+| `package_vim`        | package  | Push or merge request changes `.vim/` or `.vimrc`                         | Package Vim configuration as `vim.tar.gz`, fetching submodules recursively. |
+| `package_nvim`       | package  | Branch and tag pipelines                                                  | Package `.config/nvim` as `nvim.tar.gz`.                                    |
+| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag | Build and deploy the documentation site to `public/`.                       |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                 | Build the documentation site for review without deploying it.               |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                        | Publish a release with notes from `CHANGELOG.md`.                           |
 
 ### `pages`
 
@@ -92,5 +95,5 @@ needed.
 > Releases API. No personal access token or _Settings → CI/CD → Variables_ entry
 > is needed.
 
-The included **SAST** and **Secret-Detection** templates also run with their
-defaults and need no variables.
+The included **SAST**, **IaC Scanning**, and **Secret Detection** templates run
+with their defaults and need no custom variables.
