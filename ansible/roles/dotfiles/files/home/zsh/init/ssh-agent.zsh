@@ -1,3 +1,5 @@
+unset PROTON_PASS_LINUX_KEYRING
+
 if [ -z "${SSH_CONNECTION}" ]; then
   _runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
   _ssh_agent_sockets=(
@@ -12,7 +14,7 @@ if [ -z "${SSH_CONNECTION}" ]; then
   for agent_sock in "${_ssh_agent_sockets[@]}"; do
     if [ -S "${agent_sock}" ]; then
       export SSH_AUTH_SOCK="${agent_sock}"
-      if [ "${agent_sock}" = "${_proton_sock}" ]; then
+      if [ "${agent_sock}" = "${HOME}/.ssh/proton-pass-agent.sock" ]; then
         export PROTON_PASS_LINUX_KEYRING=dbus
       fi
       break
@@ -20,4 +22,3 @@ if [ -z "${SSH_CONNECTION}" ]; then
   done
   unset _ssh_agent_sockets _runtime_dir
 fi
-
