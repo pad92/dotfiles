@@ -12,6 +12,9 @@ if [ -z "${SSH_CONNECTION}" ]; then
   for agent_sock in "${_ssh_agent_sockets[@]}"; do
     if [ -S "${agent_sock}" ]; then
       export SSH_AUTH_SOCK="${agent_sock}"
+      if [ "${agent_sock}" = "${_proton_sock}" ]; then
+        export PROTON_PASS_LINUX_KEYRING=dbus
+      fi
       break
     fi
   done
