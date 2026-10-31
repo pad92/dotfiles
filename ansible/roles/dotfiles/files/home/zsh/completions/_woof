@@ -5,7 +5,7 @@
 local arguments
 
 arguments=(
-    '-i[IP addres to Bind]' \
+    '-i[IP address to Bind]' \
     '-p[Port to Bind (Default 8080)]' \
     '-c[Serve file for count time]' \
     '-z[gzip compression]' \

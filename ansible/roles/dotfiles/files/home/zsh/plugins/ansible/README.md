@@ -12,21 +12,21 @@ plugins=(... ansible)
 
 ## Aliases
 
-| Command                                    | Description                                                         |
-|:-------------------------------------------|:--------------------------------------------------------------------|
-| `ansible-version` / `aver`                 | Show the version on ansible installed in this host                  |
-| `ansible-role-init <role name>` / `arinit` | Creates the Ansible Role as per Ansible Galaxy standard             |
-| `a`                                        | command `ansible`                                                   |
-| `aconf`                                    | command `ansible-config`                                            |
-| `acon`                                     | command `ansible-console`                                           |
-| `aconn`                                    | command `ansible-connection`                                        |
-| `ainv`                                     | command `ansible-inventory`                                         |
-| `aplay`                                    | command `ansible-playbook`                                          |
-| `ainv`                                     | command `ansible-inventory`                                         |
-| `adoc`                                     | command `ansible-doc`                                               |
-| `agal`                                     | command `ansible-galaxy`                                            |
-| `apull`                                    | command `ansible-pull`                                              |
-| `aval`                                     | command `ansible-vault`                                             |
+| Command                                    | Description                                             |
+| :----------------------------------------- | :------------------------------------------------------ |
+| `ansible-version` / `aver`                 | Show the version on ansible installed in this host      |
+| `ansible-role-init <role name>` / `arinit` | Creates the Ansible Role as per Ansible Galaxy standard |
+| `a`                                        | command `ansible`                                       |
+| `aconf`                                    | command `ansible-config`                                |
+| `acon`                                     | command `ansible-console`                               |
+| `aconn`                                    | command `ansible-connection`                            |
+| `ainv`                                     | command `ansible-inventory`                             |
+| `aplay`                                    | command `ansible-playbook`                              |
+| `ainv`                                     | command `ansible-inventory`                             |
+| `adoc`                                     | command `ansible-doc`                                   |
+| `agal`                                     | command `ansible-galaxy`                                |
+| `apull`                                    | command `ansible-pull`                                  |
+| `aval`                                     | command `ansible-vault`                                 |
 
 ## Maintainer
 

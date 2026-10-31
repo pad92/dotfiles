@@ -61,6 +61,8 @@ repos:
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
       - id: check-symlinks
+        # These systemd links are valid when the optional Tracker package is installed.
+        exclude: '^ansible/roles/dotfiles/files/home/\.config/systemd/user/gnome-session\.target\.wants/tracker-miner-(fs|rss)-3\.service$'
       - id: destroyed-symlinks
 
       # Security leak detection
@@ -101,6 +103,8 @@ repos:
     rev: v1.47.2
     hooks:
       - id: typos
+        # This upstream alias table contains proper names the fixer rewrites.
+        exclude: '^ansible/roles/dotfiles/files/home/zsh/plugins/archlinux/README\.md$'
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
@@ -141,4 +145,4 @@ repos:
       - id: shellcheck
         args: [--severity=warning, --exclude=SC2207, --exclude=SC2034]
         # shellcheck does not support zsh syntax (glob qualifiers, etc.)
-        exclude: '(\.zsh$|^home/\.zshrc$|^home/\.zshenv$|^home/\.zprofile$)'
+        exclude: '(\.zsh$|(^|/)home/\.zshrc$|(^|/)home/\.zshenv$|(^|/)home/\.zprofile$)'

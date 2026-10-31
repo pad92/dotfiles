@@ -1,6 +1,7 @@
 ---
 packages_host_groups: {}
-packages_state_directory: "{{ lookup('env', 'XDG_STATE_HOME') | default(lookup('env',
+packages_state_directory:
+  "{{ lookup('env', 'XDG_STATE_HOME') | default(lookup('env',
   'HOME') + '/.local/state', true) }}/dotfiles"
 packages_action: install
 packages_upgrade_system: false

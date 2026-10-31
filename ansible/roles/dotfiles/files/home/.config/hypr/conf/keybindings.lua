@@ -39,10 +39,7 @@ for _, binding in ipairs(direction_bindings) do
   hl.bind(config.mainMod .. " + " .. binding.key, hl.dsp.focus({ direction = binding.direction }))
 
   if binding.move then
-    hl.bind(
-      config.mainMod .. " + SHIFT + " .. binding.key,
-      hl.dsp.window.move({ direction = binding.direction })
-    )
+    hl.bind(config.mainMod .. " + SHIFT + " .. binding.key, hl.dsp.window.move({ direction = binding.direction }))
   end
 end
 
@@ -59,7 +56,7 @@ hl.bind("XF86AudioPrev", hl.dsp.exec_cmd(config.utils.media_prev), { locked = tr
 -- Brightness & caps lock
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(config.utils.bright_up), { locked = true, repeating = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(config.utils.bright_down), { locked = true, repeating = true })
-hl.bind("CAPS", hl.dsp.exec_cmd(config.utils.caps_lock), { description = "Caps Lock" })
+hl.bind("Caps_Lock", hl.dsp.exec_cmd(config.utils.caps_lock), { description = "Caps Lock" })
 
 -- Screenshot
 hl.bind("Print", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })

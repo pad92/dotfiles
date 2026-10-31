@@ -13,7 +13,15 @@
 
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
-  tags: [packages_select, packages_install, packages_reconcile, yay, gpu_modules, gaming]
+  tags:
+    [
+      packages_select,
+      packages_install,
+      packages_reconcile,
+      yay,
+      gpu_modules,
+      gaming,
+    ]
 
 - name: Configure Arch package repositories
   ansible.builtin.import_tasks: pacman.yml

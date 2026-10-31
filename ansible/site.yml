@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   vars:
-    dotfiles_repository: "{{ playbook_dir | dirname }}"
+    dotfiles_repository: '{{ playbook_dir | dirname }}'
   pre_tasks:
     - name: Require a supported Linux distribution family
       ansible.builtin.assert:

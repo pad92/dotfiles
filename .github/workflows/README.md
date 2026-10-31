@@ -10,12 +10,12 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 
 ## Workflows
 
-| File | Trigger | Purpose |
-| --- | --- | --- |
+| File                                   | Trigger                                    | Purpose                                                     |
+| -------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
 | [`deploy-pages.yml`](deploy-pages.yml) | Push or PR to `main` (documentation paths) | Build the documentation site and deploy it to GitHub Pages. |
-| [`package-vim.yml`](package-vim.yml) | Push or PR to `main` (Vim paths) | Package the Vim configuration as `vim.tar.gz`. |
-| [`package-nvim.yml`](package-nvim.yml) | Push or PR to `main` (Neovim paths) | Package `.config/nvim` as `nvim.tar.gz`. |
-| [`release.yml`](release.yml) | Push a `v*` tag | Publish a release with notes from `CHANGELOG.md`. |
+| [`package-vim.yml`](package-vim.yml)   | Push or PR to `main` (Vim paths)           | Package the Vim configuration as `vim.tar.gz`.              |
+| [`package-nvim.yml`](package-nvim.yml) | Push or PR to `main` (Neovim paths)        | Package `.config/nvim` as `nvim.tar.gz`.                    |
+| [`release.yml`](release.yml)           | Push a `v*` tag                            | Publish a release with notes from `CHANGELOG.md`.           |
 
 ### `deploy-pages.yml`
 

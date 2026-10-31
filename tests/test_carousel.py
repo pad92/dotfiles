@@ -12,8 +12,7 @@ from jinja2 import Environment
 
 ROOT = Path(__file__).parents[1]
 HELPER_TEMPLATE = (
-    ROOT
-    / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock/"
+    ROOT / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock/"
     "carousel-image.sh.j2"
 )
 EMPTY = ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock/empty.png"
@@ -27,7 +26,9 @@ class CarouselTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.helper = self.root / "carousel-image.sh"
         self.helper.write_text(
-            Environment().from_string(HELPER_TEMPLATE.read_text()).render(
+            Environment()
+            .from_string(HELPER_TEMPLATE.read_text())
+            .render(
                 ansible_managed="Managed by Ansible",
             )
         )

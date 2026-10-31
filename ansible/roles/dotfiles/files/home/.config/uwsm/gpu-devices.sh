@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # POSIX shell, sourced by UWSM. Optional roots allow isolated fixture tests.
 hypr_gpu_devices() (
     gpu_sysfs=${1:-/sys/class/drm}

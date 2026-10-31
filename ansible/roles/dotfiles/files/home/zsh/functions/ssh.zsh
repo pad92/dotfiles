@@ -9,7 +9,7 @@ ssh-copy-agent-keys() {
     local i
     local key_line
     local kcomment
-    
+
     local -a agent_keys
     local -a comments
     local -a selected_indices
@@ -39,7 +39,7 @@ ssh-copy-agent-keys() {
     # 3. Prompt for selection
     echo -n "Select the key(s) to copy (e.g. '1', '1 3', 'all', or 'q' to quit): "
     read -r selection
-    
+
     if [[ -z "$selection" || "$selection" == "q" || "$selection" == "quit" ]]; then
         echo "Aborted."
         return 0
@@ -101,7 +101,7 @@ ssh-copy-agent-keys() {
         fi
       done
     '
-    
+
     if [[ $? -eq 0 ]]; then
         echo "Success: Selected SSH key(s) successfully processed."
     else

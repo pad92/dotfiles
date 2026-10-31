@@ -10,7 +10,7 @@ plugins=(... rsync)
 
 | Alias               | Command                                          |
 | ------------------- | ------------------------------------------------ |
-| *rsync-copy*        | `rsync -avz --progress -h`                       |
-| *rsync-move*        | `rsync -avz --progress -h --remove-source-files` |
-| *rsync-update*      | `rsync -avzu --progress -h`                      |
-| *rsync-synchronize* | `rsync -avzu --delete --progress -h`             |
+| _rsync-copy_        | `rsync -avz --progress -h`                       |
+| _rsync-move_        | `rsync -avz --progress -h --remove-source-files` |
+| _rsync-update_      | `rsync -avzu --progress -h`                      |
+| _rsync-synchronize_ | `rsync -avzu --delete --progress -h`             |

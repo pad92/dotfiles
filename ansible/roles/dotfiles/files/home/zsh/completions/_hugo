@@ -1,2 +1,1 @@
 $(command -v hugo &>/dev/null && hugo completion zsh)
-
