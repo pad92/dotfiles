@@ -194,8 +194,11 @@ configuration archives.
 
 ## CI and releases
 
-Run `make test` for the Python and shell suites. `make coverage` runs the Python
-suite under [coverage.py](https://coverage.readthedocs.io/) (pinned in
+Run `make test` for the Python and shell suites. The Python tests run one
+process per `tests/test_*.py` file, as many at a time as there are CPUs; set
+`JOBS=N` to change that. Most of them drive `ansible-playbook`, which spends its
+time starting Python for each module call, so they parallelize well. A failing
+file has its full log printed. `make coverage` runs the Python suite under [coverage.py](https://coverage.readthedocs.io/) (pinned in
 `requirements-test.txt`) and fails below the floor set in
 [`.coveragerc`](./.coveragerc). It measures the Ansible modules, filter plugins
 and backup helper. GitLab CI runs the same report and publishes it as a

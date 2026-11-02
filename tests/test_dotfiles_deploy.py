@@ -34,6 +34,18 @@ class DotfilesDeployTests(unittest.TestCase):
                 )
             )
             source = role / "files/home"
+            # Each deployed file costs one Ansible module run per play, so keep
+            # only the Waybar files this test relies on: the host-specific
+            # configuration and one executable in a subdirectory.
+            waybar = source / ".config/waybar"
+            kept = {"config.PadsTower", "modules/lact-profile"}
+            for path in sorted(waybar.rglob("*"), reverse=True):
+                relative = path.relative_to(waybar).as_posix()
+                if path.is_dir():
+                    if not any(path.iterdir()):
+                        path.rmdir()
+                elif relative not in kept:
+                    path.unlink()
             (source / ".config/test-systemd/user").mkdir(parents=True)
             mako = source / ".config/mako/config"
             mako.write_text("original\n")
@@ -112,6 +124,13 @@ class DotfilesDeployTests(unittest.TestCase):
             self.assertEqual((home / ".config/mako/.hidden").read_text(), "hidden\n")
             self.assertEqual((home / ".config/mako/alias").read_text(), "original\n")
             self.assertTrue((home / ".config/empty-root").is_dir())
+            self.assertEqual(
+                (home / ".config/waybar/config").read_text(),
+                (waybar / "config.PadsTower").read_text(),
+            )
+            self.assertTrue(
+                os.access(home / ".config/waybar/modules/lact-profile", os.X_OK)
+            )
             target = home / ".config/mako/config"
             self.assertTrue(target.exists(), output)
             self.assertEqual(target.read_text(), "original\n")
