@@ -18,18 +18,22 @@ reload handlers. Existing file contents are backed up before replacement.
 Existing directory permissions and extra local files remain untouched. Templates,
 individual dotfiles and systemd units use their own Ansible tasks as well.
 
-Before deployment, the role backs up conflicting regular files and directories
-to `<path>.bak` with the `dotfiles_backup` module. Its atomic move preserves
+Before deployment, the role backs up conflicting regular files, directories and
+symlinks that point elsewhere to `<path>.bak` with the `dotfiles_backup` module. Its atomic move preserves
 ownership, permissions, hard links and extended attributes. If a required backup path already exists, deployment
-stops before replacing the conflict. Managed symlinks are handled separately;
-their targets remain untouched. To restore a backup, move the deployed path
+stops before replacing the conflict. A backed-up symlink keeps its target, which
+remains untouched. To restore a backup, move the deployed path
 aside, then move the `.bak` path back. In check mode, existing conflicts are
 reported as planned backups; replacement tasks are deferred until the paths
 have actually been moved.
 
 `dotfiles_directory_handlers` maps copied directories to reload handlers. The
-defaults restart Hyprlauncher or reload Mako and Waybar when their configuration
-directories change. Selecting a different host-specific Waybar configuration
+defaults restart Hyprlauncher, the XDG desktop portal, or reload Mako and Waybar
+when their configuration directories change. A change under `.config/uwsm`
+prints a reminder to log in again, because UWSM reads it at session start.
+`dotfiles_file_handlers` maps single files to handlers when the program does not
+watch its configuration: a changed `.config/hypr/hypridle.conf` runs
+`try-restart hypridle.service`, which leaves a stopped or disabled service alone. Selecting a different host-specific Waybar configuration
 also reloads Waybar. The role reloads the user systemd manager after unit
 changes and before starting the configured services. A user systemd manager
 must be running. Hyprlauncher is relaunched as a UWSM service so Ansible does

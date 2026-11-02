@@ -117,6 +117,8 @@ class InstallerTargetTests(unittest.TestCase):
                     "--no-print-directory",
                     "install",
                     f"ANSIBLE_PLAYBOOK={mock}",
+                    # Ignore a developer's local .vault so the result is stable.
+                    f"DOTFILES_VAULT_PASSWORD_FILE={bin_dir / 'missing-vault'}",
                     "ANSIBLE_ARGS=--check -e packages_action=plan",
                 ],
                 cwd=ROOT,

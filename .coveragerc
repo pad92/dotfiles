@@ -1,0 +1,22 @@
+# Coverage of the Python code shipped with the Ansible project: custom modules,
+# module utilities, filter plugins and the backup listing helper.
+#
+# Modules run by ansible-playbook are executed from a temporary AnsiballZ
+# payload, so only the in-process unit tests count towards this report.
+[run]
+branch = True
+source =
+    ansible/library
+    ansible/module_utils
+    ansible/filter_plugins
+    scripts
+omit =
+    scripts/ci/*
+
+[report]
+# Measured at 99.13% when introduced; raise it as tests grow, never lower it.
+fail_under = 98
+show_missing = True
+skip_empty = True
+exclude_also =
+    if __name__ == .__main__.:

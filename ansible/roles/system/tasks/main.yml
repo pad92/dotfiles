@@ -1,4 +1,14 @@
 ---
+# The packages role selects groups; it only stays undefined when it was skipped.
+- name: Warn when the package group selection is unavailable
+  ansible.builtin.debug:
+    msg: >-
+      No package group selection was computed (the packages selection tasks were
+      skipped). GPU module and gaming tasks are skipped, and the sysctl policy
+      falls back to the hostname groups in packages_host_groups.
+  when: packages_selected_groups is not defined
+  tags: [gpu_modules, gaming, kernel_hardening, package_services]
+
 - name: Configure LACT using detected GPU identifiers
   ansible.builtin.import_tasks: lact.yml
   when: packages_action | default('install') != 'plan'
@@ -11,6 +21,13 @@
     - "'21_steam' in (packages_selected_groups | default([]))"
     - packages_action | default('install') != 'plan'
   tags: [gaming]
+
+- name: Enable services for the selected packages
+  ansible.builtin.import_tasks: package_services.yml
+  when:
+    - packages_selected_groups is defined
+    - packages_action | default('install') != 'plan'
+  tags: [package_services]
 
 - name: Apply SSH client hardening
   ansible.builtin.import_tasks: ssh_hardening.yml
@@ -30,5 +47,10 @@
 
 - name: Configure supported AMD CPU controls
   ansible.builtin.import_tasks: amd_cpu_performance.yml
+  when: "'AuthenticAMD' in (ansible_facts['processor'] | default([]))"
+  tags: [amd_cpu_performance]
+
+- name: Persist supported AMD CPU controls across reboots
+  ansible.builtin.import_tasks: amd_persistence.yml
   when: "'AuthenticAMD' in (ansible_facts['processor'] | default([]))"
   tags: [amd_cpu_performance]

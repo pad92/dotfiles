@@ -15,7 +15,7 @@
   ansible.builtin.set_fact:
     packages_removal_candidates: >-
       {{ packages_installed_after | package_removal_candidates(
-          packages_desired, packages_owned_after)
+          packages_desired, packages_owned_after, packages_protected)
          | difference(packages_graphics_removal_candidates | default([]))
          | sort }}
   when:
@@ -61,20 +61,6 @@
     - packages_action == 'reconcile'
     - not packages_state_valid
 
-- name: Show managed package removal candidates
-  ansible.builtin.debug:
-    msg:
-      graphics: '{{ packages_graphics_removal_candidates | default([]) }}'
-      other: '{{ packages_removal_candidates | default([]) }}'
-  when: ansible_check_mode or packages_action == 'plan'
-
-- name: Show package state plan
-  ansible.builtin.debug:
-    msg:
-      selected_groups: '{{ packages_selected_groups }}'
-      owned_packages_after: '{{ packages_owned_after | default([]) }}'
-  when: ansible_check_mode or packages_action == 'plan'
-
 - name: Warn when the Arch removal transaction is unsafe
   ansible.builtin.debug:
     msg: 'Pacman could not produce a safe removal transaction; removals are skipped.'
@@ -85,7 +71,7 @@
       (packages_removal_candidates | default([]) | length > 0)
     - not packages_removal_preview_safe | default(false) | bool
 
-- name: Confirm removal of obsolete graphics packages
+- name: Confirm removal of obsolete managed packages on Arch Linux
   ansible.builtin.pause:
     prompt: >-
       Pacman will remove {{ packages_removal_preview.stdout_lines | join(', ') }}.
@@ -99,7 +85,7 @@
       (packages_removal_candidates | default([]) | length > 0)
     - packages_removal_preview_safe | default(false) | bool
 
-- name: Remove obsolete graphics packages
+- name: Remove obsolete managed packages on Arch Linux
   community.general.pacman:
     name: >-
       {{ (packages_graphics_removal_candidates | default([]))
@@ -113,7 +99,7 @@
       (packages_removal_candidates | default([]) | length > 0)
     - packages_graphics_removal_prompt.user_input | default('') == 'REMOVE'
 
-- name: Release kept Arch packages from ownership state
+- name: Collect kept Arch packages to release from ownership state
   ansible.builtin.set_fact:
     packages_release_owned: >-
       {{ (packages_graphics_removal_candidates | default([])

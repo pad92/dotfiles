@@ -43,8 +43,9 @@ and `/etc/sysctl.d/70-dotfiles-bpf.conf`. Their numeric prefixes place local
 policy after package defaults in `/usr/lib/sysctl.d/`, following systemd's
 recommended filename ordering. The role backs up its former drop-ins before
 removing them. The policy keeps the filesystem
-protections, ASLR, ptrace and kernel-address restrictions, Docker forwarding,
-and inotify limits. It uses loose reverse-path filtering for asymmetric
+protections, ASLR, ptrace and kernel-address restrictions, and inotify limits.
+IPv4 forwarding is enabled only when `12_containers_docker` or
+`13_containers_podman` is selected, and disabled otherwise. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
 so LAN and VPN interfaces can configure it. Set
 `system_ipv6_enabled_by_hostname` in `host_vars` to override the policy per
@@ -106,7 +107,12 @@ Apply the runtime settings with:
 make install ANSIBLE_ARGS="--tags amd_cpu_performance --ask-become-pass"
 ```
 
-These writes are not persisted across reboot. See the
+Ansible also writes the settings it applied to
+`/etc/tmpfiles.d/dotfiles-amd-cpu.conf` (`system_amd_tmpfiles_path`), so
+`systemd-tmpfiles` restores them at boot: the `powersave` governor first, then the
+EPP preference, then the X3D mode. EPP lines are only written while no power
+manager is active or enabled. The file is removed when Ansible no longer manages
+any of these controls. See the
 [CachyOS CPU tuning guide](https://wiki.cachyos.org/fr/configuration/general_system_tweaks/)
 for firmware requirements and the effect of power profiles.
 
@@ -213,9 +219,10 @@ packages.
 Package groups are selected automatically from OS defaults and detected GPU
 facts. Configure exact selections by hostname in `host_vars/localhost.yml`; those
 lists replace the defaults. `packages_group_selection` remains available as a
-one-run override. The default Vault password file is `.vault`, which is ignored
-by Git. Create it locally when using Vault-encrypted content, or pass
-`--vault-password-file` to override it. Example of a one-run package group
+one-run override. Vault is optional. When `.vault` (ignored by Git) exists, the
+`make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
+`DOTFILES_VAULT_PASSWORD_FILE=/path` on the `make` command line to use another
+file. A fresh clone without `.vault` runs without Vault. Example of a one-run package group
 override:
 
 ```sh
@@ -230,7 +237,10 @@ Ansible installs a runtime PM udev rule only when sysfs reports a host battery,
 an Intel or AMD boot VGA GPU, a separate NVIDIA GPU, and the modern
 NVIDIA package profile is selected. The rule matches the bound driver and sets
 PCI `power/control` to `auto`; it contains no device-specific identifiers.
-Reboot after deployment to apply the module configuration and udev rule.
+When the rule changes, Ansible reloads the udev rules and replays a `bind`
+event for PCI devices bound to `nvidia`, so the rule applies without a reboot.
+Removing the rule leaves `power/control` at `auto` until the next reboot. Reboot
+after deployment to apply the module configuration.
 Peripheral batteries marked `Device` are excluded. If battery metadata or GPU
 detection is incomplete, Ansible preserves the existing rule and reports that detection
 must be retried after the drivers load. A first installation may therefore
@@ -274,14 +284,30 @@ GPU workload or a monitoring client can keep the NVIDIA device awake; runtime
 PM configuration alone does not establish an autonomy improvement.
 
 Conflicting regular files and directories that need a type change are moved to
-a `.bak` path. Existing symbolic links at managed paths are removed without a
-backup; their targets are left untouched. Package installation is additive.
+a `.bak` path. Symbolic links at managed paths that point elsewhere are moved to
+`.bak` the same way, so their targets stay recorded and untouched. Package installation is additive.
 On Arch Linux, enabling `multilib` triggers a full `pacman -Syu`. Otherwise,
 installing selected packages does not upgrade the whole system by default. Set
 `-e packages_upgrade_system=true` to use `pacman -Syu` when installing missing
-packages. Use `--check` to preview package changes and
+packages. On Arch Linux, a package counts as installed when an installed
+package provides its name (`pacman -T`), for example `foo-git` for `foo`.
+Use `--check` to preview package changes and
 `-e packages_action=reconcile` to enable explicit, ownership-based removals.
+Removals never touch the built-in base set (`base`, `glibc`, `pacman`, `systemd`,
+`linux` and `linux-*`, and a few others) or the extra names listed in
+`packages_protected`.
 Use `--check --tags dotfiles` to preview dotfile link changes separately.
+
+The `package_services` tag enables and starts the units of selected package
+groups on Arch Linux (`system_package_services`): `bluetooth.service` with
+`01_base`, `cups.socket` with `04_printers`,
+`docker.socket` with `12_containers_docker`, and `fwupd-refresh.timer` with
+`20_apps`. A unit whose file is missing is reported instead of enabled. With
+`12_containers_docker`, the users in `system_docker_group_users` (default: the
+user running `make install`) join the `docker` group, which grants
+root-equivalent access to the Docker daemon; log in again to use it. When the
+playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
+so the new rules load.
 
 Use `make ansible-backup-ls` to list backups created for Ansible-managed
 dotfiles, or `make ansible-backup-rm` to review and remove them through an

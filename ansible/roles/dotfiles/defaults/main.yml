@@ -33,8 +33,13 @@ dotfiles_directory_handlers:
   .config/hypr: [Restart Hyprlauncher]
   .config/mako: [Reload Mako configuration]
   .config/pipewire: [Apply changed user audio configuration]
+  .config/uwsm: [Report session restart required]
   .config/waybar: [Reload Waybar]
   .config/wireplumber: [Apply changed user audio configuration]
+  .config/xdg-desktop-portal: [Restart XDG desktop portal]
+# Handlers for single files whose program does not watch its configuration.
+dotfiles_file_handlers:
+  .config/hypr/hypridle.conf: [Restart hypridle]
 dotfiles_systemd_directory: .config/systemd
 dotfiles_hypridle_enabled_default: true
 dotfiles_hypridle_enabled_by_hostname: {}

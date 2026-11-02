@@ -75,8 +75,10 @@ class ModuleTests(unittest.TestCase):
             create=True,
             side_effect=[
                 (0, "existing 1\n", ""),
+                (127, "new\n", ""),
                 (0, "", ""),
                 (0, "existing 1\nnew 2\n", ""),
+                (0, "", ""),
             ],
         ) as run:
             result = self.invoke(
@@ -86,8 +88,13 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(result.data["changed_packages"], ["new"])
         self.assertEqual(
             run.call_args_list[1].args[0],
+            ["pacman", "-T", "--", "existing", "new"],
+        )
+        self.assertEqual(
+            run.call_args_list[2].args[0],
             ["yay", "-S", "--needed", "--noconfirm", "--", "new"],
         )
+        self.assertEqual(run.call_args_list[4].args[0], ["pacman", "-T", "--", "new"])
 
     def test_aur_reports_partial_installation_on_failure(self):
         with patch.object(
@@ -96,8 +103,10 @@ class ModuleTests(unittest.TestCase):
             create=True,
             side_effect=[
                 (0, "existing 1\n", ""),
+                (127, "new\n", ""),
                 (1, "", "failed"),
                 (0, "existing 1\ndependency 2\n", ""),
+                (127, "new\n", ""),
             ],
         ):
             result = self.invoke(aur, {"name": ["new"], "executable": "paru"})
@@ -105,19 +114,54 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(result.data["changed_packages"], ["dependency"])
 
     def test_aur_idempotence_and_check_mode(self):
-        for names, check, expected in [
-            (["existing"], False, False),
-            (["new"], True, True),
+        for names, unsatisfied, check, expected in [
+            (["existing"], (0, "", ""), False, False),
+            (["new"], (127, "new\n", ""), True, True),
         ]:
             with patch.object(
-                Module, "run_command", create=True, return_value=(0, "existing 1\n", "")
+                Module,
+                "run_command",
+                create=True,
+                side_effect=[(0, "existing 1\n", ""), unsatisfied],
             ) as run:
                 result = self.invoke(
                     aur, {"name": names, "executable": "yay"}, check=check
                 )
             self.assertFalse(result.failed)
             self.assertEqual(result.data["changed"], expected)
-            run.assert_called_once_with(["pacman", "-Q"])
+            self.assertEqual(
+                [call.args[0][0] for call in run.call_args_list], ["pacman", "pacman"]
+            )
+
+    def test_aur_accepts_a_name_satisfied_by_another_package(self):
+        # foo-git provides foo: pacman -T reports nothing unsatisfied.
+        with patch.object(
+            Module,
+            "run_command",
+            create=True,
+            side_effect=[(0, "foo-git 1\n", ""), (0, "", "")],
+        ) as run:
+            result = self.invoke(aur, {"name": ["foo"], "executable": "yay"})
+        self.assertFalse(result.failed)
+        self.assertFalse(result.data["changed"])
+        self.assertEqual(len(run.call_args_list), 2)
+
+    def test_aur_fails_when_pacman_cannot_check_dependencies(self):
+        with patch.object(
+            Module,
+            "run_command",
+            create=True,
+            side_effect=[(0, "existing 1\n", ""), (1, "", "database locked")],
+        ):
+            result = self.invoke(aur, {"name": ["new"], "executable": "yay"})
+        self.assertTrue(result.failed)
+        self.assertIn("database locked", result.data["msg"])
+
+    def test_aur_rejects_option_like_names_before_running_commands(self):
+        with patch.object(Module, "run_command", create=True) as run:
+            result = self.invoke(aur, {"name": ["--evil"], "executable": "yay"})
+        self.assertTrue(result.failed)
+        run.assert_not_called()
 
     def test_tree_hidden_empty_dangling_and_cyclic_links(self):
         (self.root / ".hidden").write_text("hidden")

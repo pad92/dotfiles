@@ -6,53 +6,107 @@ Release history and changes planned for the next version.
 
 ### Added
 
-- Add GitLab IaC scanning for Ansible configuration.
-- Detect hybrid graphics at deployment and session startup, and enable NVIDIA
-  runtime power management on supported battery-powered laptops.
-- Keep the Proton Pass SSH agent running as a user service and select its
-  D-Bus keyring in shells that use it.
-- Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop the
-  user service and prevent it from starting automatically.
-- Add NVIDIA PowerMizer profiles to Waybar while keeping the existing AMD
-  profiles.
+- **CI**:
+  - Add GitLab IaC scanning for Ansible configuration.
+- **Graphics**:
+  - Detect hybrid graphics at deployment and session startup, and enable NVIDIA
+    runtime power management on supported battery-powered laptops.
+- **SSH**:
+  - Keep the Proton Pass SSH agent running as a user service and select its
+    D-Bus keyring in shells that use it.
+- **Hyprland**:
+  - Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop
+    the user service and prevent it from starting automatically.
+- **Waybar**:
+  - Add NVIDIA PowerMizer profiles while keeping the existing AMD profiles.
+- **Ansible system**:
+  - Enable the services of selected package groups on Arch Linux (Bluetooth,
+    CUPS, Docker, `fwupd-refresh` timer) and add the deploying user to the
+    `docker` group.
+  - Restart `ananicy-cpp` when the playbook installs or updates its rules
+    package.
+  - Persist the AMD EPP and X3D settings applied by Ansible in
+    `/etc/tmpfiles.d/dotfiles-amd-cpu.conf` so they survive reboots.
+- **Tests**:
+  - Add `make coverage` with a pinned coverage.py, a 98% floor in `.coveragerc`,
+    and a Cobertura report in GitLab CI.
 
 ### Changed
 
-- Route all GitLab jobs, including included scanner jobs, to the `chataigne`
-  runner and use the current built-in SAST and Secret Detection templates.
-- Package Vim configuration only on branch pushes and merge requests that
-  change `.vim/` or `.vimrc`.
-- Use the detected boot GPU to order DRM devices for Hyprland, allowing
-  application-level GPU offload to choose its own driver.
-- Move the Ansible launcher into `make install`; pass playbook options through
-  `ANSIBLE_ARGS`.
-- Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
-  checkouts, submodules, and sysfs controls through Ansible modules. The backup
-  helper now only collects paths.
-- Report paths changed by package builds and Git submodules. Initramfs reporting
-  covers the configured output directories.
-- Name LACT profiles after their PowerMizer modes and use the existing chip icon
-  in Waybar.
-- Limit the Steam sysctl policy to `vm.max_map_count`; leave general VM,
-  scheduler, network backlog, file-handle, and compatibility mmap settings at
-  their kernel or distribution defaults.
+- **CI**:
+  - Route all GitLab jobs, including included scanner jobs, to the `chataigne`
+    runner and use the current built-in SAST and Secret Detection templates.
+  - Package Vim configuration only on branch pushes and merge requests that
+    change `.vim/` or `.vimrc`.
+- **Hyprland**:
+  - Use the detected boot GPU to order DRM devices, allowing application-level
+    GPU offload to choose its own driver.
+- **Ansible**:
+  - Move the Ansible launcher into `make install`; pass playbook options
+    through `ANSIBLE_ARGS`.
+  - Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
+    checkouts, submodules, and sysfs controls through Ansible modules. The
+    backup helper now only collects paths.
+  - Report paths changed by package builds and Git submodules. Initramfs
+    reporting covers the configured output directories.
+- **Ansible packages**:
+  - Remove `auto-cpufreq` from `01_base`; it conflicts with the
+    power-profiles-daemon used for gaming.
+  - Treat `packages_protected` as extra names on top of the built-in protected set.
+- **Ansible system**:
+  - Limit the Steam sysctl policy to `vm.max_map_count`; leave general VM,
+    scheduler, network backlog, file-handle, and compatibility mmap settings at
+    their kernel or distribution defaults.
+  - Enable IPv4 forwarding only when a Docker or Podman group is selected.
+- **Ansible dotfiles**:
+  - Move conflicting symlinks to `.bak` instead of deleting them.
+- **Vault**:
+  - Make `.vault` optional: `make` exports it only when it exists, and
+    `ansible.cfg` no longer requires it.
+- **Waybar**:
+  - Name LACT profiles after their PowerMizer modes and use the existing chip
+    icon.
 
 ### Fixed
 
-- Set Proton Pass's D-Bus keyring for local Zsh sessions.
-- Preserve conflict backups atomically and deploy hidden files, empty
-  directories, and source links without following cycles indefinitely.
-- Fix submodule path reporting, first Vim clones, backup and sysctl check mode,
-  and initramfs change notifications. Avoid refreshing Arch package databases
-  when a system upgrade is disabled.
-- Detect `curl` and `wget` commands piped to `sh` or `bash` in the yay PKGBUILD
-  scan hook.
-- Correct Hyprland touch-device output and directional bindings, and use the
-  numeric `drag_lock` value expected by Hyprland.
-- Install `make` in the CI test image, install the pinned Ansible collections,
-  and provide the lint job's placeholder Vault password file. Install Git and
-  configure Ansible's module paths and temporary configuration for
-  world-writable checkouts.
+- **SSH**:
+  - Set Proton Pass's D-Bus keyring for local Zsh sessions.
+- **Hyprland**:
+  - Correct touch-device output and directional bindings, and use the numeric
+    `drag_lock` value expected by Hyprland.
+- **yay**:
+  - Detect `curl` and `wget` commands piped to `sh` or `bash` in the PKGBUILD
+    scan hook.
+- **CI**:
+  - Install `make` in the CI test image and install the pinned Ansible
+    collections. Install Git and configure Ansible's module paths and temporary
+    configuration for world-writable checkouts.
+- **Ansible**:
+  - Fix submodule path reporting, first Vim clones, backup and sysctl check
+    mode, and initramfs change notifications. Avoid refreshing Arch package
+    databases when a system upgrade is disabled.
+- **Ansible packages**:
+  - Continue with the system and dotfiles roles in check mode instead of ending
+    the play after the package plan; keep the plan action read-only, including
+    the Pacman repository configuration.
+  - Pass `packages_protected` to reconcile removals on Debian and Fedora.
+  - Count packages satisfied through `provides` as installed on Arch Linux.
+  - Accept an empty package group selection.
+- **Ansible system**:
+  - Reload udev and replay the NVIDIA bind event when the runtime PM rule
+    changes; report when a removed rule or legacy sysctl drop-in stays active
+    until reboot.
+  - Load the package group selection with the `system` and `kernel_hardening`
+    tags, and warn when it is unavailable.
+  - Read the current sysctl values in check mode so the preview keeps
+    `vm.mmap_rnd_bits`.
+  - Report missing gaming packages in check mode instead of failing.
+- **Ansible dotfiles**:
+  - Restart hypridle when `hypridle.conf` changes and the XDG desktop portal when
+    its configuration changes; remind to log in again after UWSM environment
+    changes.
+  - Preserve conflict backups atomically and deploy hidden files, empty
+    directories, and source links without following cycles indefinitely.
 
 ## [v6.1.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.1.0)
 

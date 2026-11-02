@@ -19,9 +19,11 @@ Install `ansible-playbook` first, then run `make install` as a regular user with
 `sudo` access. The playbook supports Arch Linux/CachyOS, Debian/Ubuntu, and
 Fedora. It installs packages and deploys the configuration to your home.
 
-Preview packages with `make install ANSIBLE_ARGS=--check`, or dotfiles with
-`make install ANSIBLE_ARGS="--check --tags dotfiles"`. Options pass through to
-`ansible-playbook`, including `--ask-become-pass` and `-e`.
+Preview a run with `make install ANSIBLE_ARGS=--check`. Check mode prints the
+package plan without installing or removing packages, then simulates the system
+and dotfiles roles. Use `-e packages_action=plan` to print only the package plan
+and stop, or `--check --tags dotfiles` to preview the dotfiles alone. Options pass
+through to `ansible-playbook`, including `--ask-become-pass` and `-e`.
 
 Package selection uses OS defaults and detected GPUs. Set `packages_host_groups`
 in `ansible/host_vars/localhost.yml` for each hostname, or pass
@@ -190,6 +192,13 @@ and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?jo
 configuration archives.
 
 ## CI and releases
+
+Run `make test` for the Python and shell suites. `make coverage` runs the Python
+suite under [coverage.py](https://coverage.readthedocs.io/) (pinned in
+`requirements-test.txt`) and fails below the floor set in
+[`.coveragerc`](./.coveragerc). It measures the Ansible modules, filter plugins
+and backup helper. GitLab CI runs the same report and publishes it as a
+Cobertura artifact.
 
 GitHub, GitLab, and Gitea use shared scripts in [`scripts/ci/`](./scripts/ci/).
 See the [GitHub workflow documentation](./.github/workflows/README.md) and

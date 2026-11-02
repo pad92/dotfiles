@@ -43,14 +43,21 @@
     get_mime: false
     get_attributes: false
   loop: '{{ dotfiles_target_stats.results }}'
+  # Conflicting symlinks are moved too, so their targets stay recoverable.
   when:
     - item.stat.exists
     - >-
       (not item.stat.islnk and
        ((item.item in dotfiles_directory_paths and not item.stat.isdir) or
-        item.item in dotfiles_link_destinations)) or
-      (not item.stat.islnk and item.item in dotfiles_file_paths and
-       item.stat.isdir)
+        item.item in dotfiles_link_destinations or
+        (item.item in dotfiles_file_paths and item.stat.isdir))) or
+      (item.stat.islnk and
+       ((item.item in dotfiles_link_destinations and
+         item.stat.lnk_source != dotfiles_source_root + '/' +
+         (dotfiles_links | selectattr('dest', 'equalto', item.item) |
+          map(attribute='src') | first)) or
+        (item.item not in dotfiles_link_destinations and
+         item.item != '.config/waybar/config')))
   register: dotfiles_backup_stats
 
 - name: Refuse to replace existing backup paths
@@ -94,24 +101,6 @@
 - name: Deploy paths after conflict backups
   when: not ansible_check_mode or not dotfiles_conflict_backups.changed
   block:
-    - name: Remove conflicting managed symlinks
-      ansible.builtin.file:
-        path: '{{ dotfiles_home }}/{{ item.item }}'
-        state: absent
-      loop: '{{ dotfiles_target_stats.results }}'
-      when:
-        - item.stat.exists
-        - item.stat.islnk
-        - >-
-          (item.item in dotfiles_link_destinations and
-           item.stat.lnk_source != dotfiles_source_root + '/' +
-           (dotfiles_links | selectattr('dest', 'equalto', item.item) |
-            map(attribute='src') | first)) or
-          (item.item not in dotfiles_link_destinations and
-           item.item != '.config/waybar/config')
-      loop_control:
-        label: '{{ item.item }}'
-
     - name: Create parent directories for managed paths
       ansible.builtin.file:
         path: '{{ dotfiles_home }}/{{ item }}'

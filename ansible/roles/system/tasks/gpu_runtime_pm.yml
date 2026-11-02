@@ -28,6 +28,9 @@
     owner: root
     group: root
     mode: '0644'
+  notify:
+    - Reload udev rules
+    - Apply NVIDIA runtime PM udev rule
   when:
     - system_hybrid_laptop_detection.stdout | trim == 'true'
     - "'09_nvidia_modern' in packages_selected_groups"
@@ -36,6 +39,9 @@
   ansible.builtin.file:
     path: /etc/udev/rules.d/80-dotfiles-nvidia-runtime-pm.rules
     state: absent
+  notify:
+    - Reload udev rules
+    - Report NVIDIA runtime PM kept until reboot
   when: >-
     system_hybrid_laptop_detection.stdout | trim == 'false' or
     '09_nvidia_modern' not in packages_selected_groups

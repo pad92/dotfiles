@@ -49,6 +49,18 @@ class RuntimePmTests(unittest.TestCase):
                                     },
                                 },
                                 "tasks": tasks,
+                                # Never touch the host's udev from this fixture.
+                                "handlers": [
+                                    {
+                                        "name": handler["name"],
+                                        "ansible.builtin.debug": {
+                                            "msg": handler["name"]
+                                        },
+                                    }
+                                    for handler in yaml.safe_load(
+                                        (ROLE / "handlers/main.yml").read_text()
+                                    )
+                                ],
                             }
                         ]
                     )
