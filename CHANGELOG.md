@@ -8,6 +8,13 @@ Release history and changes planned for the next version.
 
 - **CI**:
   - Add GitLab IaC scanning for Ansible configuration.
+- **Claude Code**:
+  - Add a one-line status line (`~/.bin/claude-statusline`) matching the Zsh
+    theme: model, effort, directory, Git state, merge request, context gauge,
+    subscription limits with the time left before each reset, and changed
+    lines.
+  - Merge its `statusLine` entry into `~/.claude/settings.json` with the
+    `dotfiles_claude` tag, only when the `claude` binary is installed.
 - **Graphics**:
   - Detect hybrid graphics at deployment and session startup, and enable NVIDIA
     runtime power management on supported battery-powered laptops.

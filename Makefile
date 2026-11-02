@@ -50,6 +50,7 @@ test-shell: ## Run the shell integration tests
 	sh tests/hybrid-gpu.sh
 	bash tests/awww-monitor-scale.sh
 	bash tests/hyprlock-playerctlock.sh
+	bash tests/claude-statusline.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
 

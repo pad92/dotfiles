@@ -62,6 +62,7 @@ Use `make install ANSIBLE_ARGS="--tags <tag>"`. The supported-distribution check
 | `gaming`                                   | Check dependencies and configure services for the selected Steam group.                                   |
 | `dotfiles`                                 | Run the full dotfiles role.                                                                               |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy configuration.                                                            |
+| `dotfiles_claude`                          | Add the Claude Code status line to `~/.claude/settings.json` when `claude` is installed.                  |
 | `dotfiles_runtime`, `vim`                  | Check Vim and update plugins when `dotfiles_update_vim_plugins=true`.                                     |
 | `systemd`                                  | Deploy user units, aliases, masks, and activation links; enable and start the configured graphical units. |
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                                                   |

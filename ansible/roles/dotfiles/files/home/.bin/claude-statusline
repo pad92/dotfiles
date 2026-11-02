@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+#
+# claude-statusline — Claude Code status line matching pad.zsh-theme.
+#
+# Claude Code pipes the session JSON documented at
+# https://code.claude.com/docs/en/statusline to stdin and shows stdout.
+#
+#   model effort  directory [git]  request  modes  context  limits  cost  lines
+#
+# Subscription limits show their usage and the time left before they reset:
+# "16% 2h" for the 5-hour window, then "3% 4j" for the 7-day window.
+#
+# A segment whose data is absent is omitted rather than shown as zero, so an
+# ordinary session stays short. NO_COLOR disables ANSI colors.
+
+set -uo pipefail
+
+# Above these context/limit percentages the gauge turns yellow, then red.
+readonly WARN_PERCENT=50
+readonly CRITICAL_PERCENT=80
+readonly BAR_CELLS=10
+# A slow repository must not freeze the bar: drop the git segment instead.
+readonly GIT_TIMEOUT_SECONDS=1
+
+if [[ -n ${NO_COLOR:-} ]]; then
+    RESET='' BOLD='' DIM='' RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN=''
+else
+    RESET=$'\e[0m' BOLD=$'\e[1m' DIM=$'\e[2m'
+    RED=$'\e[31m' GREEN=$'\e[32m' YELLOW=$'\e[33m'
+    BLUE=$'\e[34m' MAGENTA=$'\e[35m' CYAN=$'\e[36m'
+fi
+
+# Fields are joined with the ASCII unit separator: unlike a tab or a space,
+# it cannot appear in a path or a branch name, and `read` keeps empty fields.
+# Numbers are rounded in jq so the shell only does integer arithmetic.
+read_session()
+{
+    jq -r '
+        def int: if type == "number" then floor else "" end;
+        def remaining: if type == "number" then (. - now | floor) else "" end;
+        [
+            (.model.display_name // .model.id // ""),
+            (.effort.level // ""),
+            (.workspace.current_dir // .cwd // ""),
+            (.pr.number // ""),
+            (.pr.review_state // ""),
+            (.pr.kind // ""),
+            (.context_window.used_percentage | int),
+            (.rate_limits.five_hour.used_percentage | int),
+            (.rate_limits.five_hour.resets_at | remaining),
+            (.rate_limits.seven_day.used_percentage | int),
+            (.rate_limits.seven_day.resets_at | remaining),
+            (.rate_limits.spend_limit.used_percentage | int),
+            (if .rate_limits == null then .cost.total_cost_usd else null end
+                | if type == "number" then (. * 100 | round) else "" end),
+            (.cost.total_lines_added // 0 | floor),
+            (.cost.total_lines_removed // 0 | floor),
+            (.worktree.name // .workspace.git_worktree // ""),
+            (.vim.mode // ""),
+            (if .fast_mode == true then "1" else "" end),
+            (.agent.name // ""),
+            (if .prompt_cache.caching_observed == true
+                and .prompt_cache.warm == false then "1" else "" end)
+        ] | map(tostring) | join("\u001f")
+    '
+}
+
+# Color for a usage percentage, shared by the context gauge and the limits.
+level_color()
+{
+    if (($1 >= CRITICAL_PERCENT)); then
+        printf '%s' "$RED"
+    elif (($1 >= WARN_PERCENT)); then
+        printf '%s' "$YELLOW"
+    else
+        printf '%s' "$GREEN"
+    fi
+}
+
+context_segment()
+{
+    local percent=$1 filled bar='' i
+    filled=$(((percent * BAR_CELLS + 50) / 100))
+    for ((i = 0; i < BAR_CELLS; i++)); do
+        if ((i < filled)); then bar+='▰'; else bar+='▱'; fi
+    done
+    printf '%sctx%s %s%s %s%%%s' "$DIM" "$RESET" "$(level_color "$percent")" \
+        "$bar" "$percent" "$RESET"
+}
+
+# Time left, rounded down so it never promises more than there is:
+# whole days from one day, whole hours from one hour, then minutes.
+remaining_duration()
+{
+    local seconds=$1
+    if ((seconds >= 86400)); then
+        printf '%dj' $((seconds / 86400))
+    elif ((seconds >= 3600)); then
+        printf '%dh' $((seconds / 3600))
+    else
+        printf '%dm' $((seconds / 60))
+    fi
+}
+
+# "16% 2h": usage, then the time before the window resets. A reset time that
+# is missing or already past is left out rather than shown as zero.
+limit_segment()
+{
+    local percent=$1 remaining=${2:-}
+    printf '%s%s%%%s' "$(level_color "$percent")" "$percent" "$RESET"
+    if [[ -n $remaining ]] && ((remaining > 0)); then
+        printf ' %s%s%s' "$DIM" "$(remaining_duration "$remaining")" "$RESET"
+    fi
+}
+
+short_directory()
+{
+    local directory=$1
+    if [[ $directory == "$HOME" ]]; then
+        printf '~'
+    elif [[ $directory == "$HOME"/* ]]; then
+        printf '%s/%s' '~' "${directory#"$HOME"/}"
+    else
+        printf '%s' "$directory"
+    fi
+}
+
+# Prints " [branch +staged ~modified ?untracked ≠conflicts ↑ahead ↓behind]"
+# using the colors of pad.zsh-theme, or nothing outside a work tree.
+git_segment()
+{
+    local directory=$1 status line head='' oid='' ahead=0 behind=0
+    local staged=0 modified=0 untracked=0 conflicts=0 xy
+    local -a runner=()
+    [[ -d $directory ]] || return 0
+    command -v timeout >/dev/null && runner=(timeout "$GIT_TIMEOUT_SECONDS")
+
+    # --no-optional-locks keeps this read from competing for index.lock with
+    # the git commands Claude itself runs in the same repository.
+    status=$("${runner[@]}" git -C "$directory" --no-optional-locks \
+        status --porcelain=v2 --branch 2>/dev/null) || return 0
+
+    while IFS= read -r line; do
+        case $line in
+            '# branch.head '*) head=${line#\# branch.head } ;;
+            '# branch.oid '*) oid=${line#\# branch.oid } ;;
+            '# branch.ab '*)
+                read -r _ _ ahead behind <<<"$line"
+                ahead=${ahead#+} behind=${behind#-}
+                ;;
+            '1 '* | '2 '*)
+                xy=${line:2:2}
+                [[ ${xy:0:1} != . ]] && ((staged++))
+                [[ ${xy:1:1} != . ]] && ((modified++))
+                ;;
+            'u '*) ((conflicts++)) ;;
+            '? '*) ((untracked++)) ;;
+        esac
+    done <<<"$status"
+
+    [[ $head == '(detached)' ]] && head=${oid:0:7}
+    printf ' [%s%s%s' "$CYAN" "$head" "$RESET"
+    ((staged)) && printf ' %s+%d%s' "$GREEN" "$staged" "$RESET"
+    ((modified)) && printf ' %s~%d%s' "$YELLOW" "$modified" "$RESET"
+    ((untracked)) && printf ' %s?%d%s' "$CYAN" "$untracked" "$RESET"
+    ((conflicts)) && printf ' %s≠%d%s' "$MAGENTA" "$conflicts" "$RESET"
+    ((ahead)) && printf ' %s↑%d%s' "$BLUE" "$ahead" "$RESET"
+    ((behind)) && printf ' %s↓%d%s' "$BLUE" "$behind" "$RESET"
+    printf ']'
+}
+
+# GitLab merge requests are written !N, GitHub pull requests #N.
+review_segment()
+{
+    local number=$1 state=$2 kind=$3 sigil='#' color=$DIM
+    [[ $kind == mr ]] && sigil='!'
+    case $state in
+        approved) color=$GREEN ;;
+        changes_requested) color=$RED ;;
+        pending) color=$YELLOW ;;
+    esac
+    printf '%s%s%s' "$sigil" "$number" "$RESET"
+    [[ -n $state ]] && printf ' %s%s%s' "$color" "${state//_/ }" "$RESET"
+}
+
+main()
+{
+    local input fields
+    input=$(cat)
+    if ! fields=$(read_session <<<"$input" 2>/dev/null); then
+        # Exit 0 so Claude Code still displays the message in the bar.
+        printf 'claude-statusline: invalid session JSON\n'
+        return 0
+    fi
+
+    local model effort directory pr_number pr_state pr_kind context
+    local five_hour five_hour_reset seven_day seven_day_reset spend cost_cents
+    local added removed
+    local worktree vim_mode fast agent cache_cold
+    IFS=$'\x1f' read -r model effort directory pr_number pr_state pr_kind \
+        context five_hour five_hour_reset seven_day seven_day_reset spend cost_cents \
+        added removed worktree vim_mode fast agent cache_cold <<<"$fields"
+
+    local -a segments=()
+    [[ -n $model ]] && segments+=("${MAGENTA}${model}${RESET}${effort:+ ${DIM}${effort}${RESET}}")
+    if [[ -n $directory ]]; then
+        segments+=("${BOLD}${GREEN}$(short_directory "$directory")${RESET}$(git_segment "$directory")")
+    fi
+    [[ -n $pr_number ]] && segments+=("$(review_segment "$pr_number" "$pr_state" "$pr_kind")")
+    [[ -n $worktree ]] && segments+=("${DIM}wt${RESET} ${CYAN}${worktree}${RESET}")
+    [[ -n $vim_mode ]] && segments+=("${YELLOW}${vim_mode}${RESET}")
+    [[ -n $fast ]] && segments+=("${YELLOW}fast${RESET}")
+    [[ -n $agent ]] && segments+=("${DIM}agent${RESET} ${BLUE}${agent}${RESET}")
+
+    [[ -n $context ]] && segments+=("$(context_segment "$context")")
+    [[ -n $five_hour ]] && segments+=("$(limit_segment "$five_hour" "$five_hour_reset")")
+    [[ -n $seven_day ]] && segments+=("$(limit_segment "$seven_day" "$seven_day_reset")")
+    [[ -n $spend ]] && segments+=("${DIM}budget${RESET} $(limit_segment "$spend")")
+    if [[ -n $cost_cents ]]; then
+        segments+=("$(printf '%s$%d.%02d%s' "$DIM" $((cost_cents / 100)) \
+            $((cost_cents % 100)) "$RESET")")
+    fi
+    if ((added || removed)); then
+        segments+=("${GREEN}+${added}${RESET}/${RED}-${removed}${RESET}")
+    fi
+    [[ -n $cache_cold ]] && segments+=("${YELLOW}cache froid${RESET}")
+
+    # Two spaces between segments, as a lighter separator than a pipe.
+    ((${#segments[@]})) && printf '%s\n' "$(join_segments "${segments[@]}")"
+    return 0
+}
+
+join_segments()
+{
+    local result=$1
+    shift
+    local segment
+    for segment in "$@"; do result+="  $segment"; done
+    printf '%s' "$result"
+}
+
+main "$@"
