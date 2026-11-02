@@ -194,6 +194,9 @@
   dotfiles_aur:
     name: '{{ packages_arch_aur }}'
     executable: '{{ packages_aur_helper }}'
+    # yay/paru run as the user without a terminal; their sudo needs the
+    # become password to install the built packages.
+    sudo_password: '{{ ansible_become_password | default(omit) }}'
   register: packages_aur_install_result
   become: false
   when:

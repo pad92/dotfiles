@@ -92,6 +92,8 @@ Release history and changes planned for the next version.
   - Pass `packages_protected` to reconcile removals on Debian and Fedora.
   - Count packages satisfied through `provides` as installed on Arch Linux.
   - Accept an empty package group selection.
+  - Give `yay`/`paru` the Ansible become password through a temporary
+    `SUDO_ASKPASS` program, so AUR packages install without a terminal.
 - **Ansible system**:
   - Reload udev and replay the NVIDIA bind event when the runtime PM rule
     changes; report when a removed rule or legacy sysctl drop-in stays active
