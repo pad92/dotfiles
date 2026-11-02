@@ -44,6 +44,12 @@ Release history and changes planned for the next version.
 ### Changed
 
 - **CI**:
+  - Run the Python unit tests in parallel, one process per test file, in
+    GitLab CI, `make test-python` and `make coverage`
+    (`scripts/ci/run_unit_tests.sh`, `JOBS=N`). Coverage data from each
+    process is combined before the report.
+  - Shorten the slowest deployment test by keeping only the Waybar files it
+    checks in its temporary role copy.
   - Route all GitLab jobs, including included scanner jobs, to the `chataigne`
     runner and use the current built-in SAST and Secret Detection templates.
   - Package Vim configuration only on branch pushes and merge requests that

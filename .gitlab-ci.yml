@@ -27,7 +27,8 @@ unit_tests:
     # Ansible cannot resolve those tasks and the tests are skipped or fail.
     - ansible-galaxy collection install -r ansible/requirements.yml -p .ansible/collections
   script:
-    - python3 -m coverage run -m unittest discover -s tests -p 'test_*.py'
+    # One process per test file on every runner CPU; see the script header.
+    - scripts/ci/run_unit_tests.sh --coverage
     - python3 -m coverage report
     - python3 -m coverage xml -o coverage.xml
     - bash tests/awww-monitor-scale.sh

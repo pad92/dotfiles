@@ -38,12 +38,11 @@ lint-ansible: ## Run Ansible lint, yamllint, and playbook syntax checks
 
 test: test-python test-shell ## Run the Python and shell test suites
 
-test-python: ## Run the Python unit tests
-	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
+test-python: ## Run the Python unit tests in parallel (JOBS=N, default: CPU count)
+	PYTHON="$(PYTHON)" scripts/ci/run_unit_tests.sh
 
 coverage: ## Run the Python unit tests with coverage and enforce .coveragerc floor
-	$(COVERAGE) erase
-	$(COVERAGE) run -m unittest discover -s tests -p 'test_*.py'
+	PYTHON="$(PYTHON)" scripts/ci/run_unit_tests.sh --coverage
 	$(COVERAGE) report
 
 test-shell: ## Run the shell integration tests
