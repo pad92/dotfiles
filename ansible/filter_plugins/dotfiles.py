@@ -323,6 +323,31 @@ def unneeded_graphics_packages(
     return sorted(packages)
 
 
+def changed_packages(before: Any, after: Any) -> list[str]:
+    """List packages installed or whose version changed between two package_facts."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return []
+
+    def signature(entries: Any) -> list[tuple[str, str, str]]:
+        if not isinstance(entries, list):
+            return []
+        return sorted(
+            (
+                str(entry.get("version", "")),
+                str(entry.get("release", "")),
+                str(entry.get("arch", "")),
+            )
+            for entry in entries
+            if isinstance(entry, dict)
+        )
+
+    return sorted(
+        name
+        for name, entries in after.items()
+        if name not in before or signature(before[name]) != signature(entries)
+    )
+
+
 class FilterModule:
     def filters(self) -> dict[str, Any]:
         return {
@@ -337,4 +362,5 @@ class FilterModule:
             "package_removal_candidates": package_removal_candidates,
             "safe_removal_preview": safe_removal_preview,
             "unneeded_graphics_packages": unneeded_graphics_packages,
+            "changed_packages": changed_packages,
         }

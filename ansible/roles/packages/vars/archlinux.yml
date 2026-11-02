@@ -11,7 +11,6 @@ packages_family_groups:
       - arch-audit
       - archlinux-wallpaper
       - arj
-      - auto-cpufreq
       - bc
       - bind
       - blueman

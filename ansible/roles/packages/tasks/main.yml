@@ -1,4 +1,5 @@
 ---
+# Selection is read-only; system tasks also need it to choose GPU and gaming settings.
 - name: Load platform package variables
   ansible.builtin.import_tasks: load_platform_vars.yml
   tags:
@@ -10,27 +11,46 @@
     - yay
     - gpu_modules
     - gaming
+    - kernel_hardening
+    - package_services
+    - system
 
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
   tags:
-    [
-      packages_select,
-      packages_install,
-      packages_reconcile,
-      yay,
-      gpu_modules,
-      gaming,
-    ]
+    - packages_select
+    - packages_install
+    - packages_reconcile
+    - yay
+    - gpu_modules
+    - gaming
+    - kernel_hardening
+    - package_services
+    - system
 
 - name: Configure Arch package repositories
   ansible.builtin.import_tasks: pacman.yml
+  when: packages_action != 'plan'
   tags: [pacman, pacman_config, packages_install, packages_reconcile, yay]
 
-- name: Install selected packages
+- name: Plan selected packages
   ansible.builtin.import_tasks: install.yml
+  tags: [packages_install, packages_reconcile]
+
+# The plan action is read-only for the whole playbook.
+- name: Stop after the package plan
+  ansible.builtin.meta: end_play
+  when: packages_action == 'plan'
+  tags: [packages_install, packages_reconcile, yay]
+
+# Check mode cannot simulate package installation, so it skips package changes
+# and continues with the other roles.
+- name: Install selected packages
+  ansible.builtin.import_tasks: apply.yml
+  when: not ansible_check_mode
   tags: [packages_install, packages_reconcile]
 
 - name: Reconcile managed packages
   ansible.builtin.import_tasks: reconcile.yml
+  when: not ansible_check_mode
   tags: [packages_reconcile]

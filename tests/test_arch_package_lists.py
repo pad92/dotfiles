@@ -20,6 +20,8 @@ ALLOWED_CROSS_GROUP_DUPLICATES = {
     "nvidia-prime",
 }
 PROHIBITED_PACKAGE_NAMES = {
+    # Conflicts with the power-profiles-daemon selected for gaming.
+    "auto-cpufreq",
     "hunspell-fr",
     "lib32-libvdpau",
     "libva-vdpau-driver",

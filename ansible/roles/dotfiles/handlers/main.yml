@@ -67,3 +67,28 @@
   failed_when: false
   become: false
   tags: [waybar_reload]
+
+# hypridle reads its configuration only at startup. try-restart leaves a
+# stopped or disabled service alone.
+- name: Restart hypridle
+  ansible.builtin.command:
+    argv: [systemctl, --user, --no-block, try-restart, hypridle.service]
+  changed_when: true
+  become: false
+
+- name: Restart XDG desktop portal
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - --no-block
+      - try-restart
+      - xdg-desktop-portal.service
+  changed_when: true
+  become: false
+
+- name: Report session restart required
+  ansible.builtin.debug:
+    msg: >-
+      UWSM environment files changed. Log out and back in to apply them to the
+      Hyprland session.

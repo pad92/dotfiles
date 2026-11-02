@@ -24,11 +24,20 @@ unit_tests:
     - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git make
     - python3 -m pip install --no-cache-dir -r requirements-test.txt
   script:
-    - python3 -m unittest discover -s tests -p 'test_*.py'
+    - python3 -m coverage run -m unittest discover -s tests -p 'test_*.py'
+    - python3 -m coverage report
+    - python3 -m coverage xml -o coverage.xml
     - bash tests/awww-monitor-scale.sh
     - bash tests/hyprlock-playerctlock.sh
     - zsh tests/arch-clean-no-orphans.zsh
     - zsh tests/git-pull-recursive.zsh
+  coverage: '/^TOTAL.+?(\d+(?:\.\d+)?)%$/'
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 ansible_lint:
   stage: validate
@@ -39,8 +48,6 @@ ansible_lint:
       && rm -rf /var/lib/apt/lists/*
     - python -m pip install --no-cache-dir -r requirements-ansible.txt
     - export ANSIBLE_CONFIG="$CI_PROJECT_DIR/ansible.cfg"
-    # The lint job does not decrypt Vault data but the config requires this file.
-    - printf '%s\n' 'ci-lint-placeholder' > .vault
     - ansible-galaxy collection install -r ansible/requirements.yml
   script:
     - make lint-ansible

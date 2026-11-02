@@ -40,7 +40,26 @@
     label: >-
       {{ dotfiles_home }}/{{ item.path |
          relpath(dotfiles_source_root) }}
+  register: dotfiles_directory_copies
   notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+
+# A looped task notifies the union of its handlers once any item changes, so
+# file-specific handlers are selected from the changed items here.
+- name: Notify handlers for changed files in {{ dotfiles_directory }}
+  ansible.builtin.debug:
+    msg: '{{ dotfiles_changed_file_handlers }}'
+  vars:
+    dotfiles_changed_files: >-
+      {{ dotfiles_directory_copies.results | default([]) | selectattr('changed')
+         | map(attribute='item.path') | map('relpath', dotfiles_source_root)
+         | list }}
+    dotfiles_changed_file_handlers: >-
+      {{ dotfiles_file_handlers | dict2items
+         | selectattr('key', 'in', dotfiles_changed_files)
+         | map(attribute='value') | flatten | unique | list }}
+  changed_when: dotfiles_changed_file_handlers | length > 0
+  when: dotfiles_changed_file_handlers | length > 0
+  notify: '{{ dotfiles_changed_file_handlers }}'
 
 - name: Preserve dangling and cyclic source links in {{ dotfiles_directory }}
   ansible.builtin.file:

@@ -19,6 +19,8 @@
     argv: [sysctl, -n, vm.mmap_rnd_bits]
   register: system_mmap_rnd_bits
   changed_when: false
+  # Read-only: the rendered policy depends on the current value.
+  check_mode: false
   when: system_optional_sysctls.results[2].stat.exists
   tags: [kernel_hardening]
 
@@ -27,6 +29,8 @@
     argv: [sysctl, -n, kernel.unprivileged_bpf_disabled]
   register: system_unprivileged_bpf_disabled
   changed_when: false
+  # Read-only: the rendered policy depends on the current value.
+  check_mode: false
   when: system_optional_sysctls.results[1].stat.exists
   tags: [kernel_hardening]
 
@@ -91,6 +95,7 @@
   ansible.builtin.file:
     path: '{{ item }}'
     state: absent
+  notify: Report legacy sysctl values kept until reboot
   loop:
     - /etc/sysctl.d/80-gamecompatibility.conf
     - /etc/sysctl.d/99-cachyos-gaming.conf

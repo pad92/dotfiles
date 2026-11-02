@@ -171,4 +171,5 @@
 - name: Build desired package list
   ansible.builtin.set_fact:
     packages_desired: >-
-      {{ packages_group_contents.values() | flatten | unique | sort }}
+      {{ packages_group_contents | default({}) | dict2items
+         | map(attribute='value') | flatten | unique | sort }}

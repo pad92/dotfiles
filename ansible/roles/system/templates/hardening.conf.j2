@@ -1,4 +1,7 @@
 # Managed by Ansible. Desktop hardening based on the previous local policy.
+{% set system_selected_groups = packages_group_selection
+   if packages_group_selection is defined and packages_group_selection is not none
+   else packages_selected_groups | default(packages_host_groups.get(ansible_facts['hostname'], [])) %}
 
 # Protect shared files and reduce kernel information exposure.
 fs.protected_hardlinks = 1
@@ -20,9 +23,9 @@ kernel.unprivileged_userns_clone = 1
 net.core.bpf_jit_harden = 2
 {% endif %}
 
-# Enable forwarding for local container networking. Reverse-path filtering uses
-# loose mode so asymmetric VPN routes remain usable.
-net.ipv4.ip_forward = 1
+# Forward IPv4 only for the selected container engines. Reverse-path filtering
+# uses loose mode so asymmetric VPN routes remain usable.
+net.ipv4.ip_forward = {{ 1 if system_selected_groups | intersect(['12_containers_docker', '13_containers_podman']) | length > 0 else 0 }}
 net.ipv4.conf.all.rp_filter = 2
 net.ipv4.conf.default.rp_filter = 2
 net.ipv4.conf.all.accept_source_route = 0
@@ -68,9 +71,6 @@ vm.mmap_rnd_bits = 32
 {% endif %}
 
 # Steam and Proton tuning.
-{% set system_selected_groups = packages_group_selection
-   if packages_group_selection is defined and packages_group_selection is not none
-   else packages_selected_groups | default(packages_host_groups.get(ansible_facts['hostname'], [])) %}
 {% if '21_steam' in system_selected_groups %}
 vm.max_map_count = 2147483642
 {% endif %}

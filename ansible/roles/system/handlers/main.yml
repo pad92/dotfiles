@@ -15,3 +15,37 @@
   ansible.builtin.debug:
     msg: '{{ system_initramfs_result.changed_files }}'
   when: system_initramfs_result.changed_files | length > 0
+
+- name: Reload udev rules
+  ansible.builtin.command:
+    argv: [udevadm, control, --reload]
+  changed_when: true
+
+# The rule matches add and bind events, so replay bind for bound NVIDIA devices.
+- name: Apply NVIDIA runtime PM udev rule
+  ansible.builtin.command:
+    argv:
+      - udevadm
+      - trigger
+      - --action=bind
+      - --subsystem-match=pci
+      - --property-match=DRIVER=nvidia
+  changed_when: true
+
+- name: Report NVIDIA runtime PM kept until reboot
+  ansible.builtin.debug:
+    msg: >-
+      The NVIDIA runtime PM udev rule was removed. Devices keep
+      power/control=auto until the next reboot.
+
+- name: Report legacy sysctl values kept until reboot
+  ansible.builtin.debug:
+    msg: >-
+      Legacy gaming sysctl drop-ins were removed. Their values stay active
+      until the next reboot; the managed policy has already been applied.
+
+- name: Report group membership requires login
+  ansible.builtin.debug:
+    msg: >-
+      Docker group membership changed. Log out and back in before using docker
+      without sudo.

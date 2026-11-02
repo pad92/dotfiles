@@ -108,6 +108,8 @@ __pycache__/
 .pytest_cache/
 .coverage
 .coverage.*
+coverage.xml
+htmlcov/
 .nox/
 .pylintrc
 .mypy_cache/

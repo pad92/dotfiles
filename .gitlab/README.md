@@ -23,15 +23,16 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 ## Jobs
 
-| Job                  | Stage    | Runs when                                                                 | Purpose                                                                     |
-| -------------------- | -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Security scanners    | test     | Scanner template rules match                                              | Scan source, infrastructure configuration, and commits for security issues. |
-| `ansible_lint`       | validate | Branch and tag pipelines                                                  | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.  |
-| `package_vim`        | package  | Push or merge request changes `.vim/` or `.vimrc`                         | Package Vim configuration as `vim.tar.gz`, fetching submodules recursively. |
-| `package_nvim`       | package  | Branch and tag pipelines                                                  | Package `.config/nvim` as `nvim.tar.gz`.                                    |
-| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag | Build and deploy the documentation site to `public/`.                       |
-| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                 | Build the documentation site for review without deploying it.               |
-| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                        | Publish a release with notes from `CHANGELOG.md`.                           |
+| Job                  | Stage    | Runs when                                                                 | Purpose                                                                       |
+| -------------------- | -------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Security scanners    | test     | Scanner template rules match                                              | Scan source, infrastructure configuration, and commits for security issues.   |
+| `unit_tests`         | test     | Every pipeline                                                            | Run the Python suite under coverage (floor in `.coveragerc`) and shell tests. |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                  | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.    |
+| `package_vim`        | package  | Push or merge request changes `.vim/` or `.vimrc`                         | Package Vim configuration as `vim.tar.gz`, fetching submodules recursively.   |
+| `package_nvim`       | package  | Branch and tag pipelines                                                  | Package `.config/nvim` as `nvim.tar.gz`.                                      |
+| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag | Build and deploy the documentation site to `public/`.                         |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                 | Build the documentation site for review without deploying it.                 |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                        | Publish a release with notes from `CHANGELOG.md`.                             |
 
 ### `pages`
 

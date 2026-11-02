@@ -3,40 +3,69 @@
   ansible.builtin.package_facts:
     manager: auto
 
+- name: Find missing gaming service dependencies
+  ansible.builtin.set_fact:
+    system_gaming_missing_packages: >-
+      {{ packages_gaming_required_packages
+         | difference(ansible_facts.packages.keys() | list) }}
+
+# Check mode skips package installation, so dependencies may legitimately be
+# absent there; report them instead of failing the simulation.
+- name: Report gaming dependencies that a real run would install
+  ansible.builtin.debug:
+    msg: >-
+      Gaming services are not simulated because these packages are not
+      installed yet: {{ system_gaming_missing_packages | join(', ') }}
+  when:
+    - ansible_check_mode
+    - system_gaming_missing_packages | length > 0
+
 - name: Require the gaming service dependencies
   ansible.builtin.assert:
     that:
-      - >-
-        packages_gaming_required_packages
-        | difference(ansible_facts.packages.keys() | list) | length == 0
+      - system_gaming_missing_packages | length == 0
     fail_msg: >-
       Install the complete 21_steam group before configuring gaming services.
       Run with --tags packages,gaming and check for skipped AUR packages.
+      Missing: {{ system_gaming_missing_packages | join(', ') }}
+  when: not ansible_check_mode
 
-- name: Read CPU power manager states
-  ansible.builtin.include_tasks: power_manager_facts.yml
+- name: Configure gaming services
+  when: system_gaming_missing_packages | length == 0
+  block:
+    - name: Read CPU power manager states
+      ansible.builtin.include_tasks: power_manager_facts.yml
 
-- name: Require a single CPU power manager
-  ansible.builtin.assert:
-    that:
-      - item not in system_active_power_managers
-    fail_msg: >-
-      {{ item }} is active or enabled. Stop and disable it before selecting
-      power-profiles-daemon for gaming; both would control CPU power.
-  loop: >-
-    {{ system_cpu_power_managers |
-       reject('equalto', 'power-profiles-daemon.service') | list }}
+    - name: Require a single CPU power manager
+      ansible.builtin.assert:
+        that:
+          - item not in system_active_power_managers
+        fail_msg: >-
+          {{ item }} is active or enabled. Stop and disable it before selecting
+          power-profiles-daemon for gaming; both would control CPU power.
+      loop: >-
+        {{ system_cpu_power_managers |
+           reject('equalto', 'power-profiles-daemon.service') | list }}
 
-- name: Unmask the selected gaming power manager
-  ansible.builtin.systemd_service:
-    name: power-profiles-daemon.service
-    masked: false
+    - name: Unmask the selected gaming power manager
+      ansible.builtin.systemd_service:
+        name: power-profiles-daemon.service
+        masked: false
 
-- name: Enable the gaming services
-  ansible.builtin.systemd_service:
-    name: '{{ item }}'
-    enabled: true
-    state: started
-  loop:
-    - ananicy-cpp.service
-    - power-profiles-daemon.service
+    - name: Enable the gaming services
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        enabled: true
+        state: started
+      loop:
+        - ananicy-cpp.service
+        - power-profiles-daemon.service
+
+    # ananicy-cpp loads its rules at startup.
+    - name: Restart ananicy-cpp after its rules package changed
+      ansible.builtin.systemd_service:
+        name: ananicy-cpp.service
+        state: restarted
+      when: >-
+        packages_changed_this_run | default([])
+        | intersect(system_ananicy_rule_packages) | length > 0

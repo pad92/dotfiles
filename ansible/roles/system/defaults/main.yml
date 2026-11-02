@@ -7,6 +7,8 @@ system_i915_enable_guc: null
 system_i915_guc_supported: false
 system_amd_pstate_epp: balance_performance
 system_amd_x3d_mode: null
+# Boot-time copy of the AMD CPU controls applied by Ansible.
+system_amd_tmpfiles_path: /etc/tmpfiles.d/dotfiles-amd-cpu.conf
 system_cpu_power_managers:
   - power-profiles-daemon.service
   - auto-cpufreq.service
@@ -31,3 +33,18 @@ system_lact_nvidia_profiles:
     power_mizer_mode: Adaptive
   PreferMaximumPerformance:
     power_mizer_mode: PreferMaximumPerformance
+# Units enabled and started when their package group is selected, by OS family.
+# Debian and Fedora packages usually enable their own services.
+system_package_services:
+  Archlinux:
+    01_base: [bluetooth.service]
+    04_printers: [cups.socket]
+    12_containers_docker: [docker.socket]
+    20_apps: [fwupd-refresh.timer]
+system_unit_directory: /usr/lib/systemd/system
+# Users added to the docker group with 12_containers_docker. Membership grants
+# root-equivalent access to the Docker daemon.
+system_docker_group_users:
+  - "{{ lookup('env', 'USER') }}"
+# Packages whose update requires ananicy-cpp to reload its rules.
+system_ananicy_rule_packages: [cachyos-ananicy-rules]

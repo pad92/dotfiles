@@ -11,17 +11,6 @@ packages_gaming_required_packages:
   - ananicy-cpp
   - power-profiles-daemon
   - python-gobject
-packages_protected:
-  - base
-  - base-devel
-  - bash
-  - filesystem
-  - git
-  - glibc
-  - grub
-  - networkmanager
-  - pacman
-  - python
-  - sudo
-  - systemd
-  - linux
+# Extra packages that removals must never touch. The base set (base, glibc,
+# pacman, systemd, linux and linux-*, ...) is built into the dotfiles filters.
+packages_protected: []
