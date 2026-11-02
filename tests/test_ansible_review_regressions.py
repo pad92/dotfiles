@@ -230,6 +230,8 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("Apply package group selection", result.stdout)
 
+    # gaming.yml uses community.general.pacman, resolved even when skipped.
+    @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_gaming_check_mode_reports_missing_packages_instead_of_failing(self):
         output = self.run_play(
             [
@@ -258,6 +260,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertIn("dotfiles-test-package-that-does-not-exist", output)
         self.assertIn(MARKER, output)
 
+    @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_gaming_still_requires_packages_outside_check_mode(self):
         output = self.run_play(
             [
