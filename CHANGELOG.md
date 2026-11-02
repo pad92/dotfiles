@@ -72,6 +72,10 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **CI**:
+  - Install the pinned Ansible collections in the unit test job. The gaming
+    tests failed because `community.general.pacman` could not be resolved, and
+    four collection-dependent tests were skipped.
 - **SSH**:
   - Set Proton Pass's D-Bus keyring for local Zsh sessions.
 - **Hyprland**:
