@@ -86,3 +86,10 @@ dotfiles_vim_plugins:
     dest: colorizer
   - repo: https://github.com/editorconfig/editorconfig-vim.git
     dest: editorconfig-vim
+# Claude Code status line: merged into ~/.claude/settings.json only when the
+# binary below is found, leaving every other setting untouched.
+dotfiles_claude_binary: claude
+dotfiles_claude_settings: .claude/settings.json
+dotfiles_claude_statusline:
+  type: command
+  command: '{{ dotfiles_home }}/.bin/claude-statusline'

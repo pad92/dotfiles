@@ -7,6 +7,10 @@
   ansible.builtin.import_tasks: deploy.yml
   tags: [dotfiles_deploy]
 
+- name: Configure Claude Code
+  ansible.builtin.import_tasks: claude.yml
+  tags: [dotfiles_claude]
+
 - name: Apply runtime changes
   ansible.builtin.import_tasks: runtime.yml
   tags: [dotfiles_runtime]
