@@ -17,6 +17,9 @@ system_cpu_power_managers:
   - tuned-ppd.service
   - cpupower.service
   - system76-power.service
+# What to do when another CPU power manager would run alongside the gaming
+# power-profiles-daemon: ask, remove (stop, disable, uninstall), or fail.
+system_power_manager_conflict_action: ask
 system_lact_config_path: /etc/lact/config.yaml
 # Fan curves remain hardware defaults unless already customized in LACT.
 system_lact_profiles:

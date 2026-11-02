@@ -42,6 +42,85 @@
     - name: Read CPU power manager states
       ansible.builtin.include_tasks: power_manager_facts.yml
 
+    - name: List CPU power managers that conflict with power-profiles-daemon
+      ansible.builtin.set_fact:
+        system_conflicting_power_managers: >-
+          {{ system_active_power_managers
+             | reject('equalto', 'power-profiles-daemon.service') | list }}
+
+    - name: Ask before removing conflicting CPU power managers
+      ansible.builtin.pause:
+        prompt: >-
+          {{ system_conflicting_power_managers | join(', ') }} would control CPU
+          power alongside power-profiles-daemon. Stop, disable and uninstall
+          them? [y/N]
+      register: system_power_manager_prompt
+      when:
+        - system_conflicting_power_managers | length > 0
+        - system_power_manager_conflict_action == 'ask'
+        - not ansible_check_mode
+
+    - name: Decide whether to remove conflicting CPU power managers
+      ansible.builtin.set_fact:
+        system_remove_power_managers: >-
+          {{ system_conflicting_power_managers | length > 0
+             and not ansible_check_mode
+             and (system_power_manager_conflict_action == 'remove'
+                  or (system_power_manager_conflict_action == 'ask'
+                      and system_power_manager_prompt.user_input | default('')
+                          | trim | lower in ['y', 'yes'])) }}
+
+    - name: Remove conflicting CPU power managers
+      when: system_remove_power_managers | bool
+      block:
+        - name: Find the unit files of conflicting CPU power managers
+          ansible.builtin.command:
+            argv:
+              - systemctl
+              - show
+              - --property=FragmentPath
+              - --value
+              - --
+              - '{{ item }}'
+          loop: '{{ system_conflicting_power_managers }}'
+          register: system_power_manager_units
+          changed_when: false
+
+        # A unit file that no package owns (local unit) is only stopped and
+        # disabled; pacman -Qqo exits 1 for it.
+        - name: Find the packages that own conflicting CPU power managers
+          ansible.builtin.command:
+            argv: [pacman, -Qqo, --, '{{ item }}']
+          loop: >-
+            {{ system_power_manager_units.results
+               | map(attribute='stdout') | map('trim') | select | list }}
+          register: system_power_manager_owners
+          changed_when: false
+          failed_when: system_power_manager_owners.rc not in [0, 1]
+          when: ansible_facts.get('os_family', '') == 'Archlinux'
+
+        - name: Stop and disable conflicting CPU power managers
+          ansible.builtin.systemd_service:
+            name: '{{ item }}'
+            state: stopped
+            enabled: false
+          loop: '{{ system_conflicting_power_managers }}'
+
+        - name: Uninstall conflicting CPU power manager packages
+          community.general.pacman:
+            name: >-
+              {{ system_power_manager_owners.results | default([])
+                 | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+                 | map(attribute='stdout') | map('trim') | unique | list }}
+            state: absent
+          when: >-
+            system_power_manager_owners.results | default([])
+            | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+            | list | length > 0
+
+        - name: Read CPU power manager states after removal
+          ansible.builtin.include_tasks: power_manager_facts.yml
+
     - name: Require a single CPU power manager
       ansible.builtin.assert:
         that:
@@ -49,6 +128,7 @@
         fail_msg: >-
           {{ item }} is active or enabled. Stop and disable it before selecting
           power-profiles-daemon for gaming; both would control CPU power.
+          Rerun and answer yes, or set system_power_manager_conflict_action=remove.
       loop: >-
         {{ system_cpu_power_managers |
            reject('equalto', 'power-profiles-daemon.service') | list }}

@@ -729,6 +729,57 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertIn("ENABLE ['cups.socket']", output)
         self.assertIn("unit file is missing: fwupd-refresh.timer", output)
 
+    def test_conflicting_power_managers_are_removed_only_when_accepted(self):
+        tasks = yaml.safe_load((ROLES / "system/tasks/gaming.yml").read_text())
+        block = next(task for task in tasks if "block" in task)["block"]
+        decide = next(t for t in block if t["name"].startswith("Decide whether"))
+        conflict = ["auto-cpufreq.service"]
+
+        def decision(action, answer=None, conflicts=conflict, check=False):
+            facts = {
+                "system_conflicting_power_managers": conflicts,
+                "system_power_manager_conflict_action": action,
+            }
+            if answer is not None:
+                facts["system_power_manager_prompt"] = {"user_input": answer}
+            output = self.run_play(
+                [
+                    {
+                        "hosts": "localhost",
+                        "connection": "local",
+                        "gather_facts": False,
+                        "vars": facts,
+                        "tasks": [
+                            decide,
+                            {
+                                "ansible.builtin.debug": {
+                                    "msg": "REMOVE={{ system_remove_power_managers"
+                                    " | bool }}"
+                                },
+                                "check_mode": False,
+                            },
+                        ],
+                    }
+                ],
+                *(["--check"] if check else []),
+            )
+            return "REMOVE=True" in output
+
+        cases = [
+            (("ask", " Yes "), True),
+            (("ask", "y"), True),
+            (("ask", ""), False),
+            (("ask", "n"), False),
+            (("ask",), False),
+            (("remove",), True),
+            (("fail", "y"), False),
+        ]
+        for arguments, expected in cases:
+            with self.subTest(arguments=arguments):
+                self.assertEqual(decision(*arguments), expected)
+        self.assertFalse(decision("remove", conflicts=[]))
+        self.assertFalse(decision("remove", check=True))
+
     def test_ananicy_restarts_only_when_its_rules_package_changed(self):
         tasks = yaml.safe_load((ROLES / "system/tasks/gaming.yml").read_text())
         block = next(task for task in tasks if "block" in task)["block"]

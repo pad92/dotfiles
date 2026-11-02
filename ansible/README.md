@@ -129,8 +129,11 @@ system defaults for sysctl, udev, and other components
 ([package documentation](https://wiki.cachyos.org/fr/features/cachyos_settings/)).
 
 When `21_steam` is selected, Ansible enables and starts `ananicy-cpp` and
-`power-profiles-daemon`. Configuration stops if auto-cpufreq, TLP, or tuned is
-active or enabled. Resolve that conflict before rerunning the playbook. Once
+`power-profiles-daemon`. If auto-cpufreq, TLP, tuned, or another known CPU
+power manager is active or enabled, the playbook asks whether to stop, disable,
+and uninstall it, and stops if you decline. Set
+`-e system_power_manager_conflict_action=remove` to remove it without asking, or
+`fail` to keep the old behavior. Check mode never removes anything. Once
 the check passes, Ansible removes any systemd mask from
 `power-profiles-daemon.service` before enabling it. An existing `ananicy-cpp`
 service is kept running. The selected packages provide the rules and daemon

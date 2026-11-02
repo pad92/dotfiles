@@ -20,6 +20,9 @@ Release history and changes planned for the next version.
 - **Waybar**:
   - Add NVIDIA PowerMizer profiles while keeping the existing AMD profiles.
 - **Ansible system**:
+  - Ask whether to stop, disable, and uninstall a CPU power manager that
+    conflicts with `power-profiles-daemon` instead of failing
+    (`system_power_manager_conflict_action`: `ask`, `remove`, or `fail`).
   - Enable the services of selected package groups on Arch Linux (Bluetooth,
     CUPS, Docker, `fwupd-refresh` timer) and add the deploying user to the
     `docker` group.
