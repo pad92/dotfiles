@@ -47,7 +47,9 @@ clean_arch() {
     fi
   fi
 
-  if ! echo y | yay -Scc --noconfirm; then
+  # A here-string, not a pipe: yay may exit before reading, and a writer
+  # process would then die of SIGPIPE, which pipefail reports as a failure.
+  if ! yay -Scc --noconfirm <<<y; then
     echo "Error: failed to clean yay caches"
     failed=1
   fi
