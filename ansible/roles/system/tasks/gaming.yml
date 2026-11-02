@@ -1,13 +1,19 @@
 ---
 - name: Read installed gaming packages
-  ansible.builtin.package_facts:
-    manager: auto
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Qq
+  register: system_gaming_installed_packages
+  changed_when: false
+  check_mode: false
+  when: ansible_facts.get('os_family', '') == 'Archlinux'
 
 - name: Find missing gaming service dependencies
   ansible.builtin.set_fact:
     system_gaming_missing_packages: >-
       {{ packages_gaming_required_packages
-         | difference(ansible_facts.packages.keys() | list) }}
+         | difference(system_gaming_installed_packages.stdout_lines | default([])) }}
 
 # Check mode skips package installation, so dependencies may legitimately be
 # absent there; report them instead of failing the simulation.
