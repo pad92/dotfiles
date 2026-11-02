@@ -3,6 +3,12 @@
 
 from __future__ import annotations
 
+import os
+import shlex
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = r"""
@@ -25,6 +31,14 @@ options:
     type: str
     choices: [yay, paru]
     required: true
+  sudo_password:
+    description:
+      - Password for the sudo calls the helper makes to install built packages.
+      - The helper runs as the user and has no terminal under Ansible, so its
+        own sudo cannot prompt. When set, the module hands the password to
+        sudo through a temporary askpass program removed after the run.
+    type: str
+    required: false
 author: Dotfiles maintainers
 """
 
@@ -47,11 +61,30 @@ def unsatisfied(module: AnsibleModule, names: list[str]) -> list[str]:
     return sorted(set(output.split()))
 
 
+@contextmanager
+def sudo_askpass(password: str | None) -> Iterator[tuple[list[str], dict[str, str]]]:
+    """Yield helper arguments and environment that let its sudo read password."""
+    if password is None:
+        yield [], {}
+        return
+    with tempfile.TemporaryDirectory(prefix="dotfiles-aur-") as directory:
+        secret = os.path.join(directory, "password")
+        askpass = os.path.join(directory, "askpass")
+        descriptor = os.open(secret, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(password + "\n")
+        descriptor = os.open(askpass, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o700)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(f"#!/bin/sh\nexec cat -- {shlex.quote(secret)}\n")
+        yield ["--sudoflags", "-A"], {"SUDO_ASKPASS": askpass}
+
+
 def main() -> None:
     module = AnsibleModule(
         argument_spec={
             "name": {"type": "list", "elements": "str", "required": True},
             "executable": {"type": "str", "choices": ["yay", "paru"], "required": True},
+            "sudo_password": {"type": "str", "required": False, "no_log": True},
         },
         supports_check_mode=True,
     )
@@ -65,9 +98,19 @@ def main() -> None:
         module.fail_json(msg=str(error), changed=False)
     if module.check_mode or not missing:
         module.exit_json(changed=bool(missing), changed_packages=missing)
-    rc, output, error = module.run_command(
-        [module.params["executable"], "-S", "--needed", "--noconfirm", "--", *missing]
-    )
+    with sudo_askpass(module.params.get("sudo_password")) as (sudo_args, environ):
+        rc, output, error = module.run_command(
+            [
+                module.params["executable"],
+                *sudo_args,
+                "-S",
+                "--needed",
+                "--noconfirm",
+                "--",
+                *missing,
+            ],
+            environ_update=environ,
+        )
     try:
         after = installed(module)
         remaining = unsatisfied(module, missing)

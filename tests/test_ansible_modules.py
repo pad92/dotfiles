@@ -96,6 +96,46 @@ class ModuleTests(unittest.TestCase):
         )
         self.assertEqual(run.call_args_list[4].args[0], ["pacman", "-T", "--", "new"])
 
+    def test_aur_gives_the_helper_sudo_the_become_password(self):
+        # Under Ansible the helper has no terminal, so its sudo must use askpass.
+        seen = {}
+
+        def run_command(command, **kwargs):
+            if command[0] != "yay":
+                return responses.pop(0)
+            askpass = kwargs["environ_update"]["SUDO_ASKPASS"]
+            seen["command"] = command
+            seen["askpass"] = askpass
+            seen["mode"] = os.stat(askpass).st_mode & 0o777
+            seen["output"] = subprocess.run(
+                [askpass, "[sudo] password:"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            return (0, "", "")
+
+        responses = [
+            (0, "", ""),
+            (127, "new\n", ""),
+            (0, "new 1\n", ""),
+            (0, "", ""),
+        ]
+        with patch.object(Module, "run_command", create=True, side_effect=run_command):
+            result = self.invoke(
+                aur,
+                {"name": ["new"], "executable": "yay", "sudo_password": "p a's$"},
+            )
+        self.assertFalse(result.failed)
+        self.assertEqual(
+            seen["command"],
+            ["yay", "--sudoflags", "-A", "-S", "--needed", "--noconfirm", "--", "new"],
+        )
+        self.assertEqual(seen["output"], "p a's$\n")
+        self.assertEqual(seen["mode"], 0o700)
+        self.assertFalse(os.path.exists(seen["askpass"]))
+        self.assertFalse(os.path.exists(os.path.dirname(seen["askpass"])))
+
     def test_aur_reports_partial_installation_on_failure(self):
         with patch.object(
             Module,

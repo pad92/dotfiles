@@ -9,7 +9,9 @@ border-color=#83a598
 border-radius=7
 max-icon-size=48
 default-timeout=10000
-anchor=top-right
+anchor=bottom-right
+# Put the newest notification at the bottom; older notifications stack above.
+sort=+time
 margin=20
 
 [mode=dnd]
