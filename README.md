@@ -129,6 +129,45 @@ include `arch_update`, `clean_arch`, `extract`, `mtail`, and GPG encrypt/decrypt
 functions. The Neovim setup uses Lua, lazy.nvim, Telescope, Treesitter, Mason,
 and native LSP; it requires Neovim 0.12+. The Vim setup uses Vundle.
 
+### Install Vim or Neovim on its own
+
+GitLab publishes [Vim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim)
+and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim)
+configuration archives. Download each archive to a temporary file, inspect its
+file list, then extract it. Back up any existing configuration first; extraction
+replaces files with matching names.
+
+For Neovim:
+
+```sh
+set -eu
+archive=$(mktemp)
+trap 'rm -f -- "$archive"' EXIT
+curl -fL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' -o "$archive"
+tar -tzf "$archive"
+read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
+[ "$confirm" = y ] || exit 1
+tar -xzf "$archive" -C "$HOME"
+```
+
+For Vim:
+
+```sh
+set -eu
+archive=$(mktemp)
+trap 'rm -f -- "$archive"' EXIT
+curl -fL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' -o "$archive"
+tar -tzf "$archive"
+read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
+[ "$confirm" = y ] || exit 1
+tar -xzf "$archive" -C "$HOME"
+```
+
+The Neovim archive installs `~/.config/nvim`. The Vim archive installs `~/.vim`
+and `~/.vimrc`; to install Vim plugins as well, run
+[`scripts/vim.sh`](./scripts/vim.sh), which runs Vundle after downloading the
+archive.
+
 The `mtail` function follows current and future log files across rotation. Quote
 globs to include files created later:
 
@@ -186,11 +225,6 @@ adds it to `PATH` in Zsh.
 
 Package cleanup is opt-in. Pass `--clean-packages` to `backup.sh` to run
 `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
-
-To install the Vim configuration, run [`scripts/vim.sh`](./scripts/vim.sh).
-GitLab CI also builds downloadable [Vim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_vim)
-and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/download?job=package_nvim)
-configuration archives.
 
 ## CI and releases
 
