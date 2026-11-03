@@ -55,7 +55,14 @@ vim.g.netrw_winsize = 25
 -- ========================================================================== --
 -- BACKUP DIRECTORIES                                                          --
 -- ========================================================================== --
-local state_dir = vim.fn.stdpath("state")
+local ok, state_dir = pcall(vim.fn.stdpath, "state")
+if not ok then
+  local state_home = vim.env.XDG_STATE_HOME
+  if not state_home or state_home == "" then
+    state_home = vim.fn.expand("~/.local/state")
+  end
+  state_dir = state_home .. "/nvim"
+end
 local backup_dir = state_dir .. "/backup"
 
 if vim.fn.isdirectory(backup_dir) == 0 then

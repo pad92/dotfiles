@@ -1,10 +1,18 @@
 local vim = rawget(_G, "vim")
 
+local treesitter_tag
+if vim.fn.has("nvim-0.8") == 0 then
+  treesitter_tag = "v0.8.5"
+elseif vim.fn.has("nvim-0.12") == 0 then
+  treesitter_tag = "v0.9.2"
+end
+
 return {
-  -- [ TREESITTER (AST syntax highlighting - main branch, requires Neovim >= 0.12) ]
+  -- [ TREESITTER (AST syntax highlighting) ]
   {
     "nvim-treesitter/nvim-treesitter",
-    branch = "main",
+    branch = vim.fn.has("nvim-0.12") == 1 and "main" or nil,
+    tag = treesitter_tag,
     lazy = false,
     build = ":TSUpdate",
     config = function()
@@ -35,6 +43,10 @@ return {
           highlight = { enable = true },
           indent = { enable = true },
         })
+      end
+
+      if vim.fn.has("nvim-0.9") == 0 then
+        return
       end
 
       -- Enable highlight + indent + folding for filetypes with an installed parser

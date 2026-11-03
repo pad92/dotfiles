@@ -1,5 +1,12 @@
 local vim = rawget(_G, "vim")
 
+local gitsigns_tag
+if vim.fn.has("nvim-0.8") == 0 then
+  gitsigns_tag = "v0.6"
+elseif vim.fn.has("nvim-0.11") == 0 then
+  gitsigns_tag = "v0.8.1"
+end
+
 return {
   -- [ TELESCOPE (Fuzzy Finder) ]
   {
@@ -24,6 +31,7 @@ return {
   -- [ GITSIGNS (Fast Git integration) ]
   {
     "lewis6991/gitsigns.nvim",
+    tag = gitsigns_tag,
     event = "VeryLazy",
     config = function()
       require("gitsigns").setup({
@@ -44,14 +52,14 @@ return {
           -- Hunk navigation (respects diff mode)
           map("n", "]c", function()
             if vim.wo.diff then
-              vim.cmd.normal({ "]c", bang = true })
+              vim.cmd("normal! ]c")
             else
               gs.nav_hunk("next")
             end
           end, "Hunk suivant")
           map("n", "[c", function()
             if vim.wo.diff then
-              vim.cmd.normal({ "[c", bang = true })
+              vim.cmd("normal! [c")
             else
               gs.nav_hunk("prev")
             end

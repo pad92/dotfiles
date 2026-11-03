@@ -126,8 +126,10 @@ confirmation prompt. Both targets use `$HOME` by default; set
 Zsh uses Oh My Zsh, autosuggestions, syntax highlighting, and custom aliases and
 functions in [`zsh/`](./ansible/roles/dotfiles/files/home/zsh/). Notable helpers
 include `arch_update`, `clean_arch`, `extract`, `mtail`, and GPG encrypt/decrypt
-functions. The Neovim setup uses Lua, lazy.nvim, Telescope, Treesitter, Mason,
-and native LSP; it requires Neovim 0.12+. The Vim setup uses Vundle.
+functions. The Neovim setup uses Lua, Telescope, Treesitter, Mason, and native
+LSP. It supports Neovim 0.7.2 and newer: Neovim 0.7 uses a compatibility
+loader with older plugin releases, while Neovim 0.8+ uses lazy.nvim. The Vim
+setup uses Vundle.
 
 ### Install Vim or Neovim on its own
 
