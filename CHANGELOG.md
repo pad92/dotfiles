@@ -90,6 +90,9 @@ Release history and changes planned for the next version.
     under `pipefail`: the `y` answer is now passed as a here-string, because
     a piped `echo` could die of SIGPIPE when yay exited without reading it.
 - **CI**:
+  - Build the Vim archive on every push to `main`, so its public download
+    link keeps working. The job only ran when the Vim configuration changed,
+    and no archive was left to download.
   - Install the pinned Ansible collections in the unit test job. The gaming
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.

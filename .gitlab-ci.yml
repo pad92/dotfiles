@@ -57,12 +57,16 @@ ansible_lint:
   script:
     - make lint-ansible
 
-# Job Vim : Se lance uniquement si la conf Vim change
+# Job Vim : sur la branche par défaut, à chaque push ; ailleurs, seulement si
+# la conf Vim change. L'URL publique /-/jobs/artifacts/main/download?job=package_vim
+# sert l'artefact du dernier job réussi sur main : GitLab ne garde au-delà de
+# 30 jours que les artefacts du dernier pipeline, qui doit donc contenir ce job.
 package_vim:
   stage: package
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - 'ansible/roles/dotfiles/files/home/.vim/**/*'
