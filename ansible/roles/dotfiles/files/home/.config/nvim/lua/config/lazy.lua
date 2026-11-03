@@ -4,8 +4,14 @@ local vim = rawget(_G, "vim")
 --                    LAZY.NVIM BOOTSTRAP (lazy.lua)                          --
 -- ========================================================================== --
 
+if vim.fn.has("nvim-0.8") == 0 then
+  require("config.legacy_plugins").setup()
+  return
+end
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.uv.fs_stat(lazypath) then
+local uv = vim.uv or vim.loop
+if not uv.fs_stat(lazypath) then
   vim.fn.system({
     "git",
     "clone",
