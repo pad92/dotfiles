@@ -108,7 +108,7 @@ local config = {
     caps_lock = "swayosd-client --caps-lock",
     wallpaper = "~/.bin/awww.sh",
     -- Critical notifications never expire, so they need a keyboard dismissal.
-    notification_dismiss = "makoctl dismiss",
+    notification_dismiss = "makoctl dismiss --all",
     notification_restore = "makoctl restore",
     clipboard = "tmp=$(mktemp) || exit 1; trap 'rm -f -- \"$tmp\"' EXIT"
       .. '; if selection=$(cliphist list | %s -m) && [ -n "$selection" ]'

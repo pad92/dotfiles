@@ -101,15 +101,17 @@ Release history and changes planned for the next version.
     With the bottom-right stack sorted oldest first, Mako kept the ten oldest
     and hid the new ones behind a "(N more)" placeholder.
   - Show critical notifications in do-not-disturb mode, which `steam-optimize`
-    enables during games. They also get a red border and stay until dismissed.
-  - Draw critical notifications on the overlay layer, so fullscreen windows
-    no longer cover them, and dismiss or restore notifications with
-    `SUPER+N` and `SUPER+SHIFT+N`.
+    enables during games. They get a red border and stay until dismissed,
+    even when the sender requests a timeout.
+  - Draw notifications on the overlay layer, so fullscreen windows no longer
+    cover them. `SUPER+N` dismisses all notifications and `SUPER+SHIFT+N`
+    restores the last one.
   - Show icons from the Papirus-Dark GTK theme. Mako only searched `hicolor`
     and `pixmaps`, so names such as `dialog-warning` had no icon.
   - Align the notification corners, padding, and spacing with Hyprland's
     rounding and gaps.
-  - Group repeated notifications that share an application and a summary.
+  - Group repeated notifications that share an application, a summary, and
+    an urgency.
   - Install `mako` and `ttf-dejavu` with the default Arch Hyprland group. The
     role enabled `mako.service` without installing Mako.
 - **SSH**:

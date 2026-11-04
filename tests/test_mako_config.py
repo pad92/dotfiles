@@ -1,9 +1,12 @@
-"""Check how the deployed Mako configuration resolves for real notifications.
+"""Check the deployed Mako configuration against the behavior it promises.
 
-The resolver mirrors Mako's criteria semantics for the subset this
-configuration uses: the global section applies first, then every matching
-``[criteria]`` section in file order, the last value winning. Any other
-criteria key makes the test fail instead of being silently misjudged.
+The resolver mirrors Mako's criteria matching for ``mode`` and ``urgency``
+only, with one active mode at a time: the global section applies first, then
+every matching ``[criteria]`` section in file order, the last value winning.
+Any other criteria key makes the test fail instead of being misjudged.
+
+The resolver does not model surfaces, grouping, or the timeout a sender
+requests. Dedicated tests check the options Mako reads for those instead.
 """
 
 import configparser
@@ -20,6 +23,8 @@ GTK3_SETTINGS = HOME / ".config/gtk-3.0/settings.ini"
 SYSTEM_ICON_ROOT = "/usr/share/icons"
 URGENCIES = ("low", "normal", "critical")
 SUPPORTED_CRITERIA = {"mode", "urgency"}
+# Mako draws one surface per (output, layer, anchor); see criteria.c in 1.11.
+SURFACE_OPTIONS = ("output", "layer", "anchor")
 DEFAULT_MODE = "default"
 
 
@@ -78,6 +83,8 @@ class MakoConfigTests(unittest.TestCase):
     def test_critical_notifications_wait_for_dismissal(self):
         style = resolve(self.sections, DEFAULT_MODE, "critical")
         self.assertEqual(style.get("default-timeout"), "0")
+        # default-timeout only applies when the sender requests no timeout.
+        self.assertEqual(style.get("ignore-timeout"), "1")
         self.assertNotEqual(
             style.get("border-color"), self.global_options.get("border-color")
         )
@@ -103,18 +110,33 @@ class MakoConfigTests(unittest.TestCase):
                 style = resolve(self.sections, mode, "critical")
                 self.assertEqual(style.get("layer"), "overlay")
 
-    def test_notifications_without_timeout_can_be_dismissed_from_the_keyboard(self):
+    def test_every_notification_shares_one_stack(self):
+        # A criteria section that changes a surface option opens a second
+        # surface at the same corner, and the two stacks draw over each other.
+        for criteria, options in self.sections[1:]:
+            with self.subTest(criteria=criteria):
+                self.assertFalse(set(SURFACE_OPTIONS) & set(options))
+
+    def test_grouping_never_mixes_urgencies(self):
+        group_by = self.global_options.get("group-by")
+        if group_by is None:
+            self.skipTest("notifications are not grouped")
+        self.assertIn("urgency", group_by.split(","))
+
+    def test_notifications_without_timeout_are_all_dismissed_from_the_keyboard(self):
+        # Without an id, makoctl dismiss closes the first listed notification:
+        # with sort=+time the oldest, possibly one hidden by do-not-disturb.
         never_expire = any(
             options.get("default-timeout") == "0" for _, options in self.sections
         )
         if not never_expire:
             self.skipTest("every notification expires on its own")
         dismiss_utils = re.findall(
-            r'^\s*(\w+)\s*=\s*"makoctl dismiss"',
+            r'^\s*(\w+)\s*=\s*"makoctl dismiss (?:--all|-a)"',
             HYPR_CONFIG.read_text(encoding="utf-8"),
             re.MULTILINE,
         )
-        self.assertTrue(dismiss_utils, "config.lua defines no makoctl dismiss")
+        self.assertTrue(dismiss_utils, "config.lua defines no makoctl dismiss --all")
         keybindings = HYPR_KEYBINDINGS.read_text(encoding="utf-8")
         self.assertTrue(
             any(f"config.utils.{name}" in keybindings for name in dismiss_utils)

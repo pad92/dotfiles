@@ -78,12 +78,12 @@ hl.bind(
 hl.bind(
   config.mainMod .. " + N",
   hl.dsp.exec_cmd(config.utils.notification_dismiss),
-  { description = "Dismiss notification" }
+  { description = "Dismiss all notifications" }
 )
 hl.bind(
   config.mainMod .. " + SHIFT + N",
   hl.dsp.exec_cmd(config.utils.notification_restore),
-  { description = "Restore notification" }
+  { description = "Restore last notification" }
 )
 
 -- Workspace management

@@ -1,4 +1,7 @@
-layer=top
+# Draw every notification above fullscreen windows. A separate layer for
+# critical ones would create a second surface at the same anchor, and the
+# two stacks would overlap.
+layer=overlay
 font=DejaVu Sans 10
 # Gruvbox Dark palette, kept manually in sync with waybar/style.css,
 # .tmux.conf, gruvbox.nvim and .config/hypr/hyprlock.conf
@@ -20,16 +23,17 @@ sort=+time
 # those are the oldest, so any limit would hide the newest notifications.
 max-visible=-1
 # Merge repeated notifications so a noisy application cannot fill the stack.
-group-by=app-name,summary
+# Urgency is part of the key so a critical alert never joins a normal group.
+group-by=app-name,summary,urgency
 # Match Hyprland's gaps_in/gaps_out so the stack aligns with tiled windows.
 margin=2
 
-# Critical notifications never expire (SUPER+N dismisses them) and use the
-# overlay layer so fullscreen windows cannot cover them.
+# Critical notifications never expire, even when the sender requests a
+# timeout; SUPER+N dismisses them.
 [urgency=critical]
 border-color=#fb4934
 default-timeout=0
-layer=overlay
+ignore-timeout=1
 
 # Mako applies matching sections in order, so the critical exception must
 # follow the do-not-disturb rule.
