@@ -1,4 +1,3 @@
-max-visible=10
 layer=top
 font=DejaVu Sans 10
 # Gruvbox Dark palette, kept manually in sync with waybar/style.css,
@@ -6,13 +5,36 @@ font=DejaVu Sans 10
 background-color=#1d2021
 text-color=#ebdbb2
 border-color=#83a598
-border-radius=7
+# Match Hyprland's rounding_large (hyprtoolkit.conf).
+border-radius=10
+padding=8,12
 max-icon-size=48
+# Mako ignores the GTK icon theme and does not follow theme inheritance, so
+# list the gtk-3.0 theme (Papirus-Dark) and its parent (Papirus) explicitly.
+icon-path=/usr/share/icons/Papirus-Dark:/usr/share/icons/Papirus
 default-timeout=10000
 anchor=bottom-right
 # Put the newest notification at the bottom; older notifications stack above.
 sort=+time
-margin=20
+# Mako keeps the first max-visible entries of the sorted list. With sort=+time
+# those are the oldest, so any limit would hide the newest notifications.
+max-visible=-1
+# Merge repeated notifications so a noisy application cannot fill the stack.
+group-by=app-name,summary
+# Match Hyprland's gaps_in/gaps_out so the stack aligns with tiled windows.
+margin=2
 
+# Critical notifications never expire (SUPER+N dismisses them) and use the
+# overlay layer so fullscreen windows cannot cover them.
+[urgency=critical]
+border-color=#fb4934
+default-timeout=0
+layer=overlay
+
+# Mako applies matching sections in order, so the critical exception must
+# follow the do-not-disturb rule.
 [mode=dnd]
 invisible=1
+
+[mode=dnd urgency=critical]
+invisible=0

@@ -96,6 +96,22 @@ Release history and changes planned for the next version.
   - Install the pinned Ansible collections in the unit test job. The gaming
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.
+- **Mako**:
+  - Keep the newest notifications visible when more than ten are on screen.
+    With the bottom-right stack sorted oldest first, Mako kept the ten oldest
+    and hid the new ones behind a "(N more)" placeholder.
+  - Show critical notifications in do-not-disturb mode, which `steam-optimize`
+    enables during games. They also get a red border and stay until dismissed.
+  - Draw critical notifications on the overlay layer, so fullscreen windows
+    no longer cover them, and dismiss or restore notifications with
+    `SUPER+N` and `SUPER+SHIFT+N`.
+  - Show icons from the Papirus-Dark GTK theme. Mako only searched `hicolor`
+    and `pixmaps`, so names such as `dialog-warning` had no icon.
+  - Align the notification corners, padding, and spacing with Hyprland's
+    rounding and gaps.
+  - Group repeated notifications that share an application and a summary.
+  - Install `mako` and `ttf-dejavu` with the default Arch Hyprland group. The
+    role enabled `mako.service` without installing Mako.
 - **SSH**:
   - Set Proton Pass's D-Bus keyring for local Zsh sessions.
 - **Hyprland**:

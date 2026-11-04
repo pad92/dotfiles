@@ -74,6 +74,18 @@ hl.bind(
   { description = "Clipboard history" }
 )
 
+-- Notifications
+hl.bind(
+  config.mainMod .. " + N",
+  hl.dsp.exec_cmd(config.utils.notification_dismiss),
+  { description = "Dismiss notification" }
+)
+hl.bind(
+  config.mainMod .. " + SHIFT + N",
+  hl.dsp.exec_cmd(config.utils.notification_restore),
+  { description = "Restore notification" }
+)
+
 -- Workspace management
 local NUMBER_KEYS = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
 local NUMPAD_KEYS = { 87, 88, 89, 83, 84, 85, 79, 80, 81, 90 }
