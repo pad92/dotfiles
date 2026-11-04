@@ -61,6 +61,11 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Use the detected boot GPU to order DRM devices, allowing application-level
     GPU offload to choose its own driver.
+- **README**:
+  - Reorganize the README around a quick start, a table of common commands,
+    and collapsible details, with pipeline and release badges.
+  - List the Ansible collections to install when only `ansible-core` is
+    available, and document the `package_services` and `lact` tags.
 - **Mako**:
   - Show at most five notifications instead of ten. Repeated notifications
     with the same application, summary, and urgency are merged into one.
