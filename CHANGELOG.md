@@ -24,6 +24,8 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop
     the user service and prevent it from starting automatically.
+  - Dismiss all notifications with `SUPER+N`; `SUPER+SHIFT+N` restores the
+    last one.
 - **Waybar**:
   - Add NVIDIA PowerMizer profiles while keeping the existing AMD profiles.
 - **Ansible system**:
@@ -57,6 +59,15 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Use the detected boot GPU to order DRM devices, allowing application-level
     GPU offload to choose its own driver.
+- **Mako**:
+  - Show at most five notifications instead of ten. Repeated notifications
+    with the same application, summary, and urgency are merged into one.
+  - Make the background translucent like Waybar's and blur it with a Hyprland
+    layer rule.
+  - Show the sending application above each summary. Low-urgency
+    notifications get a grey border.
+  - Match the corners, padding, and spacing to Hyprland's rounding and gaps.
+    The progress bar uses Gruvbox blue.
 - **Ansible**:
   - Move the Ansible launcher into `make install`; pass playbook options
     through `ANSIBLE_ARGS`.
@@ -96,6 +107,16 @@ Release history and changes planned for the next version.
   - Install the pinned Ansible collections in the unit test job. The gaming
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.
+- **Mako**:
+  - Show critical notifications in do-not-disturb mode, which `steam-optimize`
+    enables during games. They get a red border and stay until dismissed,
+    even when the sender requests a timeout.
+  - Draw notifications above fullscreen windows. They used Hyprland's top
+    layer, which fullscreen windows cover.
+  - Show icons from the Papirus-Dark GTK theme. Mako only searched `hicolor`
+    and `pixmaps`, so names such as `dialog-warning` had no icon.
+  - Install `mako` and `ttf-dejavu` with the default Arch Hyprland group. The
+    role enabled `mako.service` without installing Mako.
 - **SSH**:
   - Set Proton Pass's D-Bus keyring for local Zsh sessions.
 - **Hyprland**:

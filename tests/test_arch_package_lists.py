@@ -7,6 +7,22 @@ from pathlib import Path
 import yaml
 
 PACKAGE_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/archlinux.yml"
+DOTFILES_DEFAULTS = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/defaults/main.yml"
+)
+MAKO_CONFIG = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.config/mako/config"
+)
+# Arch package providing the program behind each user unit the dotfiles role
+# enables. Adding a unit to the role without listing its package here fails.
+GRAPHICAL_UNIT_PACKAGES = {
+    "awww.service": "awww",
+    "awww_random.timer": "awww",
+    "hypridle.service": "hypridle",
+    "mako.service": "mako",
+    "waybar.service": "waybar",
+}
+FONT_FAMILY_PACKAGES = {"DejaVu Sans": "ttf-dejavu"}
 CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
@@ -80,6 +96,32 @@ class ArchPackageGroupTests(unittest.TestCase):
         for name, packages in self.groups.items():
             if name != "21_steam":
                 self.assertNotIn("power-profiles-daemon", packages)
+
+    def default_group_packages(self):
+        default_groups = yaml.safe_load(PACKAGE_VARS.read_text(encoding="utf-8"))[
+            "packages_default_groups"
+        ]
+        return {package for group in default_groups for package in self.groups[group]}
+
+    def test_default_groups_install_every_enabled_graphical_unit(self):
+        units = yaml.safe_load(DOTFILES_DEFAULTS.read_text(encoding="utf-8"))[
+            "dotfiles_systemd_graphical_units"
+        ]
+        self.assertEqual(set(units), set(GRAPHICAL_UNIT_PACKAGES))
+        installed = self.default_group_packages()
+        for unit in units:
+            with self.subTest(unit=unit):
+                self.assertIn(GRAPHICAL_UNIT_PACKAGES[unit], installed)
+
+    def test_default_groups_install_the_notification_font(self):
+        font = next(
+            line.split("=", 1)[1]
+            for line in MAKO_CONFIG.read_text(encoding="utf-8").splitlines()
+            if line.startswith("font=")
+        )
+        family = font.rsplit(" ", 1)[0]
+        self.assertIn(family, FONT_FAMILY_PACKAGES)
+        self.assertIn(FONT_FAMILY_PACKAGES[family], self.default_group_packages())
 
     def test_cachyos_only_gaming_packages_are_distribution_overrides(self):
         overrides = yaml.safe_load(CACHYOS_VARS.read_text(encoding="utf-8"))[

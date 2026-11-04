@@ -1,18 +1,58 @@
-max-visible=10
-layer=top
+# Draw every notification above fullscreen windows. A separate layer for
+# critical ones would create a second surface at the same anchor, and the
+# two stacks would overlap.
+layer=overlay
 font=DejaVu Sans 10
 # Gruvbox Dark palette, kept manually in sync with waybar/style.css,
 # .tmux.conf, gruvbox.nvim and .config/hypr/hyprlock.conf
-background-color=#1d2021
+# 90 % opaque background; Hyprland blurs the "notifications" layer behind it
+# (hypr/conf/windowrules.lua).
+background-color=#1d2021e6
 text-color=#ebdbb2
 border-color=#83a598
-border-radius=7
+progress-color=over #458588
+# Match Hyprland's rounding_large (hyprtoolkit.conf).
+border-radius=10
+padding=8,12
 max-icon-size=48
+# Mako ignores the GTK icon theme and does not follow theme inheritance, so
+# list the gtk-3.0 theme (Papirus-Dark) and its parent (Papirus) explicitly.
+icon-path=/usr/share/icons/Papirus-Dark:/usr/share/icons/Papirus
+# Show the sending application above the summary.
+format=<small>%a</small>\n<b>%s</b>\n%b
 default-timeout=10000
-anchor=bottom-right
-# Put the newest notification at the bottom; older notifications stack above.
-sort=+time
-margin=20
+# Waybar reserves the top edge, so the stack starts just below it, away from
+# the input lines at the bottom of windows.
+anchor=top-right
+# Newest first: it sits in the corner, and max-visible hides the oldest ones
+# behind a "(N more)" placeholder.
+sort=-time
+max-visible=5
+# Merge repeated notifications so a noisy application cannot fill the stack.
+# Urgency is part of the key so a critical alert never joins a normal group.
+group-by=app-name,summary,urgency
+# Match Hyprland's gaps_in/gaps_out so the stack aligns with tiled windows.
+margin=2
 
+# Mako's built-in grouped style applies after the global section and sets
+# its own format, so repeat the application name here.
+[grouped=1]
+format=<small>%a</small>\n(%g) <b>%s</b>\n%b
+
+[urgency=low]
+border-color=#665c54
+
+# Critical notifications never expire, even when the sender requests a
+# timeout; SUPER+N dismisses them.
+[urgency=critical]
+border-color=#fb4934
+default-timeout=0
+ignore-timeout=1
+
+# Mako applies matching sections in order, so the critical exception must
+# follow the do-not-disturb rule.
 [mode=dnd]
 invisible=1
+
+[mode=dnd urgency=critical]
+invisible=0

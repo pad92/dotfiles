@@ -72,3 +72,5 @@ hl.window_rule({ match = { title = "^(About Mozilla Firefox|Picture-in-Picture)$
 
 -- Layer blur
 hl.layer_rule({ match = { namespace = "logout_dialog" }, blur = true, ignore_alpha = 0 })
+-- Mako's translucent background; ignore_alpha keeps the rounded corners clear.
+hl.layer_rule({ match = { namespace = "notifications" }, blur = true, ignore_alpha = 0 })
