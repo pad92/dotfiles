@@ -7,6 +7,10 @@ Any other criteria key makes the test fail instead of being misjudged.
 
 The resolver does not model surfaces, grouping, or the timeout a sender
 requests. Dedicated tests check the options Mako reads for those instead.
+
+Testing each mode alone also covers several active modes (``makoctl mode -a``):
+the last matching section belongs to a single mode, and it applies the same
+way when that mode is active alone.
 """
 
 import configparser
@@ -20,6 +24,9 @@ HYPR_CONFIG = HOME / ".config/hypr/config.lua"
 HYPR_KEYBINDINGS = HOME / ".config/hypr/conf/keybindings.lua"
 HYPRTOOLKIT_CONFIG = HOME / ".config/hypr/hyprtoolkit.conf"
 GTK3_SETTINGS = HOME / ".config/gtk-3.0/settings.ini"
+GTK2_SETTINGS = HOME / ".gtkrc-2.0"
+WAYBAR_STYLE = HOME / ".config/waybar/style.css"
+HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
 SYSTEM_ICON_ROOT = "/usr/share/icons"
 URGENCIES = ("low", "normal", "critical")
 SUPPORTED_CRITERIA = {"mode", "urgency"}
@@ -142,13 +149,42 @@ class MakoConfigTests(unittest.TestCase):
             any(f"config.utils.{name}" in keybindings for name in dismiss_utils)
         )
 
-    def test_icons_are_searched_in_the_gtk_icon_theme(self):
-        # Mako only searches hicolor and pixmaps unless icon-path lists more.
-        gtk = configparser.ConfigParser()
-        gtk.read_string(GTK3_SETTINGS.read_text(encoding="utf-8"))
-        theme = gtk["Settings"]["gtk-icon-theme-name"]
+    def test_icon_theme_is_declared_consistently(self):
+        # The theme name is written by hand in four files; Mako only searches
+        # hicolor and pixmaps unless icon-path lists the theme first.
+        gtk3 = configparser.ConfigParser()
+        gtk3.read_string(GTK3_SETTINGS.read_text(encoding="utf-8"))
+        gtk2 = re.search(
+            r'^gtk-icon-theme-name="([^"]+)"',
+            GTK2_SETTINGS.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        toolkit = re.search(
+            r"^icon_theme\s*=\s*(\S+)",
+            HYPRTOOLKIT_CONFIG.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        if gtk2 is None or toolkit is None:
+            self.fail("icon theme not found in .gtkrc-2.0 or hyprtoolkit.conf")
+        themes = {
+            "gtk-3.0/settings.ini": gtk3["Settings"]["gtk-icon-theme-name"],
+            ".gtkrc-2.0": gtk2.group(1),
+            "hyprtoolkit.conf": toolkit.group(1),
+        }
+        self.assertEqual(len(set(themes.values())), 1, themes)
         icon_paths = self.global_options.get("icon-path", "").split(":")
-        self.assertIn(f"{SYSTEM_ICON_ROOT}/{theme}", icon_paths)
+        self.assertEqual(icon_paths[0], f"{SYSTEM_ICON_ROOT}/{themes['.gtkrc-2.0']}")
+
+    def test_colors_come_from_the_shared_gruvbox_palette(self):
+        palette = {
+            color.lower()
+            for color in HEX_COLOR.findall(WAYBAR_STYLE.read_text(encoding="utf-8"))
+        }
+        for criteria, options in self.sections:
+            for key, value in options.items():
+                for color in HEX_COLOR.findall(value):
+                    with self.subTest(criteria=criteria, option=key):
+                        self.assertIn(color.lower(), palette)
 
     def integer_setting(self, path, name):
         match = re.search(

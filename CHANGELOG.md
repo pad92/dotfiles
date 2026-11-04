@@ -109,7 +109,7 @@ Release history and changes planned for the next version.
   - Show icons from the Papirus-Dark GTK theme. Mako only searched `hicolor`
     and `pixmaps`, so names such as `dialog-warning` had no icon.
   - Align the notification corners, padding, and spacing with Hyprland's
-    rounding and gaps.
+    rounding and gaps, and draw the progress bar in Gruvbox blue.
   - Group repeated notifications that share an application, a summary, and
     an urgency.
   - Install `mako` and `ttf-dejavu` with the default Arch Hyprland group. The
