@@ -57,6 +57,13 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Use the detected boot GPU to order DRM devices, allowing application-level
     GPU offload to choose its own driver.
+- **Mako**:
+  - Show notifications in the top-right corner, below Waybar, so they no
+    longer cover the input lines at the bottom of windows. The newest one
+    sits in the corner and the stack is capped at five.
+  - Use a translucent background blurred by Hyprland, as Waybar does, show
+    the sending application above the summary, and give low-urgency
+    notifications a grey border.
 - **Ansible**:
   - Move the Ansible launcher into `make install`; pass playbook options
     through `ANSIBLE_ARGS`.
@@ -97,9 +104,9 @@ Release history and changes planned for the next version.
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.
 - **Mako**:
-  - Keep the newest notifications visible when more than ten are on screen.
-    With the bottom-right stack sorted oldest first, Mako kept the ten oldest
-    and hid the new ones behind a "(N more)" placeholder.
+  - Keep the newest notifications visible. The bottom-right stack was sorted
+    oldest first, so the ten-notification cap kept the oldest ones and hid the
+    new ones behind a "(N more)" placeholder.
   - Show critical notifications in do-not-disturb mode, which `steam-optimize`
     enables during games. They get a red border and stay until dismissed,
     even when the sender requests a timeout.

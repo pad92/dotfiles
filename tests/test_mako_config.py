@@ -5,8 +5,9 @@ only, with one active mode at a time: the global section applies first, then
 every matching ``[criteria]`` section in file order, the last value winning.
 Any other criteria key makes the test fail instead of being misjudged.
 
-The resolver does not model surfaces, grouping, or the timeout a sender
-requests. Dedicated tests check the options Mako reads for those instead.
+The resolver also matches ``grouped`` criteria, but does not model how Mako
+forms groups, its surfaces, or the timeout a sender requests. Dedicated tests
+check the options Mako reads for those instead.
 
 Testing each mode alone also covers several active modes (``makoctl mode -a``):
 the last matching section belongs to a single mode, and it applies the same
@@ -26,10 +27,13 @@ HYPRTOOLKIT_CONFIG = HOME / ".config/hypr/hyprtoolkit.conf"
 GTK3_SETTINGS = HOME / ".config/gtk-3.0/settings.ini"
 GTK2_SETTINGS = HOME / ".gtkrc-2.0"
 WAYBAR_STYLE = HOME / ".config/waybar/style.css"
-HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
+# Captures the RGB part of #rrggbb and #rrggbbaa colors.
+HEX_COLOR = re.compile(r"#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?\b")
+HYPR_WINDOW_RULES = HOME / ".config/hypr/conf/windowrules.lua"
 SYSTEM_ICON_ROOT = "/usr/share/icons"
 URGENCIES = ("low", "normal", "critical")
-SUPPORTED_CRITERIA = {"mode", "urgency"}
+SUPPORTED_CRITERIA = {"mode", "urgency", "grouped"}
+TRUE_VALUES = {"1", "true"}
 # Mako draws one surface per (output, layer, anchor); see criteria.c in 1.11.
 SURFACE_OPTIONS = ("output", "layer", "anchor")
 DEFAULT_MODE = "default"
@@ -54,10 +58,12 @@ def parse_sections(text):
     return sections
 
 
-def resolve(sections, mode, urgency):
+def resolve(sections, mode, urgency, grouped=False):
     """Return the options Mako applies to a notification in one active mode."""
     style = {}
     for criteria, options in sections:
+        if "grouped" in criteria and (criteria["grouped"] in TRUE_VALUES) != grouped:
+            continue
         if criteria.get("mode", mode) != mode:
             continue
         if criteria.get("urgency", urgency) != urgency:
@@ -75,11 +81,22 @@ class MakoConfigTests(unittest.TestCase):
             criteria["mode"] for criteria, _ in cls.sections if "mode" in criteria
         }
 
-    def test_ascending_time_sort_never_truncates_the_newest_notifications(self):
+    def test_newest_notification_sits_in_the_anchor_corner(self):
+        # Mako draws its sorted list from the top of the surface down.
+        anchor = self.global_options.get("anchor", "top-right")
+        sort = self.global_options.get("sort", "-time")
+        expected = "+time" if anchor.startswith("bottom") else "-time"
+        self.assertTrue(sort.startswith(expected), (anchor, sort))
+
+    def test_stack_limit_only_hides_the_oldest_notifications(self):
         # Mako keeps the first max-visible entries of its sorted list; with an
-        # ascending time sort those are the oldest ones.
+        # ascending time sort those are the oldest, so a limit would hide the
+        # newest notifications instead.
+        max_visible = int(self.global_options.get("max-visible", "5"))
         if self.global_options.get("sort", "-time").startswith("+time"):
-            self.assertEqual(self.global_options.get("max-visible"), "-1")
+            self.assertEqual(max_visible, -1)
+        else:
+            self.assertGreater(max_visible, 0, "a burst could cover the screen")
 
     def test_critical_notifications_stay_visible_in_every_mode(self):
         for mode in sorted(self.modes):
@@ -177,14 +194,47 @@ class MakoConfigTests(unittest.TestCase):
 
     def test_colors_come_from_the_shared_gruvbox_palette(self):
         palette = {
-            color.lower()
-            for color in HEX_COLOR.findall(WAYBAR_STYLE.read_text(encoding="utf-8"))
+            rgb.lower()
+            for rgb, _ in HEX_COLOR.findall(WAYBAR_STYLE.read_text(encoding="utf-8"))
         }
-        for criteria, options in self.sections:
-            for key, value in options.items():
-                for color in HEX_COLOR.findall(value):
-                    with self.subTest(criteria=criteria, option=key):
-                        self.assertIn(color.lower(), palette)
+        colors = [
+            (criteria, key, rgb)
+            for criteria, options in self.sections
+            for key, value in options.items()
+            for rgb, _ in HEX_COLOR.findall(value)
+        ]
+        self.assertTrue(colors)
+        for criteria, key, rgb in colors:
+            with self.subTest(criteria=criteria, option=key):
+                self.assertIn(rgb.lower(), palette)
+
+    def test_translucent_background_is_blurred_by_hyprland(self):
+        match = HEX_COLOR.fullmatch(self.global_options.get("background-color", ""))
+        self.assertIsNotNone(match, "background-color is not #rrggbb[aa]")
+        alpha = match.group(2) if match else None
+        if alpha is None or alpha.lower() == "ff":
+            self.skipTest("the background is opaque")
+        rules = HYPR_WINDOW_RULES.read_text(encoding="utf-8")
+        self.assertRegex(
+            rules,
+            r'hl\.layer_rule\(\{\s*match\s*=\s*\{\s*namespace\s*=\s*"notifications"'
+            r"\s*\},[^)]*blur\s*=\s*true",
+        )
+
+    def test_every_notification_shows_its_application(self):
+        for grouped in (False, True):
+            with self.subTest(grouped=grouped):
+                style = resolve(self.sections, DEFAULT_MODE, "normal", grouped)
+                self.assertIn("%a", style.get("format", ""))
+        grouped_style = resolve(self.sections, DEFAULT_MODE, "normal", True)
+        self.assertIn("%g", grouped_style.get("format", ""))
+
+    def test_low_urgency_is_styled_apart(self):
+        borders = {
+            urgency: resolve(self.sections, DEFAULT_MODE, urgency).get("border-color")
+            for urgency in URGENCIES
+        }
+        self.assertEqual(len(set(borders.values())), len(URGENCIES), borders)
 
     def integer_setting(self, path, name):
         match = re.search(
