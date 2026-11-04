@@ -1,145 +1,219 @@
 # My Dotfiles
 
+[![Pipeline](https://gitlab.com/pad92/dotfiles/badges/main/pipeline.svg)](https://gitlab.com/pad92/dotfiles/-/pipelines)
+[![Latest release](https://gitlab.com/pad92/dotfiles/-/badges/release.svg)](https://gitlab.com/pad92/dotfiles/-/releases)
+
 Linux desktop configuration for Arch Linux and CachyOS, built around Hyprland,
-Zsh, Neovim, Alacritty, tmux, Waybar, and Mako.
+Zsh, Neovim, Alacritty, tmux, Waybar, and Mako, and deployed with Ansible.
 
 ![Hyprland desktop with Neovim, Waybar and Fastfetch on CachyOS](./dist/hyprland.webp)
 
-[Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) · [Arch installation guide](./dist/arch/install.md)
+[Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
+[Arch installation guide](./dist/arch/install.md) · [Ansible guide](./ansible/README.md)
 
-## Install
+## Highlights
+
+- Hyprland 0.55+ configured in Lua, with Waybar, Hyprlock, and per-monitor
+  wallpapers.
+- Mako notifications in the top-right corner, silenced while `steam-optimize`
+  runs a game, except for critical alerts.
+- Zsh with Oh My Zsh, Neovim 0.7.2+ with native LSP, Vim, Alacritty, and tmux.
+- A Gruvbox Dark palette shared by Hyprland, Waybar, Mako, Hyprlock, tmux,
+  Neovim, and Vim.
+- One Ansible playbook for packages, system settings, and dotfiles on Arch
+  Linux/CachyOS, Debian/Ubuntu, and Fedora.
+- Gaming and GPU tuning: `ananicy-cpp`, `power-profiles-daemon`, AMD CPU
+  settings, and LACT profiles for AMD and NVIDIA.
+
+## Quick start
+
+You need Git, `make`, a regular user with `sudo` access, and Ansible with the
+collections in [`ansible/requirements.yml`](./ansible/requirements.yml). The
+full `ansible` package ships them; with `ansible-core` alone, install them
+into the repository after cloning.
 
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
+# Only with ansible-core:
+ansible-galaxy collection install -r ansible/requirements.yml -p .ansible/collections
+make install ANSIBLE_ARGS=--check   # preview
 make install
 ```
 
-Install `ansible-playbook` first, then run `make install` as a regular user with
-`sudo` access. The playbook supports Arch Linux/CachyOS, Debian/Ubuntu, and
-Fedora. It installs packages and deploys the configuration to your home.
+`make install` installs packages and deploys the configuration to your home
+directory. Installation is additive: packages that were already installed stay
+unmanaged.
 
-Preview a run with `make install ANSIBLE_ARGS=--check`. Check mode prints the
-package plan without installing or removing packages, then simulates the system
-and dotfiles roles. Use `-e packages_action=plan` to print only the package plan
-and stop, or `--check --tags dotfiles` to preview the dotfiles alone. Options pass
-through to `ansible-playbook`, including `--ask-become-pass` and `-e`.
+## Common tasks
 
-Package selection uses OS defaults and detected GPUs. Set `packages_host_groups`
-in `ansible/host_vars/localhost.yml` for each hostname, or pass
-`-e packages_group_selection=...` for one run. Automatic GPU selection requires
-all controllers to be identified. Package variables load by OS family, then
-use the first matching exact-version, major-version, or distribution override.
+Options in `ANSIBLE_ARGS` go straight to `ansible-playbook`.
 
-On Arch, Ansible configures pacman, enables standard `multilib`, and runs
-`pacman -Syu` when that repository is newly enabled. Otherwise, a full upgrade
-requires `-e packages_upgrade_system=true`. Missing AUR packages use `yay`,
-which Ansible can build as the regular user. Choose `packages_aur_action=ask`
-to confirm AUR work or `skip` to leave it out. Native makepkg builds disable
-debug packages and may not run on a different CPU.
+| Goal                                 | Command                                                                |
+| :----------------------------------- | :--------------------------------------------------------------------- |
+| Preview a full run                   | `make install ANSIBLE_ARGS=--check`                                    |
+| Print only the package plan          | `make install ANSIBLE_ARGS="-e packages_action=plan"`                  |
+| Deploy the dotfiles only             | `make install ANSIBLE_ARGS="--tags dotfiles_deploy"`                   |
+| Preview the dotfiles only            | `make install ANSIBLE_ARGS="--check --tags dotfiles"`                  |
+| Remove packages this installer added | `make install ANSIBLE_ARGS="-e packages_action=reconcile"`             |
+| Set up the Steam group               | `make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"` |
+| Upgrade the whole system on Arch     | `make install ANSIBLE_ARGS="-e packages_upgrade_system=true"`          |
+| List or remove dotfile backups       | `make ansible-backup-ls` / `make ansible-backup-rm`                    |
 
-Installation is additive. Use `make install ANSIBLE_ARGS="-e packages_action=reconcile"` to
-preview and confirm removals of packages recorded as managed by this installer.
-Pre-existing packages remain unmanaged. See the [Ansible guide](./ansible/README.md)
-for configuration, package ownership, and system settings.
+Reconciliation previews the removals and asks for confirmation. The backup
+targets use `$HOME`; set `ANSIBLE_BACKUP_ROOT=/path` to select another root.
 
-## Ansible tasks
+<details>
+<summary>Package selection and Arch specifics</summary>
 
-Use `make install ANSIBLE_ARGS="--tags <tag>"`. The supported-distribution check always runs.
+Package groups come from OS defaults and detected GPUs. Set
+`packages_host_groups` per hostname in `ansible/host_vars/localhost.yml`, or
+pass `-e packages_group_selection=...` for one run. Automatic GPU selection
+requires every controller to be identified. Package variables load by OS
+family, then use the first matching exact-version, major-version, or
+distribution override.
 
-| Tags                                       | Action                                                                                                    |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `packages`                                 | Run package selection, installation, and reconciliation tasks.                                            |
-| `packages_select`                          | Select package groups.                                                                                    |
-| `packages_install`, `packages_reconcile`   | Configure repositories and install packages; the latter also runs reconciliation.                         |
-| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                                             |
-| `yay`                                      | Configure pacman and run the AUR flow; selected official packages are not installed by this tag.          |
-| `system`                                   | Run system configuration.                                                                                 |
-| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                                                         |
-| `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                                               |
-| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                                             |
-| `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                                                         |
-| `gaming`                                   | Check dependencies and configure services for the selected Steam group.                                   |
-| `dotfiles`                                 | Run the full dotfiles role.                                                                               |
-| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy configuration.                                                            |
-| `dotfiles_claude`                          | Add the Claude Code status line to `~/.claude/settings.json` when `claude` is installed.                  |
-| `dotfiles_runtime`, `vim`                  | Check Vim and update plugins when `dotfiles_update_vim_plugins=true`.                                     |
-| `systemd`                                  | Deploy user units, aliases, masks, and activation links; enable and start the configured graphical units. |
-| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                                                   |
+On Arch, Ansible configures pacman, enables the standard `multilib` repository,
+and runs `pacman -Syu` when it enables that repository. Missing AUR packages
+use `yay`, which Ansible can build as the regular user. Set
+`packages_aur_action=ask` to confirm AUR work or `skip` to leave it out. Native
+makepkg builds disable debug packages and may not run on a different CPU.
 
-Configuration changes notify their handlers. Active audio services reload when
-supported, otherwise restart. Changed unit definitions and drop-ins restart
-only the affected active units after `daemon-reload`; changes to symbolic links
-only reload the manager. Mako and Waybar reload automatically; their internal
-handler tags are not standalone commands.
+</details>
 
-The default graphical units include `hypridle.service`. Run
-`make install ANSIBLE_ARGS="--tags systemd"` to deploy user units and enable the configured list
-in `dotfiles_systemd_graphical_units`. Hypridle requires `WAYLAND_DISPLAY` in
-the user systemd environment to start.
+## Ansible tags
 
-## Gaming and AMD CPUs
+Run a subset with `make install ANSIBLE_ARGS="--tags <tag>"`. The
+supported-distribution check always runs. The [Ansible guide](./ansible/README.md)
+covers variables, package ownership, and system settings.
 
-Select `21_steam`, then run `make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"`.
-The group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
-Ansible enables both services and stops configuration if another known CPU
-power manager is active or enabled. Once this check passes, it removes any
-systemd mask from `power-profiles-daemon.service` before enabling it.
-CachyOS adds its Ananicy rules, Proton,
-and `cachyos-settings`, which provides `game-performance`; these packages are
-not selected on plain Arch. `steam-optimize` also works without
-`game-performance` and sets shader-cache limits for AMD and NVIDIA.
+| Tags                                       | Action                                                                        |
+| :----------------------------------------- | :---------------------------------------------------------------------------- |
+| `packages`                                 | Select, install, and reconcile packages.                                      |
+| `packages_select`                          | Select package groups.                                                        |
+| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                        |
+| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                 |
+| `yay`                                      | Configure pacman and run the AUR flow only.                                   |
+| `system`                                   | Run the whole system role.                                                    |
+| `package_services`                         | Enable the services of the selected package groups.                           |
+| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                             |
+| `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                   |
+| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                 |
+| `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |
+| `gaming`                                   | Check dependencies and configure services for the Steam group.                |
+| `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
+| `dotfiles`                                 | Run the whole dotfiles role.                                                  |
+| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
+| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
+| `dotfiles_runtime`, `vim`                  | Check Vim; update plugins with `dotfiles_update_vim_plugins=true`.            |
+| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
+| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                       |
 
-The `amd_cpu_performance` tag uses CPU facts and kernel controls. It applies
-`balance_performance` EPP through the `powersave` governor only when AMD P-State
-is active and no known power manager is active or enabled. X3D CCD mode is
-opt-in. These CPU settings last until reboot; a failed EPP update restores the
-original governor and preference. See [AMD options](./ansible/README.md#amd-cpu-performance)
-and [gaming setup](./ansible/README.md#gaming) for overrides and dependencies.
+Changed files notify their handlers: Mako and Waybar reload, active audio
+services reload or restart, and active user units whose definitions changed
+restart after `daemon-reload`. Hypridle needs `WAYLAND_DISPLAY` in the user
+systemd environment to start.
+
+## Desktop
+
+The Hyprland configuration is written in Lua. See the
+[session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY
+startup, GNOME Keyring PAM, UWSM, and the systemd session.
+
+| Shortcut                            | Action                                           |
+| :---------------------------------- | :----------------------------------------------- |
+| `SUPER + Return`                    | Terminal                                         |
+| `SUPER + E / C / W`                 | File manager / editor / browser                  |
+| `SUPER + D`                         | Application menu                                 |
+| `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
+| `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
+| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
+| `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
+| `SUPER + SHIFT + V`                 | Clipboard history                                |
+| `Print` / `SUPER + P`               | Screenshot                                       |
+| `SUPER + N`                         | Dismiss notifications; `Shift` restores the last |
+
+Mako shows up to five notifications in the top-right corner, newest first, and
+draws them above fullscreen windows. `steam-optimize` turns on do-not-disturb
+during games; critical alerts still appear and stay until dismissed.
+
+`awww.sh` picks wallpapers per monitor from local files or NFS/CIFS mounts.
+Copy its sample to `~/.config/awww/awww.conf` to configure sources. Renders are
+cached with a 2 GiB default quota, and `awww_random.timer` changes wallpapers
+every 30 minutes. ImageMagick is required.
+
+Hyprlock shows the time, battery, and current media. Its carousel option uses
+the AWWW sources; see the
+[Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
+
+## Gaming and GPUs
+
+Select the `21_steam` group, then run
+`make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"`. The
+group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
+Ansible enables both services and stops if another known CPU power manager is
+active or enabled. On CachyOS it also adds the CachyOS Ananicy rules, Proton,
+and `cachyos-settings`, which provides `game-performance`. `steam-optimize`
+works without `game-performance` and sets shader-cache limits for AMD and
+NVIDIA.
+
+The `amd_cpu_performance` tag applies `balance_performance` EPP through the
+`powersave` governor, only when AMD P-State is active and no known power
+manager is running. X3D CCD mode is opt-in. A failed EPP update restores the
+original governor and preference.
+
+The `lact` tag manages `/etc/lact/config.yaml` with the GPU identifiers
+reported by the running LACT daemon. It keeps existing profiles and fan curves,
+backs up changes, and restarts `lactd` when needed. It adds `Auto`, `Adaptive`,
+and `PreferMaximumPerformance` profiles, named after LACT's PowerMizer modes,
+for detected AMD and NVIDIA GPUs. Intel GPU settings are left unchanged.
+
+See [AMD options](./ansible/README.md#amd-cpu-performance) and
+[gaming setup](./ansible/README.md#gaming) for overrides and dependencies.
 
 ## Customize
 
-Set Git identity in the untracked `~/.gitconfig.local`; the managed [`.gitconfig`](./ansible/roles/dotfiles/files/home/.gitconfig)
-includes it.
+Set your Git identity in the untracked `~/.gitconfig.local`; the managed
+[`.gitconfig`](./ansible/roles/dotfiles/files/home/.gitconfig) includes it.
 
 | Configuration      | Location                                                                                                                               |
 | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | Shell and login    | [Zsh files](./ansible/roles/dotfiles/files/home/zsh/) and [`.zshrc`](./ansible/roles/dotfiles/templates/home/.zshrc.j2)                |
 | Hyprland           | [`.config/hypr/`](./ansible/roles/dotfiles/files/home/.config/hypr/)                                                                   |
 | Waybar             | [`.config/waybar/`](./ansible/roles/dotfiles/files/home/.config/waybar/)                                                               |
+| Notifications      | [`.config/mako/config`](./ansible/roles/dotfiles/files/home/.config/mako/config)                                                       |
 | Terminal and tmux  | [Alacritty](./ansible/roles/dotfiles/files/home/.config/alacritty/) and [`.tmux.conf`](./ansible/roles/dotfiles/files/home/.tmux.conf) |
 | Editors            | [Neovim](./ansible/roles/dotfiles/files/home/.config/nvim/) and [Vim](./ansible/roles/dotfiles/files/home/.vimrc)                      |
 | Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                         |
 
-Host-aware files are rendered from `ansible/roles/dotfiles/templates/`. Static
-files are copied from `ansible/roles/dotfiles/files/`. Conflicting managed paths are backed up before replacement. Unit symlinks
-are preserved as links; deployment stops if a regular file or directory occupies
-one of their destinations.
-
-Use `make ansible-backup-ls` to list backups created for Ansible-managed
-dotfiles, or `make ansible-backup-rm` to review and remove them after a
-confirmation prompt. Both targets use `$HOME` by default; set
-`ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.
+Static files are copied from `ansible/roles/dotfiles/files/` and host-aware
+files are rendered from `ansible/roles/dotfiles/templates/`. Managed paths that
+conflict are backed up before replacement. Unit symlinks stay links; deployment
+stops if a regular file or directory occupies one of their destinations.
 
 ## Shell and editors
 
-Zsh uses Oh My Zsh, autosuggestions, syntax highlighting, and custom aliases and
-functions in [`zsh/`](./ansible/roles/dotfiles/files/home/zsh/). Notable helpers
-include `arch_update`, `clean_arch`, `extract`, `mtail`, and GPG encrypt/decrypt
-functions. The Neovim setup uses Lua, Telescope, Treesitter, Mason, and native
-LSP. It supports Neovim 0.7.2 and newer: Neovim 0.7 uses a compatibility
-loader with older plugin releases, while Neovim 0.8+ uses lazy.nvim. The Vim
-setup uses Vundle.
+Zsh uses Oh My Zsh, autosuggestions, syntax highlighting, and the aliases and
+functions in [`zsh/`](./ansible/roles/dotfiles/files/home/zsh/), including
+`arch_update`, `clean_arch`, `extract`, `mtail`, and GPG helpers. `mtail`
+follows log files across rotation; quote globs to include files created later:
 
-### Install Vim or Neovim on its own
+```zsh
+mtail '*.log' '/var/log/app/*.log'
+```
 
-GitLab publishes [Vim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim)
-and [Neovim](https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim)
-configuration archives. Download each archive to a temporary file, inspect its
-file list, then extract it. Back up any existing configuration first; extraction
-replaces files with matching names.
+Neovim uses Lua, Telescope, Treesitter, Mason, and native LSP. Neovim 0.8+
+loads plugins with lazy.nvim; Neovim 0.7.2 uses a compatibility loader with
+older plugin releases. Vim uses Vundle.
 
-For Neovim:
+GitLab publishes standalone configuration archives for both editors. Back up
+your current configuration first: extraction replaces files with the same
+names.
+
+<details>
+<summary>Install the Neovim configuration on its own</summary>
+
+The archive installs `~/.config/nvim`.
 
 ```sh
 set -eu
@@ -152,7 +226,14 @@ read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
 tar -xzf "$archive" -C "$HOME"
 ```
 
-For Vim:
+</details>
+
+<details>
+<summary>Install the Vim configuration on its own</summary>
+
+The archive installs `~/.vim` and `~/.vimrc`. To install the plugins as well,
+run [`scripts/vim.sh`](./scripts/vim.sh), which downloads the archive and runs
+Vundle.
 
 ```sh
 set -eu
@@ -165,55 +246,12 @@ read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
 tar -xzf "$archive" -C "$HOME"
 ```
 
-The Neovim archive installs `~/.config/nvim`. The Vim archive installs `~/.vim`
-and `~/.vimrc`; to install Vim plugins as well, run
-[`scripts/vim.sh`](./scripts/vim.sh), which runs Vundle after downloading the
-archive.
-
-The `mtail` function follows current and future log files across rotation. Quote
-globs to include files created later:
-
-```zsh
-mtail '*.log' '/var/log/app/*.log'
-```
-
-## Desktop
-
-The Hyprland configuration uses Lua and requires Hyprland 0.55+. See the
-[session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY startup,
-GNOME Keyring PAM, UWSM, and systemd session setup.
-
-| Shortcut                            | Action                                           |
-| :---------------------------------- | :----------------------------------------------- |
-| `SUPER + Return`                    | Terminal                                         |
-| `SUPER + E / C / W`                 | File manager / editor / browser                  |
-| `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
-| `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
-| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
-| `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
-| `Print` / `SUPER + P`               | Screenshot                                       |
-| `SUPER + N`                         | Dismiss notifications; `Shift` restores the last |
-
-`awww.sh` selects wallpapers per monitor from local files or configured NFS/CIFS
-mounts. Copy its sample to `~/.config/awww/awww.conf` to configure sources.
-Renders are cached under a managed directory with a 2 GiB default quota;
-references are preserved. ImageMagick is required. `awww.service` starts with
-Hyprland and `awww_random.timer` changes wallpapers every 30 minutes.
-
-Hyprlock displays time, battery, and media information. Its carousel option
-uses configured AWWW sources. See the [Hyprlock templates and helpers](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2)
-for details. The `lact` tag manages `/etc/lact/config.yaml` using GPU identifiers
-reported by the running LACT daemon. It repairs identifier casing, preserves
-existing profiles and fan curves, backs up changes and restarts `lactd` when
-needed. New `Auto`, `Adaptive` and `PreferMaximumPerformance` profiles use
-detected AMD and NVIDIA GPUs without custom fan curves. Their names follow
-LACT's PowerMizer modes. Intel GPU settings are left unchanged. The old
-home-directory LACT file is no longer deployed or used by this role.
+</details>
 
 ## Scripts
 
 The playbook deploys [`~/.bin/`](./ansible/roles/dotfiles/files/home/.bin/) and
-adds it to `PATH` in Zsh.
+Zsh adds it to `PATH`.
 
 | Script                                                                                                                           | Purpose                                          |
 | :------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------- |
@@ -226,24 +264,24 @@ adds it to `PATH` in Zsh.
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
 
-Package cleanup is opt-in. Pass `--clean-packages` to `backup.sh` to run
-`yay -Sc` on Arch or `apt autoremove --purge` on Debian.
+`backup.sh` only cleans package caches when you pass `--clean-packages`: it
+then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
 
-## CI and releases
+## Development
 
-Run `make test` for the Python and shell suites. The Python tests run one
-process per `tests/test_*.py` file, as many at a time as there are CPUs; set
-`JOBS=N` to change that. Most of them drive `ansible-playbook`, which spends its
-time starting Python for each module call, so they parallelize well. A failing
-file has its full log printed. `make coverage` runs the Python suite under [coverage.py](https://coverage.readthedocs.io/) (pinned in
-`requirements-test.txt`) and fails below the floor set in
-[`.coveragerc`](./.coveragerc). It measures the Ansible modules, filter plugins
-and backup helper. GitLab CI runs the same report and publishes it as a
-Cobertura artifact.
+| Command             | What it does                                                                |
+| :------------------ | :-------------------------------------------------------------------------- |
+| `make test`         | Run the Python and shell test suites. Set `JOBS=N` to limit parallelism.    |
+| `make coverage`     | Run the Python tests under coverage.py and enforce the `.coveragerc` floor. |
+| `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |
+| `make screenshot`   | Render the desktop showcase used at the top of this page.                   |
 
-GitHub, GitLab, and Gitea use shared scripts in [`scripts/ci/`](./scripts/ci/).
-See the [GitHub workflow documentation](./.github/workflows/README.md) and
-[GitLab CI documentation](./.gitlab/README.md). Tags matching `v*` publish a
-release using the matching changelog section.
+GitLab, GitHub, and Gitea share the scripts in [`scripts/ci/`](./scripts/ci/);
+see the [GitHub workflows](./.github/workflows/README.md) and
+[GitLab CI](./.gitlab/README.md) documentation. Pushing a `v*` tag publishes a
+release with the matching [changelog](./CHANGELOG.md) section. The repository
+is mirrored on [GitLab](https://gitlab.com/pad92/dotfiles),
+[GitHub](https://github.com/pad92/dotfiles), and
+[Codeberg](https://codeberg.org/pad7/.dotfiles).
 
-_Maintained by [pad](https://gitlab.com/pad92) since 2015._
+_Maintained by [pad](https://gitlab.com/pad92)🐐 with ❤️ since 2015 (11+ years)._

@@ -4,6 +4,8 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
+
 ### Added
 
 - **CI**:
@@ -59,6 +61,11 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Use the detected boot GPU to order DRM devices, allowing application-level
     GPU offload to choose its own driver.
+- **README**:
+  - Reorganize the README around a quick start, a table of common commands,
+    and collapsible details, with pipeline and release badges.
+  - List the Ansible collections to install when only `ansible-core` is
+    available, and document the `package_services` and `lact` tags.
 - **Mako**:
   - Show at most five notifications instead of ten. Repeated notifications
     with the same application, summary, and urgency are merged into one.
@@ -69,8 +76,8 @@ Release history and changes planned for the next version.
   - Match the corners, padding, and spacing to Hyprland's rounding and gaps.
     The progress bar uses Gruvbox blue.
 - **Ansible**:
-  - Move the Ansible launcher into `make install`; pass playbook options
-    through `ANSIBLE_ARGS`.
+  - Remove the `./install` launcher. Run the playbook with `make install` and
+    pass its options through `ANSIBLE_ARGS`.
   - Manage dotfile deployment, backups, Pacman operations, sysctl values, Vim
     checkouts, submodules, and sysfs controls through Ansible modules. The
     backup helper now only collects paths.
@@ -107,6 +114,9 @@ Release history and changes planned for the next version.
   - Install the pinned Ansible collections in the unit test job. The gaming
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.
+  - Install `make` in the CI test image and install the pinned Ansible
+    collections. Install Git and configure Ansible's module paths and temporary
+    configuration for world-writable checkouts.
 - **Mako**:
   - Show critical notifications in do-not-disturb mode, which `steam-optimize`
     enables during games. They get a red border and stay until dismissed,
@@ -125,10 +135,6 @@ Release history and changes planned for the next version.
 - **yay**:
   - Detect `curl` and `wget` commands piped to `sh` or `bash` in the PKGBUILD
     scan hook.
-- **CI**:
-  - Install `make` in the CI test image and install the pinned Ansible
-    collections. Install Git and configure Ansible's module paths and temporary
-    configuration for world-writable checkouts.
 - **Ansible**:
   - Fix submodule path reporting, first Vim clones, backup and sysctl check
     mode, and initramfs change notifications. Avoid refreshing Arch package
