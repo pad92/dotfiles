@@ -24,6 +24,8 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Allow hypridle to be enabled or disabled per hostname. Disabled hosts stop
     the user service and prevent it from starting automatically.
+  - Dismiss all notifications with `SUPER+N`; `SUPER+SHIFT+N` restores the
+    last one.
 - **Waybar**:
   - Add NVIDIA PowerMizer profiles while keeping the existing AMD profiles.
 - **Ansible system**:
@@ -58,12 +60,14 @@ Release history and changes planned for the next version.
   - Use the detected boot GPU to order DRM devices, allowing application-level
     GPU offload to choose its own driver.
 - **Mako**:
-  - Show notifications in the top-right corner, below Waybar, so they no
-    longer cover the input lines at the bottom of windows. The newest one
-    sits in the corner and the stack is capped at five.
-  - Use a translucent background blurred by Hyprland, as Waybar does, show
-    the sending application above the summary, and give low-urgency
-    notifications a grey border.
+  - Show at most five notifications instead of ten. Repeated notifications
+    with the same application, summary, and urgency are merged into one.
+  - Make the background translucent like Waybar's and blur it with a Hyprland
+    layer rule.
+  - Show the sending application above each summary. Low-urgency
+    notifications get a grey border.
+  - Match the corners, padding, and spacing to Hyprland's rounding and gaps.
+    The progress bar uses Gruvbox blue.
 - **Ansible**:
   - Move the Ansible launcher into `make install`; pass playbook options
     through `ANSIBLE_ARGS`.
@@ -104,21 +108,13 @@ Release history and changes planned for the next version.
     tests failed because `community.general.pacman` could not be resolved, and
     four collection-dependent tests were skipped.
 - **Mako**:
-  - Keep the newest notifications visible. The bottom-right stack was sorted
-    oldest first, so the ten-notification cap kept the oldest ones and hid the
-    new ones behind a "(N more)" placeholder.
   - Show critical notifications in do-not-disturb mode, which `steam-optimize`
     enables during games. They get a red border and stay until dismissed,
     even when the sender requests a timeout.
-  - Draw notifications on the overlay layer, so fullscreen windows no longer
-    cover them. `SUPER+N` dismisses all notifications and `SUPER+SHIFT+N`
-    restores the last one.
+  - Draw notifications above fullscreen windows. They used Hyprland's top
+    layer, which fullscreen windows cover.
   - Show icons from the Papirus-Dark GTK theme. Mako only searched `hicolor`
     and `pixmaps`, so names such as `dialog-warning` had no icon.
-  - Align the notification corners, padding, and spacing with Hyprland's
-    rounding and gaps, and draw the progress bar in Gruvbox blue.
-  - Group repeated notifications that share an application, a summary, and
-    an urgency.
   - Install `mako` and `ttf-dejavu` with the default Arch Hyprland group. The
     role enabled `mako.service` without installing Mako.
 - **SSH**:

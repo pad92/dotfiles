@@ -192,7 +192,7 @@ GNOME Keyring PAM, UWSM, and systemd session setup.
 | `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
 | `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
 | `Print` / `SUPER + P`               | Screenshot                                       |
-| `SUPER + N`                         | Dismiss all notifications; `Shift` restores one  |
+| `SUPER + N`                         | Dismiss notifications; `Shift` restores the last |
 
 `awww.sh` selects wallpapers per monitor from local files or configured NFS/CIFS
 mounts. Copy its sample to `~/.config/awww/awww.conf` to configure sources.
