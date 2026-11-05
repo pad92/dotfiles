@@ -97,6 +97,7 @@ covers variables, package ownership, and system settings.
 | `system`                                   | Run the whole system role.                                                    |
 | `package_services`                         | Enable the services of the selected package groups.                           |
 | `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                             |
+| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.             |
 | `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                   |
 | `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                 |
 | `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |

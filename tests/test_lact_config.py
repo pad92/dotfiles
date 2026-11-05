@@ -199,12 +199,16 @@ class LactDeploymentTests(unittest.TestCase):
                         "ANSIBLE_CONFIG": str(ansible_config),
                         "ANSIBLE_FILTER_PLUGINS": str(ROOT / "ansible/filter_plugins"),
                         "ANSIBLE_LOCAL_TEMP": str(work / "tmp"),
+                        "ANSIBLE_DEPRECATION_WARNINGS": "True",
                     },
                     capture_output=True,
                     text=True,
                     timeout=60,
                     check=False,
                 )
+                # Deep-copying lazy containers rebuilt the templar's plugin
+                # loaders, which warned about aliases.
+                self.assertNotIn("PluginLoader with aliases", result.stderr)
                 if expected_success:
                     self.assertEqual(
                         result.returncode, 0, result.stdout + result.stderr

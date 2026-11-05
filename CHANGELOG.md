@@ -4,6 +4,42 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Added
+
+- **DNS**:
+  - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
+    off, mDNS for resolving only, and no compiled-in public fallback servers.
+    `system_dns_manage: false` leaves the resolver alone.
+  - Add a migration note for hosts installed with openresolv and the dnsmasq
+    relay (`dist/arch/dns-migration.md`): preview, apply, checks, undo, and
+    package removal.
+
+### Changed
+
+- **DNS**:
+  - Link `/etc/resolv.conf` to the resolved stub. A regular file that another
+    program owns, such as a connected VPN client, is reported and kept.
+  - Remove the NetworkManager `dns.conf` and the `rc-manager.conf` of the
+    former install guide when they set nothing but the DNS mode.
+  - On hosts with the former dnsmasq relay, stop `dnsmasq.service`, remove the
+    relay files, and move automatic profiles that used it back to DHCP DNS.
+    Removed files are backed up under `/var/lib/dotfiles/dns-backup`.
+  - With Docker, pin `docker0` to `10.184.1.1/28` (Docker's default is
+    `172.17.0.1/16`) and use resolved as the containers' DNS server, VPN split
+    DNS included. Containers on the default bridge change address, that bridge
+    holds at most 13 of them, and `docker.service` needs a restart.
+- **Documentation**:
+  - The Arch install guide installs `systemd-resolvconf` instead of
+    `openresolv` and links `/etc/resolv.conf` to the resolved stub.
+
+### Fixed
+
+- **Ansible**:
+  - The `docker_daemon_dns` and `lact_config` filters no longer deep-copy
+    Ansible's lazy containers. The copy also copied the templar, and rebuilding
+    its plugin loaders printed `PluginLoader with aliases` deprecation warnings
+    (seen with ansible-core 2.22).
+
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 
 ### Added

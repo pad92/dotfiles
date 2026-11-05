@@ -49,3 +49,21 @@
     msg: >-
       Docker group membership changed. Log out and back in before using docker
       without sudo.
+
+# A restart, not a reload: resolved binds DNSStubListenerExtra sockets only at
+# startup and keeps an earlier FallbackDNS choice across reloads.
+- name: Restart systemd-resolved
+  ansible.builtin.systemd_service:
+    name: systemd-resolved.service
+    state: restarted
+
+- name: Reload NetworkManager
+  ansible.builtin.systemd_service:
+    name: NetworkManager.service
+    state: reloaded
+
+- name: Report Docker restart required
+  ansible.builtin.debug:
+    msg: >-
+      Docker reads its bridge and DNS settings at startup. Restart
+      docker.service once no running container needs to stay up.

@@ -13,6 +13,7 @@
     - gaming
     - kernel_hardening
     - package_services
+    - dns
     - system
 
 - name: Select requested package groups
@@ -26,6 +27,7 @@
     - gaming
     - kernel_hardening
     - package_services
+    - dns
     - system
 
 - name: Configure Arch package repositories

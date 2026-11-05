@@ -1,0 +1,469 @@
+---
+- name: Validate the DNS policy
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - system_dns_llmnr in ['yes', 'no', 'resolve']
+      - system_dns_multicast_dns in ['yes', 'no', 'resolve']
+      - system_dns_fallback_servers is sequence
+      - system_dns_fallback_servers is not string
+    fail_msg: >-
+      system_dns_llmnr and system_dns_multicast_dns take the quoted strings
+      'yes', 'no' or 'resolve'; system_dns_fallback_servers is a list.
+
+- name: Select the DNS listeners for the selected package groups
+  ansible.builtin.set_fact:
+    system_dns_docker_selected: >-
+      {{ '12_containers_docker' in (packages_selected_groups |
+         default(packages_host_groups.get(ansible_facts['hostname'], []))) }}
+
+- name: Add the Docker bridge to the resolved stub listeners
+  ansible.builtin.set_fact:
+    system_dns_stub_listener_addresses: >-
+      {{ [system_docker_bridge_ip | docker_bridge_address]
+         if system_dns_docker_selected else [] }}
+
+# Everything up to the port check only reads state, so a conflict stops the
+# play before anything changes.
+- name: Find the standalone dnsmasq unit
+  ansible.builtin.stat:
+    path: '{{ system_unit_directory }}/dnsmasq.service'
+    get_checksum: false
+  register: system_dns_dnsmasq_unit
+
+- name: Check for files of the former DNS relay
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    get_checksum: false
+  loop: '{{ system_dns_relay_files }}'
+  register: system_dns_relay_stats
+
+- name: Read the files of the former DNS relay
+  ansible.builtin.slurp:
+    src: '{{ item.stat.path }}'
+  loop: >-
+    {{ system_dns_relay_stats.results | selectattr('stat.exists')
+       | selectattr('stat.isreg') | list }}
+  loop_control:
+    label: '{{ item.stat.path }}'
+  register: system_dns_relay_contents
+
+- name: Check for legacy NetworkManager DNS settings
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    get_checksum: false
+  loop: '{{ system_dns_legacy_files }}'
+  register: system_dns_legacy_stats
+
+- name: Read legacy NetworkManager DNS settings
+  ansible.builtin.slurp:
+    src: '{{ item.stat.path }}'
+  loop: >-
+    {{ system_dns_legacy_stats.results | selectattr('stat.exists')
+       | selectattr('stat.isreg') | list }}
+  loop_control:
+    label: '{{ item.stat.path }}'
+  register: system_dns_legacy_contents
+
+# A legacy file is removed only when it sets nothing but the NetworkManager
+# DNS mode, which dns=systemd-resolved replaces.
+- name: Record the leftovers of the former resolver setup
+  ansible.builtin.set_fact:
+    system_dns_relay_found: >-
+      {{ system_dns_relay_stats.results | selectattr('stat.exists') | list | length > 0 }}
+    system_dns_relay_servers: >-
+      {{ system_dns_relay_contents.results | map(attribute='content')
+         | map('b64decode') | list | dnsmasq_upstream_servers }}
+    system_dns_legacy_split: >-
+      {{ system_dns_legacy_contents.results | nm_legacy_dns_files }}
+
+- name: Record the leftovers to back up and remove
+  ansible.builtin.set_fact:
+    system_dns_legacy_kept: '{{ system_dns_legacy_split.keep }}'
+    system_dns_leftover_paths: >-
+      {{ (system_dns_relay_stats.results | selectattr('stat.exists')
+          | map(attribute='stat.path') | list)
+         + system_dns_legacy_split.remove }}
+
+- name: Report legacy NetworkManager settings left in place
+  ansible.builtin.debug:
+    msg: >-
+      Left unchanged because they set more than the DNS mode:
+      {{ system_dns_legacy_kept | join(', ') }}. Remove any dns= or rc-manager=
+      line from them, or they may override dns=systemd-resolved.
+  when: system_dns_legacy_kept | length > 0
+
+- name: List the port 53 listeners
+  ansible.builtin.command:
+    argv: [ss, -Hlntup, 'sport = :53']
+  register: system_dns_port_listeners
+  changed_when: false
+  check_mode: false
+  when: system_dns_docker_selected
+
+# resolved must bind port 53 on the bridge address. The relay dnsmasq is
+# stopped below, so only another program holding that address or a wildcard
+# blocks it; that program is left running.
+- name: Require the Docker bridge address to be free for resolved
+  ansible.builtin.assert:
+    quiet: true
+    that: system_dns_port_conflicts | length == 0
+    fail_msg: >-
+      Another program listens on port 53 at the Docker bridge address or on all
+      addresses, so systemd-resolved could not serve containers:
+      {{ system_dns_port_conflicts | join('; ') }}. Stop it or make it listen on
+      specific addresses, then run the dns tag again.
+  vars:
+    system_dns_port_conflicts: >-
+      {{ system_dns_port_listeners.stdout
+         | dns_port_conflicts(system_docker_bridge_ip | docker_bridge_address,
+             ['dnsmasq'] if system_dns_relay_found and system_dns_dnsmasq_unit.stat.exists
+             else []) }}
+  when: system_dns_docker_selected
+
+- name: Create the systemd-resolved drop-in directory
+  ansible.builtin.file:
+    path: '{{ system_dns_resolved_dropin | dirname }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Manage the systemd-resolved policy
+  ansible.builtin.template:
+    src: resolved-dns.conf.j2
+    dest: '{{ system_dns_resolved_dropin }}'
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart systemd-resolved
+
+- name: Let NetworkManager push link DNS servers to systemd-resolved
+  ansible.builtin.copy:
+    dest: '{{ system_dns_networkmanager_conf }}'
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by Ansible.
+      [main]
+      dns=systemd-resolved
+  notify: Reload NetworkManager
+
+# Hosts installed with the former guide run openresolv with resolved disabled.
+# resolved must run before dnsmasq stops and before resolv.conf points at it.
+- name: Enable and start systemd-resolved
+  ansible.builtin.systemd_service:
+    name: systemd-resolved.service
+    enabled: true
+    state: started
+
+# Profiles that used the former relay point at 127.0.0.1 and ignore DHCP DNS;
+# they would lose name resolution once the relay is gone. Without the relay
+# files, a loopback server is a deliberate local resolver and is left alone.
+- name: Move NetworkManager profiles off the loopback relay
+  when: system_dns_relay_found | bool
+  block:
+    - name: List NetworkManager profiles
+      ansible.builtin.command:
+        argv: [nmcli, -g, UUID, connection, show]
+      register: system_dns_nm_profiles
+      changed_when: false
+      check_mode: false
+
+    # Keyed output has one property:value line per setting the profile has, so
+    # a port profile without ipv4 or ipv6 is still read correctly.
+    - name: Read the DNS servers and methods of each profile
+      ansible.builtin.command:
+        argv:
+          - nmcli
+          - -e
+          - 'no'
+          - -t
+          - -f
+          - ipv4.dns,ipv6.dns,ipv4.method,ipv6.method,connection.id
+          - connection
+          - show
+          - '{{ item }}'
+      loop: '{{ system_dns_nm_profiles.stdout_lines }}'
+      register: system_dns_nm_profile_dns
+      changed_when: false
+      check_mode: false
+
+    - name: Select profiles that only use a loopback DNS relay
+      ansible.builtin.set_fact:
+        system_dns_nm_migration: >-
+          {{ system_dns_nm_profile_dns.results | nm_loopback_dns_profiles }}
+
+    - name: Report profiles that mix loopback and remote DNS servers
+      ansible.builtin.debug:
+        msg: >-
+          Left unchanged, check their DNS servers manually:
+          {{ system_dns_nm_migration.mixed | map(attribute='name') | join(', ') }}
+      when: system_dns_nm_migration.mixed | length > 0
+
+    # Without DHCP DNS, clearing the server would leave the link with none.
+    - name: Report static profiles that pointed at the relay
+      ansible.builtin.debug:
+        msg: >-
+          Left unchanged because their addressing is not automatic:
+          {{ system_dns_nm_migration.static
+             | map(attribute='name') | unique | join(', ') }}.
+          Replace their loopback DNS server with a real one{{
+          ', for example a server the relay forwarded to: '
+          ~ system_dns_relay_servers | join(', ')
+          if system_dns_relay_servers | length > 0 else '' }}.
+      when: system_dns_nm_migration.static | length > 0
+
+    # Printed in check mode too: ansible.cfg hides skipped items, so the
+    # preview would not show which profiles the next task changes.
+    - name: Report profiles moved to DHCP DNS
+      ansible.builtin.debug:
+        msg: >-
+          DNS servers reset to DHCP on:
+          {{ system_dns_nm_migration.reset | map(attribute='name') | unique | join(', ') }}
+      when: system_dns_nm_migration.reset | length > 0
+
+    - name: Use DHCP DNS on profiles that relied on the loopback relay
+      ansible.builtin.command:
+        argv: "{{ ['nmcli', 'connection', 'modify', item.uuid] + item.settings }}"
+      loop: '{{ system_dns_nm_migration.reset }}'
+      loop_control:
+        label: '{{ item.name }}'
+      changed_when: true
+
+    - name: List active NetworkManager connections
+      ansible.builtin.command:
+        argv: [nmcli, -t, -f, 'UUID,TYPE,DEVICE', connection, show, --active]
+      register: system_dns_nm_active
+      changed_when: false
+      check_mode: false
+      when: system_dns_nm_migration.reset | length > 0
+
+    - name: Select the devices to reapply
+      ansible.builtin.set_fact:
+        system_dns_nm_reapply: >-
+          {{ system_dns_nm_active.stdout | default('')
+             | nm_reapply_targets(system_dns_nm_migration.reset) }}
+
+    # Reapply updates DNS on the live connection without reconnecting it.
+    - name: Reapply DNS on active migrated profiles
+      ansible.builtin.command:
+        argv: [nmcli, device, reapply, '{{ item }}']
+      loop: '{{ system_dns_nm_reapply.devices }}'
+      changed_when: true
+
+    - name: Report migrated connections that need a reconnect
+      ansible.builtin.debug:
+        msg: >-
+          Reconnect these connections to use their new DNS servers:
+          {{ system_dns_nm_reapply.reconnect | join(', ') }}
+      when: system_dns_nm_reapply.reconnect | length > 0
+
+# Backups live outside dispatcher.d and dnsmasq.d so neither loads them, and
+# keep the full source path so files with the same name do not collide.
+- name: Create the DNS backup directories
+  ansible.builtin.file:
+    path: '{{ system_dns_backup_dir }}{{ item }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop: >-
+    {{ ([''] + system_dns_leftover_paths | map('dirname') | list) | unique
+       if system_dns_leftover_paths | length > 0 else [] }}
+  register: system_dns_backup_dirs
+
+# Check mode does not create the directories, so a first run cannot copy.
+- name: Back up files of the former DNS setup
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: '{{ system_dns_backup_dir }}{{ item }}'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0600'
+  loop: '{{ system_dns_leftover_paths }}'
+  when: not (ansible_check_mode and system_dns_backup_dirs is changed)
+
+- name: Remove files of the former DNS setup after backup
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop: '{{ system_dns_leftover_paths }}'
+  notify: Reload NetworkManager
+
+# Only the relay dnsmasq is stopped. Without the relay files, dnsmasq.service
+# serves something else; the port check above reports it if it blocks Docker.
+# libvirt runs its own dnsmasq processes, which this unit does not control.
+- name: Stop and disable the standalone dnsmasq relay
+  ansible.builtin.systemd_service:
+    name: dnsmasq.service
+    enabled: false
+    state: stopped
+  when:
+    - system_dns_dnsmasq_unit.stat.exists
+    - system_dns_relay_found | bool
+  notify: Restart systemd-resolved
+
+# The resolved restart and the NetworkManager reload must happen before
+# resolv.conf points at the stub, so the stub has its listeners and link
+# servers when the first query reaches it.
+- name: Apply the resolver changes before switching resolv.conf
+  ansible.builtin.meta: flush_handlers
+
+- name: Inspect resolv.conf
+  ansible.builtin.stat:
+    path: '{{ system_dns_resolv_conf }}'
+    follow: false
+    get_checksum: false
+  register: system_dns_resolv_conf_stat
+
+- name: Inspect the systemd-resolved stub file
+  ansible.builtin.stat:
+    path: '{{ system_dns_resolved_stub }}'
+    get_checksum: false
+  register: system_dns_resolved_stub_stat
+
+# A link to a missing stub would leave the host without DNS.
+- name: Require the systemd-resolved stub file
+  ansible.builtin.assert:
+    quiet: true
+    that: system_dns_resolved_stub_stat.stat.exists
+    fail_msg: >-
+      {{ system_dns_resolved_stub }} is missing, so systemd-resolved is not
+      serving its stub. {{ system_dns_resolv_conf }} was not linked to it; check
+      'systemctl status systemd-resolved'.
+  when: not ansible_check_mode
+
+- name: Read a regular resolv.conf
+  ansible.builtin.slurp:
+    src: '{{ system_dns_resolv_conf }}'
+  register: system_dns_resolv_conf_content
+  when: system_dns_resolv_conf_stat.stat.isreg | default(false)
+
+# A regular file is replaced only when it comes from a writer this policy
+# supersedes; a file another program owns, such as a connected VPN client, is
+# kept unless system_dns_force_resolv_conf_link is set.
+- name: Decide whether resolv.conf may become the stub link
+  ansible.builtin.set_fact:
+    system_dns_resolv_conf_origin: >-
+      {{ system_dns_resolv_conf_content.content | b64decode | resolv_conf_origin
+         if system_dns_resolv_conf_stat.stat.isreg | default(false)
+         else {'managed': true, 'origin': 'not a regular file'} }}
+
+- name: Report a resolv.conf owned by another program
+  ansible.builtin.debug:
+    msg: >-
+      {{ system_dns_resolv_conf }} was written by another program
+      ({{ system_dns_resolv_conf_origin.origin }}) and is left unchanged. If a
+      VPN client owns it, run the dns tag again after disconnecting, or set
+      system_dns_force_resolv_conf_link to replace it anyway.
+  when:
+    - not system_dns_resolv_conf_origin.managed
+    - not system_dns_force_resolv_conf_link | bool
+
+- name: Record whether resolv.conf becomes the stub link
+  ansible.builtin.set_fact:
+    system_dns_link_resolv_conf: >-
+      {{ (system_dns_resolv_conf_origin.managed or system_dns_force_resolv_conf_link | bool)
+         and not (system_dns_resolv_conf_stat.stat.islnk | default(false)
+                  and system_dns_resolv_conf_stat.stat.lnk_source | default('')
+                      == system_dns_resolved_stub) }}
+
+- name: Create the resolv.conf backup directory
+  ansible.builtin.file:
+    path: '{{ system_dns_backup_dir }}{{ system_dns_resolv_conf | dirname }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  register: system_dns_resolv_conf_backup_dir
+  when:
+    - system_dns_link_resolv_conf | bool
+    - system_dns_resolv_conf_stat.stat.isreg | default(false)
+
+- name: Back up a regular resolv.conf
+  ansible.builtin.copy:
+    src: '{{ system_dns_resolv_conf }}'
+    dest: '{{ system_dns_backup_dir }}{{ system_dns_resolv_conf }}'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+    - system_dns_link_resolv_conf | bool
+    - system_dns_resolv_conf_stat.stat.isreg | default(false)
+    - not (ansible_check_mode and system_dns_resolv_conf_backup_dir is changed)
+
+# A link that already resolves to the stub, such as the relative one from the
+# install guide, is kept as it is.
+- name: Point resolv.conf at the systemd-resolved stub
+  ansible.builtin.file:
+    path: '{{ system_dns_resolv_conf }}'
+    src: '{{ system_dns_resolved_stub }}'
+    state: link
+    force: true
+  when: system_dns_link_resolv_conf | bool
+
+# localhost is synthesized by resolved, so this needs no network and fails
+# only when resolved does not answer.
+- name: Check that systemd-resolved answers queries
+  ansible.builtin.command:
+    argv: [resolvectl, query, --legend=no, localhost]
+  changed_when: false
+  register: system_dns_resolved_query
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Require systemd-resolved to answer queries
+  ansible.builtin.assert:
+    quiet: true
+    that: system_dns_resolved_query.rc == 0
+    fail_msg: >-
+      systemd-resolved did not answer a query for localhost
+      ({{ system_dns_resolved_query.stderr | default('') | trim }}). Check
+      'systemctl status systemd-resolved' and 'resolvectl status'.
+  when: not ansible_check_mode
+
+- name: Point Docker containers at the resolved bridge listener
+  when: system_dns_docker_selected
+  block:
+    - name: Create the Docker configuration directory
+      ansible.builtin.file:
+        path: '{{ system_docker_daemon_config_path | dirname }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Inspect the Docker daemon configuration
+      ansible.builtin.stat:
+        path: '{{ system_docker_daemon_config_path }}'
+      register: system_docker_daemon_config_stat
+
+    - name: Read the Docker daemon configuration
+      ansible.builtin.slurp:
+        src: '{{ system_docker_daemon_config_path }}'
+      register: system_docker_daemon_config
+      when: system_docker_daemon_config_stat.stat.exists
+
+    # An empty file is read as an empty object. Other keys (address pools,
+    # runtimes, logging) are kept; a fixed-cidr outside the bridge fails.
+    - name: Pin the Docker bridge and its DNS server
+      ansible.builtin.copy:
+        dest: '{{ system_docker_daemon_config_path }}'
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+        content: >-
+          {{ (((system_docker_daemon_config.content | b64decode | trim) or '{}')
+              if system_docker_daemon_config_stat.stat.exists else '{}')
+             | from_json
+             | docker_daemon_dns(system_docker_bridge_ip)
+             | to_nice_json(indent=4) }}
+      notify: Report Docker restart required

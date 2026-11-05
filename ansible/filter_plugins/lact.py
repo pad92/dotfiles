@@ -1,7 +1,6 @@
 """Build LACT profiles from daemon discovery, retaining existing user settings."""
 
 import re
-from copy import deepcopy
 from typing import Any
 
 from ansible.errors import AnsibleFilterError
@@ -27,6 +26,20 @@ def lact_gpu_ids(output: str) -> list[str]:
     if len({gpu.casefold() for gpu in ids}) != len(ids):
         raise AnsibleFilterError("LACT reported ambiguous GPU identifiers")
     return ids
+
+
+def _plain_copy(value: Any) -> Any:
+    """Deep-copy YAML data into plain dicts and lists.
+
+    copy.deepcopy would also copy the templar behind Ansible's lazy containers,
+    and rebuilding its plugin loaders raises a PluginLoader aliases deprecation
+    warning. Scalars from YAML are immutable and are shared.
+    """
+    if isinstance(value, dict):
+        return {key: _plain_copy(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_plain_copy(item) for item in value]
+    return value
 
 
 def lact_config(
@@ -64,7 +77,7 @@ def lact_config(
     if len(canonical) != len(gpu_ids):
         raise AnsibleFilterError("LACT reported ambiguous GPU identifiers")
 
-    config = deepcopy(existing)
+    config = _plain_copy(existing)
     config.setdefault("version", 7)
     if config["version"] != 7:
         raise AnsibleFilterError("Unsupported LACT configuration version; expected 7")
@@ -117,7 +130,7 @@ def lact_config(
             settings = defaults[name]
             if not isinstance(settings, dict):
                 raise AnsibleFilterError(f"Invalid default {vendor} LACT profile")
-            profile_gpus.update({gpu: deepcopy(settings) for gpu in device_ids})
+            profile_gpus.update({gpu: _plain_copy(settings) for gpu in device_ids})
         if not profile_gpus:
             continue
         profile = stored_profiles.setdefault(name, {"gpus": {}})
