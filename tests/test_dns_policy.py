@@ -582,12 +582,14 @@ class DnsTaskTests(unittest.TestCase):
                 "FAKE_NMCLI_LOG": str(self.nmcli_log),
                 "FAKE_NMCLI_PROFILES": json.dumps(PROFILES if profiles is None else profiles),
                 "FAKE_NMCLI_ACTIVE": json.dumps(self.active),
+                "ANSIBLE_DEPRECATION_WARNINGS": "True",
             },
             capture_output=True,
             text=True,
             timeout=60,
             check=False,
         )
+        self.stderr = result.stderr
         if succeed:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         else:
@@ -1027,6 +1029,21 @@ class DnsTaskTests(unittest.TestCase):
         written = json.loads(daemon.read_text())
         self.assertEqual(written, {**original, "bip": "10.184.1.1/28"})
         self.assertRegex(self.run_play(block, variables), r"changed=0\b")
+
+    def test_docker_merge_does_not_rebuild_the_plugin_loaders(self):
+        # Deep-copying the lazy dict from from_json copied its templar, and
+        # rebuilding the templar's plugin loaders warned about aliases.
+        daemon = self.write(
+            self.work / "docker/daemon.json", '{"log-opts": {"max-size": "100m"}}'
+        )
+        self.run_play(
+            self.docker_block(),
+            {
+                "system_dns_docker_selected": True,
+                "system_docker_daemon_config_path": str(daemon),
+            },
+        )
+        self.assertNotIn("PluginLoader with aliases", self.stderr)
 
     def test_empty_docker_configuration_is_read_as_an_empty_object(self):
         daemon = self.work / "docker/daemon.json"

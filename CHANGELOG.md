@@ -32,6 +32,14 @@ Release history and changes planned for the next version.
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
 
+### Fixed
+
+- **Ansible**:
+  - The `docker_daemon_dns` and `lact_config` filters no longer deep-copy
+    Ansible's lazy containers. The copy also copied the templar, and rebuilding
+    its plugin loaders printed `PluginLoader with aliases` deprecation warnings
+    (seen with ansible-core 2.22).
+
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 
 ### Added

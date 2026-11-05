@@ -2,7 +2,6 @@
 
 import base64
 import ipaddress
-from copy import deepcopy
 from typing import Any
 
 from ansible.errors import AnsibleFilterError
@@ -309,7 +308,10 @@ def docker_daemon_dns(config: Any, bridge_ip: str) -> dict[str, Any]:
         )
     listener = docker_bridge_address(bridge_ip)
     _require_fixed_cidr_in_bridge(config, bridge_ip)
-    merged = deepcopy(config)
+    # Only top-level keys change, so a shallow copy is enough. deepcopy would
+    # also copy the templar behind Ansible's lazy containers, and rebuilding
+    # its plugin loaders raises a PluginLoader aliases deprecation warning.
+    merged = dict(config)
     merged["bip"] = bridge_ip
     merged["dns"] = [listener]
     return merged
