@@ -83,6 +83,41 @@ settings. Ansible does not reboot the workstation.
 Run either tag with `make install ANSIBLE_ARGS="--tags ssh_client_hardening --ask-become-pass"`
 or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
 
+### DNS
+
+The `dns` tag makes systemd-resolved the only DNS resolver. NetworkManager
+hands it each link's servers (`/etc/NetworkManager/conf.d/60-dotfiles-dns.conf`),
+and `/etc/systemd/resolved.conf.d/60-dotfiles-dns.conf` sets the policy:
+
+- `LLMNR=no` (`system_dns_llmnr`). A single-label name that DNS cannot resolve
+  is never asked on the local network, where any host could answer it.
+- `MulticastDNS=resolve` (`system_dns_multicast_dns`). `.local` names still
+  resolve, but the host does not announce its name.
+- An empty `FallbackDNS=` (`system_dns_fallback_servers`). When no link has DNS
+  servers, lookups fail instead of going to the compiled-in public resolvers in
+  clear text. List servers there to keep a fallback.
+
+With `12_containers_docker`, resolved also listens on the Docker bridge address
+(`system_docker_bridge_ip`, default `10.184.1.1/28`). The role sets it as `bip`
+and as the only `dns` entry in `/etc/docker/daemon.json`, and keeps the other
+keys. Containers then get the host's view, including VPN split DNS. Docker reads
+the file at startup, so restart `docker.service` yourself when no container
+needs to stay up. The listener binds even while `docker0` is absent.
+
+The tag also removes the former dnsmasq relay. NetworkManager profiles whose
+static DNS servers are all loopback addresses go back to DHCP DNS and are
+reapplied without reconnecting. Profiles that mix loopback and remote servers
+are reported and left unchanged. The role stops and disables `dnsmasq.service`
+when it would hold the bridge address or the relay files are present; libvirt's
+own dnsmasq processes are not affected. Files listed in
+`system_dns_legacy_files` are copied to `system_dns_backup_dir`
+(`/var/lib/dotfiles/dns-backup`, readable by root only) before removal.
+resolved is restarted rather than reloaded, because it binds extra listeners
+and drops the compiled-in fallbacks only at startup.
+
+Run `make install ANSIBLE_ARGS="--tags dns --ask-become-pass"` to apply it
+alone.
+
 ### AMD CPU performance
 
 The `amd_cpu_performance` tag uses the CPU vendor from Ansible facts and the

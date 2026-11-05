@@ -51,3 +51,25 @@ system_docker_group_users:
   - "{{ lookup('env', 'USER') }}"
 # Packages whose update requires ananicy-cpp to reload its rules.
 system_ananicy_rule_packages: [cachyos-ananicy-rules]
+# DNS: systemd-resolved is the only resolver. Quote the values: YAML reads a
+# bare no as a boolean. LLMNR stays off so single-label names never reach the
+# local network; mDNS resolves .local names without announcing this host.
+system_dns_llmnr: 'no'
+system_dns_multicast_dns: resolve
+# Used only when no link has DNS servers. Empty disables the compiled-in
+# public resolvers instead of sending queries to them in clear text.
+system_dns_fallback_servers: []
+system_dns_resolved_dropin: /etc/systemd/resolved.conf.d/60-dotfiles-dns.conf
+system_dns_networkmanager_conf: /etc/NetworkManager/conf.d/60-dotfiles-dns.conf
+# Host address of docker0. With 12_containers_docker, Docker uses it as `bip`
+# and containers query the resolved stub listening on it.
+system_docker_bridge_ip: 10.184.1.1/28
+system_docker_daemon_config_path: /etc/docker/daemon.json
+# Files of the former dnsmasq relay and its unmanaged NetworkManager DNS
+# setting, backed up to system_dns_backup_dir and then removed.
+system_dns_legacy_files:
+  - /etc/dnsmasq.d/home-failover.conf
+  - /etc/NetworkManager/dispatcher.d/90-dnsmasq-upstream
+  - /etc/tmpfiles.d/dnsmasq-upstream.conf
+  - /etc/NetworkManager/conf.d/dns.conf
+system_dns_backup_dir: /var/lib/dotfiles/dns-backup

@@ -1,0 +1,11 @@
+# Managed by Ansible. systemd-resolved is the only DNS resolver of this host.
+[Resolve]
+# Single-label names never fall back to multicast queries on the local network.
+LLMNR={{ system_dns_llmnr }}
+MulticastDNS={{ system_dns_multicast_dns }}
+# An empty list disables the compiled-in public resolvers.
+FallbackDNS={{ system_dns_fallback_servers | join(' ') }}
+{% for address in system_dns_stub_listener_addresses %}
+# Containers query the stub on the Docker bridge.
+DNSStubListenerExtra={{ address }}
+{% endfor %}

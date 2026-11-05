@@ -191,7 +191,7 @@ pacstrap -K /mnt \
   openssh \
   os-prober \
   python \
-  openresolv \
+  systemd-resolvconf \
   rsync \
   sudo \
   terminus-font \
@@ -202,9 +202,12 @@ pacstrap -K /mnt \
 
 ### Configure resolv.conf
 
+systemd-resolved is the only resolver. Point `/etc/resolv.conf` at its stub
+from outside the chroot, because `arch-chroot` bind-mounts that file. The
+Ansible `dns` tag then configures resolved and NetworkManager.
+
 ```sh
-echo '[main]
-rc-manager=resolvconf' > /mnt/etc/NetworkManager/conf.d/rc-manager.conf
+ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 ```
 
 ### Configure wifi
@@ -353,6 +356,7 @@ The `sd-encrypt` hook uses `/etc/cryptsetup-keys.d/cryptlvm.key` for the
 
 ```sh
 systemctl enable NetworkManager
+systemctl enable systemd-resolved
 systemctl enable systemd-timesyncd.service
 ```
 

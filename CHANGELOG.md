@@ -4,6 +4,24 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Changed
+
+- **DNS**:
+  - Make systemd-resolved the only resolver with the new `dns` tag. It disables
+    LLMNR, keeps mDNS for resolving only, and drops the compiled-in public
+    fallback servers.
+  - Serve Docker containers from a resolved listener on the pinned `docker0`
+    address, so they follow the host's DNS, VPN split DNS included.
+  - Replace the dnsmasq relay and its NetworkManager dispatcher. Its files are
+    backed up before removal, and profiles that pointed at it use DHCP DNS
+    again.
+
+### Fixed
+
+- **Documentation**:
+  - Install `systemd-resolvconf` and link `/etc/resolv.conf` to the resolved
+    stub in the Arch install guide, instead of `openresolv`.
+
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 
 ### Added

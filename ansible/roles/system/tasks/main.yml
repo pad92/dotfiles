@@ -33,6 +33,11 @@
   ansible.builtin.import_tasks: ssh_hardening.yml
   tags: [ssh_client_hardening]
 
+- name: Make systemd-resolved the only DNS resolver
+  ansible.builtin.import_tasks: dns.yml
+  when: packages_action | default('install') != 'plan'
+  tags: [dns]
+
 - name: Apply kernel hardening
   ansible.builtin.import_tasks: kernel_hardening.yml
   tags: [kernel_hardening]
