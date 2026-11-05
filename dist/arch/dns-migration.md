@@ -52,16 +52,17 @@ make install ANSIBLE_ARGS="--tags dns --ask-become-pass --check --diff"
 Check mode changes nothing and creates no backup. Read these messages if they
 appear:
 
-| Message | What to do |
-| --- | --- |
-| `DNS policy skipped, nothing was changed` | Install or start what the message names (systemd-resolved, NetworkManager, `nmcli`), then run again. |
-| `Require the Docker bridge address to be free for resolved` fails | Another program listens on port 53 on the Docker bridge address or on all addresses. Stop or reconfigure it. |
-| `Pin the Docker bridge and its DNS server` fails on `fixed-cidr` | The `fixed-cidr` lies outside the new bridge network. Change `fixed-cidr` in `/etc/docker/daemon.json`, or set `system_docker_bridge_ip`. |
-| `Report legacy NetworkManager settings left in place` | These files set more than the DNS mode. Remove their `dns=` and `rc-manager=` lines yourself, or they keep overriding resolved. |
-| `Report profiles moved to DHCP DNS` | With the relay. Nothing to do: these profiles will take their DNS servers from DHCP. Check that each one gets servers from its network. |
-| `Report static profiles that pointed at the relay` | With the relay. These profiles do not use automatic addressing and would have no DNS left. Set their servers yourself, using the `server=` lines the message lists. |
-| `Report profiles that mix loopback and remote DNS servers` | With the relay. Remove the loopback server from these profiles yourself. |
-| `Report a resolv.conf owned by another program` | A VPN client is probably still connected. Disconnect it and run again. |
+| Message                                                                             | What to do                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DNS policy skipped, nothing was changed`                                           | Install or start what the message names (systemd-resolved, NetworkManager, `nmcli`), then run again.                                                                |
+| `Require the Docker bridge address to be free for resolved` fails                   | Another program listens on port 53 on the Docker bridge address or on all addresses. Stop or reconfigure it.                                                        |
+| `Require systemd-resolved to listen on the Docker bridge` fails (not in check mode) | resolved did not bind port 53 on the bridge address, and `daemon.json` was not changed. Read `journalctl -u systemd-resolved`, fix the cause, then run again.       |
+| `Pin the Docker bridge and its DNS server` fails on `fixed-cidr`                    | The `fixed-cidr` lies outside the new bridge network. Change `fixed-cidr` in `/etc/docker/daemon.json`, or set `system_docker_bridge_ip`.                           |
+| `Report legacy NetworkManager settings left in place`                               | These files set more than the DNS mode. Remove their `dns=` and `rc-manager=` lines yourself, or they keep overriding resolved.                                     |
+| `Report profiles moved to DHCP DNS`                                                 | With the relay. Nothing to do: these profiles will take their DNS servers from DHCP. Check that each one gets servers from its network.                             |
+| `Report static profiles that pointed at the relay`                                  | With the relay. These profiles do not use automatic addressing and would have no DNS left. Set their servers yourself, using the `server=` lines the message lists. |
+| `Report profiles that mix loopback and remote DNS servers`                          | With the relay. Remove the loopback server from these profiles yourself.                                                                                            |
+| `Report a resolv.conf owned by another program`                                     | A VPN client is probably still connected. Disconnect it and run again.                                                                                              |
 
 ## 3. Apply
 

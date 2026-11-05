@@ -124,6 +124,12 @@ elif args[:2] == ["device", "reapply"] and len(args) == 3:
 else:
     sys.exit(f"fake nmcli: unsupported command {args}")
 """
+# Prints the main pid of dnsmasq.service, 0 when it is not running.
+FAKE_SYSTEMCTL = """#!/bin/sh
+[ "$*" = "show --property=MainPID --value dnsmasq.service" ] ||
+  { echo "fake systemctl: unexpected $*" >&2; exit 2; }
+echo "${FAKE_DNSMASQ_PID:-0}"
+"""
 FAKE_SS = """#!/bin/sh
 [ "$*" = "-Hlntup sport = :53" ] || { echo "fake ss: unexpected $*" >&2; exit 2; }
 printf '%s' "$FAKE_SS_OUTPUT"
@@ -136,6 +142,7 @@ echo "localhost: 127.0.0.1"
 # ss -Hlntup lines as systemd-resolved, libvirt and a wildcard dnsmasq show them.
 SS_RESOLVED = (
     'udp UNCONN 0 0 127.0.0.53%lo:53 0.0.0.0:* users:(("systemd-resolve",pid=7,fd=19))\n'
+    'udp UNCONN 0 0 10.184.1.1:53 0.0.0.0:* users:(("systemd-resolve",pid=7,fd=21))\n'
     'tcp LISTEN 0 4096 10.184.1.1:53 0.0.0.0:* users:(("systemd-resolve",pid=7,fd=22))\n'
     'udp UNCONN 0 0 192.168.122.1:53 0.0.0.0:* users:(("dnsmasq",pid=9,fd=5))\n'
 )
@@ -357,9 +364,18 @@ class DnsFilterTests(unittest.TestCase):
             DNS.dns_port_conflicts(SS_WILDCARD_DNSMASQ, "10.184.1.1"),
             ["udp 0.0.0.0:53 (dnsmasq)", "tcp [::]:53 (dnsmasq)"],
         )
+        # The relay is ignored by pid; any other dnsmasq still conflicts.
         self.assertEqual(
-            DNS.dns_port_conflicts(SS_WILDCARD_DNSMASQ, "10.184.1.1", ["dnsmasq"]), []
+            DNS.dns_port_conflicts(SS_WILDCARD_DNSMASQ, "10.184.1.1", ["11"]), []
         )
+        for pids in [["12"], ["0"], [""], []]:
+            with self.subTest(pids=pids):
+                self.assertEqual(
+                    len(
+                        DNS.dns_port_conflicts(SS_WILDCARD_DNSMASQ, "10.184.1.1", pids)
+                    ),
+                    2,
+                )
         self.assertEqual(
             DNS.dns_port_conflicts(SS_BRIDGE_UNBOUND, "10.184.1.1"),
             ["udp 10.184.1.1:53 (unbound)"],
@@ -372,6 +388,23 @@ class DnsFilterTests(unittest.TestCase):
                 "10.184.1.1",
             ),
             ["udp *:53 (unknown process)"],
+        )
+
+    def test_bridge_listener_is_required_over_udp_and_tcp(self):
+        self.assertEqual(DNS.dns_bridge_listener_missing(SS_RESOLVED, "10.184.1.1"), [])
+        self.assertEqual(
+            DNS.dns_bridge_listener_missing(SS_RESOLVED, "10.184.2.1"), ["udp", "tcp"]
+        )
+        only_tcp = SS_RESOLVED.replace(
+            "udp UNCONN 0 0 10.184.1.1", "udp UNCONN 0 0 10.9.9.9"
+        )
+        self.assertEqual(
+            DNS.dns_bridge_listener_missing(only_tcp, "10.184.1.1"), ["udp"]
+        )
+        # Another program on the bridge address is not resolved.
+        self.assertEqual(
+            DNS.dns_bridge_listener_missing(SS_BRIDGE_UNBOUND, "10.184.1.1"),
+            ["udp", "tcp"],
         )
 
     def test_reapply_targets_skip_connections_that_need_a_reconnect(self):
@@ -463,12 +496,14 @@ class DnsTaskOrderTests(unittest.TestCase):
             "Manage the systemd-resolved policy",
             "Enable and start systemd-resolved",
             "Move NetworkManager profiles off the loopback relay",
-            "Remove files of the former DNS setup after backup",
             "Stop and disable the standalone dnsmasq relay",
+            "Remove files of the former DNS setup after backup",
             "Apply the resolver changes before switching resolv.conf",
             "Require the systemd-resolved stub file",
             "Point resolv.conf at the systemd-resolved stub",
             "Require systemd-resolved to answer queries",
+            "Require systemd-resolved to listen on the Docker bridge",
+            "Point Docker containers at the resolved bridge listener",
         ]
         positions = [names.index(name) for name in order]
         self.assertEqual(positions, sorted(positions))
@@ -514,6 +549,7 @@ class DnsTaskTests(unittest.TestCase):
             ("nmcli", FAKE_NMCLI),
             ("ss", FAKE_SS),
             ("resolvectl", FAKE_RESOLVECTL),
+            ("systemctl", FAKE_SYSTEMCTL),
         ]:
             fake = self.bin / name
             fake.write_text(script)
@@ -559,7 +595,10 @@ class DnsTaskTests(unittest.TestCase):
                         },
                         "tasks": tasks,
                         "handlers": [
-                            {"name": name, "ansible.builtin.debug": {"msg": f"HANDLER {name}"}}
+                            {
+                                "name": name,
+                                "ansible.builtin.debug": {"msg": f"HANDLER {name}"},
+                            }
                             for name in handlers
                         ],
                     }
@@ -580,7 +619,9 @@ class DnsTaskTests(unittest.TestCase):
                 **self.environment,
                 "PATH": self.path,
                 "FAKE_NMCLI_LOG": str(self.nmcli_log),
-                "FAKE_NMCLI_PROFILES": json.dumps(PROFILES if profiles is None else profiles),
+                "FAKE_NMCLI_PROFILES": json.dumps(
+                    PROFILES if profiles is None else profiles
+                ),
                 "FAKE_NMCLI_ACTIVE": json.dumps(self.active),
                 "ANSIBLE_DEPRECATION_WARNINGS": "True",
             },
@@ -653,9 +694,9 @@ class DnsTaskTests(unittest.TestCase):
                 {
                     "ansible_facts": {"hostname": "fixture"},
                     "packages_host_groups": {},
-                    "packages_selected_groups": ["12_containers_docker"]
-                    if docker
-                    else [],
+                    "packages_selected_groups": (
+                        ["12_containers_docker"] if docker else []
+                    ),
                     "system_dns_resolved_dropin": str(dropin),
                 },
             )
@@ -818,6 +859,11 @@ class DnsTaskTests(unittest.TestCase):
                 "Remove files of the former DNS setup after backup"
             )
         ].pop("notify")
+        # The dnsmasq stop now sits in this slice; keep systemctl off the host.
+        for task in tasks:
+            if task.pop("ansible.builtin.systemd_service", None) is not None:
+                task.pop("notify", None)
+                task["ansible.builtin.debug"] = {"msg": f"STAND-IN {task['name']}"}
         output = self.run_play(
             tasks,
             {
@@ -859,7 +905,8 @@ class DnsTaskTests(unittest.TestCase):
         self.assertFalse(self.dnsmasq_stop_decision(False, True))
         self.assertFalse(self.dnsmasq_stop_decision(False, False))
 
-    def port_check(self, listeners, relay_present, succeed=True):
+    def port_check(self, listeners, relay_present, succeed=True, relay_pid="11"):
+        self.environment["FAKE_DNSMASQ_PID"] = relay_pid
         if relay_present:
             self.write(self.relay_file, "server=192.0.2.1\n")
         unit = self.write(self.work / "units/dnsmasq.service", "[Unit]\n")
@@ -888,6 +935,51 @@ class DnsTaskTests(unittest.TestCase):
     def test_resolved_libvirt_and_the_relay_dnsmasq_do_not_conflict(self):
         self.port_check(SS_RESOLVED, relay_present=False)
         self.port_check(SS_WILDCARD_DNSMASQ, relay_present=True)
+
+    def test_a_dnsmasq_other_than_the_relay_still_conflicts(self):
+        for relay_pid in ["12", "0"]:
+            with self.subTest(relay_pid=relay_pid):
+                output = self.port_check(
+                    SS_WILDCARD_DNSMASQ, True, succeed=False, relay_pid=relay_pid
+                )
+                self.assertIn("udp 0.0.0.0:53 (dnsmasq)", output)
+
+    def bridge_listener_check(self, listeners, *arguments, succeed=True):
+        self.environment["FAKE_SS_OUTPUT"] = listeners
+        daemon = self.work / "etc/docker/daemon.json"
+        tasks = self.task_slice(
+            "List the port 53 listeners after the switch",
+            "Point Docker containers at the resolved bridge listener",
+        )
+        tasks[-1]["block"][-1].pop("notify")
+        output = self.run_play(
+            tasks,
+            {
+                "system_dns_docker_selected": True,
+                "system_docker_daemon_config_path": str(daemon),
+            },
+            *arguments,
+            succeed=succeed,
+        )
+        return output, daemon
+
+    def test_docker_is_left_alone_when_resolved_misses_the_bridge(self):
+        only_tcp = SS_RESOLVED.replace(
+            "udp UNCONN 0 0 10.184.1.1", "udp UNCONN 0 0 10.9.9.9"
+        )
+        for listeners, missing in [(only_tcp, "over udp,"), ("", "over udp and tcp,")]:
+            with self.subTest(missing=missing):
+                output, daemon = self.bridge_listener_check(listeners, succeed=False)
+                self.assertIn("does not listen on port 53", output)
+                self.assertIn(missing, output)
+                self.assertFalse(daemon.exists())
+
+    def test_docker_is_configured_once_resolved_listens_on_the_bridge(self):
+        _, daemon = self.bridge_listener_check(SS_RESOLVED)
+        self.assertEqual(json.loads(daemon.read_text())["dns"], ["10.184.1.1"])
+        # Check mode does not restart resolved, so the listener is not required.
+        daemon.unlink()
+        self.bridge_listener_check("", "--check")
 
     def resolv_conf_play(
         self, resolv_conf, stub, *arguments, succeed=True, **variables
@@ -1123,9 +1215,12 @@ class DnsTaskTests(unittest.TestCase):
         self.write(self.relay_file, "server=192.0.2.1\n")
         self.write(work / "etc/nm/conf.d/rc-manager.conf", OLD_GUIDE_RC_MANAGER)
         self.write(
-            work / "etc/resolv.conf", "# Generated by resolvconf\nnameserver 127.0.0.1\n"
+            work / "etc/resolv.conf",
+            "# Generated by resolvconf\nnameserver 127.0.0.1\n",
         )
-        self.write(work / "run/stub-resolv.conf", STUB_HEADER + "nameserver 127.0.0.53\n")
+        self.write(
+            work / "run/stub-resolv.conf", STUB_HEADER + "nameserver 127.0.0.53\n"
+        )
         self.write(work / "etc/docker/daemon.json", '{"log-driver": "journald"}')
 
         first = self.full_policy(PROFILES)
@@ -1144,7 +1239,11 @@ class DnsTaskTests(unittest.TestCase):
         self.assertRegex(second, r"changed=0\b", second)
         self.assertNotIn("HANDLER", second)
         self.assertFalse(
-            [call for call in self.nmcli_calls() if "modify" in call or "reapply" in call]
+            [
+                call
+                for call in self.nmcli_calls()
+                if "modify" in call or "reapply" in call
+            ]
         )
         self.assertEqual(
             os.readlink(work / "etc/resolv.conf"), str(work / "run/stub-resolv.conf")

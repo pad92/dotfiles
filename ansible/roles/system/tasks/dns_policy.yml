@@ -101,6 +101,18 @@
   check_mode: false
   when: system_dns_docker_selected
 
+# The relay is singled out by pid, so another dnsmasq is still a conflict.
+- name: Read the main pid of the relay dnsmasq
+  ansible.builtin.command:
+    argv: [systemctl, show, --property=MainPID, --value, dnsmasq.service]
+  register: system_dns_relay_pid
+  changed_when: false
+  check_mode: false
+  when:
+    - system_dns_docker_selected
+    - system_dns_relay_found | bool
+    - system_dns_dnsmasq_unit.stat.exists
+
 # resolved must bind port 53 on the bridge address. The relay dnsmasq is
 # stopped below, so only another program holding that address or a wildcard
 # blocks it; that program is left running.
@@ -117,8 +129,7 @@
     system_dns_port_conflicts: >-
       {{ system_dns_port_listeners.stdout
          | dns_port_conflicts(system_docker_bridge_ip | docker_bridge_address,
-             ['dnsmasq'] if system_dns_relay_found and system_dns_dnsmasq_unit.stat.exists
-             else []) }}
+             system_dns_relay_pid.stdout_lines | default([])) }}
   when: system_dns_docker_selected
 
 - name: Create the systemd-resolved drop-in directory
@@ -261,6 +272,21 @@
           {{ system_dns_nm_reapply.reconnect | join(', ') }}
       when: system_dns_nm_reapply.reconnect | length > 0
 
+# Only the relay dnsmasq is stopped. Without the relay files, dnsmasq.service
+# serves something else; the port check above reports it if it blocks Docker.
+# libvirt runs its own dnsmasq processes, which this unit does not control.
+# It stops before the relay files go: they are what marks dnsmasq.service as
+# the relay, so a run interrupted in between would otherwise never stop it.
+- name: Stop and disable the standalone dnsmasq relay
+  ansible.builtin.systemd_service:
+    name: dnsmasq.service
+    enabled: false
+    state: stopped
+  when:
+    - system_dns_dnsmasq_unit.stat.exists
+    - system_dns_relay_found | bool
+  notify: Restart systemd-resolved
+
 # Backups live outside dispatcher.d and dnsmasq.d so neither loads them, and
 # keep the full source path so files with the same name do not collide.
 - name: Create the DNS backup directories
@@ -294,19 +320,6 @@
     state: absent
   loop: '{{ system_dns_leftover_paths }}'
   notify: Reload NetworkManager
-
-# Only the relay dnsmasq is stopped. Without the relay files, dnsmasq.service
-# serves something else; the port check above reports it if it blocks Docker.
-# libvirt runs its own dnsmasq processes, which this unit does not control.
-- name: Stop and disable the standalone dnsmasq relay
-  ansible.builtin.systemd_service:
-    name: dnsmasq.service
-    enabled: false
-    state: stopped
-  when:
-    - system_dns_dnsmasq_unit.stat.exists
-    - system_dns_relay_found | bool
-  notify: Restart systemd-resolved
 
 # The resolved restart and the NetworkManager reload must happen before
 # resolv.conf points at the stub, so the stub has its listeners and link
@@ -428,6 +441,36 @@
       ({{ system_dns_resolved_query.stderr | default('') | trim }}). Check
       'systemctl status systemd-resolved' and 'resolvectl status'.
   when: not ansible_check_mode
+
+- name: List the port 53 listeners after the switch
+  ansible.builtin.command:
+    argv: [ss, -Hlntup, 'sport = :53']
+  register: system_dns_port_listeners_after
+  changed_when: false
+  when:
+    - system_dns_docker_selected
+    - not ansible_check_mode
+
+# resolved only logs a DNSStubListenerExtra it cannot bind, and the localhost
+# query above does not use it. Docker is pointed at the bridge only once
+# resolved answers there.
+- name: Require systemd-resolved to listen on the Docker bridge
+  ansible.builtin.assert:
+    quiet: true
+    that: system_dns_bridge_missing | length == 0
+    fail_msg: >-
+      systemd-resolved does not listen on port 53 at
+      {{ system_docker_bridge_ip | docker_bridge_address }} over
+      {{ system_dns_bridge_missing | join(' and ') }}, so containers would get
+      no DNS. The Docker configuration was not changed. Check
+      'journalctl -u systemd-resolved' and 'ss -Hlntup sport = :53'.
+  vars:
+    system_dns_bridge_missing: >-
+      {{ system_dns_port_listeners_after.stdout
+         | dns_bridge_listener_missing(system_docker_bridge_ip | docker_bridge_address) }}
+  when:
+    - system_dns_docker_selected
+    - not ansible_check_mode
 
 - name: Point Docker containers at the resolved bridge listener
   when: system_dns_docker_selected
