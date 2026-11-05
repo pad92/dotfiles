@@ -17,6 +17,7 @@ from ansible_test_environment import ansible_test_environment
 ROOT = Path(__file__).resolve().parents[1]
 DETECTION = ROOT / "ansible/roles/system/tasks/dns.yml"
 TASKS = ROOT / "ansible/roles/system/tasks/dns_policy.yml"
+ROLE_MAIN = ROOT / "ansible/roles/system/tasks/main.yml"
 DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/system/defaults/main.yml").read_text())
 SPEC = importlib.util.spec_from_file_location(
     "dns_filters", ROOT / "ansible/filter_plugins/dns.py"
@@ -540,7 +541,9 @@ class DnsTaskTests(unittest.TestCase):
                 pending.extend(node)
         return selected
 
-    def run_play(self, tasks, variables, *arguments, succeed=True):
+    def run_play(
+        self, tasks, variables, *arguments, succeed=True, handlers=(), profiles=None
+    ):
         playbook = self.work / "play.yml"
         playbook.write_text(
             yaml.safe_dump(
@@ -555,6 +558,10 @@ class DnsTaskTests(unittest.TestCase):
                             **variables,
                         },
                         "tasks": tasks,
+                        "handlers": [
+                            {"name": name, "ansible.builtin.debug": {"msg": f"HANDLER {name}"}}
+                            for name in handlers
+                        ],
                     }
                 ]
             )
@@ -573,7 +580,7 @@ class DnsTaskTests(unittest.TestCase):
                 **self.environment,
                 "PATH": self.path,
                 "FAKE_NMCLI_LOG": str(self.nmcli_log),
-                "FAKE_NMCLI_PROFILES": json.dumps(PROFILES),
+                "FAKE_NMCLI_PROFILES": json.dumps(PROFILES if profiles is None else profiles),
                 "FAKE_NMCLI_ACTIVE": json.dumps(self.active),
             },
             capture_output=True,
@@ -723,7 +730,15 @@ class DnsTaskTests(unittest.TestCase):
         self.assertEqual(self.nmcli_calls(), [])
 
     def test_check_mode_reads_profiles_without_modifying_them(self):
-        self.run_profile_migration(True, "--check")
+        output = self.run_profile_migration(True, "--check")
+        # ansible.cfg hides skipped items, so the preview relies on this report.
+        report = next(
+            line for line in output.splitlines() if "DNS servers reset to DHCP" in line
+        )
+        for name in ["Home relay", "Both families", "IPv6 relay", "Relay VPN"]:
+            self.assertIn(name, report)
+        for name in ["Office static", "Mixed servers", "Plain DHCP", "Corporate VPN"]:
+            self.assertNotIn(name, report)
         calls = self.nmcli_calls()
         self.assertTrue(calls)
         self.assertFalse(
@@ -1044,6 +1059,80 @@ class DnsTaskTests(unittest.TestCase):
         self.assertIn("outside the bridge network", output)
         self.assertEqual(daemon.read_text(), original)
 
+    def full_policy(self, profiles):
+        """Run every task of dns_policy.yml with Docker selected and the relay present."""
+        tasks = self.task_slice(
+            "Validate the DNS policy",
+            "Point Docker containers at the resolved bridge listener",
+        )
+        for task in tasks:
+            # systemctl cannot run unprivileged: keep when and notify, drop the call.
+            if "ansible.builtin.systemd_service" in task:
+                task.pop("ansible.builtin.systemd_service")
+                task["ansible.builtin.debug"] = {"msg": f"STAND-IN {task['name']}"}
+            if "ansible.builtin.template" in task:
+                task["ansible.builtin.template"]["src"] = str(
+                    ROOT / "ansible/roles/system/templates/resolved-dns.conf.j2"
+                )
+        work = self.work
+        variables = {
+            "ansible_facts": {"hostname": "fixture"},
+            "packages_selected_groups": ["12_containers_docker"],
+            "system_unit_directory": str(work / "units"),
+            "system_dns_resolved_dropin": str(work / "etc/resolved.conf.d/60-dns.conf"),
+            "system_dns_networkmanager_conf": str(work / "etc/nm/conf.d/60-dns.conf"),
+            "system_dns_relay_files": [str(self.relay_file)],
+            "system_dns_legacy_files": [str(work / "etc/nm/conf.d/rc-manager.conf")],
+            "system_dns_backup_dir": str(work / "backup"),
+            "system_dns_resolv_conf": str(work / "etc/resolv.conf"),
+            "system_dns_resolved_stub": str(work / "run/stub-resolv.conf"),
+            "system_docker_daemon_config_path": str(work / "etc/docker/daemon.json"),
+        }
+        return self.run_play(
+            tasks,
+            variables,
+            handlers=[
+                "Restart systemd-resolved",
+                "Reload NetworkManager",
+                "Report Docker restart required",
+            ],
+            profiles=profiles,
+        )
+
+    def test_second_run_after_a_relay_migration_changes_nothing(self):
+        work = self.work
+        self.environment["FAKE_SS_OUTPUT"] = SS_RESOLVED
+        self.write(work / "units/dnsmasq.service", "[Unit]\n")
+        self.write(self.relay_file, "server=192.0.2.1\n")
+        self.write(work / "etc/nm/conf.d/rc-manager.conf", OLD_GUIDE_RC_MANAGER)
+        self.write(
+            work / "etc/resolv.conf", "# Generated by resolvconf\nnameserver 127.0.0.1\n"
+        )
+        self.write(work / "run/stub-resolv.conf", STUB_HEADER + "nameserver 127.0.0.53\n")
+        self.write(work / "etc/docker/daemon.json", '{"log-driver": "journald"}')
+
+        first = self.full_policy(PROFILES)
+        self.assertNotRegex(first, r"changed=0\b")
+        self.assertIn("HANDLER Restart systemd-resolved", first)
+
+        # The fake nmcli does not persist edits: hand it the migrated profiles.
+        migrated = json.loads(json.dumps(PROFILES))
+        for properties in migrated.values():
+            for family in ["ipv4", "ipv6"]:
+                if properties.get(f"{family}.dns") in ("127.0.0.1", "::1"):
+                    properties[f"{family}.dns"] = ""
+        self.nmcli_log.write_text("")
+        second = self.full_policy(migrated)
+
+        self.assertRegex(second, r"changed=0\b", second)
+        self.assertNotIn("HANDLER", second)
+        self.assertFalse(
+            [call for call in self.nmcli_calls() if "modify" in call or "reapply" in call]
+        )
+        self.assertEqual(
+            os.readlink(work / "etc/resolv.conf"), str(work / "run/stub-resolv.conf")
+        )
+
     def detection_tasks(self):
         tasks = self.task_slice(
             "Look for the nmcli client", "Apply the DNS policy", source=DETECTION
@@ -1093,6 +1182,34 @@ class DnsTaskTests(unittest.TestCase):
         output = self.run_detection(RUNNING_SERVICES)
         self.assertNotIn("POLICY APPLIED", output)
         self.assertIn("Missing: nmcli", output)
+
+    def run_entry(self, variables):
+        tasks = self.task_slice(
+            "Report that the DNS policy is disabled",
+            "Make systemd-resolved the only DNS resolver",
+            source=ROLE_MAIN,
+        )
+        # Stand in for the dns.yml import, keeping its conditions.
+        policy = tasks[-1]
+        policy.pop("ansible.builtin.import_tasks")
+        policy["ansible.builtin.debug"] = {"msg": "POLICY IMPORTED"}
+        return self.run_play(tasks, variables)
+
+    def test_policy_is_imported_by_default(self):
+        output = self.run_entry({})
+        self.assertIn("POLICY IMPORTED", output)
+        self.assertNotIn("DNS policy disabled", output)
+
+    def test_disabled_policy_reads_and_changes_nothing(self):
+        # A string, as -e system_dns_manage=false passes it.
+        output = self.run_entry({"system_dns_manage": "false"})
+        self.assertNotIn("POLICY IMPORTED", output)
+        self.assertIn("DNS policy disabled", output)
+
+    def test_package_plan_does_not_import_the_policy(self):
+        output = self.run_entry({"packages_action": "plan"})
+        self.assertNotIn("POLICY IMPORTED", output)
+        self.assertNotIn("DNS policy disabled", output)
 
 
 if __name__ == "__main__":

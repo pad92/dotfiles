@@ -4,43 +4,33 @@ Release history and changes planned for the next version.
 
 ## [Unreleased]
 
+### Added
+
+- **DNS**:
+  - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
+    off, mDNS for resolving only, and no compiled-in public fallback servers.
+    `system_dns_manage: false` leaves the resolver alone.
+  - Add a migration note for hosts installed with openresolv and the dnsmasq
+    relay (`dist/arch/dns-migration.md`): preview, apply, checks, undo, and
+    package removal.
+
 ### Changed
 
 - **DNS**:
-  - Make systemd-resolved the only resolver with the new `dns` tag. It disables
-    LLMNR, keeps mDNS for resolving only, and drops the compiled-in public
-    fallback servers.
-  - Serve Docker containers from a resolved listener on the pinned `docker0`
-    address, so they follow the host's DNS, VPN split DNS included.
-  - Enable `systemd-resolved.service` and link `/etc/resolv.conf` to its stub.
-    A regular `resolv.conf` is replaced only when openresolv, NetworkManager or
-    systemd-resolved wrote it, or when it lists only loopback servers. A file
-    another program owns, such as a connected VPN client, is reported and kept
-    unless `system_dns_force_resolv_conf_link` is set.
-  - Replace the dnsmasq relay and its NetworkManager dispatcher. When its files
-    are found, profiles with automatic addressing that pointed at it use DHCP
-    DNS again, static ones are reported, and `dnsmasq.service` is stopped.
-    Without them, loopback DNS servers and `dnsmasq.service` are left to the
-    local resolver that uses them.
-  - Remove legacy NetworkManager DNS settings, including the `rc-manager.conf`
-    of the former install guide, only when they set nothing but the DNS mode.
-    Removed files are backed up under their full path.
-  - Skip the DNS policy with a message when systemd-resolved, a running
-    NetworkManager or `nmcli` is missing.
-  - Stop with an error when another program holds port 53 on the Docker bridge
-    or on all addresses, or when the `fixed-cidr` of `daemon.json` lies outside
-    the pinned bridge network.
-
-### Fixed
-
+  - Link `/etc/resolv.conf` to the resolved stub. A regular file that another
+    program owns, such as a connected VPN client, is reported and kept.
+  - Remove the NetworkManager `dns.conf` and the `rc-manager.conf` of the
+    former install guide when they set nothing but the DNS mode.
+  - On hosts with the former dnsmasq relay, stop `dnsmasq.service`, remove the
+    relay files, and move automatic profiles that used it back to DHCP DNS.
+    Removed files are backed up under `/var/lib/dotfiles/dns-backup`.
+  - With Docker, pin `docker0` to `10.184.1.1/28` (Docker's default is
+    `172.17.0.1/16`) and use resolved as the containers' DNS server, VPN split
+    DNS included. Containers on the default bridge change address, that bridge
+    holds at most 13 of them, and `docker.service` needs a restart.
 - **Documentation**:
-  - Install `systemd-resolvconf` and link `/etc/resolv.conf` to the resolved
-    stub in the Arch install guide, instead of `openresolv`.
-  - Add a DNS migration note (`dist/arch/dns-migration.md`): preview, apply,
-    checks, removal of openresolv and dnsmasq, undo and cleanup. It checks
-    first that libvirt or a shared NetworkManager connection does not still
-    need dnsmasq, and lists orphans with `pacman -Qdttq` so that optional
-    dependencies are kept.
+  - The Arch install guide installs `systemd-resolvconf` instead of
+    `openresolv` and links `/etc/resolv.conf` to the resolved stub.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

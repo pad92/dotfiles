@@ -99,16 +99,28 @@ and `/etc/systemd/resolved.conf.d/60-dotfiles-dns.conf` sets the policy:
 
 The tag needs `systemd-resolved.service`, a running `NetworkManager.service`
 and `nmcli`. When one of them is missing, the role says which and skips the DNS
-policy without changing anything.
+policy without changing anything. Set `system_dns_manage: false` in
+`ansible/host_vars/localhost.yml` to leave the resolver alone on every run,
+including full runs, for example after
+[undoing the migration](../dist/arch/dns-migration.md#5-undo-the-migration).
+
+Hosts installed with the earlier openresolv setup, with or without a dnsmasq
+relay added by hand, are migrated by the same tag. The
+[DNS migration note](../dist/arch/dns-migration.md) gives the procedure; this
+section describes the rules it relies on.
 
 #### Docker
 
 With `12_containers_docker`, resolved also listens on the Docker bridge address
 (`system_docker_bridge_ip`, default `10.184.1.1/28`). The role sets it as `bip`
 and as the only `dns` entry in `/etc/docker/daemon.json`, and keeps the other
-keys. Containers then get the host's view, including VPN split DNS. Docker reads
-the file at startup, so restart `docker.service` yourself when no container
-needs to stay up. The listener binds even while `docker0` is absent.
+keys. Containers then get the host's view, including VPN split DNS. The
+listener binds even while `docker0` is absent.
+
+Docker reads the file at startup, so restart `docker.service` yourself when no
+container needs to stay up. Without an earlier `bip`, Docker used
+`172.17.0.1/16`: containers on the default bridge get new addresses, and the
+new network must not overlap a LAN or VPN route of the host.
 
 A `/28` leaves 13 addresses for containers on the default bridge, after the
 network, broadcast and bridge addresses. User-defined networks take their
@@ -118,9 +130,10 @@ would refuse to start; change `fixed-cidr` or `system_docker_bridge_ip`. An
 empty `daemon.json` is read as `{}`.
 
 Before changing anything, the role lists the port 53 listeners with `ss`. If a
-program other than resolved holds port 53 on the bridge address or on all
-addresses, the play stops and names it, and that program keeps running.
-libvirt's dnsmasq listens on its own bridge addresses and does not conflict.
+program other than resolved, or the relay dnsmasq it is about to stop, holds
+port 53 on the bridge address or on all addresses, the play stops and names
+it, and that program keeps running. libvirt's dnsmasq listens on its own bridge
+addresses and does not conflict.
 
 Removing `12_containers_docker` later drops the listener but leaves `bip` and
 `dns` in `daemon.json`. Containers then query an address nothing answers on, so
@@ -140,8 +153,7 @@ A regular `resolv.conf` is replaced only when this policy supersedes its
 writer. That is the case when it has an openresolv, NetworkManager or
 systemd-resolved header, or when all its name servers are loopback addresses
 (the former relay, or a stale copy of the stub). A VPN client can restore such
-a copy after disconnecting, and the next run links it again. The file is copied
-to the backup directory first.
+a copy after disconnecting, and the next run links it again.
 
 Any other regular file is left alone, and the play prints its first comment
 line. This is typically a VPN client that rewrote the file while connected:
@@ -149,10 +161,10 @@ run the tag again after disconnecting. Set
 `system_dns_force_resolv_conf_link` to `true` to replace it anyway.
 
 If the stub file is missing once resolved has started, the play fails before
-linking `resolv.conf`. NetworkManager has been reloaded by then and may have
-rewritten a regular `resolv.conf` itself. The play ends with
+linking `resolv.conf`. NetworkManager may have been reloaded by then and may
+have rewritten a regular `resolv.conf` itself. After the switch, the play runs
 `resolvectl query localhost`, which needs no network, and fails if resolved
-does not answer.
+does not answer. The Docker settings are written last.
 
 #### Former dnsmasq relay
 
@@ -165,15 +177,15 @@ deliberate local resolver (unbound, dnscrypt-proxy) and left alone, and so is
 With the relay present:
 
 - A profile family whose DNS servers are all loopback addresses and whose
-  method is automatic (`auto`, or `dhcp` for IPv6) goes back to DHCP DNS. It is
-  reapplied without reconnecting, except VPN, WireGuard and tun connections,
+  method is automatic (`auto`, or `dhcp` for IPv6) goes back to DHCP DNS, and
+  the play lists it. It is reapplied without reconnecting, except VPN, WireGuard and tun connections,
   which are listed so you can reconnect them.
 - A family with another method (`manual`, `link-local`, `shared`) would have no
   server left, so it is reported and left unchanged. The report lists the
   `server=` lines of the relay files as candidates.
 - Profiles that mix loopback and remote servers are reported and left
   unchanged. Profiles without IP settings, such as bridge ports, are skipped.
-- `dnsmasq.service` is stopped and disabled.
+- The relay files are removed and `dnsmasq.service` is stopped and disabled.
 
 The NetworkManager files in `system_dns_legacy_files` (`dns.conf`, and the
 `rc-manager.conf` with `rc-manager=resolvconf` from the earlier install guide)
@@ -181,22 +193,23 @@ are removed when they set nothing but `dns=` or `rc-manager=` in `[main]`. A
 file with other settings is kept and reported, since its DNS lines may still
 override `dns=systemd-resolved`.
 
-Each removed file, like a replaced `resolv.conf`, is first copied under its
-full path to `system_dns_backup_dir` (`/var/lib/dotfiles/dns-backup`, readable
-by root only), for example `/var/lib/dotfiles/dns-backup/etc/resolv.conf`.
+The role removes no package. openresolv came from the earlier install guide
+and the relay's dnsmasq was added by hand, both outside the package lists, so
+`packages_action=reconcile` does not see them either; the migration note
+covers their removal.
 
-#### Removing the old packages
+#### Backups
 
-The role removes no package. The earlier install guide added openresolv and
-dnsmasq by hand, outside the package lists, so `packages_action=reconcile`
-does not see them either. openresolv's `resolvconf` writes `/etc/resolv.conf`
-itself when a tool such as `wg-quick` calls it, which bypasses resolved;
-`systemd-resolvconf` hands those servers to resolved instead. dnsmasq may still
-be needed by libvirt NAT networks or by shared NetworkManager connections.
-
-The [DNS migration note](../dist/arch/dns-migration.md) gives the full
-procedure: preview, apply, checks, package removal, undo, and cleanup of the
-backups in `system_dns_backup_dir`.
+Each file the role removes or replaces (relay files, legacy NetworkManager
+files, a regular `resolv.conf`) is first copied under its full path to
+`system_dns_backup_dir`, for example
+`/var/lib/dotfiles/dns-backup/etc/resolv.conf`. The directory is readable by
+root only and the copies have mode `0600`, so restore them with an explicit
+mode rather than `cp -a`. When a later run backs up the same path again, the
+earlier copy is kept as `<file>.<pid>.<date>~`, where `<date>` is the backup
+time. Order copies by that date: their file times are those of the original
+files. `daemon.json` gets a
+timestamped copy next to it instead. NetworkManager profiles are not backed up.
 
 #### Migration order
 
@@ -207,8 +220,9 @@ fail during the short window between the dnsmasq stop and the switch. resolved
 is restarted rather than reloaded, because it binds extra listeners and drops
 the compiled-in fallbacks only at startup.
 
-In check mode the role reads profiles and files but creates no backup, so a
-first run reports the changes without copying anything.
+Check mode reads profiles and files but changes nothing and creates no backup.
+The play reports the profiles it moves to DHCP DNS in both modes, because
+`ansible.cfg` hides the skipped `nmcli connection modify` items in check mode.
 
 Run `make install ANSIBLE_ARGS="--tags dns --ask-become-pass"` to apply it
 alone.

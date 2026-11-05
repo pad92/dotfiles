@@ -216,6 +216,15 @@
           if system_dns_relay_servers | length > 0 else '' }}.
       when: system_dns_nm_migration.static | length > 0
 
+    # Printed in check mode too: ansible.cfg hides skipped items, so the
+    # preview would not show which profiles the next task changes.
+    - name: Report profiles moved to DHCP DNS
+      ansible.builtin.debug:
+        msg: >-
+          DNS servers reset to DHCP on:
+          {{ system_dns_nm_migration.reset | map(attribute='name') | unique | join(', ') }}
+      when: system_dns_nm_migration.reset | length > 0
+
     - name: Use DHCP DNS on profiles that relied on the loopback relay
       ansible.builtin.command:
         argv: "{{ ['nmcli', 'connection', 'modify', item.uuid] + item.settings }}"

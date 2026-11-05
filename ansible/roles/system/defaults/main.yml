@@ -51,6 +51,9 @@ system_docker_group_users:
   - "{{ lookup('env', 'USER') }}"
 # Packages whose update requires ananicy-cpp to reload its rules.
 system_ananicy_rule_packages: [cachyos-ananicy-rules]
+# false leaves the resolver setup untouched, for example after undoing the
+# migration; a full run otherwise applies the DNS policy again.
+system_dns_manage: true
 # DNS: systemd-resolved is the only resolver. Quote the values: YAML reads a
 # bare no as a boolean. LLMNR stays off so single-label names never reach the
 # local network; mDNS resolves .local names without announcing this host.

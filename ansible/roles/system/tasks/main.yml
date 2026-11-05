@@ -33,9 +33,21 @@
   ansible.builtin.import_tasks: ssh_hardening.yml
   tags: [ssh_client_hardening]
 
+- name: Report that the DNS policy is disabled
+  ansible.builtin.debug:
+    msg: >-
+      DNS policy disabled (system_dns_manage is false). The resolver setup is
+      left as it is.
+  when:
+    - packages_action | default('install') != 'plan'
+    - not system_dns_manage | bool
+  tags: [dns]
+
 - name: Make systemd-resolved the only DNS resolver
   ansible.builtin.import_tasks: dns.yml
-  when: packages_action | default('install') != 'plan'
+  when:
+    - packages_action | default('install') != 'plan'
+    - system_dns_manage | bool
   tags: [dns]
 
 - name: Apply kernel hardening
