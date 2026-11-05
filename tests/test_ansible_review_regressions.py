@@ -210,7 +210,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             "ANSIBLE_CONFIG": str(ROOT / "ansible.cfg"),
             "ANSIBLE_LOCAL_TEMP": str(self.work / "ansible-local"),
         }
-        for tag in ["system", "kernel_hardening"]:
+        for tag in ["system", "kernel_hardening", "dns"]:
             with self.subTest(tag=tag):
                 result = subprocess.run(
                     [
@@ -229,6 +229,10 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("Apply package group selection", result.stdout)
+                self.assertIn(
+                    "Warn when the package group selection is unavailable",
+                    result.stdout,
+                )
 
     # gaming.yml uses community.general.pacman, resolved even when skipped.
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")

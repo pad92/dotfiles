@@ -97,6 +97,12 @@ and `/etc/systemd/resolved.conf.d/60-dotfiles-dns.conf` sets the policy:
   servers, lookups fail instead of going to the compiled-in public resolvers in
   clear text. List servers there to keep a fallback.
 
+The tag needs `systemd-resolved.service`, a running `NetworkManager.service`
+and `nmcli`. When one of them is missing, the role says which and skips the DNS
+policy without changing anything.
+
+#### Docker
+
 With `12_containers_docker`, resolved also listens on the Docker bridge address
 (`system_docker_bridge_ip`, default `10.184.1.1/28`). The role sets it as `bip`
 and as the only `dns` entry in `/etc/docker/daemon.json`, and keeps the other
@@ -104,16 +110,143 @@ keys. Containers then get the host's view, including VPN split DNS. Docker reads
 the file at startup, so restart `docker.service` yourself when no container
 needs to stay up. The listener binds even while `docker0` is absent.
 
-The tag also removes the former dnsmasq relay. NetworkManager profiles whose
-static DNS servers are all loopback addresses go back to DHCP DNS and are
-reapplied without reconnecting. Profiles that mix loopback and remote servers
-are reported and left unchanged. The role stops and disables `dnsmasq.service`
-when it would hold the bridge address or the relay files are present; libvirt's
-own dnsmasq processes are not affected. Files listed in
-`system_dns_legacy_files` are copied to `system_dns_backup_dir`
-(`/var/lib/dotfiles/dns-backup`, readable by root only) before removal.
-resolved is restarted rather than reloaded, because it binds extra listeners
-and drops the compiled-in fallbacks only at startup.
+A `/28` leaves 13 addresses for containers on the default bridge, after the
+network, broadcast and bridge addresses. User-defined networks take their
+subnets from `default-address-pools`, not from `bip`. A `fixed-cidr` inside
+the bridge network is kept. One outside it makes the play fail, because Docker
+would refuse to start; change `fixed-cidr` or `system_docker_bridge_ip`. An
+empty `daemon.json` is read as `{}`.
+
+Before changing anything, the role lists the port 53 listeners with `ss`. If a
+program other than resolved holds port 53 on the bridge address or on all
+addresses, the play stops and names it, and that program keeps running.
+libvirt's dnsmasq listens on its own bridge addresses and does not conflict.
+
+Removing `12_containers_docker` later drops the listener but leaves `bip` and
+`dns` in `daemon.json`. Containers then query an address nothing answers on, so
+remove the `dns` entry yourself if Docker stays installed.
+
+#### resolv.conf
+
+The role enables and starts `systemd-resolved.service`, then links
+`/etc/resolv.conf` (`system_dns_resolv_conf`) to
+`/run/systemd/resolve/stub-resolv.conf`. A link that already resolves to the
+stub, relative or not, is left alone. A link to another file, including
+`/run/systemd/resolve/resolv.conf`, is replaced: that file sends programs
+straight to the upstream servers and skips the stub, so the resolved policy
+would not apply to them.
+
+A regular `resolv.conf` is replaced only when this policy supersedes its
+writer. That is the case when it has an openresolv, NetworkManager or
+systemd-resolved header, or when all its name servers are loopback addresses
+(the former relay, or a stale copy of the stub). A VPN client can restore such
+a copy after disconnecting, and the next run links it again. The file is copied
+to the backup directory first.
+
+Any other regular file is left alone, and the play prints its first comment
+line. This is typically a VPN client that rewrote the file while connected:
+run the tag again after disconnecting. Set
+`system_dns_force_resolv_conf_link` to `true` to replace it anyway.
+
+If the stub file is missing once resolved has started, the play fails before
+linking `resolv.conf`. NetworkManager has been reloaded by then and may have
+rewritten a regular `resolv.conf` itself. The play ends with
+`resolvectl query localhost`, which needs no network, and fails if resolved
+does not answer.
+
+#### Former dnsmasq relay
+
+The relay is recognised by the files in `system_dns_relay_files`. Only when one
+of them exists does the role touch NetworkManager profiles and
+`dnsmasq.service`. Without them, a loopback DNS server is treated as a
+deliberate local resolver (unbound, dnscrypt-proxy) and left alone, and so is
+`dnsmasq.service`.
+
+With the relay present:
+
+- A profile family whose DNS servers are all loopback addresses and whose
+  method is automatic (`auto`, or `dhcp` for IPv6) goes back to DHCP DNS. It is
+  reapplied without reconnecting, except VPN, WireGuard and tun connections,
+  which are listed so you can reconnect them.
+- A family with another method (`manual`, `link-local`, `shared`) would have no
+  server left, so it is reported and left unchanged. The report lists the
+  `server=` lines of the relay files as candidates.
+- Profiles that mix loopback and remote servers are reported and left
+  unchanged. Profiles without IP settings, such as bridge ports, are skipped.
+- `dnsmasq.service` is stopped and disabled.
+
+The NetworkManager files in `system_dns_legacy_files` (`dns.conf`, and the
+`rc-manager.conf` with `rc-manager=resolvconf` from the earlier install guide)
+are removed when they set nothing but `dns=` or `rc-manager=` in `[main]`. A
+file with other settings is kept and reported, since its DNS lines may still
+override `dns=systemd-resolved`.
+
+Each removed file, like a replaced `resolv.conf`, is first copied under its
+full path to `system_dns_backup_dir` (`/var/lib/dotfiles/dns-backup`, readable
+by root only), for example `/var/lib/dotfiles/dns-backup/etc/resolv.conf`.
+
+#### Removing the old packages
+
+The role removes no package. The earlier install guide added openresolv and
+dnsmasq by hand, outside the package lists, so `packages_action=reconcile`
+does not see them either. Clean them up yourself once the `dns` tag has run.
+
+See what is installed and what still uses it:
+
+```sh
+pacman -Qi openresolv dnsmasq 2>/dev/null | grep -E '^(Name|Required By|Optional For)'
+pgrep -a dnsmasq
+```
+
+openresolv's `resolvconf` writes `/etc/resolv.conf` itself when a tool such as
+`wg-quick` calls it, which bypasses resolved. `systemd-resolvconf` hands those
+servers to resolved instead. The two packages conflict, so installing the new
+one offers to remove openresolv:
+
+```sh
+sudo pacman -S systemd-resolvconf
+```
+
+The relay no longer needs dnsmasq, but other programs may. libvirt starts its
+own copy for NAT networks such as `default` (`pgrep` shows
+`--conf-file=/var/lib/libvirt/dnsmasq/...`), and NetworkManager does the same
+for connections with `ipv4.method shared`, such as a hotspot. Check both:
+
+```sh
+sudo virsh net-list --all
+sudo grep -rl 'method=shared' /etc/NetworkManager/system-connections/
+```
+
+If both are empty, remove dnsmasq. pacman keeps a modified `/etc/dnsmasq.conf`
+as `/etc/dnsmasq.conf.pacsave`:
+
+```sh
+sudo pacman -Rns dnsmasq
+```
+
+Then list the dependencies nothing needs anymore, read the list, and remove
+them:
+
+```sh
+pacman -Qdtq
+sudo pacman -Rns $(pacman -Qdtq)
+```
+
+The backups stay in `system_dns_backup_dir`. Once DNS has worked through a
+reboot and a VPN connection, you can delete them with
+`sudo rm -r /var/lib/dotfiles/dns-backup`.
+
+#### Migration order
+
+On a migrated host, resolved starts first, then the profiles and files change
+and dnsmasq stops. resolved is restarted and NetworkManager reloaded right
+after, and `resolv.conf` switches last. Lookups through the old `resolv.conf`
+fail during the short window between the dnsmasq stop and the switch. resolved
+is restarted rather than reloaded, because it binds extra listeners and drops
+the compiled-in fallbacks only at startup.
+
+In check mode the role reads profiles and files but creates no backup, so a
+first run reports the changes without copying anything.
 
 Run `make install ANSIBLE_ARGS="--tags dns --ask-become-pass"` to apply it
 alone.

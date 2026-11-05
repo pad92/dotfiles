@@ -65,11 +65,26 @@ system_dns_networkmanager_conf: /etc/NetworkManager/conf.d/60-dotfiles-dns.conf
 # and containers query the resolved stub listening on it.
 system_docker_bridge_ip: 10.184.1.1/28
 system_docker_daemon_config_path: /etc/docker/daemon.json
-# Files of the former dnsmasq relay and its unmanaged NetworkManager DNS
-# setting, backed up to system_dns_backup_dir and then removed.
-system_dns_legacy_files:
+# Files of the former dnsmasq relay. Finding one of them is what allows the
+# role to reset loopback-only NetworkManager profiles and stop dnsmasq.service;
+# without them, a loopback DNS server is treated as a deliberate local resolver.
+system_dns_relay_files:
   - /etc/dnsmasq.d/home-failover.conf
   - /etc/NetworkManager/dispatcher.d/90-dnsmasq-upstream
   - /etc/tmpfiles.d/dnsmasq-upstream.conf
+# NetworkManager settings left by the former relay and the former install
+# guide (rc-manager=resolvconf for openresolv). They override dns= or rewrite
+# /etc/resolv.conf. Each is removed when it sets nothing but dns= or
+# rc-manager= in [main]; a file with other settings is reported and kept.
+system_dns_legacy_files:
   - /etc/NetworkManager/conf.d/dns.conf
+  - /etc/NetworkManager/conf.d/rc-manager.conf
+# Relay files, legacy files and a regular /etc/resolv.conf are copied here
+# under their full path (for example <dir>/etc/resolv.conf) before removal.
 system_dns_backup_dir: /var/lib/dotfiles/dns-backup
+system_dns_resolv_conf: /etc/resolv.conf
+system_dns_resolved_stub: /run/systemd/resolve/stub-resolv.conf
+# A regular resolv.conf is replaced by the stub link only when openresolv,
+# NetworkManager or systemd-resolved wrote it, or when it lists only loopback
+# servers. true also replaces a file another program owns, such as a VPN client.
+system_dns_force_resolv_conf_link: false
