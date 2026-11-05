@@ -39,6 +39,15 @@ Release history and changes planned for the next version.
     Ansible's lazy containers. The copy also copied the templar, and rebuilding
     its plugin loaders printed `PluginLoader with aliases` deprecation warnings
     (seen with ansible-core 2.22).
+- **DNS**:
+  - Stop the relay `dnsmasq.service` before removing the relay files. Those
+    files are how the role recognises the relay, so a run interrupted between
+    the two steps left dnsmasq running for good.
+  - The port 53 check ignores the relay dnsmasq by its main pid instead of by
+    name, so another dnsmasq on all addresses now stops the play.
+  - With Docker, check that resolved listens on the bridge address over UDP
+    and TCP before writing `daemon.json`. resolved only logs a stub listener
+    it cannot bind, so containers could be left without DNS.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

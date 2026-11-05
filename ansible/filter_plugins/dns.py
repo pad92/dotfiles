@@ -2,6 +2,7 @@
 
 import base64
 import ipaddress
+import re
 from typing import Any
 
 from ansible.errors import AnsibleFilterError
@@ -181,35 +182,79 @@ def resolv_conf_origin(content: str) -> dict[str, Any]:
 # Process name of systemd-resolved as ss reports it (comm is cut at 15 chars).
 RESOLVED_PROCESS = "systemd-resolve"
 WILDCARD_ADDRESSES = frozenset({"0.0.0.0", "*", "::"})
+# DNSStubListenerExtra without a udp: or tcp: prefix listens on both.
+STUB_PROTOCOLS = ("udp", "tcp")
+
+
+def _port_listeners(sockets: str) -> list[dict[str, Any]]:
+    """Parse `ss -Hlntup 'sport = :53'` into protocol, address, host and owners.
+
+    `process` is the first command name in the users column and `pids` every
+    pid there, both empty when ss shows no process details.
+    """
+    listeners = []
+    for line in sockets.splitlines():
+        columns = line.split()
+        if len(columns) < 5:
+            continue
+        users = columns[6] if len(columns) > 6 else ""
+        process = None
+        if '(("' in users:
+            process = users.split('(("', 1)[1].split('"', 1)[0]
+        listeners.append(
+            {
+                "protocol": columns[0],
+                "address": columns[4],
+                "host": columns[4].rpartition(":")[0].split("%", 1)[0].strip("[]"),
+                "process": process,
+                "pids": set(re.findall(r"pid=(\d+)", users)),
+            }
+        )
+    return listeners
 
 
 def dns_port_conflicts(
-    sockets: str, bridge_address: str, ignored: list[str] | None = None
+    sockets: str, bridge_address: str, ignored_pids: list[Any] | None = None
 ) -> list[str]:
     """List the port 53 listeners that keep resolved off the Docker bridge.
 
     `sockets` is the output of `ss -Hlntup 'sport = :53'`. A listener conflicts
     when it holds the bridge address or a wildcard address and is neither
-    systemd-resolved nor a process in `ignored`. A bridge listener without
-    process details is taken to be resolved from an earlier run.
+    systemd-resolved nor owned by a pid in `ignored_pids` (the relay dnsmasq,
+    which the role stops). Pids, not process names, single out the relay: any
+    other dnsmasq on a wildcard address still conflicts. A bridge listener
+    without process details is taken to be resolved from an earlier run.
     """
-    allowed = {RESOLVED_PROCESS, *(ignored or [])}
+    ignored = {str(pid) for pid in ignored_pids or [] if str(pid) not in ("", "0")}
     conflicts = []
-    for line in sockets.splitlines():
-        columns = line.split()
-        if len(columns) < 5:
+    for listener in _port_listeners(sockets):
+        process = listener["process"]
+        if process == RESOLVED_PROCESS or listener["pids"] & ignored:
             continue
-        host = columns[4].rpartition(":")[0].split("%", 1)[0].strip("[]")
-        process = None
-        if len(columns) > 6 and '(("' in columns[6]:
-            process = columns[6].split('(("', 1)[1].split('"', 1)[0]
-        if process in allowed:
-            continue
+        host = listener["host"]
         if host in WILDCARD_ADDRESSES or (host == bridge_address and process):
             conflicts.append(
-                f"{columns[0]} {columns[4]} ({process or 'unknown process'})"
+                f"{listener['protocol']} {listener['address']} "
+                f"({process or 'unknown process'})"
             )
     return conflicts
+
+
+def dns_bridge_listener_missing(sockets: str, bridge_address: str) -> list[str]:
+    """Return the protocols on which resolved does not listen on the bridge.
+
+    `sockets` is the output of `ss -Hlntup 'sport = :53'` taken once resolved
+    has restarted. resolved only logs a DNSStubListenerExtra it cannot bind,
+    so this is the check that containers will get answers. A bridge listener
+    without process details counts as resolved, as in dns_port_conflicts.
+    """
+    bound = {
+        listener["protocol"]
+        for listener in _port_listeners(sockets)
+        if listener["host"] == bridge_address
+        and listener["process"] in (RESOLVED_PROCESS, None)
+    }
+    return [protocol for protocol in STUB_PROTOCOLS if protocol not in bound]
 
 
 def _split_terse(line: str) -> list[str]:
@@ -326,6 +371,7 @@ class FilterModule:
             "nm_legacy_dns_files": nm_legacy_dns_files,
             "resolv_conf_origin": resolv_conf_origin,
             "dns_port_conflicts": dns_port_conflicts,
+            "dns_bridge_listener_missing": dns_bridge_listener_missing,
             "docker_bridge_address": docker_bridge_address,
             "docker_daemon_dns": docker_daemon_dns,
         }

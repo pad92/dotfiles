@@ -132,8 +132,15 @@ empty `daemon.json` is read as `{}`.
 Before changing anything, the role lists the port 53 listeners with `ss`. If a
 program other than resolved, or the relay dnsmasq it is about to stop, holds
 port 53 on the bridge address or on all addresses, the play stops and names
-it, and that program keeps running. libvirt's dnsmasq listens on its own bridge
-addresses and does not conflict.
+it, and that program keeps running. The relay is recognised by the main pid of
+`dnsmasq.service`, so any other dnsmasq on all addresses stops the play too.
+libvirt's dnsmasq listens on its own bridge addresses and does not conflict.
+
+After the `resolv.conf` switch, the role lists the listeners again and fails
+if resolved does not hold port 53 on the bridge address over both UDP and TCP.
+resolved only logs a listener it cannot bind, so this is what keeps
+`daemon.json` from pointing containers at an address nothing answers on. Check
+mode skips this, since it does not restart resolved.
 
 Removing `12_containers_docker` later drops the listener but leaves `bip` and
 `dns` in `daemon.json`. Containers then query an address nothing answers on, so
@@ -213,8 +220,10 @@ timestamped copy next to it instead. NetworkManager profiles are not backed up.
 
 #### Migration order
 
-On a migrated host, resolved starts first, then the profiles and files change
-and dnsmasq stops. resolved is restarted and NetworkManager reloaded right
+On a migrated host, resolved starts first, then the profiles change, dnsmasq
+stops and the relay files are removed. dnsmasq stops before its files go,
+because they are how the role recognises the relay: a run interrupted in
+between can then still finish on the next run. resolved is restarted and NetworkManager reloaded right
 after, and `resolv.conf` switches last. Lookups through the old `resolv.conf`
 fail during the short window between the dnsmasq stop and the switch. resolved
 is restarted rather than reloaded, because it binds extra listeners and drops
