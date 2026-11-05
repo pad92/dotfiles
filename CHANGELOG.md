@@ -36,9 +36,11 @@ Release history and changes planned for the next version.
 - **Documentation**:
   - Install `systemd-resolvconf` and link `/etc/resolv.conf` to the resolved
     stub in the Arch install guide, instead of `openresolv`.
-  - Explain how to remove openresolv and dnsmasq by hand after the DNS
-    migration, and how to check first that libvirt or a shared NetworkManager
-    connection does not still need dnsmasq.
+  - Add a DNS migration note (`dist/arch/dns-migration.md`): preview, apply,
+    checks, removal of openresolv and dnsmasq, undo and cleanup. It checks
+    first that libvirt or a shared NetworkManager connection does not still
+    need dnsmasq, and lists orphans with `pacman -Qdttq` so that optional
+    dependencies are kept.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

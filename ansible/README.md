@@ -189,52 +189,14 @@ by root only), for example `/var/lib/dotfiles/dns-backup/etc/resolv.conf`.
 
 The role removes no package. The earlier install guide added openresolv and
 dnsmasq by hand, outside the package lists, so `packages_action=reconcile`
-does not see them either. Clean them up yourself once the `dns` tag has run.
+does not see them either. openresolv's `resolvconf` writes `/etc/resolv.conf`
+itself when a tool such as `wg-quick` calls it, which bypasses resolved;
+`systemd-resolvconf` hands those servers to resolved instead. dnsmasq may still
+be needed by libvirt NAT networks or by shared NetworkManager connections.
 
-See what is installed and what still uses it:
-
-```sh
-pacman -Qi openresolv dnsmasq 2>/dev/null | grep -E '^(Name|Required By|Optional For)'
-pgrep -a dnsmasq
-```
-
-openresolv's `resolvconf` writes `/etc/resolv.conf` itself when a tool such as
-`wg-quick` calls it, which bypasses resolved. `systemd-resolvconf` hands those
-servers to resolved instead. The two packages conflict, so installing the new
-one offers to remove openresolv:
-
-```sh
-sudo pacman -S systemd-resolvconf
-```
-
-The relay no longer needs dnsmasq, but other programs may. libvirt starts its
-own copy for NAT networks such as `default` (`pgrep` shows
-`--conf-file=/var/lib/libvirt/dnsmasq/...`), and NetworkManager does the same
-for connections with `ipv4.method shared`, such as a hotspot. Check both:
-
-```sh
-sudo virsh net-list --all
-sudo grep -rl 'method=shared' /etc/NetworkManager/system-connections/
-```
-
-If both are empty, remove dnsmasq. pacman keeps a modified `/etc/dnsmasq.conf`
-as `/etc/dnsmasq.conf.pacsave`:
-
-```sh
-sudo pacman -Rns dnsmasq
-```
-
-Then list the dependencies nothing needs anymore, read the list, and remove
-them:
-
-```sh
-pacman -Qdtq
-sudo pacman -Rns $(pacman -Qdtq)
-```
-
-The backups stay in `system_dns_backup_dir`. Once DNS has worked through a
-reboot and a VPN connection, you can delete them with
-`sudo rm -r /var/lib/dotfiles/dns-backup`.
+The [DNS migration note](../dist/arch/dns-migration.md) gives the full
+procedure: preview, apply, checks, package removal, undo, and cleanup of the
+backups in `system_dns_backup_dir`.
 
 #### Migration order
 

@@ -211,7 +211,7 @@ ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 ```
 
 Hosts installed with the earlier openresolv instructions are migrated by the
-same tag; see the DNS section of `ansible/README.md`.
+same tag; follow the [DNS migration note](./dns-migration.md).
 
 ### Configure wifi
 
