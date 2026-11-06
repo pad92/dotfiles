@@ -60,6 +60,7 @@ test-shell: ## Run the shell integration tests
 	bash tests/awww-monitor-scale.sh
 	bash tests/hyprlock-playerctlock.sh
 	bash tests/claude-statusline.sh
+	bash tests/hypr-screenshot.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
 
@@ -69,6 +70,6 @@ ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (de
 ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
 	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml -e dotfiles_backup_action=remove
 
-screenshot: ## Render an isolated Hyprland showcase to $(SCREENSHOT)
+screenshot: ## Render the Hyprland showcase still and animated demo next to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \
 		ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh
