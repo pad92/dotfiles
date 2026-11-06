@@ -3,18 +3,22 @@
 [![Pipeline](https://gitlab.com/pad92/dotfiles/badges/main/pipeline.svg)](https://gitlab.com/pad92/dotfiles/-/pipelines)
 [![Latest release](https://gitlab.com/pad92/dotfiles/-/badges/release.svg)](https://gitlab.com/pad92/dotfiles/-/releases)
 
-Linux desktop configuration for Arch Linux and CachyOS, built around Hyprland,
-Zsh, Neovim, Alacritty, tmux, Waybar, and Mako, and deployed with Ansible.
+A Hyprland desktop for Arch Linux and CachyOS, with Zsh, Neovim, Alacritty,
+tmux, Waybar, and Mako, set up by a single Ansible playbook.
 
-![Hyprland desktop with Neovim, Waybar and Fastfetch on CachyOS](./dist/hyprland.webp)
+[![Hyprland demo: a Hyprlauncher search, a Mako notification, and the Hyprlock screen over Neovim, Fastfetch, and Waybar](./dist/hyprland-demo.webp)](./dist/hyprland.webp)
+
+Searching with Hyprlauncher, a Mako notification, then Hyprlock, recorded by
+`make screenshot` from the Hyprland config in this repository. Click it for the
+full-size still.
 
 [Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
 [Arch installation guide](./dist/arch/install.md) · [Ansible guide](./ansible/README.md)
 
 ## Highlights
 
-- Hyprland 0.55+ configured in Lua, with Waybar, Hyprlock, and per-monitor
-  wallpapers.
+- Hyprland 0.55+ configured in Lua, with Waybar, Hyprlauncher, Hyprlock, and
+  per-monitor wallpapers.
 - Mako notifications in the top-right corner, silenced while `steam-optimize`
   runs a game, except for critical alerts.
 - Zsh with Oh My Zsh, Neovim 0.7.2+ with native LSP, Vim, Alacritty, and tmux.
@@ -260,7 +264,7 @@ Zsh adds it to `PATH`.
 | [`backup.sh`](./ansible/roles/dotfiles/files/home/.bin/backup.sh)                                                                | Back up files with rsync over SSH.               |
 | [`awww.sh`](./ansible/roles/dotfiles/files/home/.bin/awww.sh)                                                                    | Select and render wallpapers.                    |
 | [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
-| [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Capture the desktop showcase.                    |
+| [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Record the desktop still and animated demo.      |
 | [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
@@ -275,7 +279,7 @@ then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
 | `make test`         | Run the Python and shell test suites. Set `JOBS=N` to limit parallelism.    |
 | `make coverage`     | Run the Python tests under coverage.py and enforce the `.coveragerc` floor. |
 | `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |
-| `make screenshot`   | Render the desktop showcase used at the top of this page.                   |
+| `make screenshot`   | Render the desktop showcase at the top of this page (`RES`, `SETTLE`, ...). |
 
 GitLab, GitHub, and Gitea share the scripts in [`scripts/ci/`](./scripts/ci/);
 see the [GitHub workflows](./.github/workflows/README.md) and
