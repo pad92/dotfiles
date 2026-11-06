@@ -1,9 +1,11 @@
 import importlib.util
 import os
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_PATH = Path(__file__).with_name("gen_pages.py")
 REPO_ROOT = SCRIPT_PATH.resolve().parents[2]
@@ -199,6 +201,23 @@ class DiscoverMarkdownTests(unittest.TestCase):
             self.assertEqual(
                 GEN_PAGES.discover_markdown(str(root)), ["README.md", "docs/a.md"]
             )
+
+    def test_inherited_git_dir_does_not_replace_the_root_repository(self):
+        # Git hooks run from a linked worktree get GIT_DIR; `git -C root` must
+        # still describe root, not the repository the hook runs for.
+        with tempfile.TemporaryDirectory() as tmp:
+            other, root = Path(tmp) / "other", Path(tmp) / "root"
+            other.mkdir()
+            root.mkdir()
+            subprocess.run(
+                ["git", "init", "-q", str(other)],
+                check=True,
+                env=GEN_PAGES.env_for_root_repository(),
+            )
+            (root / "README.md").write_text("# t\n", encoding="utf-8")
+
+            with mock.patch.dict(os.environ, {"GIT_DIR": str(other / ".git")}):
+                self.assertEqual(GEN_PAGES.discover_markdown(str(root)), ["README.md"])
 
 
 class BuildSiteTests(unittest.TestCase):

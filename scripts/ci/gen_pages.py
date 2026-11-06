@@ -394,6 +394,22 @@ def submodule_paths(root: str) -> set[str]:
     }
 
 
+def env_for_root_repository() -> dict[str, str]:
+    """Return the environment without Git's repository-selecting variables.
+
+    A Git hook run from a linked worktree inherits GIT_DIR; with it, `git -C
+    root` would list another repository than the one at root. Raises OSError
+    when Git is not installed.
+    """
+    names = subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    return {k: v for k, v in os.environ.items() if k not in names}
+
+
 def discover_markdown(root: str) -> list[str]:
     """List Markdown sources (POSIX paths relative to root), sorted.
 
@@ -406,6 +422,7 @@ def discover_markdown(root: str) -> list[str]:
             check=True,
             capture_output=True,
             text=True,
+            env=env_for_root_repository(),
         ).stdout
     except (OSError, subprocess.CalledProcessError):
         # Submodules are third-party code: git ls-files does not list their
