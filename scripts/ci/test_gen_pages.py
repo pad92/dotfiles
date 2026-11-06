@@ -2,6 +2,7 @@ import importlib.util
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -109,6 +110,7 @@ class RewriteUrlTests(unittest.TestCase):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text("# t\n", encoding="utf-8")
         (self.root / "docs/shot.webp").write_bytes(b"img")
+        (self.root / ".github/flow.png").write_bytes(b"img")
         (self.root / "scripts").mkdir()
         (self.root / "scripts/run.sh").write_text("", encoding="utf-8")
         self.sources = ["README.md", "docs/a.md", "docs/b.md", ".github/x.md"]
@@ -181,6 +183,62 @@ class RewriteUrlTests(unittest.TestCase):
         self.assertEqual(template, "https://github.com/o/r/{kind}/f00/{path}")
 
 
+class RewriteLinksTests(unittest.TestCase):
+    """Links found in rendered HTML, as render_page passes them."""
+
+    # Same fixture as RewriteUrlTests, without inheriting (and rerunning) its tests.
+    setUp = RewriteUrlTests.setUp
+    site = RewriteUrlTests.site
+    rewrite = RewriteUrlTests.rewrite
+
+    def links(self, markdown_text, source="docs/a.md"):
+        return self.site().rewrite_links(
+            GEN_PAGES.render_markdown(markdown_text),
+            source,
+            GEN_PAGES.page_output_path(source),
+        )
+
+    def test_code_span_showing_a_tag_is_left_alone(self):
+        html = self.links('Write `<img src="b.md">` in a page.')
+
+        self.assertIn('src="b.md"', html)
+        self.assertNotIn("index.html", html)
+
+    def test_single_quoted_raw_html_attribute_is_rewritten(self):
+        html = self.links("<img src='shot.webp' alt='x'>")
+
+        self.assertIn('src="../shot.webp"', html)
+
+    def test_query_and_fragment_are_kept(self):
+        self.assertEqual(
+            self.rewrite(self.site(), "b.md?plain=1#part"),
+            "../b.md/index.html?plain=1#part",
+        )
+
+    def test_image_under_github_is_published_under_github(self):
+        site = self.site()
+
+        self.assertEqual(
+            self.rewrite(site, "flow.png", source=".github/x.md"), "../flow.png"
+        )
+        self.assertEqual(site.assets, {".github/flow.png"})
+        self.assertEqual(
+            GEN_PAGES.published_path(".github/flow.png"), "github/flow.png"
+        )
+
+
+class PageTitleTests(unittest.TestCase):
+    def test_heading_comes_from_rendered_html_not_code_blocks(self):
+        html = GEN_PAGES.render_markdown(
+            "Intro\n\n    # install deps\n\n## The `foo` [plugin](x.md)\n"
+        )
+
+        self.assertEqual(GEN_PAGES.page_title("p.md", html), "The foo plugin")
+
+    def test_page_without_heading_uses_its_path(self):
+        self.assertEqual(GEN_PAGES.page_title("p.md", "<p>text</p>"), "p.md")
+
+
 class DiscoverMarkdownTests(unittest.TestCase):
     def test_walk_without_git_skips_submodules_and_build_output(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -220,11 +278,64 @@ class DiscoverMarkdownTests(unittest.TestCase):
                 self.assertEqual(GEN_PAGES.discover_markdown(str(root)), ["README.md"])
 
 
+class SmallSiteTests(unittest.TestCase):
+    """build_site and the command line on a throwaway repository."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name) / "repo"
+        self.root.mkdir()
+        self.write("README.md", "# Home\n\n[a](docs/a.md)\n")
+        self.write("docs/a.md", "# A\n")
+        self.public = Path(tmp.name) / "public"
+
+    def write(self, name, text):
+        (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / name).write_text(text, encoding="utf-8")
+
+    def test_page_of_a_removed_source_is_deleted(self):
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        (self.root / "docs/a.md").unlink()
+        self.write("README.md", "# Home\n")
+
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertFalse((self.public / "docs").exists())
+        self.assertTrue((self.public / "index.html").is_file())
+
+    def test_directory_not_made_by_a_build_is_not_pruned(self):
+        self.public.mkdir()
+        (self.public / "keep.txt").write_text("mine", encoding="utf-8")
+
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertTrue((self.public / "keep.txt").is_file())
+
+    def test_output_directory_containing_the_sources_is_refused(self):
+        with self.assertRaises(ValueError):
+            GEN_PAGES.build_site(str(self.root), str(self.root.parent), {})
+        self.assertTrue((self.root / "docs/a.md").is_file())
+
+    def test_command_fails_on_a_broken_link(self):
+        self.write("docs/a.md", "# A\n\n[gone](missing.md)\n")
+
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), str(self.root), str(self.public)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("docs/a.md: link target not found: missing.md", result.stderr)
+
+
 class BuildSiteTests(unittest.TestCase):
     """Build the real repository documentation, as the Pages jobs do."""
 
     def build(self, env):
-        tmp = tempfile.TemporaryDirectory(dir=REPO_ROOT)
+        tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         public = Path(tmp.name) / "public"
         site = GEN_PAGES.build_site(str(REPO_ROOT), str(public), env)

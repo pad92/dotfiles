@@ -57,6 +57,8 @@ Release history and changes planned for the next version.
     images are copied, and links to other repository files go to the forge's
     file browser at the built commit. The README link to the CI workflows page
     pointed to `.github/`, which GitHub Pages does not deploy.
+  - A link to a missing file now fails the Pages build, and the
+    `test-gen-pages` pre-commit hook checks the site on every Markdown change.
 - **Tests**:
   - `make` no longer passes Git's repository variables (`GIT_DIR`,
     `GIT_INDEX_FILE`, and the rest of `git rev-parse --local-env-vars`) to its

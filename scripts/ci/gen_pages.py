@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - pygments is optional
 # written for the forge keep the same shape on the published site.
 HOME_SOURCE = "README.md"
 STYLE_FILE = "style.css"
+NOJEKYLL_FILE = ".nojekyll"
 
 # actions/upload-pages-artifact drops .git and .github from the deployed
 # tarball, so pages from .github/ are published under github/ instead.
@@ -61,19 +62,29 @@ SITE_NAV = [
 SITE_TITLE = "Pad's Dotfiles"
 
 _URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-_LINK_ATTR_RE = re.compile(r'\b(href|src)="([^"]*)"')
-_HEADING_RE = re.compile(r"^#{1,6}[ \t]+(.+?)[ \t#]*$", re.MULTILINE)
+# Only real tags are matched: Markdown escapes `<` in code spans, so an
+# `<img src="...">` sample shown as code is never taken for a link.
+_LINK_TAG_RE = re.compile(r"<(?:a|img|source)\b[^>]*>", re.IGNORECASE)
+_LINK_ATTR_RE = re.compile(
+    r"""(\s(?:href|src)\s*=\s*)(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE
+)
+_HTML_HEADING_RE = re.compile(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", re.DOTALL)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def published_path(path: str) -> str:
+    """Return where a repository file is published, relative to the site root."""
+    for prefix, replacement in RENAMED_PREFIXES.items():
+        if path.startswith(prefix):
+            return replacement + path[len(prefix) :]
+    return path
 
 
 def page_output_path(source: str) -> str:
     """Return the page path, relative to the site root, for a Markdown source."""
     if source == HOME_SOURCE:
         return "index.html"
-    for prefix, replacement in RENAMED_PREFIXES.items():
-        if source.startswith(prefix):
-            source = replacement + source[len(prefix) :]
-            break
-    return f"{source}/index.html"
+    return f"{published_path(source)}/index.html"
 
 
 def build_nav(output_rel: str) -> tuple[str, str]:
@@ -488,10 +499,14 @@ class Site:
         site, and other repository files go to the repository browser (or, for
         a local preview, to the file in the checkout next to public/).
         """
-        if not url or url.startswith(("#", "/")) or _URL_SCHEME_RE.match(url):
+        if not url or url.startswith(("#", "?", "/")) or _URL_SCHEME_RE.match(url):
             return url
-        raw_path, has_fragment, fragment = url.partition("#")
-        anchor = f"#{fragment}" if has_fragment else ""
+        rest, has_fragment, fragment = url.partition("#")
+        raw_path, has_query, query = rest.partition("?")
+        # Query and fragment carry over to the rewritten link unchanged.
+        anchor = (f"?{query}" if has_query else "") + (
+            f"#{fragment}" if has_fragment else ""
+        )
         path = unquote(raw_path)
         target = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
         if target == ".." or target.startswith("../"):
@@ -508,7 +523,7 @@ class Site:
         is_dir = os.path.isdir(local)
         if not is_dir and posixpath.splitext(target)[1].lower() in ASSET_EXTENSIONS:
             self.assets.add(target)
-            return posixpath.relpath(target, cur_dir) + anchor
+            return posixpath.relpath(published_path(target), cur_dir) + anchor
         if self.repo_url:
             kind = "tree" if is_dir else "blob"
             path_part = "" if target == "." else quote(target)
@@ -518,21 +533,32 @@ class Site:
         return os.path.relpath(local, page_dir).replace(os.sep, "/") + anchor
 
     def rewrite_links(self, html: str, source: str, output_rel: str) -> str:
-        def repl(match: re.Match[str]) -> str:
-            url = _html.unescape(match.group(2))
-            new = self.rewrite_url(url, source, output_rel)
-            return f'{match.group(1)}="{_html.escape(new, quote=True)}"'
+        def attr(match: re.Match[str]) -> str:
+            value = match.group(2) if match.group(2) is not None else match.group(3)
+            new = self.rewrite_url(_html.unescape(value), source, output_rel)
+            return f'{match.group(1)}"{_html.escape(new, quote=True)}"'
 
-        return _LINK_ATTR_RE.sub(repl, html)
+        def tag(match: re.Match[str]) -> str:
+            return _LINK_ATTR_RE.sub(attr, match.group(0))
+
+        return _LINK_TAG_RE.sub(tag, html)
 
 
-def page_title(source: str, text: str) -> str:
-    """Use the navigation label, then the first heading, then the source path."""
+def page_title(source: str, html_content: str) -> str:
+    """Use the navigation label, then the first heading, then the source path.
+
+    The heading is read from the rendered HTML, so `#` lines inside code
+    blocks are ignored and inline Markdown (code, links) is reduced to text.
+    """
     for label, nav_source in SITE_NAV:
         if nav_source == source:
             return SITE_TITLE if source == HOME_SOURCE else label
-    match = _HEADING_RE.search(text)
-    return match.group(1) if match else source
+    match = _HTML_HEADING_RE.search(html_content)
+    if match:
+        text = _html.unescape(_HTML_TAG_RE.sub("", match.group(1))).strip()
+        if text:
+            return text
+    return source
 
 
 def render_page(site: Site, source: str) -> str:
@@ -540,7 +566,6 @@ def render_page(site: Site, source: str) -> str:
     with open(os.path.join(site.root, source), "r", encoding="utf-8") as f:
         text = f.read()
     output_rel = site.pages[source]
-    title = page_title(source, text)
 
     # Pull fenced code blocks out before any other processing (handles fences
     # nested in list items, which python-markdown mishandles).
@@ -556,6 +581,7 @@ def render_page(site: Site, source: str) -> str:
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
     html_content = site.rewrite_links(render_markdown(text), source, output_rel)
+    title = page_title(source, html_content)
 
     # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
     for i, block in enumerate(code_blocks):
@@ -632,7 +658,11 @@ def render_page(site: Site, source: str) -> str:
 
 
 def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) -> Site:
-    """Render every Markdown file of root into out_dir and copy linked assets."""
+    """Render every Markdown file of root into out_dir and copy linked assets.
+
+    Files a previous build left in out_dir and this one did not produce are
+    removed. Raises ValueError when out_dir contains root.
+    """
     sources = discover_markdown(root)
     if HOME_SOURCE not in sources:
         raise FileNotFoundError(f"{HOME_SOURCE} not found in {root}")
@@ -643,15 +673,29 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         repository_url_template(os.environ if env is None else env),
     )
 
+    root_real = os.path.realpath(root)
+    out_real = os.path.realpath(out_dir)
+    if os.path.commonpath([root_real, out_real]) == out_real:
+        raise ValueError(f"output directory {out_dir} contains the sources {root}")
+    # Stale files are only removed from a directory this script generated.
+    prune = not os.path.exists(out_dir) or os.path.exists(
+        os.path.join(out_dir, NOJEKYLL_FILE)
+    )
+
+    built = {STYLE_FILE, NOJEKYLL_FILE}
     for source in sources:
-        output_file = os.path.join(out_dir, site.pages[source])
+        output_rel = site.pages[source]
+        output_file = os.path.join(out_dir, output_rel)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         write_if_changed(output_file, render_page(site, source))
+        built.add(output_rel)
 
     for asset in sorted(site.assets):
-        dest = os.path.join(out_dir, asset)
+        asset_rel = published_path(asset)
+        dest = os.path.join(out_dir, asset_rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.copyfile(os.path.join(root, asset), dest)
+        built.add(asset_rel)
 
     css_source = os.path.join(os.path.dirname(os.path.abspath(__file__)), STYLE_FILE)
     with open(css_source, "r", encoding="utf-8") as src:
@@ -659,8 +703,26 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
     write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
 
     # Serve dot-directories (e.g. .gitlab/) verbatim on GitHub Pages (no Jekyll).
-    open(os.path.join(out_dir, ".nojekyll"), "a", encoding="utf-8").close()
+    open(os.path.join(out_dir, NOJEKYLL_FILE), "a", encoding="utf-8").close()
+    if prune:
+        remove_stale_outputs(out_dir, built)
     return site
+
+
+def remove_stale_outputs(out_dir: str, built: set[str]) -> None:
+    """Delete files of out_dir that this build did not produce, then empty dirs.
+
+    The local preview reuses public/, so pages of renamed or deleted Markdown
+    files would otherwise stay reachable.
+    """
+    for current, _dirs, files in os.walk(out_dir, topdown=False):
+        rel_dir = os.path.relpath(current, out_dir).replace(os.sep, "/")
+        for name in files:
+            rel = posixpath.normpath(posixpath.join(rel_dir, name))
+            if rel not in built:
+                os.remove(os.path.join(current, name))
+        if current != out_dir and not os.listdir(current):
+            os.rmdir(current)
 
 
 if __name__ == "__main__":
@@ -669,9 +731,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     built = build_site(sys.argv[1], sys.argv[2])
+    print(f"gen_pages: {len(built.pages)} pages, {len(built.assets)} assets")
+    # A missing target is a broken link on the site: fail the Pages jobs.
     for missing_source, missing_url in built.missing_links:
         print(
             f"gen_pages: {missing_source}: link target not found: {missing_url}",
             file=sys.stderr,
         )
-    print(f"gen_pages: {len(built.pages)} pages, {len(built.assets)} assets")
+    if built.missing_links:
+        sys.exit(1)
