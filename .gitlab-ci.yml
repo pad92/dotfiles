@@ -21,7 +21,7 @@ unit_tests:
   stage: test
   image: python:3.13-alpine
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4
     - python3 -m pip install --no-cache-dir -r requirements-test.txt
     # Some tests load roles that use pinned collection modules; without them
     # Ansible cannot resolve those tasks and the tests are skipped or fail.
@@ -34,6 +34,7 @@ unit_tests:
     - bash tests/awww-monitor-scale.sh
     - bash tests/hyprlock-playerctlock.sh
     - bash tests/claude-statusline.sh
+    - bash tests/hypr-screenshot.sh
     - zsh tests/arch-clean-no-orphans.zsh
     - zsh tests/git-pull-recursive.zsh
   coverage: '/^TOTAL.+?(\d+(?:\.\d+)?)%$/'
@@ -118,6 +119,13 @@ pages:
       changes:
         # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
         - '**/*.md'
+        # Les images liées sont aussi copiées dans le site (ASSET_EXTENSIONS).
+        - '**/*.gif'
+        - '**/*.jpeg'
+        - '**/*.jpg'
+        - '**/*.png'
+        - '**/*.svg'
+        - '**/*.webp'
         - 'scripts/ci/style.css'
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/build_pages.sh'
@@ -133,6 +141,13 @@ build_pages_review:
       changes:
         # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
         - '**/*.md'
+        # Les images liées sont aussi copiées dans le site (ASSET_EXTENSIONS).
+        - '**/*.gif'
+        - '**/*.jpeg'
+        - '**/*.jpg'
+        - '**/*.png'
+        - '**/*.svg'
+        - '**/*.webp'
         - 'scripts/ci/style.css'
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/build_pages.sh'

@@ -56,8 +56,10 @@ real_user=$(id -un)
 write_identity "$WORK_DIR"
 [[ $(cut -d: -f1 "$WORK_DIR/passwd" | paste -sd,) == root,demo ]] \
     || fail "the sandbox passwd names other users: $(<"$WORK_DIR/passwd")"
-grep -qF -- "$real_user" "$WORK_DIR/passwd" "$WORK_DIR/group" \
-    && fail "the sandbox identity files name the real user"
+# CI runs as root, which the sandbox passwd legitimately names.
+if [[ $real_user != root ]] && grep -qF -- "$real_user" "$WORK_DIR/passwd" "$WORK_DIR/group"; then
+    fail "the sandbox identity files name the real user"
+fi
 
 home="$WORK_DIR/home"
 (build_demo_home "$home") || fail "the demo home could not be built"
@@ -95,12 +97,21 @@ for pair in "${client_env[@]}"; do
 done
 [[ " ${client_env[*]} " == *" USER=demo "* && " ${client_env[*]} " == *" HOME=/home/demo "* ]] \
     || fail "clients do not run as the demo user: ${client_env[*]}"
-[[ " ${client_env[*]} " != *"$real_user"* ]] || fail "the client environment names the real user"
+if [[ $real_user != root && " ${client_env[*]} " == *"$real_user"* ]]; then
+    fail "the client environment names the real user"
+fi
 
 printf 'PASS: hypr-screenshot client environment\n'
 
 # --- The entry config skips startup hooks and loads the repo modules -------
-if command -v lua >/dev/null 2>&1; then
+lua_bin=""
+for candidate in lua lua5.4 lua5.3 luajit; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        lua_bin=$candidate
+        break
+    fi
+done
+if [[ -n $lua_bin ]]; then
     config_dir="$TEST_DIR/hypr config"
     mkdir -p "$config_dir/conf"
     cat >"$config_dir/conf/module.lua" <<'EOF'
@@ -114,7 +125,7 @@ hl.on("window.open", function() end)
 EOF
     write_entry_config "$config_dir" "$TEST_DIR/entry.lua"
 
-    result=$(lua - "$TEST_DIR/entry.lua" <<'EOF'
+    result=$("$lua_bin" - "$TEST_DIR/entry.lua" <<'EOF'
 local events, config = {}, nil
 local original_on = function(event) events[#events + 1] = event end
 hl = { on = original_on, config = function(c) config = c end }
