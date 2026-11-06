@@ -48,6 +48,13 @@ Release history and changes planned for the next version.
   - With Docker, check that resolved listens on the bridge address over UDP
     and TCP before writing `daemon.json`. resolved only logs a stub listener
     it cannot bind, so containers could be left without DNS.
+- **Tests**:
+  - `make` no longer passes Git's repository variables (`GIT_DIR`,
+    `GIT_INDEX_FILE`, and the rest of `git rev-parse --local-env-vars`) to its
+    commands. A commit from a linked worktree runs the `test` hook with
+    `GIT_DIR` set, and the tests that create their own repositories then
+    reinitialised this one: `core.bare=true`, plus their `user.name`,
+    `user.email` and `commit.gpgsign=false` in `.git/config`.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

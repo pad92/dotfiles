@@ -1,5 +1,15 @@
 .DEFAULT_GOAL := help
 
+# A Git hook run from a linked worktree inherits GIT_DIR and GIT_INDEX_FILE.
+# Tests that create repositories of their own would then act on this one:
+# `git init` turns it bare and `git config` writes their identity into it.
+# Every variable from `git rev-parse --local-env-vars` is dropped for recipes,
+# so git commands find their repository from their working directory.
+unexport GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS \
+	GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_DIR GIT_WORK_TREE \
+	GIT_IMPLICIT_WORK_TREE GIT_GRAFT_FILE GIT_INDEX_FILE GIT_NO_REPLACE_OBJECTS \
+	GIT_REPLACE_REF_BASE GIT_PREFIX GIT_SHALLOW_FILE GIT_COMMON_DIR
+
 # Output path for the Hyprland showcase screenshot
 SCREENSHOT ?= dist/hyprland.webp
 PYTHON ?= python3
