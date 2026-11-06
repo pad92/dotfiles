@@ -31,26 +31,16 @@ Release history and changes planned for the next version.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
-  - The README opens with the animated demo, linked to the full-size still.
+  - The README opens with the animated demo.
 - **Scripts**:
-  - `hypr-screenshot.sh` renders the Hyprland config of the repository instead
-    of the deployed copy, at a fixed `RES` (1920x1080 by default). It waits for
-    Waybar and each window to map instead of sleeping, disables animations,
-    hides the pointer and pins the built-in wallpaper, so two runs give the
-    same image. The WebP is written atomically, and `--help` prints the options.
   - `hypr-screenshot.sh` also records an animated WebP demo
-    (`dist/hyprland-demo.webp`, 1280 px wide, about 260 KB): a Hyprlauncher
-    search typed key by key, a Mako notification, then Hyprlock. `DEMO_OUT=`
-    skips the demo; `DEMO_WIDTH` and `DEMO_QUERY` change it.
-  - The captures no longer show the user, the host, or the environment of the
-    person running them. Clients run as `demo` on host `dotfiles` in user,
-    mount, UTS and PID namespaces, with an empty environment and a throwaway
-    `/home/demo` built from the repository (templates rendered, repository
-    mounted read-only at `~/.dotfiles`). They also get a private D-Bus bus and
-    runtime directory, so the notification and the launcher never reach the
-    daemons of the live session. Hyprland itself starts with an empty
-    environment apart from the host Wayland socket. `EDITOR_FILE` is now a
-    path inside the repository, and `WAYBAR_CONFIG` picks the Waybar layout.
+    (`dist/hyprland-demo.webp`): a Hyprlauncher search, a Mako notification,
+    then Hyprlock.
+  - Captures run as `demo@dotfiles` in namespaces, with an empty environment
+    and a home built from the repository: no real user, host or session
+    detail shows up. `EDITOR_FILE` is now relative to the repository.
+  - Frames are reproducible: fixed resolution, no animations, hidden pointer,
+    pinned wallpaper. Images are written atomically.
 
 ### Fixed
 
@@ -79,14 +69,11 @@ Release history and changes planned for the next version.
     pointed to `.github/`, which GitHub Pages does not deploy.
   - A link to a missing file now fails the Pages build, and the
     `test-gen-pages` pre-commit hook checks the site on every Markdown change.
+  - The Pages jobs also run when only an image changes.
 - **Scripts**:
-  - `hypr-screenshot.sh` no longer runs the `hyprland.start` hooks in its
-    throwaway instance. They ran `gsettings` on the live session and started a
-    second polkit agent, cliphist watchers and swayosd through `uwsm app`.
-  - The terminal shows fastfetch again: the zshrc greets only when `SHLVL` is
-    1, which the script had raised. The Hyprland sample notification, which
-    was cut at the right edge of the capture, is replaced by a Mako one in the
-    demo.
+  - `hypr-screenshot.sh` no longer runs the Hyprland autostart (gsettings,
+    polkit, cliphist) in the live session.
+  - The showcase terminal shows fastfetch again.
 - **Tests**:
   - `make` no longer passes Git's repository variables (`GIT_DIR`,
     `GIT_INDEX_FILE`, and the rest of `git rev-parse --local-env-vars`) to its
