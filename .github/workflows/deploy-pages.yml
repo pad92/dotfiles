@@ -4,26 +4,20 @@ on:
   push:
     branches: ['main']
     paths:
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'dist/arch/install.md'
+      # Every Markdown file is published (see scripts/ci/gen_pages.py).
+      - '**.md'
       - 'scripts/ci/style.css'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
-      - '.github/workflows/README.md'
-      - '.gitlab/README.md'
       - '.github/workflows/deploy-pages.yml'
   pull_request:
     branches: ['main']
     paths:
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'dist/arch/install.md'
+      # Every Markdown file is published (see scripts/ci/gen_pages.py).
+      - '**.md'
       - 'scripts/ci/style.css'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
-      - '.github/workflows/README.md'
-      - '.gitlab/README.md'
 
 concurrency:
   group: pages-${{ github.workflow }}-${{ github.ref }}

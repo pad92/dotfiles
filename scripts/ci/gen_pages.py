@@ -2,7 +2,11 @@ import html as _html
 import os
 import posixpath
 import re
+import shutil
+import subprocess
 import sys
+from collections.abc import Mapping
+from urllib.parse import quote, unquote
 
 import markdown
 
@@ -16,30 +20,75 @@ try:
 except ImportError:  # pragma: no cover - pygments is optional
     _HAVE_PYGMENTS = False
 
-# Site navigation menu: (label, target page relative to the public/ root).
-# Links are resolved relative to each page so the site works under a subpath
-# (e.g. project GitHub/GitLab Pages served from /<repo>/).
+# Every Markdown file of the repository becomes a page. Its output path mirrors
+# the source path (`docs/x.md` -> `docs/x.md/index.html`) so relative links
+# written for the forge keep the same shape on the published site.
+HOME_SOURCE = "README.md"
+STYLE_FILE = "style.css"
+
+# actions/upload-pages-artifact drops .git and .github from the deployed
+# tarball, so pages from .github/ are published under github/ instead.
+RENAMED_PREFIXES = {".github/": "github/"}
+
+# Directories never scanned when Git is unavailable (CI images without git).
+SKIPPED_DIRS = {
+    ".ansible",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    "public",
+    "venv",
+}
+
+# Linked local files with these extensions are copied next to the pages;
+# any other linked file points to the repository browser instead.
+ASSET_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+
+# Site navigation menu: (label, source Markdown file).
 SITE_NAV = [
-    ("Home", "index.html"),
-    ("Changelog", "CHANGELOG.md/index.html"),
-    ("Installation", "dist/arch/install.md/index.html"),
-    # Published under github/ (not .github/): actions/upload-pages-artifact
-    # excludes .git and .github from the deployed tarball (would 404 otherwise).
-    ("CI Workflows", "github/workflows/README.md/index.html"),
-    ("GitLab CI", ".gitlab/README.md/index.html"),
+    ("Home", HOME_SOURCE),
+    ("Ansible", "ansible/README.md"),
+    ("Installation", "dist/arch/install.md"),
+    ("Changelog", "CHANGELOG.md"),
+    ("CI Workflows", ".github/workflows/README.md"),
+    ("GitLab CI", ".gitlab/README.md"),
 ]
+SITE_TITLE = "Pad's Dotfiles"
+
+_URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+_LINK_ATTR_RE = re.compile(r'\b(href|src)="([^"]*)"')
+_HEADING_RE = re.compile(r"^#{1,6}[ \t]+(.+?)[ \t#]*$", re.MULTILINE)
 
 
-def build_nav(output_file):
-    """Return (brand_href, nav_items_html) with links relative to output_file."""
-    # Drop the leading 'public/' segment to get the path relative to the site root.
-    root_rel = "/".join(output_file.replace(os.sep, "/").split("/")[1:])
-    cur_dir = posixpath.dirname(root_rel) or "."
+def page_output_path(source: str) -> str:
+    """Return the page path, relative to the site root, for a Markdown source."""
+    if source == HOME_SOURCE:
+        return "index.html"
+    for prefix, replacement in RENAMED_PREFIXES.items():
+        if source.startswith(prefix):
+            source = replacement + source[len(prefix) :]
+            break
+    return f"{source}/index.html"
+
+
+def build_nav(output_rel: str) -> tuple[str, str]:
+    """Return (brand_href, nav_items_html) with links relative to output_rel.
+
+    Relative links keep the site working under a subpath (e.g. project
+    GitHub/GitLab Pages served from /<repo>/).
+    """
+    cur_dir = posixpath.dirname(output_rel) or "."
 
     items = []
-    for label, target in SITE_NAV:
+    for label, source in SITE_NAV:
+        target = page_output_path(source)
         href = posixpath.relpath(target, cur_dir)
-        if target == root_rel:
+        if target == output_rel:
             items.append(
                 f'<li class="nav-item"><a class="nav-link active" '
                 f'aria-current="page" href="{href}">{label}</a></li>'
@@ -332,9 +381,149 @@ def parse_alerts(text):
     return "\n".join(new_lines)
 
 
-def generate_html(input_file, output_file, title):
-    with open(input_file, "r", encoding="utf-8") as f:
+def submodule_paths(root: str) -> set[str]:
+    """Return the submodule paths declared in root's .gitmodules, if any."""
+    try:
+        with open(os.path.join(root, ".gitmodules"), "r", encoding="utf-8") as f:
+            text = f.read()
+    except FileNotFoundError:
+        return set()
+    return {
+        posixpath.normpath(path)
+        for path in re.findall(r"^\s*path\s*=\s*(.+?)\s*$", text, re.MULTILINE)
+    }
+
+
+def discover_markdown(root: str) -> list[str]:
+    """List Markdown sources (POSIX paths relative to root), sorted.
+
+    Git is preferred so ignored or untracked local files are not published;
+    CI images without Git fall back to a filesystem walk of the clean checkout.
+    """
+    try:
+        listed = subprocess.run(
+            ["git", "-C", root, "ls-files", "-z", "--", "*.md"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        # Submodules are third-party code: git ls-files does not list their
+        # files, so the walk skips them too.
+        submodules = submodule_paths(root)
+        sources = []
+        for current, dirs, files in os.walk(root):
+            rel_dir = os.path.relpath(current, root).replace(os.sep, "/")
+            dirs[:] = sorted(
+                d
+                for d in dirs
+                if d not in SKIPPED_DIRS
+                and posixpath.normpath(posixpath.join(rel_dir, d)) not in submodules
+            )
+            for name in files:
+                if name.endswith(".md"):
+                    sources.append(posixpath.normpath(posixpath.join(rel_dir, name)))
+        return sorted(sources)
+
+    # ls-files also lists tracked files deleted from the working tree.
+    return sorted(
+        path
+        for path in listed.split("\0")
+        if path and os.path.isfile(os.path.join(root, path))
+    )
+
+
+def repository_url_template(env: Mapping[str, str]) -> str | None:
+    """Return a `{kind}`/`{path}` URL template to browse the built commit.
+
+    `kind` is `blob` for files and `tree` for directories. Returns None outside
+    GitLab CI and GitHub Actions (e.g. the local post-commit preview).
+    """
+    if env.get("CI_PROJECT_URL") and env.get("CI_COMMIT_SHA"):
+        return f"{env['CI_PROJECT_URL']}/-/{{kind}}/{env['CI_COMMIT_SHA']}/{{path}}"
+    if all(
+        env.get(k) for k in ("GITHUB_SERVER_URL", "GITHUB_REPOSITORY", "GITHUB_SHA")
+    ):
+        return (
+            f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}"
+            f"/{{kind}}/{env['GITHUB_SHA']}/{{path}}"
+        )
+    return None
+
+
+class Site:
+    """Pages of one build plus the state needed to resolve links between them."""
+
+    def __init__(
+        self, root: str, out_dir: str, sources: list[str], repo_url: str | None
+    ) -> None:
+        self.root = root
+        self.out_dir = out_dir
+        self.repo_url = repo_url
+        self.pages = {source: page_output_path(source) for source in sources}
+        self.assets: set[str] = set()
+        self.missing_links: list[tuple[str, str]] = []
+
+    def rewrite_url(self, url: str, source: str, output_rel: str) -> str:
+        """Map a link written for the forge to its location on the site.
+
+        Links to Markdown files go to their page, images are copied into the
+        site, and other repository files go to the repository browser (or, for
+        a local preview, to the file in the checkout next to public/).
+        """
+        if not url or url.startswith(("#", "/")) or _URL_SCHEME_RE.match(url):
+            return url
+        raw_path, has_fragment, fragment = url.partition("#")
+        anchor = f"#{fragment}" if has_fragment else ""
+        path = unquote(raw_path)
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+        if target == ".." or target.startswith("../"):
+            return url
+
+        cur_dir = posixpath.dirname(output_rel) or "."
+        if target in self.pages:
+            return posixpath.relpath(self.pages[target], cur_dir) + anchor
+
+        local = os.path.join(self.root, target)
+        if not os.path.exists(local):
+            self.missing_links.append((source, url))
+            return url
+        is_dir = os.path.isdir(local)
+        if not is_dir and posixpath.splitext(target)[1].lower() in ASSET_EXTENSIONS:
+            self.assets.add(target)
+            return posixpath.relpath(target, cur_dir) + anchor
+        if self.repo_url:
+            kind = "tree" if is_dir else "blob"
+            path_part = "" if target == "." else quote(target)
+            return self.repo_url.format(kind=kind, path=path_part) + anchor
+
+        page_dir = os.path.join(self.out_dir, cur_dir)
+        return os.path.relpath(local, page_dir).replace(os.sep, "/") + anchor
+
+    def rewrite_links(self, html: str, source: str, output_rel: str) -> str:
+        def repl(match: re.Match[str]) -> str:
+            url = _html.unescape(match.group(2))
+            new = self.rewrite_url(url, source, output_rel)
+            return f'{match.group(1)}="{_html.escape(new, quote=True)}"'
+
+        return _LINK_ATTR_RE.sub(repl, html)
+
+
+def page_title(source: str, text: str) -> str:
+    """Use the navigation label, then the first heading, then the source path."""
+    for label, nav_source in SITE_NAV:
+        if nav_source == source:
+            return SITE_TITLE if source == HOME_SOURCE else label
+    match = _HEADING_RE.search(text)
+    return match.group(1) if match else source
+
+
+def render_page(site: Site, source: str) -> str:
+    """Render one Markdown source to a complete, minified HTML page."""
+    with open(os.path.join(site.root, source), "r", encoding="utf-8") as f:
         text = f.read()
+    output_rel = site.pages[source]
+    title = page_title(source, text)
 
     # Pull fenced code blocks out before any other processing (handles fences
     # nested in list items, which python-markdown mishandles).
@@ -347,8 +536,9 @@ def generate_html(input_file, output_file, title):
     # Parse alerts (GitLab-style blockquotes)
     text = parse_alerts(text)
 
-    # Convert markdown to html
-    html_content = render_markdown(text)
+    # Convert markdown to html, then fix links before code blocks come back so
+    # code samples are never rewritten.
+    html_content = site.rewrite_links(render_markdown(text), source, output_rel)
 
     # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
     for i, block in enumerate(code_blocks):
@@ -357,29 +547,9 @@ def generate_html(input_file, output_file, title):
             token, block
         )
 
-    # CSS lives at the public/ root; link to it with a relative path based on
-    # how deep the output file sits (e.g. public/index.html -> style.css,
-    # public/CHANGELOG.md/index.html -> ../style.css,
-    # public/dist/arch/install.md/index.html -> ../../../style.css).
-    depth = output_file.count("/")
-    css_path = "../" * (depth - 1) + "style.css" if depth > 1 else "style.css"
-
-    # Copy style.css to the target directory automatically
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    css_source = os.path.join(script_dir, "style.css")
-
-    if os.path.exists(css_source):
-        css_dest = os.path.normpath(
-            os.path.join(os.path.dirname(output_file), css_path)
-        )
-        css_dest_dir = os.path.dirname(css_dest)
-        if css_dest_dir:
-            os.makedirs(css_dest_dir, exist_ok=True)
-        with open(css_source, "r", encoding="utf-8") as src:
-            minified_css = minify_css(src.read() + pygments_css())
-        write_if_changed(css_dest, minified_css)
-
-    brand_href, nav_items = build_nav(output_file)
+    cur_dir = posixpath.dirname(output_rel) or "."
+    css_path = posixpath.relpath(STYLE_FILE, cur_dir)
+    brand_href, nav_items = build_nav(output_rel)
 
     template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -394,7 +564,7 @@ def generate_html(input_file, output_file, title):
 <body data-bs-spy="scroll" data-bs-target="#toc">
     <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="{brand_href}">Pad's Dotfiles</a>
+            <a class="navbar-brand" href="{brand_href}">{_html.escape(SITE_TITLE)}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav" aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -441,15 +611,50 @@ def generate_html(input_file, output_file, title):
     </script>
 </body>
 </html>"""
+    return minify_html(template)
 
-    output_directory = os.path.dirname(output_file) or "."
-    os.makedirs(output_directory, exist_ok=True)
-    write_if_changed(output_file, minify_html(template))
+
+def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) -> Site:
+    """Render every Markdown file of root into out_dir and copy linked assets."""
+    sources = discover_markdown(root)
+    if HOME_SOURCE not in sources:
+        raise FileNotFoundError(f"{HOME_SOURCE} not found in {root}")
+    site = Site(
+        root,
+        out_dir,
+        sources,
+        repository_url_template(os.environ if env is None else env),
+    )
+
+    for source in sources:
+        output_file = os.path.join(out_dir, site.pages[source])
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        write_if_changed(output_file, render_page(site, source))
+
+    for asset in sorted(site.assets):
+        dest = os.path.join(out_dir, asset)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copyfile(os.path.join(root, asset), dest)
+
+    css_source = os.path.join(os.path.dirname(os.path.abspath(__file__)), STYLE_FILE)
+    with open(css_source, "r", encoding="utf-8") as src:
+        minified_css = minify_css(src.read() + pygments_css())
+    write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
+
+    # Serve dot-directories (e.g. .gitlab/) verbatim on GitHub Pages (no Jekyll).
+    open(os.path.join(out_dir, ".nojekyll"), "a", encoding="utf-8").close()
+    return site
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python3 gen_pages.py <input_file> <output_file> <title>")
+    if len(sys.argv) != 3:
+        print("Usage: python3 gen_pages.py <repository_root> <output_dir>")
         sys.exit(1)
 
-    generate_html(sys.argv[1], sys.argv[2], sys.argv[3])
+    built = build_site(sys.argv[1], sys.argv[2])
+    for missing_source, missing_url in built.missing_links:
+        print(
+            f"gen_pages: {missing_source}: link target not found: {missing_url}",
+            file=sys.stderr,
+        )
+    print(f"gen_pages: {len(built.pages)} pages, {len(built.assets)} assets")
