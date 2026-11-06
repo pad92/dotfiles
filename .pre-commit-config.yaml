@@ -25,7 +25,8 @@ repos:
         name: test documentation page generator
         language: system
         entry: python3 scripts/ci/test_gen_pages.py
-        files: ^scripts/ci/(gen_pages|test_gen_pages)\.py$
+        # Markdown too: the tests build the real site and reject broken links.
+        files: (^scripts/ci/(gen_pages|test_gen_pages)\.py|\.md)$
         pass_filenames: false
         stages: [pre-commit]
 

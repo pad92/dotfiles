@@ -30,7 +30,7 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 | `ansible_lint`       | validate | Branch and tag pipelines                                                                              | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.    |
 | `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/` or `.vimrc` in pushes and merge requests | Package Vim configuration as `vim.tar.gz`, fetching submodules recursively.   |
 | `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests     | Package Neovim configuration as `nvim.tar.gz`.                                |
-| `pages`              | pages    | Default branch when documentation files change, or a `vX.Y.Z` release tag                             | Build and deploy the documentation site to `public/`.                         |
+| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag          | Build and deploy the documentation site to `public/`.                         |
 | `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                             | Build the documentation site for review without deploying it.                 |
 | `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                    | Publish a release with notes from `CHANGELOG.md`.                             |
 
@@ -38,11 +38,14 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 This job runs on `alpine:latest`, installs `python3` and `py3-markdown`, and
 calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
-`deploy-pages.yml` workflow and local `post-commit` hook use the same script,
-which keeps the page list in one place.
+`deploy-pages.yml` workflow and local `post-commit` hook use the same script.
+Every Markdown file of the repository becomes a page, and relative links to
+other files point to the GitLab file browser at `CI_COMMIT_SHA`. The page
+layout and link rules are described with
+[`deploy-pages.yml`](../.github/workflows/README.md#deploy-pagesyml).
 
-The `pages` job deploys documentation from the default branch when a documented
-file changes, and from `vX.Y.Z` release tags. The `build_pages_review` job builds
+The `pages` job deploys documentation from the default branch when a Markdown
+file or the page generator changes, and from `vX.Y.Z` release tags. The `build_pages_review` job builds
 documentation on non-default branches and merge requests without deploying it.
 GitLab treats `rules:changes` as true on pipelines without a push diff, so the
 review job explicitly skips tag pipelines
@@ -55,7 +58,9 @@ review job explicitly skips tag pipelines
 
 > [!NOTE]
 > `build_pages.sh` uses POSIX `sh` and does not require Git, so it runs on the
-> minimal `alpine` image without extra packages.
+> minimal `alpine` image without extra packages. Without Git, `gen_pages.py`
+> finds the Markdown files by walking the checkout and skips the submodules
+> listed in `.gitmodules`.
 
 ### `create_release`
 

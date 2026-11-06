@@ -48,6 +48,17 @@ Release history and changes planned for the next version.
   - With Docker, check that resolved listens on the bridge address over UDP
     and TCP before writing `daemon.json`. resolved only logs a stub listener
     it cannot bind, so containers could be left without DNS.
+- **Pages**:
+  - The documentation site publishes every Markdown file of the repository,
+    not just five of them, and the Pages jobs run when any `.md` file changes.
+    Links to `ansible/README.md`, `dist/arch/dns-migration.md` and other
+    unpublished pages returned 404.
+  - Relative links are rewritten for the site: Markdown links go to their page,
+    images are copied, and links to other repository files go to the forge's
+    file browser at the built commit. The README link to the CI workflows page
+    pointed to `.github/`, which GitHub Pages does not deploy.
+  - A link to a missing file now fails the Pages build, and the
+    `test-gen-pages` pre-commit hook checks the site on every Markdown change.
 - **Tests**:
   - `make` no longer passes Git's repository variables (`GIT_DIR`,
     `GIT_INDEX_FILE`, and the rest of `git rev-parse --local-env-vars`) to its

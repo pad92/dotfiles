@@ -13,25 +13,10 @@ if ! python3 -c 'import markdown' >/dev/null 2>&1; then
     exit 0
 fi
 
-# Output paths mirror each source path under public/.
-python3 scripts/ci/gen_pages.py README.md                    public/index.html                              "Pad's Dotfiles"
-python3 scripts/ci/gen_pages.py CHANGELOG.md                 public/CHANGELOG.md/index.html                 "Changelog"
-python3 scripts/ci/gen_pages.py dist/arch/install.md         public/dist/arch/install.md/index.html         "Installation"
-# Publish under github/ (no leading dot): actions/upload-pages-artifact strips
-# .git and .github from the deployed tarball, which would 404 the page.
-python3 scripts/ci/gen_pages.py .github/workflows/README.md  public/github/workflows/README.md/index.html  "CI Workflows"
-python3 scripts/ci/gen_pages.py .gitlab/README.md            public/.gitlab/README.md/index.html            "GitLab CI"
-
-# Copy static assets referenced by the rendered docs into public/, mirroring
-# their source path so relative links (e.g. the README showcase image) resolve
-# correctly on both GitHub Pages and GitLab Pages.
-asset=dist/hyprland.webp
-if [ -f "$asset" ]; then
-    mkdir -p "public/$(dirname "$asset")"
-    cp "$asset" "public/$asset"
-fi
-
-# Serve dot-directories (e.g. .github/) verbatim on GitHub Pages (no Jekyll).
-touch public/.nojekyll
+# Every Markdown file becomes a page whose path mirrors its source path, and
+# relative links are rewritten for the site (see gen_pages.py). Linked images
+# are copied into public/; other linked files point to the repository browser
+# in GitLab CI and GitHub Actions.
+python3 scripts/ci/gen_pages.py . public
 
 echo "build_pages: regenerated public/"

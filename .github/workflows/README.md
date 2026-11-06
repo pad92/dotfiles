@@ -20,13 +20,35 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 ### `deploy-pages.yml`
 
 Installs `markdown` and runs [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh).
-The script uses [`gen_pages.py`](../../scripts/ci/gen_pages.py) to render
-`README.md`, `CHANGELOG.md`, and `dist/arch/install.md` into `public/`. Each run
-uploads the artifact; only runs on `main` deploy it.
+The script uses [`gen_pages.py`](../../scripts/ci/gen_pages.py) to render every
+Markdown file tracked by Git into `public/`. Each run uploads the artifact; only
+runs on `main` deploy it, and any change to a `.md` file triggers the workflow.
 
-`build_pages.sh` is the single source for the page list. The local
-`post-commit` preview hook (see `.pre-commit-config.yaml`) and GitLab `pages`
-job use the same script.
+Each page keeps its source path (`dist/arch/install.md` becomes
+`dist/arch/install.md/index.html`), except `README.md`, which becomes the site
+index, and `.github/`, which is published as `github/` because
+`actions/upload-pages-artifact` drops `.github` from the artifact.
+`gen_pages.py` rewrites relative links so they work on the site:
+
+- a link to a Markdown file goes to its page, query and anchor included;
+- a linked image is copied into `public/`, under `github/` for `.github/`;
+- a link to any other repository file or directory goes to the forge's file
+  browser at the built commit (`GITHUB_SHA` here, `CI_COMMIT_SHA` on GitLab).
+  The local preview links to the file in the checkout instead.
+
+Only `href` and `src` attributes of real `<a>`, `<img>` and `<source>` tags
+are rewritten, so tags shown as code stay as written. A page's title is its
+navigation label, else its first heading, else its path.
+
+A link whose target does not exist fails the build: `gen_pages.py` lists the
+broken links on stderr and exits 1, which stops the Pages jobs. The
+`test-gen-pages` pre-commit hook builds the site on every Markdown change and
+catches them before the commit. Each build also removes the files a previous
+build left in `public/` for renamed or deleted pages.
+
+`gen_pages.py` is the single source for the page list. The local `post-commit`
+preview hook (see `.pre-commit-config.yaml`) and GitLab `pages` job use the same
+script.
 
 ### `package-vim.yml`
 
