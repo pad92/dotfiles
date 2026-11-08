@@ -15,6 +15,111 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 class DotfilesDeployTests(unittest.TestCase):
+    def test_icon_theme_template_changes_reload_mako(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            role = work / "dotfiles"
+            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+            handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
+            (role / "handlers/main.yml").write_text(
+                yaml.safe_dump(
+                    [
+                        {
+                            "name": handler["name"],
+                            "ansible.builtin.debug": {"msg": handler["name"]},
+                        }
+                        for handler in handlers
+                    ]
+                )
+            )
+            home = work / "home"
+            home.mkdir()
+            play = [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "dotfiles_home": str(home),
+                        "dotfiles_directories": [],
+                        "dotfiles_files": [],
+                        "dotfiles_links": [],
+                        "dotfiles_templates": [
+                            {"src": "home/.gtkrc-2.0.j2", "dest": ".gtkrc-2.0"},
+                            {
+                                "src": "home/.config/gtk-3.0/settings.ini.j2",
+                                "dest": ".config/gtk-3.0/settings.ini",
+                            },
+                            {
+                                "src": "home/.config/hypr/hyprtoolkit.conf.j2",
+                                "dest": ".config/hypr/hyprtoolkit.conf",
+                            },
+                            {
+                                "src": "home/.config/mako/config.j2",
+                                "dest": ".config/mako/config",
+                            },
+                        ],
+                        "dotfiles_systemd_graphical_units": [],
+                        "dotfiles_waybar_host_config": "config.test",
+                    },
+                    "tasks": [
+                        {
+                            "ansible.builtin.import_role": {
+                                "name": str(role),
+                                "tasks_from": "deploy",
+                            },
+                            "tags": ["dotfiles_deploy"],
+                        }
+                    ],
+                }
+            ]
+            playbook = work / "play.yml"
+            playbook.write_text(yaml.safe_dump(play))
+
+            def run(*arguments):
+                result = subprocess.run(
+                    [
+                        "ansible-playbook",
+                        "-i",
+                        "localhost,",
+                        str(playbook),
+                        "--tags",
+                        "dotfiles_deploy",
+                        *arguments,
+                    ],
+                    cwd=ROOT,
+                    env=ansible_test_environment(work),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                return result.stdout
+
+            run("-e", "dotfiles_icon_theme=Example-Dark")
+            output = run("-e", "dotfiles_icon_theme=Other-Dark")
+            self.assertIn(": Reload Mako configuration]", output)
+            self.assertIn(
+                'gtk-icon-theme-name="Other-Dark"',
+                (home / ".gtkrc-2.0").read_text(),
+            )
+            self.assertIn(
+                "gtk-icon-theme-name=Other-Dark",
+                (home / ".config/gtk-3.0/settings.ini").read_text(),
+            )
+            self.assertIn(
+                "icon_theme = Other-Dark",
+                (home / ".config/hypr/hyprtoolkit.conf").read_text(),
+            )
+            self.assertIn(
+                "icon-path=/usr/share/icons/Other-Dark:/usr/share/icons/Other",
+                (home / ".config/mako/config").read_text(),
+            )
+            output = run("-e", "dotfiles_icon_theme=Other-Dark")
+            self.assertRegex(output, r"changed=0\b")
+            self.assertNotIn("RUNNING HANDLER", output)
+
     def test_individual_file_copy_preserves_deployment_behavior(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

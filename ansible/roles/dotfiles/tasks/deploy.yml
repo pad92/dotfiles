@@ -149,6 +149,7 @@
       loop: '{{ dotfiles_templates }}'
       loop_control:
         label: '{{ item.dest }}'
+      notify: '{{ dotfiles_file_handlers.get(item.dest, []) }}'
 
     - name: Render the Hyprlock carousel helper
       ansible.builtin.template:
