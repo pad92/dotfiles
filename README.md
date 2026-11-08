@@ -289,4 +289,4 @@ is mirrored on [GitLab](https://gitlab.com/pad92/dotfiles),
 [GitHub](https://github.com/pad92/dotfiles), and
 [Codeberg](https://codeberg.org/pad7/.dotfiles).
 
-_Maintained by [pad](https://gitlab.com/pad92)🐐 with ❤️ since 2015 (11+ years)._
+_Maintained by [pad](https://gitlab.com/pad92)🐐 since 2015._
