@@ -15,17 +15,21 @@ way when that mode is active alone.
 """
 
 import configparser
+import json
 import re
 import unittest
 from pathlib import Path
 
+import jinja2
+import yaml
+
 HOME = Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home"
-MAKO_CONFIG = HOME / ".config/mako/config"
+TEMPLATES = Path(__file__).parents[1] / "ansible/roles/dotfiles/templates/home"
+DOTFILES_DEFAULTS = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/defaults/main.yml"
+)
 HYPR_CONFIG = HOME / ".config/hypr/config.lua"
 HYPR_KEYBINDINGS = HOME / ".config/hypr/conf/keybindings.lua"
-HYPRTOOLKIT_CONFIG = HOME / ".config/hypr/hyprtoolkit.conf"
-GTK3_SETTINGS = HOME / ".config/gtk-3.0/settings.ini"
-GTK2_SETTINGS = HOME / ".gtkrc-2.0"
 WAYBAR_STYLE = HOME / ".config/waybar/style.css"
 # Captures the RGB part of #rrggbb and #rrggbbaa colors.
 HEX_COLOR = re.compile(r"#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?\b")
@@ -75,10 +79,33 @@ def resolve(sections, mode, urgency, grouped=False):
 class MakoConfigTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.sections = parse_sections(MAKO_CONFIG.read_text(encoding="utf-8"))
+        cls.defaults = yaml.safe_load(DOTFILES_DEFAULTS.read_text(encoding="utf-8"))
+        cls.template_environment = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(TEMPLATES)
+        )
+        cls.rendered = cls.render_configs(cls.defaults["dotfiles_icon_theme"])
+        cls.sections = parse_sections(cls.rendered["mako"])
         cls.global_options = cls.sections[0][1]
         cls.modes = {DEFAULT_MODE} | {
             criteria["mode"] for criteria, _ in cls.sections if "mode" in criteria
+        }
+
+    @classmethod
+    def render_configs(cls, icon_theme):
+        context = {
+            "dotfiles_icon_theme": icon_theme,
+            # Same derivation as dotfiles_icon_theme_parent in the defaults.
+            "dotfiles_icon_theme_parent": re.sub(r"-Dark$", "", icon_theme),
+        }
+        templates = {
+            "gtk2": ".gtkrc-2.0.j2",
+            "gtk3": ".config/gtk-3.0/settings.ini.j2",
+            "hyprtoolkit": ".config/hypr/hyprtoolkit.conf.j2",
+            "mako": ".config/mako/config.j2",
+        }
+        return {
+            name: cls.template_environment.get_template(template).render(**context)
+            for name, template in templates.items()
         }
 
     def test_newest_notification_sits_in_the_anchor_corner(self):
@@ -167,30 +194,58 @@ class MakoConfigTests(unittest.TestCase):
         )
 
     def test_icon_theme_is_declared_consistently(self):
-        # The theme name is written by hand in four files; Mako only searches
-        # hicolor and pixmaps unless icon-path lists the theme first.
+        # Mako needs both Papirus-Dark and its Papirus parent explicitly.
         gtk3 = configparser.ConfigParser()
-        gtk3.read_string(GTK3_SETTINGS.read_text(encoding="utf-8"))
+        gtk3.read_string(self.rendered["gtk3"])
         gtk2 = re.search(
             r'^gtk-icon-theme-name="([^"]+)"',
-            GTK2_SETTINGS.read_text(encoding="utf-8"),
+            self.rendered["gtk2"],
             re.MULTILINE,
         )
         toolkit = re.search(
             r"^icon_theme\s*=\s*(\S+)",
-            HYPRTOOLKIT_CONFIG.read_text(encoding="utf-8"),
+            self.rendered["hyprtoolkit"],
             re.MULTILINE,
         )
         if gtk2 is None or toolkit is None:
-            self.fail("icon theme not found in .gtkrc-2.0 or hyprtoolkit.conf")
+            self.fail("icon theme not found in a rendered GTK or hyprtoolkit config")
         themes = {
             "gtk-3.0/settings.ini": gtk3["Settings"]["gtk-icon-theme-name"],
             ".gtkrc-2.0": gtk2.group(1),
             "hyprtoolkit.conf": toolkit.group(1),
+            "mako": self.global_options["icon-path"].split(":")[0].rsplit("/", 1)[-1],
         }
         self.assertEqual(len(set(themes.values())), 1, themes)
         icon_paths = self.global_options.get("icon-path", "").split(":")
-        self.assertEqual(icon_paths[0], f"{SYSTEM_ICON_ROOT}/{themes['.gtkrc-2.0']}")
+        self.assertEqual(
+            icon_paths,
+            [
+                f"{SYSTEM_ICON_ROOT}/{themes['.gtkrc-2.0']}",
+                f"{SYSTEM_ICON_ROOT}/Papirus",
+            ],
+        )
+
+    def test_icon_theme_variable_renders_every_configuration(self):
+        rendered = self.render_configs("Example-Dark")
+        self.assertIn('gtk-icon-theme-name="Example-Dark"', rendered["gtk2"])
+        gtk3 = configparser.ConfigParser()
+        gtk3.read_string(rendered["gtk3"])
+        self.assertEqual(gtk3["Settings"]["gtk-icon-theme-name"], "Example-Dark")
+        self.assertIsNotNone(
+            re.search(r"^icon_theme = Example-Dark$", rendered["hyprtoolkit"], re.M)
+        )
+        mako = parse_sections(rendered["mako"])[0][1]
+        self.assertEqual(
+            mako["icon-path"],
+            f"{SYSTEM_ICON_ROOT}/Example-Dark:{SYSTEM_ICON_ROOT}/Example",
+        )
+
+    def test_nwg_look_does_not_overwrite_rendered_gtk_settings(self):
+        # Ansible renders both files from dotfiles_icon_theme; an nwg-look
+        # export would diverge from it until the next deployment.
+        nwg_look = json.loads((HOME / ".config/nwg-look/config").read_text())
+        self.assertFalse(nwg_look["export-gtkrc-20"])
+        self.assertFalse(nwg_look["export-settings-ini"])
 
     def test_colors_come_from_the_shared_gruvbox_palette(self):
         palette = {
@@ -237,9 +292,10 @@ class MakoConfigTests(unittest.TestCase):
         self.assertEqual(len(set(borders.values())), len(URGENCIES), borders)
 
     def integer_setting(self, path, name):
+        content = path.read_text(encoding="utf-8") if isinstance(path, Path) else path
         match = re.search(
             rf"^\s*{name}\s*=\s*(\d+)",
-            path.read_text(encoding="utf-8"),
+            content,
             re.MULTILINE,
         )
         if match is None:
@@ -249,7 +305,7 @@ class MakoConfigTests(unittest.TestCase):
     def test_geometry_matches_hyprland(self):
         self.assertEqual(
             self.global_options.get("border-radius"),
-            self.integer_setting(HYPRTOOLKIT_CONFIG, "rounding_large"),
+            self.integer_setting(self.rendered["hyprtoolkit"], "rounding_large"),
         )
         gaps = {
             name: self.integer_setting(HYPR_CONFIG, name)

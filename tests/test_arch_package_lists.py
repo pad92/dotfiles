@@ -11,7 +11,8 @@ DOTFILES_DEFAULTS = (
     Path(__file__).parents[1] / "ansible/roles/dotfiles/defaults/main.yml"
 )
 MAKO_CONFIG = (
-    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.config/mako/config"
+    Path(__file__).parents[1]
+    / "ansible/roles/dotfiles/templates/home/.config/mako/config.j2"
 )
 # Arch package providing the program behind each user unit the dotfiles role
 # enables. Adding a unit to the role without listing its package here fails.

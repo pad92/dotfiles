@@ -28,6 +28,16 @@ Release history and changes planned for the next version.
     `172.17.0.1/16`) and use resolved as the containers' DNS server, VPN split
     DNS included. Containers on the default bridge change address, that bridge
     holds at most 13 of them, and `docker.service` needs a restart.
+- **Ansible dotfiles**:
+  - The icon theme is set once with `dotfiles_icon_theme` (default
+    `Papirus-Dark`) and rendered into `.gtkrc-2.0`, GTK 3 `settings.ini`,
+    `hyprtoolkit.conf` and the Mako `icon-path`. Mako also searches
+    `dotfiles_icon_theme_parent`, which by default drops a `-Dark` suffix.
+  - nwg-look no longer exports `.gtkrc-2.0` or GTK 3 `settings.ini`, which
+    Ansible now renders.
+  - A changed Mako config reloads Mako, and a changed `hyprtoolkit.conf`
+    restarts Hyprlauncher. Other rendered files no longer trigger these
+    handlers.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.

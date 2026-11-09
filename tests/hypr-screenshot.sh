@@ -63,7 +63,8 @@ fi
 
 home="$WORK_DIR/home"
 (build_demo_home "$home") || fail "the demo home could not be built"
-for rendered in .zshrc .config/hypr/hyprlock.conf; do
+for rendered in .zshrc .config/hypr/hyprlock.conf .gtkrc-2.0 .config/gtk-3.0/settings.ini \
+    .config/hypr/hyprtoolkit.conf .config/mako/config; do
     [[ -f $home/$rendered && ! -L $home/$rendered ]] \
         || fail "$rendered was not rendered into the demo home"
     grep -qE '\{\{|\{%' "$home/$rendered" && fail "$rendered kept a template expression"
@@ -78,9 +79,31 @@ while IFS= read -r link; do
         || fail "$link points to a missing repository file: $target"
 done < <(find "$home" -type l)
 [[ -L $home/.config/waybar/config ]] || fail "the demo home has no Waybar config"
+[[ -L $home/.config/gtk-3.0/gtk.css ]] || fail "the demo home lost the GTK 3 stylesheet"
+# The demo follows the theme of the role defaults, whatever it is.
+theme=$(sed -n 's/^dotfiles_icon_theme: *//p' "$ROOT_DIR/ansible/roles/dotfiles/defaults/main.yml")
+grep -qx "gtk-icon-theme-name=\"$theme\"" "$home/.gtkrc-2.0" \
+    || fail "the demo GTK 2 settings do not use the role icon theme $theme"
+grep -qx "gtk-icon-theme-name=$theme" "$home/.config/gtk-3.0/settings.ini" \
+    || fail "the demo GTK 3 settings do not use the role icon theme $theme"
+grep -qx "icon_theme = $theme" "$home/.config/hypr/hyprtoolkit.conf" \
+    || fail "the demo hyprtoolkit config does not use the role icon theme $theme"
+grep -qx "icon-path=/usr/share/icons/$theme:/usr/share/icons/${theme%-Dark}" \
+    "$home/.config/mako/config" \
+    || fail "the demo Mako config does not search the role icon theme $theme"
 grep -rqF -- "/home/$real_user" "$home" && fail "the demo home mentions the real home"
 
 printf 'PASS: hypr-screenshot demo home\n'
+
+# --- The nested compositor reads a rendered hyprtoolkit.conf ----------------
+hypr_home="$WORK_DIR/hypr-home"
+(build_hypr_home "$hypr_home") || fail "the compositor home could not be built"
+toolkit="$hypr_home/.config/hypr/hyprtoolkit.conf"
+[[ -f $toolkit && ! -L $toolkit ]] || fail "hyprtoolkit.conf was not rendered for the compositor"
+grep -qx "icon_theme = $theme" "$toolkit" \
+    || fail "the compositor hyprtoolkit config does not use the role icon theme $theme"
+
+printf 'PASS: hypr-screenshot compositor home\n'
 
 # --- Clients only receive the sandbox environment --------------------------
 export HYPR_SCREENSHOT_SENTINEL=leaked
