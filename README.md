@@ -125,20 +125,35 @@ The Hyprland configuration is written in Lua. See the
 [session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY
 startup, GNOME Keyring PAM, UWSM, and the systemd session.
 
-| Shortcut                              | Action                                           |
-| :------------------------------------ | :----------------------------------------------- |
-| `SUPER + Return`                      | Terminal                                         |
-| `SUPER + E / C / W`                   | File manager / editor / browser                  |
-| `SUPER + D`                           | Application menu                                 |
-| `SUPER + [0-9]`                       | Switch workspace; add `Shift` to move the window |
-| `SUPER + Arrows` or Vim keys          | Change focus; add `Shift` to move the window     |
-| `SUPER + F` / `SUPER + ALT + Space`   | Fullscreen / floating                            |
-| `SUPER + L` / `SUPER + Delete`        | Lock / logout menu                               |
-| `SUPER + SHIFT + V`                   | Clipboard history                                |
-| `Print` / `SUPER + P`                 | Screenshot                                       |
-| `SHIFT + Print` / `SUPER + SHIFT + P` | Record the focused screen; press again to stop   |
-| `CTRL + Print` / `SUPER + CTRL + P`   | Record a window (click) or a region (drag)       |
-| `SUPER + N`                           | Dismiss notifications; `Shift` restores the last |
+| Shortcut                                            | Action                                                          |
+| :-------------------------------------------------- | :-------------------------------------------------------------- |
+| `SUPER + Return`                                    | Terminal                                                        |
+| `SUPER + E / C / W`                                 | File manager / editor / browser                                 |
+| `SUPER + D`                                         | Application menu                                                |
+| `SUPER + SHIFT + Return`                            | Password manager (Proton Pass)                                  |
+| `SUPER + SHIFT + Q`                                 | Close the window                                                |
+| `SUPER + F` / `SUPER + ALT + Space`                 | Fullscreen / floating                                           |
+| `ALT + Tab`                                         | Cycle windows and raise the focused one                         |
+| `SUPER + Arrows`                                    | Change focus; add `Shift` to move the window                    |
+| `SUPER + [` / `SUPER + ]`                           | Focus the window on the left / right                            |
+| `SUPER + Left click` / `Right click`                | Drag to move / resize the window                                |
+| `SUPER + [0-9]`                                     | Switch workspace; add `Shift` to move the window there          |
+| `SUPER + ALT + [0-9]`                               | Send the window to a workspace and stay (keypad too)            |
+| `CTRL + SUPER + Left / Right`                       | Previous / next workspace                                       |
+| `SUPER + L` / `SUPER + Delete`                      | Lock / logout menu                                              |
+| `SUPER + SHIFT + V`                                 | Clipboard history                                               |
+| `SUPER + ALT + Right`                               | Change wallpaper                                                |
+| `SUPER + N`                                         | Dismiss notifications; `Shift` restores the last                |
+| `Print` / `SUPER + P`                               | Screenshot of a region, then edit it in Swappy                  |
+| `CTRL + Print` / `SUPER + CTRL + P`                 | Record a window (click) or a region (drag); press again to stop |
+| `CTRL + SHIFT + Print` / `SUPER + CTRL + SHIFT + P` | Record the focused screen; press again to stop                  |
+| `SUPER + Page Up / Page Down`                       | Zoom in / out around the pointer; `SUPER + Home` resets         |
+
+Volume, media, brightness and screenshot keys also work on the lock screen.
+Caps Lock shows its state in an on-screen indicator.
+
+Adding `CTRL` to a screenshot key records a video instead, and `SHIFT` widens
+the recording to the whole screen.
 
 Mako shows up to five notifications in the top-right corner, newest first, and
 draws them above fullscreen windows. `steam-optimize` turns on do-not-disturb
