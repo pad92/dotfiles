@@ -24,6 +24,17 @@ GRAPHICAL_UNIT_PACKAGES = {
     "waybar.service": "waybar",
 }
 FONT_FAMILY_PACKAGES = {"DejaVu Sans": "ttf-dejavu"}
+RECORD_SCRIPT = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/hypr-record.sh"
+)
+# Arch package providing each command hypr-record.sh needs to record at all.
+# Optional helpers (notify-send, wl-copy, xdg-user-dir) are not listed.
+RECORD_COMMAND_PACKAGES = {
+    "wf-recorder": "wf-recorder",
+    "hyprctl": "hyprland",
+    "jq": "jq",
+    "slurp": "slurp",
+}
 CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
@@ -113,6 +124,20 @@ class ArchPackageGroupTests(unittest.TestCase):
         for unit in units:
             with self.subTest(unit=unit):
                 self.assertIn(GRAPHICAL_UNIT_PACKAGES[unit], installed)
+
+    def test_default_groups_install_every_screen_recording_dependency(self):
+        script = RECORD_SCRIPT.read_text(encoding="utf-8")
+        required = set(re.findall(r"^\s*require (.+)$", script, re.MULTILINE))
+        commands = {
+            word.strip('"').replace("$RECORDER", "wf-recorder")
+            for line in required
+            for word in line.split()
+        }
+        self.assertEqual(commands, set(RECORD_COMMAND_PACKAGES))
+        installed = self.default_group_packages()
+        for command, package in RECORD_COMMAND_PACKAGES.items():
+            with self.subTest(command=command):
+                self.assertIn(package, installed)
 
     def test_default_groups_install_the_notification_font(self):
         font = next(

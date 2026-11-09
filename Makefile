@@ -61,6 +61,7 @@ test-shell: ## Run the shell integration tests
 	bash tests/hyprlock-playerctlock.sh
 	bash tests/claude-statusline.sh
 	bash tests/hypr-screenshot.sh
+	bash tests/hypr-record.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
 

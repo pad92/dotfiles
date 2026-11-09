@@ -6,6 +6,13 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Hyprland**:
+  - Add screen recording with `hypr-record.sh` and wf-recorder. `SHIFT + Print`
+    records the focused screen and `CTRL + Print` a window or a region; the same
+    key stops it. The file is a small H.264 MP4 in `~/Videos/Recordings`, and a
+    failed recording keeps its `.mp4.part` file instead of being renamed.
+  - Add a Waybar `REC` indicator that stops the recording when clicked.
+  - Install `wf-recorder` with the Hyprland package group (Arch and Fedora).
 - **DNS**:
   - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
     off, mDNS for resolving only, and no compiled-in public fallback servers.

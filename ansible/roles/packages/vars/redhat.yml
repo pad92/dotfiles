@@ -63,6 +63,7 @@ packages_family_groups:
       - mako
       - grim
       - slurp
+      - wf-recorder
       - wl-clipboard
     12_containers_docker:
       - moby-engine

@@ -94,6 +94,9 @@ local config = {
 
   utils = {
     screenshot = 'grim -g "$(slurp -d)" - | swappy -f -',
+    -- Toggles: the same binding starts and stops the recording.
+    record_screen = "~/.bin/hypr-record.sh screen",
+    record_window = "~/.bin/hypr-record.sh window",
     lock = "~/.bin/hyprlock-guard.sh hyprlock -c ~/.config/hypr/hyprlock.conf",
     logout = "pkill wlogout || wlogout -p layer-shell",
     vol_mute = "swayosd-client --output-volume mute-toggle",
