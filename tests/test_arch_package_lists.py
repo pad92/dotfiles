@@ -47,6 +47,14 @@ ALLOWED_CROSS_GROUP_DUPLICATES = {
     "nvidia-container-toolkit",
     "nvidia-prime",
 }
+# 22_obs is a standalone profile (ansible/obs.yml) that runs without the base
+# and Hyprland groups, so it repeats exactly the runtime OBS needs from them.
+OBS_PROFILE_SHARED_PACKAGES = {
+    "pipewire-pulse",
+    "qt6-wayland",
+    "wireplumber",
+    "xdg-desktop-portal-hyprland",
+}
 PROHIBITED_PACKAGE_NAMES = {
     # Conflicts with the power-profiles-daemon selected for gaming.
     "auto-cpufreq",
@@ -82,7 +90,35 @@ class ArchPackageGroupTests(unittest.TestCase):
             package for package, count in Counter(packages).items() if count > 1
         }
 
-        self.assertEqual(duplicates, ALLOWED_CROSS_GROUP_DUPLICATES)
+        self.assertEqual(
+            duplicates, ALLOWED_CROSS_GROUP_DUPLICATES | OBS_PROFILE_SHARED_PACKAGES
+        )
+
+    def test_obs_profile_leaves_the_onnxruntime_provider_free(self):
+        # Pinning one provider conflicts with another already installed
+        # (onnxruntime-cpu vs onnxruntime-opt-cuda).
+        self.assertFalse(
+            [name for name in self.groups["22_obs"] if name.startswith("onnxruntime")]
+        )
+
+    def test_obs_profile_only_shares_its_declared_runtime(self):
+        obs = set(self.groups["22_obs"])
+        others = {
+            package
+            for name, packages in self.groups.items()
+            if name != "22_obs"
+            for package in packages
+        }
+        self.assertEqual(obs & others, OBS_PROFILE_SHARED_PACKAGES)
+        self.assertTrue(
+            {
+                "obs-backgroundremoval",
+                "obs-studio",
+                "simde",
+                "ttf-montserrat",
+                "v4l2loopback-dkms",
+            }.issubset(obs)
+        )
 
     def test_prohibited_package_names_are_not_reintroduced(self):
         packages = {package for group in self.groups.values() for package in group}

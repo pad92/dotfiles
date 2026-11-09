@@ -11,6 +11,7 @@ packages_host_groups:
     - 12_containers_docker
     - 14_iac_opentofu
     - 20_apps
+    - 22_obs
   PadsTower:
     - 01_base
     - 02_fonts

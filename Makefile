@@ -24,12 +24,12 @@ ANSIBLE_BACKUP_ROOT ?= $(HOME)
 # environment also reaches nested Ansible commands such as ansible-inventory.
 DOTFILES_VAULT_PASSWORD_FILE ?= $(CURDIR)/.vault
 ANSIBLE_VAULT_ENV = $(if $(wildcard $(DOTFILES_VAULT_PASSWORD_FILE)),ANSIBLE_VAULT_PASSWORD_FILE="$(DOTFILES_VAULT_PASSWORD_FILE)")
-ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/backup.yml ansible/inventory.yml \
+ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/obs.yml ansible/backup.yml ansible/inventory.yml \
 	ansible/host_vars/*.yml ansible/group_vars/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml)
 
-.PHONY: help install lint lint-ansible test test-python test-shell coverage screenshot \
+.PHONY: help install install-obs lint lint-ansible test test-python test-shell coverage screenshot \
 	ansible-backup-ls ansible-backup-rm
 
 help: ## Show this help
@@ -39,12 +39,16 @@ help: ## Show this help
 install: ## Run the Ansible setup (pass options with ANSIBLE_ARGS)
 	ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/site.yml" $(ANSIBLE_ARGS)
 
+install-obs: ## Install only OBS Studio, its runtime and the demo scenes
+	ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/obs.yml" $(ANSIBLE_ARGS)
+
 lint: lint-ansible ## Lint and syntax-check the Ansible project
 
 lint-ansible: ## Run Ansible lint, yamllint, and playbook syntax checks
-	$(ANSIBLE_LINT) ansible/site.yml
+	$(ANSIBLE_LINT) ansible/site.yml ansible/obs.yml
 	$(YAMLLINT) -c $(YAMLLINT_CONFIG) $(ANSIBLE_YAML_FILES)
 	$(ANSIBLE_PLAYBOOK) ansible/site.yml --syntax-check
+	$(ANSIBLE_PLAYBOOK) ansible/obs.yml --syntax-check
 
 test: test-python test-shell ## Run the Python and shell test suites
 

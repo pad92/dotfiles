@@ -470,3 +470,100 @@ dotfiles, or `make ansible-backup-rm` to review and remove them through an
 Ansible file task after a confirmation prompt. The helper script only collects
 the candidate paths. Both targets use `$HOME` by default; set
 `ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.
+
+### OBS
+
+The `22_obs` group selects OBS Studio, the PipeWire Pulse server, WirePlumber,
+the Hyprland portal backend, `qt6-wayland`, `v4l-utils`, `v4l2loopback-dkms`,
+the `obs-backgroundremoval` plugin (built from the AUR), `simde`, and
+`ttf-montserrat`. `simde` is a build requirement of every OBS 33 plugin that
+the AUR recipe does not declare. The plugin's `onnxruntime` dependency takes any provider
+already installed (CPU, CUDA or ROCm); the filter itself runs on the CPU. PadsP5560 selects it in `host_vars`. To install OBS and
+nothing else, use the standalone profile:
+
+```sh
+make install-obs ANSIBLE_ARGS=--ask-become-pass
+```
+
+`ansible/obs.yml` runs the `packages` role with `22_obs` plus the GPU groups
+detected by `lspci`, then the `obs` role. It skips the `system` and `dotfiles`
+roles and refuses `packages_action=reconcile`, which would treat every other
+managed package as obsolete. Run a reconcile with `make install` instead. Any
+selected `*-dkms` package also brings the headers of the running kernel; the
+package that owns `/usr/lib/modules/<kernel>/vmlinuz` names them (for example
+`linux-zen-headers`).
+
+The `obs` role reads the host before writing anything:
+
+- Encoder: the GPU that renders the desktop (`boot_vga`) encodes. A hybrid
+  laptop uses VAAPI on its iGPU and the NVIDIA GPU stays asleep; a desktop
+  whose screens hang off NVIDIA uses NVENC. A five-frame ffmpeg encode proves
+  the choice, and x264 is used when it fails, with a preset sized to the CPU
+  thread count. Force one with `obs_encoder=nvenc|vaapi|x264`.
+- Video: the canvas is 16:9 at the native height of the largest external
+  output from `hyprctl monitors` (`obs_capture_output` picks one), scaled with
+  Lanczos to `obs_output_height` (1080). Frame rate is 60 with a hardware
+  encoder on a 60 Hz screen, 30 otherwise. Without a Hyprland session the
+  canvas falls back to 1920x1080.
+- Webcam: every `/dev/video*` node is listed and only colour capture nodes
+  (MJPG or YUYV) are kept, so infrared and metadata nodes are skipped. External
+  cameras win over integrated ones (`obs_webcam` matches a name or path). The
+  source uses the `/dev/v4l/by-id` link, else `by-path`, in MJPEG up to
+  1280x720 at 30 fps: YUYV at 1080p drops to 5 fps on USB 2.
+- Recordings: hybrid MP4 in `$(xdg-user-dir VIDEOS)/OBS`.
+- Webcam background: with `obs-backgroundremoval` installed, the default
+  `obs_webcam_background=cutout` makes the background transparent so the
+  person sits directly on the scene; the camera then has no accent frame and
+  touches the bottom edge, so the shoulders leave the picture naturally.
+  The default `obs_webcam_model=rvm` (Robust Video Matting) works at 320x192
+  and remembers the previous frames. It outputs a soft alpha that follows
+  hair, so the role leaves the plugin's threshold off. It runs on the CPU with
+  four threads, or two below 8 threads, so the NVIDIA GPU stays asleep.
+  `mediapipe` is lighter but segments at 256x144: on a 720p camera its mask
+  shows stair-stepped edges and loses parts of the neck or keeps a chair arm.
+  With it the mask is thresholded and leans towards hiding the room: a pixel
+  stays the person only above `obs_webcam_threshold` (0.65, the plugin default
+  is 0.5), and `obs_webcam_edge_trim` (2 pixels) trims the room's halo off the
+  outline. The contour filter keeps the upstream 0.05, since a larger value
+  merges small background areas, such as the gap under an arm, into the
+  person. `blur` keeps a soft blurred background (`obs_webcam_blur`, 6 out of
+  20) in a framed inset, `none` keeps the raw picture. Unchanged frames and a
+  hidden camera skip inference. The plugin is built against the installed OBS: rebuild it with
+  yay after an OBS upgrade if OBS reports it as not loaded.
+
+The scenes follow the brand guide: Montserrat, text #FFFFFF on #242428 in
+the default dark theme (`obs_brand_theme=light` uses #2A3235 on #FFFFFF), and
+the primary colour #41A890 for the title underline and the frame around the
+camera. Titles need the static Montserrat weights from `ttf-montserrat`: OBS
+opens the first face of a font file, which is the Thin instance of the variable
+Montserrat shipped with Google Fonts. The run warns when no static Bold face
+exists.
+
+It creates the profile and the scene collection "Démo Applis" next to the
+existing ones. Scenes: intro (title and camera), screen with a camera inset,
+screen only, one application window on a backdrop with the camera, camera
+only, and a pause card. Desktop audio and the microphone (`obs_mic_device`,
+RNNoise unless `obs_mic_noise_suppression=false`) are global sources. Screen
+and window captures go through the XDG portal: Wayland gives no way to name
+the output in advance, so OBS asks once and keeps a restore token.
+
+OBS rewrites these files when it exits, so the role creates them once and
+then leaves them alone. Run with `-e obs_config_force=true` to regenerate them
+from the current host; the previous files are kept as backups. The run refuses
+to regenerate while OBS is open, since OBS would overwrite the files on exit.
+
+The virtual camera serves Teams and other web meetings. The role writes
+`/etc/modprobe.d/zz-dotfiles-v4l2loopback.conf` with `exclusive_caps=1`
+(Chromium lists the device only with it) and loads the module now and at every boot. A
+module already loaded with other options is not unloaded, since that would cut
+a running camera; the run prints the reload command instead. OBS reopens the
+last profile and collection; start the virtual camera from its Controls dock
+before the meeting. Firefox asks PipeWire for cameras by default, and PipeWire
+never adds a camera for this device: it checks the device at boot, before OBS
+writes to it, when the device only accepts output. When Firefox is installed,
+the role writes `/etc/firefox/policies/policies.json` so Firefox reads V4L2
+cameras directly (`media.webrtc.camera.allow-pipewire` set to `false` as a
+default value, still editable in `about:config`). Other policies in that file
+are kept, and invalid JSON stops the run; `obs_virtualcam_firefox_v4l2: false`
+skips it. In the browser, pick "OBS Virtual Camera" as the camera. The virtual
+camera carries no sound, so pick the microphone in the meeting as usual.

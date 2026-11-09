@@ -15,6 +15,7 @@
     - package_services
     - dns
     - system
+    - obs
 
 - name: Select requested package groups
   ansible.builtin.import_tasks: select.yml
@@ -29,6 +30,7 @@
     - package_services
     - dns
     - system
+    - obs
 
 - name: Configure Arch package repositories
   ansible.builtin.import_tasks: pacman.yml

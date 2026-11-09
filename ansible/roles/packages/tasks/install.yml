@@ -60,7 +60,7 @@
   ansible.builtin.set_fact:
     packages_arch_repository_names: >-
       {{ packages_arch_repository_listing.stdout |
-         regex_findall('(?m)^\\S+\\s+(\\S+)\\s') }}
+         regex_findall('(?m)^\S+\s+(\S+)\s') }}
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_missing | default([]) | length > 0

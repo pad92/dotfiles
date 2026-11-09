@@ -62,6 +62,37 @@ def select_package_groups(
     return selected
 
 
+def dkms_kernel_headers(desired: Any, kernel_package: Any) -> list[str]:
+    """Return the running kernel's headers package when a DKMS package is wanted.
+
+    DKMS builds modules only for kernels whose headers are installed, so a
+    selected ``*-dkms`` package needs ``<kernel package>-headers``. An unknown
+    or invalid kernel package yields nothing rather than a guessed name.
+    """
+    if not isinstance(desired, (list, tuple, set)) or not valid_package_name(
+        kernel_package
+    ):
+        return []
+    if not any(isinstance(name, str) and name.endswith("-dkms") for name in desired):
+        return []
+    return [f"{kernel_package}-headers"]
+
+
+def recorded_package_groups(current: Any, previous_state: Any, merge: Any) -> list[str]:
+    """Return the group list to save in the package state.
+
+    A full run records its own selection. A partial profile (``merge`` true,
+    such as ansible/obs.yml) adds its groups to the saved ones instead of
+    replacing the workstation selection with its narrower list.
+    """
+    groups = {group for group in current or [] if isinstance(group, str)}
+    if merge is True and isinstance(previous_state, dict):
+        previous = previous_state.get("selected_groups")
+        if isinstance(previous, list):
+            groups.update(group for group in previous if isinstance(group, str))
+    return sorted(groups)
+
+
 def parse_package_state(value: Any) -> dict[str, Any] | None:
     """Return validated v1 state, or None when the saved file is invalid."""
     if not isinstance(value, dict) or value.get("version") != 1:
@@ -353,6 +384,8 @@ class FilterModule:
         return {
             "valid_package_name": valid_package_name,
             "select_package_groups": select_package_groups,
+            "dkms_kernel_headers": dkms_kernel_headers,
+            "recorded_package_groups": recorded_package_groups,
             "parse_package_state": parse_package_state,
             "parse_package_state_json": parse_package_state_json,
             "detect_graphics_groups": detect_graphics_groups,

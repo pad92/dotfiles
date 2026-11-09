@@ -1,0 +1,246 @@
+---
+- name: List GPU render nodes and their drivers
+  ansible.builtin.command:
+    argv: [sh, '{{ role_path }}/files/detect-render-nodes.sh']
+  register: obs_render_nodes_output
+  changed_when: false
+  check_mode: false
+  become: false
+
+- name: Choose the hardware encoder candidate
+  ansible.builtin.set_fact:
+    obs_encoder_candidate: >-
+      {{ obs_render_nodes_output.stdout | obs_render_nodes
+         | obs_encoder_candidate(obs_encoder) }}
+
+# The encoder is proven with a short real encode instead of trusting the
+# driver list: a missing VA driver or NVENC session limit falls back to x264.
+- name: Probe the VAAPI H.264 encoder
+  ansible.builtin.command:
+    argv:
+      - ffmpeg
+      - -hide_banner
+      - -loglevel
+      - error
+      - -init_hw_device
+      - 'vaapi=obs:{{ obs_encoder_candidate.device }}'
+      - -filter_hw_device
+      - obs
+      - -f
+      - lavfi
+      - -i
+      - testsrc2=size=1280x720:rate=30
+      - -frames:v
+      - '5'
+      - -vf
+      - format=nv12,hwupload
+      - -c:v
+      - h264_vaapi
+      - -f
+      - 'null'
+      - '-'
+  register: obs_encoder_probe_vaapi
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+  when: obs_encoder_candidate.kind == 'vaapi'
+
+- name: Probe the NVENC H.264 encoder
+  ansible.builtin.command:
+    argv:
+      - ffmpeg
+      - -hide_banner
+      - -loglevel
+      - error
+      - -f
+      - lavfi
+      - -i
+      - testsrc2=size=1280x720:rate=30
+      - -frames:v
+      - '5'
+      - -c:v
+      - h264_nvenc
+      - -f
+      - 'null'
+      - '-'
+  register: obs_encoder_probe_nvenc
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+  when: obs_encoder_candidate.kind == 'nvenc'
+
+- name: Select OBS encoder settings
+  ansible.builtin.set_fact:
+    obs_encoder_settings: >-
+      {{ obs_encoder_candidate | obs_encoder_settings(
+          ((obs_encoder_probe_vaapi.rc | default(1)) == 0
+           if obs_encoder_candidate.kind == 'vaapi'
+           else (obs_encoder_probe_nvenc.rc | default(1)) == 0),
+          ansible_facts['processor_nproc'] | default(0) | int) }}
+
+- name: Warn when the hardware encoder probe failed
+  ansible.builtin.debug:
+    msg: >-
+      {{ obs_encoder_candidate.kind | upper }} on
+      {{ obs_encoder_candidate.device | default('no device', true) }} failed a test
+      encode; OBS will use x264. ffmpeg said:
+      {{ (obs_encoder_probe_vaapi.stderr | default('')
+          ~ obs_encoder_probe_nvenc.stderr | default('')) | trim }}
+  when:
+    - obs_encoder_candidate.kind != 'x264'
+    - obs_encoder_settings.kind == 'x264'
+
+- name: Read active outputs from Hyprland
+  ansible.builtin.command:
+    argv: [hyprctl, monitors, -j]
+  register: obs_hyprctl_monitors
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+
+- name: Select the demo screen and video settings
+  ansible.builtin.set_fact:
+    obs_video_settings: >-
+      {{ ((obs_hyprctl_monitors.stdout | from_json)
+          if obs_hyprctl_monitors.rc | default(1) == 0
+             and obs_hyprctl_monitors.stdout | default('') | trim is match('^\[')
+          else [])
+         | obs_select_monitor(obs_capture_output)
+         | obs_video_settings(obs_output_height | int,
+                              obs_encoder_settings.hardware) }}
+
+- name: Warn when no Hyprland output was readable
+  ansible.builtin.debug:
+    msg: >-
+      hyprctl did not report outputs (run from a Hyprland session for host
+      sizing); the canvas falls back to
+      {{ obs_video_settings.base_width }}x{{ obs_video_settings.base_height }}.
+  when: obs_video_settings.monitor is none
+
+# Enumerating every node skips metadata and infrared nodes (GREY only), which
+# a /dev/v4l/by-id "-index0" link can point to on laptops.
+- name: List V4L2 cameras and their formats
+  ansible.builtin.command:
+    argv: [sh, '{{ role_path }}/files/list-cameras.sh']
+  register: obs_camera_listing
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+
+- name: Pick the webcam and build its source settings
+  ansible.builtin.set_fact:
+    obs_webcam_settings: >-
+      {{ obs_camera_listing.stdout | default('') | obs_cameras
+         | obs_pick_webcam(obs_webcam, [obs_virtualcam_label])
+         | obs_webcam_settings }}
+
+# The package file list finds the module wherever the build installed it
+# (OBS 33 reads both /usr/lib/obs-plugins and /usr/lib/obs-modules/plugins).
+- name: List the background removal plugin files
+  ansible.builtin.command:
+    argv: [pacman, -Qlq, obs-backgroundremoval]
+  register: obs_background_plugin_files
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+
+- name: Check for the background removal plugin
+  ansible.builtin.set_fact:
+    obs_background_plugin_installed: >-
+      {{ obs_background_plugin_files.rc | default(1) == 0
+         and obs_background_plugin_files.stdout_lines | default([])
+             | select('match', '.*/obs-backgroundremoval[.]so$') | list | length > 0 }}
+
+- name: Build the webcam background filter
+  ansible.builtin.set_fact:
+    obs_webcam_filters: >-
+      {{ obs_webcam_background
+         | obs_webcam_filters(obs_background_plugin_installed | bool,
+                              ansible_facts['processor_nproc'] | default(0) | int,
+                              obs_webcam_blur | int,
+                              obs_webcam_threshold | float,
+                              obs_webcam_edge_trim | int,
+                              obs_webcam_model) }}
+
+- name: Warn when the background removal plugin is missing
+  ansible.builtin.debug:
+    msg: >-
+      obs-backgroundremoval is not installed; the webcam keeps its background.
+      Install the 22_obs group (AUR build through yay) and rerun with
+      -e obs_config_force=true.
+  when:
+    - obs_webcam_background != 'none'
+    - not obs_background_plugin_installed | bool
+
+- name: Validate the brand theme
+  ansible.builtin.assert:
+    that:
+      - obs_brand_theme in obs_brand_palettes
+    fail_msg: >-
+      obs_brand_theme must be one of {{ obs_brand_palettes.keys() | list | join(', ') }}.
+
+# OBS opens face 0 of the matched file. A variable font's Bold is a named
+# instance (index above 0xFFFF), so OBS would draw its default Thin weight;
+# only a static face (index 0) renders the requested weight.
+- name: List the bold faces of the brand font
+  ansible.builtin.command:
+    argv: [fc-list, --format, "%{index}\n", '{{ obs_brand_font }}:style=Bold']
+  register: obs_brand_font_bold
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+
+- name: Check for a static bold face of the brand font
+  ansible.builtin.set_fact:
+    obs_brand_font_static_bold: >-
+      {{ '0' in (obs_brand_font_bold.stdout_lines | default([]) | map('trim') | list) }}
+
+- name: Warn when the brand font has no static bold face
+  ansible.builtin.debug:
+    msg: >-
+      fontconfig has no static {{ obs_brand_font }} Bold; OBS would draw the
+      titles in another weight. Install ttf-montserrat (22_obs) or set
+      obs_brand_font.
+  when: not obs_brand_font_static_bold | bool
+
+- name: Find the XDG videos directory
+  ansible.builtin.command:
+    argv: [xdg-user-dir, VIDEOS]
+  register: obs_xdg_videos
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+
+- name: Set the recording directory
+  ansible.builtin.set_fact:
+    obs_recording_directory: >-
+      {{ (obs_xdg_videos.stdout | trim
+          if obs_xdg_videos.rc | default(1) == 0
+             and obs_xdg_videos.stdout | trim not in ['', obs_home]
+          else obs_home ~ '/Videos') ~ '/OBS' }}
+
+- name: Report the host-derived OBS setup
+  ansible.builtin.debug:
+    msg:
+      encoder: '{{ obs_encoder_settings.id }}'
+      vaapi_device: "{{ obs_encoder_settings.record.vaapi_device | default('n/a') }}"
+      demo_output: "{{ obs_video_settings.monitor | default('fallback', true) }}"
+      canvas: '{{ obs_video_settings.base_width }}x{{ obs_video_settings.base_height }}'
+      output: >-
+        {{ obs_video_settings.output_width }}x{{ obs_video_settings.output_height
+        }}@{{ obs_video_settings.fps }}
+      webcam: "{{ (obs_webcam_settings or {}).device_id | default('none') }}"
+      webcam_background: >-
+        {{ obs_webcam_background if obs_webcam_filters | length > 0
+           else 'unchanged' }}
+      brand: >-
+        {{ obs_brand_theme }} theme, {{ obs_brand_font }}
+        {{ 'static Bold' if obs_brand_font_static_bold | bool else 'Bold MISSING' }}
+      recordings: '{{ obs_recording_directory }}'

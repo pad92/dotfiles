@@ -279,3 +279,22 @@ packages_family_groups:
       - power-profiles-daemon
       - python-gobject
       - steam
+    # Standalone OBS profile (ansible/obs.yml): OBS, its Wayland/PipeWire
+    # runtime and the virtual camera. Overlaps with 01_base and 11_hyprland
+    # are deliberate so the profile works on a host without the desktop groups.
+    22_obs:
+      # Webcam background blur (AUR). Its onnxruntime dependency accepts any
+      # provider (cpu, cuda, rocm), so none is pinned here.
+      - obs-backgroundremoval
+      - obs-studio
+      - pipewire-pulse
+      - qt6-wayland
+      # libobs' CMake config requires SIMDe to build any plugin, but neither
+      # obs-studio nor the obs-backgroundremoval PKGBUILD depends on it.
+      - simde
+      # Static Montserrat weights for the scene titles.
+      - ttf-montserrat
+      - v4l-utils
+      - v4l2loopback-dkms
+      - wireplumber
+      - xdg-desktop-portal-hyprland

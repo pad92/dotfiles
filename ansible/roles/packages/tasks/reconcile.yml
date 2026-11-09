@@ -175,7 +175,8 @@
         dest: '{{ packages_state_path }}'
         content: >-
           {{ {'version': 1,
-              'selected_groups': packages_selected_groups | sort,
+              'selected_groups': packages_selected_groups | recorded_package_groups(
+                  packages_state_data, packages_state_merge_selection | bool),
               'owned_packages': packages_owned_after
                 | intersect(packages_final_inventory) | sort}
              | to_nice_json }}

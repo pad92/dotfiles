@@ -1,0 +1,42 @@
+---
+- name: Check whether Firefox is installed
+  ansible.builtin.stat:
+    path: '{{ obs_firefox_binary_path }}'
+  register: obs_firefox_binary
+
+- name: Look for existing Firefox policies
+  ansible.builtin.stat:
+    path: '{{ obs_firefox_policies_file }}'
+  register: obs_firefox_policies_stat
+  when: obs_firefox_binary.stat.exists
+
+- name: Read the existing Firefox policies
+  ansible.builtin.slurp:
+    src: '{{ obs_firefox_policies_file }}'
+  register: obs_firefox_policies_current
+  when:
+    - obs_firefox_binary.stat.exists
+    - obs_firefox_policies_stat.stat.exists
+
+- name: Create the Firefox policies directory
+  ansible.builtin.file:
+    path: '{{ obs_firefox_policies_file | dirname }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: obs_firefox_binary.stat.exists
+
+# Other policies in the file are kept; invalid JSON stops the run.
+- name: Let Firefox read the virtual camera through V4L2
+  ansible.builtin.copy:
+    content: >
+      {{ (obs_firefox_policies_current.content | b64decode
+          if obs_firefox_policies_stat.stat.exists else '')
+         | obs_firefox_policies | to_nice_json(indent=2) }}
+    dest: '{{ obs_firefox_policies_file }}'
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  when: obs_firefox_binary.stat.exists

@@ -1,0 +1,40 @@
+[General]
+Name={{ obs_profile_name }}
+
+[Output]
+Mode=Advanced
+FilenameFormatting=%CCYY-%MM-%DD %hh-%mm-%ss
+Reconnect=true
+RetryDelay=2
+MaxRetries=25
+
+[AdvOut]
+Encoder={{ obs_encoder_settings.id }}
+RecEncoder={{ obs_encoder_settings.id }}
+RecType=Standard
+RecFilePath={{ obs_recording_directory }}
+RecFormat2=hybrid_mp4
+RecTracks=1
+TrackIndex=1
+RecUseRescale=false
+UseRescale=false
+AudioEncoder=ffmpeg_aac
+RecAudioEncoder=ffmpeg_aac
+Track1Bitrate=192
+ApplyServiceSettings=true
+
+[Video]
+BaseCX={{ obs_video_settings.base_width }}
+BaseCY={{ obs_video_settings.base_height }}
+OutputCX={{ obs_video_settings.output_width }}
+OutputCY={{ obs_video_settings.output_height }}
+FPSType=0
+FPSCommon={{ obs_video_settings.fps }}
+ScaleType=lanczos
+ColorFormat=NV12
+ColorSpace=709
+ColorRange=Partial
+
+[Audio]
+SampleRate=48000
+ChannelSetup=Stereo
