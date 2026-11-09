@@ -1,5 +1,5 @@
 {
- "export-settings-ini": true,
+ "export-settings-ini": false,
  "export-gtkrc-20": false,
  "export-index-theme": true,
  "export-xsettingsd": true,

@@ -94,7 +94,8 @@ class MakoConfigTests(unittest.TestCase):
     def render_configs(cls, icon_theme):
         context = {
             "dotfiles_icon_theme": icon_theme,
-            "dotfiles_icon_theme_parent": icon_theme.replace("-Dark", ""),
+            # Same derivation as dotfiles_icon_theme_parent in the defaults.
+            "dotfiles_icon_theme_parent": re.sub(r"-Dark$", "", icon_theme),
         }
         templates = {
             "gtk2": ".gtkrc-2.0.j2",
@@ -238,8 +239,13 @@ class MakoConfigTests(unittest.TestCase):
             mako["icon-path"],
             f"{SYSTEM_ICON_ROOT}/Example-Dark:{SYSTEM_ICON_ROOT}/Example",
         )
+
+    def test_nwg_look_does_not_overwrite_rendered_gtk_settings(self):
+        # Ansible renders both files from dotfiles_icon_theme; an nwg-look
+        # export would diverge from it until the next deployment.
         nwg_look = json.loads((HOME / ".config/nwg-look/config").read_text())
         self.assertFalse(nwg_look["export-gtkrc-20"])
+        self.assertFalse(nwg_look["export-settings-ini"])
 
     def test_colors_come_from_the_shared_gruvbox_palette(self):
         palette = {

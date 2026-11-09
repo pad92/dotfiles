@@ -149,7 +149,24 @@
       loop: '{{ dotfiles_templates }}'
       loop_control:
         label: '{{ item.dest }}'
-      notify: '{{ dotfiles_file_handlers.get(item.dest, []) }}'
+      register: dotfiles_template_renders
+
+    # A looped task notifies its handlers once any item changes, even when the
+    # notify list is templated per item, so select them from the changed items.
+    - name: Notify handlers for changed rendered dotfiles
+      ansible.builtin.debug:
+        msg: '{{ dotfiles_changed_template_handlers }}'
+      vars:
+        dotfiles_changed_templates: >-
+          {{ dotfiles_template_renders.results | default([]) | selectattr('changed')
+             | map(attribute='item.dest') | map('normpath') | list }}
+        dotfiles_changed_template_handlers: >-
+          {{ dotfiles_file_handlers | dict2items
+             | selectattr('key', 'in', dotfiles_changed_templates)
+             | map(attribute='value') | flatten | unique | list }}
+      changed_when: dotfiles_changed_template_handlers | length > 0
+      when: dotfiles_changed_template_handlers | length > 0
+      notify: '{{ dotfiles_changed_template_handlers }}'
 
     - name: Render the Hyprlock carousel helper
       ansible.builtin.template:
