@@ -29,7 +29,8 @@ Release history and changes planned for the next version.
     host, with a test encode before a hardware encoder is used. It creates an
     application demo profile and scene collection once and leaves them to OBS.
   - Configure v4l2loopback with `exclusive_caps=1` so web meetings such as
-    Teams can use the OBS virtual camera.
+    Teams can use the OBS virtual camera. A Firefox policy makes Firefox read
+    V4L2 cameras directly, since PipeWire never lists the loopback device.
   - Cut the person out of the webcam background with obs-backgroundremoval
     (Robust Video Matting on the CPU, whose soft alpha follows hair; the
     lighter MediaPipe model remains available with `obs_webcam_model`). A soft

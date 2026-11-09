@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from typing import Any
@@ -746,6 +747,43 @@ def obs_scene_collection(
     }
 
 
+# Firefox asks PipeWire for cameras by default. PipeWire enumerates a
+# v4l2loopback device created with exclusive_caps=1 before OBS writes to it,
+# sees an output-only device and never adds a camera source for it, so the
+# OBS virtual camera is missing from web meetings. Read V4L2 directly instead.
+FIREFOX_PIPEWIRE_CAMERA_PREF = "media.webrtc.camera.allow-pipewire"
+
+
+def obs_firefox_policies(existing: Any) -> dict[str, Any]:
+    """Return Firefox enterprise policies with V4L2 camera access added.
+
+    ``existing`` is the current ``policies.json`` text, or empty when there is
+    none. Other policies and preferences are kept. The preference uses the
+    ``default`` status, so it can still be changed in about:config.
+    """
+    if existing in (None, ""):
+        document: Any = {}
+    elif isinstance(existing, str):
+        try:
+            document = json.loads(existing)
+        except json.JSONDecodeError as error:
+            raise AnsibleFilterError(
+                f"Firefox policies.json is not valid JSON: {error}"
+            ) from error
+    else:
+        raise AnsibleFilterError("Firefox policies must be read as text")
+    if not isinstance(document, dict):
+        raise AnsibleFilterError("Firefox policies.json must hold a JSON object")
+    policies = document.setdefault("policies", {})
+    if not isinstance(policies, dict):
+        raise AnsibleFilterError('Firefox "policies" must be a JSON object')
+    preferences = policies.setdefault("Preferences", {})
+    if not isinstance(preferences, dict):
+        raise AnsibleFilterError('Firefox "Preferences" policy must be a JSON object')
+    preferences[FIREFOX_PIPEWIRE_CAMERA_PREF] = {"Value": False, "Status": "default"}
+    return document
+
+
 class FilterModule:
     def filters(self) -> dict[str, Any]:
         return {
@@ -759,4 +797,5 @@ class FilterModule:
             "obs_webcam_settings": obs_webcam_settings,
             "obs_webcam_filters": obs_webcam_filters,
             "obs_scene_collection": obs_scene_collection,
+            "obs_firefox_policies": obs_firefox_policies,
         }

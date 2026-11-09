@@ -57,3 +57,9 @@ obs_brand_font: Montserrat
 obs_virtualcam_enabled: true
 obs_virtualcam_label: OBS Virtual Camera
 obs_virtualcam_video_nr: 10
+# Firefox lists cameras through PipeWire, which never exposes the loopback
+# device (see obs_firefox_policies). A Firefox policy makes it read V4L2
+# directly; the preference stays editable in about:config.
+obs_virtualcam_firefox_v4l2: true
+obs_firefox_binary_path: /usr/lib/firefox/firefox
+obs_firefox_policies_file: /etc/firefox/policies/policies.json

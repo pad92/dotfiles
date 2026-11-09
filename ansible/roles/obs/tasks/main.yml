@@ -11,6 +11,13 @@
   when: obs_virtualcam_enabled | bool
   tags: [obs, obs_virtualcam]
 
+- name: Let Firefox use the OBS virtual camera
+  ansible.builtin.import_tasks: firefox.yml
+  when:
+    - obs_virtualcam_enabled | bool
+    - obs_virtualcam_firefox_v4l2 | bool
+  tags: [obs, obs_virtualcam]
+
 - name: Detect host capabilities for OBS
   ansible.builtin.import_tasks: facts.yml
   tags: [obs, obs_config]

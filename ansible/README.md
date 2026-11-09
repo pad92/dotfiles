@@ -558,5 +558,12 @@ The virtual camera serves Teams and other web meetings. The role writes
 module already loaded with other options is not unloaded, since that would cut
 a running camera; the run prints the reload command instead. OBS reopens the
 last profile and collection; start the virtual camera from its Controls dock
-before the meeting. In the browser, pick "OBS Virtual Camera" as the camera. The virtual
+before the meeting. Firefox asks PipeWire for cameras by default, and PipeWire
+never adds a camera for this device: it checks the device at boot, before OBS
+writes to it, when the device only accepts output. When Firefox is installed,
+the role writes `/etc/firefox/policies/policies.json` so Firefox reads V4L2
+cameras directly (`media.webrtc.camera.allow-pipewire` set to `false` as a
+default value, still editable in `about:config`). Other policies in that file
+are kept, and invalid JSON stops the run; `obs_virtualcam_firefox_v4l2: false`
+skips it. In the browser, pick "OBS Virtual Camera" as the camera. The virtual
 camera carries no sound, so pick the microphone in the meeting as usual.

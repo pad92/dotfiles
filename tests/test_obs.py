@@ -616,6 +616,114 @@ class FilterExportTests(unittest.TestCase):
         self.assertEqual(used, set(exported))
 
 
+class FirefoxPolicyTests(unittest.TestCase):
+    """Firefox must read the loopback camera through V4L2, not PipeWire."""
+
+    PREF = "media.webrtc.camera.allow-pipewire"
+
+    def test_policy_turns_off_pipewire_cameras_as_a_default(self):
+        document = obs.obs_firefox_policies("")
+        self.assertEqual(
+            document["policies"]["Preferences"][self.PREF],
+            # "default" keeps the preference editable in about:config.
+            {"Value": False, "Status": "default"},
+        )
+
+    def test_existing_policies_and_preferences_are_kept(self):
+        existing = json.dumps(
+            {
+                "policies": {
+                    "DisableTelemetry": True,
+                    "Preferences": {"browser.tabs.warnOnClose": False},
+                }
+            }
+        )
+        policies = obs.obs_firefox_policies(existing)["policies"]
+        self.assertTrue(policies["DisableTelemetry"])
+        self.assertIs(policies["Preferences"]["browser.tabs.warnOnClose"], False)
+        self.assertIn(self.PREF, policies["Preferences"])
+        # Applying it again changes nothing.
+        again = obs.obs_firefox_policies(json.dumps({"policies": policies}))
+        self.assertEqual(again["policies"], policies)
+
+    def test_malformed_policies_are_refused_not_replaced(self):
+        for text in ("{", "[]", '{"policies": []}', '{"policies": {"Preferences": 1}}'):
+            with self.subTest(text=text), self.assertRaises(AnsibleFilterError):
+                obs.obs_firefox_policies(text)
+
+    def run_play(self, work, firefox_installed=True):
+        tasks = yaml.safe_load((ROLE / "tasks/firefox.yml").read_text())
+        for task in tasks:
+            for module in task.values():
+                if isinstance(module, dict):
+                    # The test runs unprivileged; root ownership is not testable.
+                    module.pop("owner", None)
+                    module.pop("group", None)
+        binary = work / "firefox"
+        if firefox_installed:
+            binary.write_text("")
+        play = work / "play.yml"
+        play.write_text(
+            yaml.safe_dump(
+                [
+                    {
+                        "hosts": "localhost",
+                        "connection": "local",
+                        "gather_facts": False,
+                        "vars": {
+                            "obs_firefox_binary_path": str(binary),
+                            "obs_firefox_policies_file": str(
+                                work / "etc/firefox/policies/policies.json"
+                            ),
+                        },
+                        "tasks": tasks,
+                    }
+                ]
+            )
+        )
+        return subprocess.run(
+            ["ansible-playbook", "-i", "localhost,", str(play)],
+            env=ansible_test_environment(work),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    def test_role_merges_the_policy_once_and_keeps_other_policies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            policies = work / "etc/firefox/policies/policies.json"
+            policies.parent.mkdir(parents=True)
+            policies.write_text('{"policies": {"DisableTelemetry": true}}\n')
+            first = self.run_play(work)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            written = json.loads(policies.read_text())["policies"]
+            self.assertTrue(written["DisableTelemetry"])
+            self.assertIs(written["Preferences"][self.PREF]["Value"], False)
+            second = self.run_play(work)
+            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+            self.assertIn("changed=0", second.stdout)
+
+    def test_role_stops_on_invalid_policies_and_leaves_them(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            policies = work / "etc/firefox/policies/policies.json"
+            policies.parent.mkdir(parents=True)
+            policies.write_text("{ not json")
+            result = self.run_play(work)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not valid JSON", result.stdout)
+            self.assertEqual(policies.read_text(), "{ not json")
+
+    def test_nothing_is_written_without_firefox(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            result = self.run_play(work, firefox_installed=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse((work / "etc").exists())
+
+
 class DkmsHeadersTests(unittest.TestCase):
     def test_headers_follow_the_running_kernel_package(self):
         self.assertEqual(
