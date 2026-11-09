@@ -9,8 +9,11 @@ Release history and changes planned for the next version.
 - **Hyprland**:
   - Add screen recording with `hypr-record.sh` and wf-recorder. `CTRL + Print`
     records a window or a region and `CTRL + SHIFT + Print` the focused screen;
-    the same key stops it. The file is a small H.264 MP4 in `~/Videos/Recordings`, and a
-    failed recording keeps its `.mp4.part` file instead of being renamed.
+    the same key stops it. The file is a small H.264 MP4 in
+    `~/Videos/Recordings`, and a failed recording keeps its `.mp4.part` file
+    instead of being renamed. Frames are copied continuously (`wf-recorder -D`):
+    with damage tracking, a still screen gave an unreadable MP4 and a stop
+    waited for the next screen update.
   - Add a Waybar `REC` indicator that stops the recording when clicked.
   - Install `wf-recorder` with the Hyprland package group (Arch and Fedora).
 - **DNS**:

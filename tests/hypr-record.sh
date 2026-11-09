@@ -143,7 +143,7 @@ reset_case()
     mkdir -p "$MOCK_LOG"
     rm -rf -- "$HYPR_RECORD_DIR" "$XDG_RUNTIME_DIR/hypr-record"
     unset MOCK_SLURP MOCK_WF_EXIT_ON_INT MOCK_WF_EXIT_AT_ONCE MOCK_WF_FAIL_CODEC MOCK_WF_STARTUP_DELAY \
-        HYPR_RECORD_HWENC HYPR_RECORD_VAAPI_DEVICE HYPR_RECORD_AUDIO
+        HYPR_RECORD_HWENC HYPR_RECORD_VAAPI_DEVICE HYPR_RECORD_AUDIO HYPR_RECORD_FPS
 }
 
 wait_for()
@@ -212,6 +212,11 @@ has_argument_pair 1 -o DP-2 || fail "the focused monitor DP-2 was not recorded"
 has_argument_pair 1 -c libx264 || fail "the default encoder is not libx264"
 has_argument_pair 1 -r 30 || fail "the default frame rate is not a constant 30 fps"
 has_argument_pair 1 -m mp4 || fail "the muxer is not forced to mp4 for the .part name"
+# Damage tracking leaves a still screen with an unreadable MP4.
+recorder_call 1 | grep -qx -- -D || fail "frames are not copied continuously (-D)"
+has_argument_pair 1 -p preset=superfast || fail "the libx264 preset is not superfast"
+has_argument_pair 1 -F 'fps=30,crop=trunc(iw/2)*2:trunc(ih/2)*2' \
+    || fail "frames are not dropped to 30 fps before the crop"
 ! recorder_call 1 | grep -qx -- --audio || fail "audio was recorded although it was not requested"
 [[ $(cat "$MOCK_LOG/wf-recorder.signals") == INT ]] \
     || fail "the toggle did not stop wf-recorder with SIGINT"
@@ -317,6 +322,8 @@ wait "$supervisor" || supervisor_status=$?
 has_argument_pair 1 -d /dev/dri/renderD129 || fail "VAAPI did not use the configured device"
 has_argument_pair 2 -c libx264 || fail "the retry did not use libx264"
 ! recorder_call 2 | grep -qx -- -d || fail "the libx264 retry kept the VAAPI device"
+recorder_call 1 | grep -qx -- -D || fail "the VAAPI attempt used damage tracking"
+recorder_call 2 | grep -qx -- -D || fail "the libx264 retry used damage tracking"
 [[ $(only_file) == *.mp4 ]] || fail "the fallback recording was not saved"
 
 # --- A stop sent before wf-recorder handles SIGINT still stops it (slow start).
@@ -347,6 +354,14 @@ reset_case audio
 export HYPR_RECORD_AUDIO=1
 record_and_toggle screen
 recorder_call 1 | grep -qx -- --audio || fail "HYPR_RECORD_AUDIO=1 did not record audio"
+
+# --- The frame rate setting drives both -r and the frame-dropping filter.
+reset_case fps
+export HYPR_RECORD_FPS=15
+record_and_toggle screen
+has_argument_pair 1 -r 15 || fail "HYPR_RECORD_FPS did not set the frame rate"
+recorder_call 1 | grep -q -- '^fps=15,' || fail "HYPR_RECORD_FPS did not reach the filter"
+unset HYPR_RECORD_FPS
 
 # --- Unknown modes are rejected.
 reset_case usage

@@ -3,7 +3,8 @@
 # hypr-record.sh - Record a light video of a screen or a window under Hyprland.
 #
 # The recording is a small H.264 MP4 (30 fps, no audio by default) that plays
-# in any browser or chat client. A screen/window call starts a recording; the
+# in any browser or chat client. Frames are copied continuously, so a still
+# screen records correctly; encoding a 1440p screen takes about 1.5 cores. A screen/window call starts a recording; the
 # same call while a recording runs stops it, so one key binding toggles it.
 #
 # Usage:
@@ -195,9 +196,12 @@ output_directory()
 }
 
 software_encoder=(
-    -c libx264 -x yuv420p -p preset=veryfast -p "crf=$crf"
-    # yuv420p needs even dimensions; a window or a scaled output can be odd.
-    -F 'crop=trunc(iw/2)*2:trunc(ih/2)*2'
+    # superfast gives the size of veryfast with about 20% less CPU at 1440p.
+    -c libx264 -x yuv420p -p preset=superfast -p "crf=$crf"
+    # Drop frames to the target rate first, so the crop only runs on kept
+    # frames. yuv420p needs even dimensions; a window or a scaled output can
+    # be odd.
+    -F "fps=$fps,crop=trunc(iw/2)*2:trunc(ih/2)*2"
 )
 
 # Runs wf-recorder until it exits and stores its exit status in
@@ -208,7 +212,10 @@ run_recorder()
     local -a audio=()
     [[ ${HYPR_RECORD_AUDIO:-0} == 1 ]] && audio=(--audio)
 
-    "$RECORDER" "${target[@]}" "${encoder[@]}" "${audio[@]}" -r "$fps" \
+    # -D copies frames continuously. With damage tracking, a still screen
+    # gives wf-recorder almost no frames: the MP4 is left unreadable and
+    # SIGINT waits for the next screen update.
+    "$RECORDER" -D "${target[@]}" "${encoder[@]}" "${audio[@]}" -r "$fps" \
         -m mp4 -y -f "$part" < /dev/null >> "$LOG_FILE" 2>&1 9>&- &
     recorder_pid=$!
     printf '%s\n%s\n' "$recorder_pid" "$part" > "$STATE_FILE"

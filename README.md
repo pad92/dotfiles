@@ -166,11 +166,12 @@ every 30 minutes. ImageMagick is required.
 
 Recordings are H.264 MP4 files at 30 fps, without sound, saved in
 `~/Videos/Recordings` (the XDG videos folder). A few seconds of a 1440p screen
-take a few hundred kilobytes. The path is copied to the clipboard when the
-recording stops. While it runs, Waybar shows a red `REC` label; clicking it
-stops the recording. A window is recorded as the area it covered when you
-picked it: if you move it, it leaves the frame, and anything drawn over it is
-recorded too.
+take a few hundred kilobytes. Frames are copied continuously, so a still screen
+records correctly, and encoding a 1440p screen uses about 1.5 CPU cores while
+it runs. The path is copied to the clipboard when the recording stops. While it
+runs, Waybar shows a red `REC` label; clicking it stops the recording. A window
+is recorded as the area it covered when you picked it: if you move it, it
+leaves the frame, and anything drawn over it is recorded too.
 
 Settings are environment variables of the Hyprland session (for example in
 `~/.config/uwsm/env-hyprland`), documented at the top of
