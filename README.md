@@ -130,6 +130,7 @@ startup, GNOME Keyring PAM, UWSM, and the systemd session.
 | `SUPER + Return`                                    | Terminal                                                        |
 | `SUPER + E / C / W`                                 | File manager / editor / browser                                 |
 | `SUPER + D`                                         | Application menu                                                |
+| `SUPER + F1`                                        | List the keybindings Hyprland has loaded                        |
 | `SUPER + SHIFT + Return`                            | Password manager (Proton Pass)                                  |
 | `SUPER + SHIFT + Q`                                 | Close the window                                                |
 | `SUPER + F` / `SUPER + ALT + Space`                 | Fullscreen / floating                                           |
@@ -299,6 +300,7 @@ Zsh adds it to `PATH`.
 | [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
 | [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Record the desktop still and animated demo.      |
 | [`hypr-record.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-record.sh)                                                      | Record a screen or a window as a light MP4.      |
+| [`hypr-keybinds.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-keybinds.sh)                                                   | List the loaded keybindings (`SUPER + F1`).      |
 | [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
