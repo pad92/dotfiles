@@ -14,6 +14,13 @@ TEST_DIR=$(mktemp -d)
 cleanup()
 {
     [[ -n ${stranger_pid:-} ]] && kill "$stranger_pid" 2> /dev/null || true
+    # A failed case can leave its fake recorder running; it is ours only if
+    # the state still names a live process called wf-recorder.
+    local pid
+    pid=$(sed -n 1p "$TEST_DIR/runtime/hypr-record/state" 2> /dev/null || true)
+    if [[ $pid =~ ^[0-9]+$ && $(cat "/proc/$pid/comm" 2> /dev/null) == wf-recorder ]]; then
+        kill -KILL "$pid" 2> /dev/null || true
+    fi
     rm -rf -- "$TEST_DIR"
 }
 trap cleanup EXIT
@@ -43,6 +50,8 @@ import signal
 import sys
 import time
 
+# Simulates a slow runner: the process exists, but has not set up anything yet.
+time.sleep(float(os.environ.get("MOCK_WF_STARTUP_DELAY", "0")))
 arguments = sys.argv[1:]
 log = os.environ["MOCK_LOG"]
 with open(os.path.join(log, "wf-recorder.args"), "a", encoding="utf-8") as stream:
@@ -133,7 +142,7 @@ reset_case()
     export MOCK_LOG="$TEST_DIR/log-$1"
     mkdir -p "$MOCK_LOG"
     rm -rf -- "$HYPR_RECORD_DIR" "$XDG_RUNTIME_DIR/hypr-record"
-    unset MOCK_SLURP MOCK_WF_EXIT_ON_INT MOCK_WF_EXIT_AT_ONCE MOCK_WF_FAIL_CODEC \
+    unset MOCK_SLURP MOCK_WF_EXIT_ON_INT MOCK_WF_EXIT_AT_ONCE MOCK_WF_FAIL_CODEC MOCK_WF_STARTUP_DELAY \
         HYPR_RECORD_HWENC HYPR_RECORD_VAAPI_DEVICE HYPR_RECORD_AUDIO
 }
 
@@ -291,13 +300,40 @@ status=0
 # --- VAAPI that fails at start falls back to libx264 on the same output.
 reset_case hwenc-fallback
 export HYPR_RECORD_HWENC=1 HYPR_RECORD_VAAPI_DEVICE=/dev/dri/renderD129 MOCK_WF_FAIL_CODEC=h264_vaapi
-record_and_toggle screen
+"$RECORD" screen > /dev/null 2>&1 &
+supervisor=$!
+# Stop only the libx264 retry: a stop sent to the failing VAAPI attempt would
+# rightly cancel the fallback.
+libx264_retry_running()
+{
+    [[ $(recorder_calls) == 2 ]] && recording_started
+}
+wait_for "the libx264 retry" libx264_retry_running
+"$RECORD" screen
+supervisor_status=0
+wait "$supervisor" || supervisor_status=$?
 ((supervisor_status == 0)) || fail "the libx264 fallback recording failed"
 [[ $(recorder_calls) == 2 ]] || fail "VAAPI failure was not retried exactly once"
 has_argument_pair 1 -d /dev/dri/renderD129 || fail "VAAPI did not use the configured device"
 has_argument_pair 2 -c libx264 || fail "the retry did not use libx264"
 ! recorder_call 2 | grep -qx -- -d || fail "the libx264 retry kept the VAAPI device"
 [[ $(only_file) == *.mp4 ]] || fail "the fallback recording was not saved"
+
+# --- A stop sent before wf-recorder handles SIGINT still stops it (slow start).
+reset_case slow-start
+export MOCK_WF_STARTUP_DELAY=0.5
+record_and_toggle screen
+((supervisor_status == 0)) || fail "a stop sent during a slow start was lost (status $supervisor_status)"
+[[ $(cat "$MOCK_LOG/wf-recorder.signals") == INT ]] || fail "the slow recorder never received SIGINT"
+[[ $(only_file) == *.mp4 ]] || fail "the recording stopped during a slow start was not saved"
+
+# --- Stopping while VAAPI starts never restarts a recording with libx264.
+reset_case hwenc-stop
+export HYPR_RECORD_HWENC=1 HYPR_RECORD_VAAPI_DEVICE=/dev/dri/renderD129 MOCK_WF_EXIT_ON_INT=1
+record_and_toggle screen
+[[ $(recorder_calls) == 1 ]] || fail "a stopped VAAPI recording was restarted with libx264"
+((supervisor_status == 1)) || fail "the interrupted VAAPI failure was not reported"
+[[ ! -e $XDG_RUNTIME_DIR/hypr-record/stop-requested ]] || fail "the stop marker survived the recording"
 
 # --- Hardware encoding is never attempted on a guessed device.
 reset_case hwenc-no-device

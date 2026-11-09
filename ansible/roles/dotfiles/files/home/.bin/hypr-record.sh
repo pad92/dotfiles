@@ -38,6 +38,8 @@ readonly RECORDER=wf-recorder
 readonly WAYBAR_SIGNAL=8
 # A hardware encoder that dies sooner than this is treated as unusable.
 readonly HWENC_STARTUP_SECONDS=3
+# How many times, one second apart, the stop call sends SIGINT.
+readonly STOP_ATTEMPTS=10
 
 runtime_root=${XDG_RUNTIME_DIR:-}
 if [[ -z $runtime_root || ! -d $runtime_root ]]; then
@@ -48,6 +50,9 @@ readonly STATE_DIR="$runtime_root/hypr-record"
 readonly STATE_FILE="$STATE_DIR/state"
 readonly LOCK_FILE="$STATE_DIR/lock"
 readonly LOG_FILE="$STATE_DIR/$RECORDER.log"
+# Written by the stop call, so the supervisor never restarts a recording the
+# user asked to stop.
+readonly STOP_MARKER="$STATE_DIR/stop-requested"
 
 fps=${HYPR_RECORD_FPS:-30}
 crf=${HYPR_RECORD_CRF:-28}
@@ -108,10 +113,21 @@ print_status()
 stop_recording()
 {
     local pid
+    local attempt tick
     if pid=$(recording_pid); then
-        # SIGINT lets wf-recorder write the MP4 index before it exits.
-        kill -INT "$pid"
-        return 0
+        : > "$STOP_MARKER"
+        # SIGINT lets wf-recorder write the MP4 index before it exits. A
+        # background job starts with SIGINT ignored until wf-recorder installs
+        # its handler, so a signal sent right after the start can be lost:
+        # send it again until the process is gone.
+        for ((attempt = 0; attempt < STOP_ATTEMPTS; attempt++)); do
+            kill -INT "$pid" 2> /dev/null || return 0
+            for ((tick = 0; tick < 10; tick++)); do
+                sleep 0.1
+                [[ $(cat "/proc/$pid/comm" 2> /dev/null) == "$RECORDER" ]] || return 0
+            done
+        done
+        fail "$RECORDER (PID $pid) did not stop after $STOP_ATTEMPTS SIGINT"
     fi
     # The state is stale (supervisor killed, PID gone or recycled). Forget it;
     # the recording file itself, if any, is left where it is.
@@ -235,7 +251,7 @@ cleanup()
     local pid
     pid=$(sed -n 1p "$STATE_FILE" 2> /dev/null || true)
     if [[ -n ${recorder_pid:-} && $pid == "$recorder_pid" ]]; then
-        rm -f -- "$STATE_FILE"
+        rm -f -- "$STATE_FILE" "$STOP_MARKER"
     fi
     refresh_waybar
 }
@@ -271,6 +287,7 @@ start_recording()
     done
     part="$final.part"
     : > "$LOG_FILE"
+    rm -f -- "$STOP_MARKER"
 
     trap cleanup EXIT
     trap forward_stop INT TERM HUP
@@ -278,7 +295,8 @@ start_recording()
     started=$SECONDS
     if [[ ${HYPR_RECORD_HWENC:-0} == 1 && -n ${HYPR_RECORD_VAAPI_DEVICE:-} ]]; then
         run_recorder -c h264_vaapi -d "$HYPR_RECORD_VAAPI_DEVICE"
-        if ((recorder_status != 0 && SECONDS - started < HWENC_STARTUP_SECONDS)); then
+        if ((recorder_status != 0 && SECONDS - started < HWENC_STARTUP_SECONDS)) \
+            && [[ ! -e $STOP_MARKER ]]; then
             notify normal "Hardware encoding failed" "Recording again with libx264"
             rm -f -- "$part"
             acquire_lock 5
