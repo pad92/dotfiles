@@ -224,7 +224,11 @@ class PackageFilterTests(unittest.TestCase):
         self.assertIs(
             exported["package_removal_candidates"], filters.package_removal_candidates
         )
-        self.assertEqual(len(exported), 12)
+        self.assertIs(exported["dkms_kernel_headers"], filters.dkms_kernel_headers)
+        self.assertIs(
+            exported["recorded_package_groups"], filters.recorded_package_groups
+        )
+        self.assertEqual(len(exported), 14)
         self.assertEqual(
             set(lact.FilterModule().filters()), {"lact_gpu_ids", "lact_config"}
         )

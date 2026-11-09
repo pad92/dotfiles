@@ -1,0 +1,20 @@
+---
+- name: Require Arch Linux for the OBS role
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Archlinux'
+    fail_msg: The OBS role only maps packages and paths for Arch Linux.
+  tags: [obs, obs_virtualcam, obs_config]
+
+- name: Configure the OBS virtual camera
+  ansible.builtin.import_tasks: virtualcam.yml
+  when: obs_virtualcam_enabled | bool
+  tags: [obs, obs_virtualcam]
+
+- name: Detect host capabilities for OBS
+  ansible.builtin.import_tasks: facts.yml
+  tags: [obs, obs_config]
+
+- name: Write the OBS profile and demo scenes
+  ansible.builtin.import_tasks: config.yml
+  tags: [obs, obs_config]

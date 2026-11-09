@@ -21,6 +21,24 @@ Release history and changes planned for the next version.
     A bind without a description is listed under its dispatcher name.
   - Every bind in `keybindings.lua` now has a description, and
     `tests/hypr-keybinds.sh` fails when a new one is added without one.
+- **OBS**:
+  - Add the `22_obs` package group and the `make install-obs` profile, which
+    installs OBS, its PipeWire and portal runtime and the detected GPU drivers
+    without the rest of the workstation.
+  - Add the `obs` role: encoder, canvas, frame rate and webcam come from the
+    host, with a test encode before a hardware encoder is used. It creates an
+    application demo profile and scene collection once and leaves them to OBS.
+  - Configure v4l2loopback with `exclusive_caps=1` so web meetings such as
+    Teams can use the OBS virtual camera.
+  - Cut the person out of the webcam background with obs-backgroundremoval
+    (Robust Video Matting on the CPU, whose soft alpha follows hair; the
+    lighter MediaPipe model remains available with `obs_webcam_model`). A soft
+    blur remains available with `obs_webcam_background=blur`.
+  - Style the demo scenes with the brand palette (dark by default, light
+    available), the #41A890 accent and static Montserrat weights.
+  - Install the running kernel's headers when a DKMS package is selected.
+  - Partial profiles such as `make install-obs` add their groups to the saved
+    package selection instead of replacing it (`packages_state_merge_selection`).
 - **DNS**:
   - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
     off, mDNS for resolving only, and no compiled-in public fallback servers.
@@ -75,6 +93,10 @@ Release history and changes planned for the next version.
     manager, `[` / `]` focus, mouse move and resize, sending a window to a
     workspace without following it, relative workspaces, the wallpaper key and
     zoom.
+- **Packages**: send missing packages from the official repositories to pacman
+  again. The repository listing regex had doubled backslashes, matched nothing
+  on current ansible-core, and handed every missing package to yay, which
+  cannot use sudo without the become password.
 - **Ansible**:
   - The `docker_daemon_dns` and `lact_config` filters no longer deep-copy
     Ansible's lazy containers. The copy also copied the templar, and rebuilding

@@ -1,0 +1,8 @@
+---
+# Unloading would cut a running virtual camera, so the user chooses when.
+- name: Report v4l2loopback reload required
+  ansible.builtin.debug:
+    msg: >-
+      v4l2loopback was already loaded with other options. Stop the OBS virtual
+      camera, then run: sudo modprobe -r v4l2loopback && sudo modprobe v4l2loopback
+  when: obs_v4l2loopback_module.stat.exists | default(false)

@@ -1,0 +1,39 @@
+---
+# OBS-only installation profile: OBS, its PipeWire/portal runtime, the
+# detected GPU drivers for hardware encoding and the browser virtual camera.
+# It skips the system and dotfiles roles. Run it with `make install-obs`.
+- name: Install and configure OBS Studio for application demos
+  hosts: localhost
+  become: true
+  gather_facts: true
+  vars:
+    dotfiles_repository: '{{ playbook_dir | dirname }}'
+    # Evaluated lazily, after the packages role has classified the GPUs.
+    packages_group_selection: >-
+      {{ ['22_obs'] + (packages_detected_graphics_groups | default([])) }}
+    # Keep the workstation's saved group list; only add the OBS groups to it.
+    packages_state_merge_selection: true
+  pre_tasks:
+    - name: Require Arch Linux for the OBS profile
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['system'] == 'Linux'
+          - ansible_facts['os_family'] == 'Archlinux'
+        fail_msg: The OBS profile only defines packages for Arch Linux and CachyOS.
+      tags: [always]
+
+    # The profile selects a few groups only: a reconcile would offer to remove
+    # every other managed package of the workstation.
+    - name: Refuse package reconciliation from the OBS profile
+      ansible.builtin.assert:
+        that:
+          - packages_action | default('install') != 'reconcile'
+        fail_msg: >-
+          packages_action=reconcile would treat every package outside 22_obs as
+          obsolete. Reconcile with the full playbook (make install) instead.
+      tags: [always]
+  roles:
+    - role: packages
+      tags: [packages]
+    - role: obs
+      tags: [obs]

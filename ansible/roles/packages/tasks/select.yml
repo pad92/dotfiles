@@ -173,3 +173,36 @@
     packages_desired: >-
       {{ packages_group_contents | default({}) | dict2items
          | map(attribute='value') | flatten | unique | sort }}
+
+# DKMS modules (NVIDIA, v4l2loopback) build only against installed headers of
+# the running kernel, which pacman reports as the owner of its vmlinuz.
+- name: Find the package that owns the running Arch kernel
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Qqo
+      - "/usr/lib/modules/{{ ansible_facts['kernel'] }}/vmlinuz"
+  register: packages_kernel_owner
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_desired | select('match', '.*-dkms$') | list | length > 0
+
+- name: Warn when the running kernel has no package owner
+  ansible.builtin.debug:
+    msg: >-
+      DKMS packages are selected but no package owns the running kernel
+      {{ ansible_facts['kernel'] }}; install its headers manually.
+  when:
+    - packages_kernel_owner.rc | default(0) != 0
+
+- name: Add the running kernel headers for DKMS packages
+  ansible.builtin.set_fact:
+    packages_desired: >-
+      {{ (packages_desired + (packages_desired | dkms_kernel_headers(
+          packages_kernel_owner.stdout | default('') | trim)))
+         | unique | sort }}
+  when:
+    - packages_kernel_owner.rc | default(1) == 0

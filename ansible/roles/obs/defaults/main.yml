@@ -1,0 +1,59 @@
+---
+obs_home: "{{ lookup('env', 'HOME') }}"
+obs_config_dir: '{{ obs_home }}/.config/obs-studio'
+# Profile and scene collection created by the role; existing ones are untouched.
+obs_profile_name: Démo Applis
+obs_profile_directory: Demo_Applis
+obs_scene_collection_name: Démo Applis
+obs_scene_collection_file: Demo_Applis
+# OBS rewrites its files on exit, so they are created once and then left to
+# the user. Set to true to regenerate them from the host facts (with backups).
+obs_config_force: false
+
+# auto encodes on the GPU that renders the desktop (VAAPI on a hybrid laptop's
+# iGPU, NVENC when NVIDIA drives the screens) after a real ffmpeg probe, and
+# falls back to x264. Force with nvenc, vaapi or x264.
+obs_encoder: auto
+# Connector to size the canvas from (for example DP-2). Empty picks the
+# largest active external output reported by hyprctl.
+obs_capture_output: ''
+obs_output_height: 1080
+# Substring of a /dev/v4l/by-id name. Empty prefers an external camera.
+obs_webcam: ''
+# Webcam background (obs-backgroundremoval): cutout makes it transparent so
+# the person sits on the scene, blur softens it (obs_webcam_blur, 1-20), none
+# keeps the raw picture.
+obs_webcam_background: cutout
+obs_webcam_blur: 6
+# rvm (matting, soft edges that follow hair, heavier) or mediapipe (lighter,
+# coarser mask). Both run on the CPU.
+obs_webcam_model: rvm
+# MediaPipe only. Mask strictness. A pixel counts as the person above obs_webcam_threshold, so
+# a higher value hides more of the room at the cost of stray hair.
+obs_webcam_threshold: 0.65
+# MediaPipe only. Pixels trimmed off the person's outline to drop the room's halo (0-30).
+obs_webcam_edge_trim: 2
+obs_mic_device: default
+obs_desktop_audio_device: default
+# Disable when the default source is already filtered (for example Mic_Clean).
+obs_mic_noise_suppression: true
+obs_demo_title: Démo
+obs_pause_text: Pause, on revient tout de suite
+# Brand palette for the demo scenes; obs_brand_theme picks dark or light.
+obs_brand_theme: dark
+obs_brand_palettes:
+  dark:
+    text: '#FFFFFF'
+    background: '#242428'
+  light:
+    text: '#2A3235'
+    background: '#FFFFFF'
+obs_brand_primary: '#41A890'
+# Static weights from ttf-montserrat (22_obs); OBS text sources need them.
+obs_brand_font: Montserrat
+
+# Virtual camera read by browsers (Teams web, Meet). Chromium only lists a
+# loopback device created with exclusive_caps=1.
+obs_virtualcam_enabled: true
+obs_virtualcam_label: OBS Virtual Camera
+obs_virtualcam_video_nr: 10

@@ -61,6 +61,7 @@ Options in `ANSIBLE_ARGS` go straight to `ansible-playbook`.
 | Preview the dotfiles only            | `make install ANSIBLE_ARGS="--check --tags dotfiles"`                  |
 | Remove packages this installer added | `make install ANSIBLE_ARGS="-e packages_action=reconcile"`             |
 | Set up the Steam group               | `make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"` |
+| Install only OBS and its demo scenes | `make install-obs ANSIBLE_ARGS=--ask-become-pass`                      |
 | Upgrade the whole system on Arch     | `make install ANSIBLE_ARGS="-e packages_upgrade_system=true"`          |
 | List or remove dotfile backups       | `make ansible-backup-ls` / `make ansible-backup-rm`                    |
 
@@ -107,6 +108,7 @@ covers variables, package ownership, and system settings.
 | `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for the `22_obs` group: host-tuned profile, scenes, webcam.    |
 | `dotfiles`                                 | Run the whole dotfiles role.                                                  |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |

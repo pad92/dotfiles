@@ -6,6 +6,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+from ansible_test_environment import ansible_test_environment
+
 ROOT = Path(__file__).parents[1]
 FILTER_PATH = ROOT / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
@@ -49,7 +52,7 @@ class PackageStateTests(unittest.TestCase):
             "not json",
             "[]",
             '{"version":2}',
-            '{"version":1,"selected_groups":["bad group"],' '"owned_packages":[]}',
+            '{"version":1,"selected_groups":["bad group"],"owned_packages":[]}',
         ):
             with self.subTest(content=content):
                 self.assertIsNone(FILTERS.parse_package_state_json(content))
@@ -132,6 +135,77 @@ class InstallerTargetTests(unittest.TestCase):
             self.assertEqual(lines[0], str(ROOT / "ansible.cfg"))
             self.assertEqual(lines[1], str(ROOT / "ansible/site.yml"))
             self.assertEqual(lines[2:], ["--check", "-e", "packages_action=plan"])
+
+
+class RepositorySplitTests(unittest.TestCase):
+    """Official packages must reach pacman, not the AUR helper."""
+
+    # `pacman -Sl` lines: repository, name, version, optional [installed].
+    LISTING = (
+        "core acl 2.4.0-1 [installed]\n"
+        "extra onnxruntime-cpu 1.29.0-3\n"
+        "extra ttf-montserrat 9.000-1\n"
+    )
+
+    def test_missing_packages_are_split_by_repository(self):
+        tasks = yaml.safe_load(
+            (ROOT / "ansible/roles/packages/tasks/install.yml").read_text()
+        )
+        wanted = {
+            "Extract available Arch repository package names",
+            "Split Arch packages by repository source",
+        }
+        selected = [task for task in tasks if task["name"] in wanted]
+        self.assertEqual(len(selected), 2)
+        selected.append(
+            {
+                "name": "Show",
+                "ansible.builtin.debug": {
+                    "msg": "REPO={{ packages_arch_repository | join(',') }}"
+                    " AUR={{ packages_arch_aur | join(',') }}"
+                },
+            }
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            play = work / "play.yml"
+            play.write_text(
+                yaml.safe_dump(
+                    [
+                        {
+                            "hosts": "localhost",
+                            "connection": "local",
+                            "gather_facts": False,
+                            "vars": {
+                                "ansible_facts": {"os_family": "Archlinux"},
+                                "packages_selected_groups": ["22_obs"],
+                                "packages_missing": [
+                                    "obs-backgroundremoval",
+                                    "onnxruntime-cpu",
+                                    "ttf-montserrat",
+                                ],
+                                "packages_arch_repository_listing": {
+                                    "stdout": self.LISTING
+                                },
+                            },
+                            "tasks": selected,
+                        }
+                    ]
+                )
+            )
+            result = subprocess.run(
+                ["ansible-playbook", "-i", "localhost,", str(play)],
+                env=ansible_test_environment(work),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "REPO=onnxruntime-cpu,ttf-montserrat AUR=obs-backgroundremoval",
+            result.stdout,
+        )
 
 
 if __name__ == "__main__":

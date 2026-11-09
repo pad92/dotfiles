@@ -1,0 +1,42 @@
+---
+# The label lands inside a quoted modprobe option.
+- name: Validate virtual camera settings
+  ansible.builtin.assert:
+    that:
+      - obs_virtualcam_label is match('^[A-Za-z0-9 ._-]{1,31}$')
+      - obs_virtualcam_video_nr | int >= 0
+      - obs_virtualcam_video_nr | int < 64
+    fail_msg: >-
+      obs_virtualcam_label must use letters, digits, spaces, dots, dashes or
+      underscores (31 characters at most) and obs_virtualcam_video_nr must be
+      between 0 and 63.
+
+- name: Check whether v4l2loopback is already loaded
+  ansible.builtin.stat:
+    path: /sys/module/v4l2loopback
+  register: obs_v4l2loopback_module
+
+- name: Configure v4l2loopback for browsers
+  ansible.builtin.template:
+    src: v4l2loopback-modprobe.conf.j2
+    dest: /etc/modprobe.d/zz-dotfiles-v4l2loopback.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: obs_v4l2loopback_options
+  notify: Report v4l2loopback reload required
+
+- name: Load v4l2loopback at boot
+  ansible.builtin.copy:
+    content: "v4l2loopback\n"
+    dest: /etc/modules-load.d/zz-dotfiles-v4l2loopback.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+# modprobe reads the options file; a module loaded earlier keeps its old
+# options until it is reloaded, which the handler reports instead of forcing.
+- name: Load v4l2loopback now
+  community.general.modprobe:
+    name: v4l2loopback
+    state: present

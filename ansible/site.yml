@@ -25,3 +25,6 @@
     - role: dotfiles
       become: false
       tags: [dotfiles]
+    - role: obs
+      when: "'22_obs' in (packages_selected_groups | default([]))"
+      tags: [obs]

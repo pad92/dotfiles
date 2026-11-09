@@ -1,0 +1,84 @@
+---
+# OBS saves its profile and scene collection when it exits, which would
+# overwrite a regeneration made while it runs.
+- name: Look for a running OBS before regenerating its files
+  ansible.builtin.command:
+    argv: [pgrep, -x, obs]
+  register: obs_running
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: false
+  when: obs_config_force | bool
+
+- name: Refuse to regenerate the OBS files while OBS runs
+  ansible.builtin.assert:
+    that:
+      - obs_running.rc | default(1) != 0
+    fail_msg: >-
+      OBS is running and would overwrite the regenerated profile and scenes
+      when it exits. Close OBS, then rerun with -e obs_config_force=true.
+  when: obs_config_force | bool
+
+- name: Create OBS profile, scene and recording directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}'
+    - '{{ obs_config_dir }}/basic/scenes'
+    - '{{ obs_recording_directory }}'
+  become: false
+
+# force: false creates the files once; OBS owns them afterwards.
+- name: Write the OBS demo profile
+  ansible.builtin.template:
+    src: basic.ini.j2
+    dest: '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}/basic.ini'
+    mode: '0644'
+    force: '{{ obs_config_force | bool }}'
+    backup: '{{ obs_config_force | bool }}'
+  become: false
+
+- name: Write the OBS encoder settings
+  ansible.builtin.copy:
+    content: "{{ obs_encoder_settings[item] | to_nice_json(indent=4) }}\n"
+    dest: '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}/{{ item }}Encoder.json'
+    mode: '0644'
+    force: '{{ obs_config_force | bool }}'
+    backup: '{{ obs_config_force | bool }}'
+  loop: [record, stream]
+  become: false
+
+- name: Write the application demo scene collection
+  ansible.builtin.copy:
+    # Folded with '>' so the file ends with a newline.
+    content: >
+      {{ obs_video_settings | obs_scene_collection(obs_webcam_settings, {
+           'name': obs_scene_collection_name,
+           'title': obs_demo_title,
+           'pause_text': obs_pause_text,
+           'background': obs_brand_palettes[obs_brand_theme].background,
+           'text_color': obs_brand_palettes[obs_brand_theme].text,
+           'primary': obs_brand_primary,
+           'font': obs_brand_font,
+           'mic_device': obs_mic_device,
+           'desktop_audio_device': obs_desktop_audio_device,
+           'noise_suppression': obs_mic_noise_suppression | bool,
+           'webcam_filters': obs_webcam_filters,
+           'webcam_cutout': obs_webcam_background == 'cutout'
+             and obs_webcam_filters | length > 0 })
+         | to_nice_json(indent=4) }}
+    dest: '{{ obs_config_dir }}/basic/scenes/{{ obs_scene_collection_file }}.json'
+    mode: '0644'
+    force: '{{ obs_config_force | bool }}'
+    backup: '{{ obs_config_force | bool }}'
+  become: false
+
+# Earlier runs installed this launcher; the packaged OBS entry replaces it.
+- name: Remove the former OBS demo launcher
+  ansible.builtin.file:
+    path: '{{ obs_home }}/.local/share/applications/obs-demo.desktop'
+    state: absent
+  become: false
