@@ -16,6 +16,11 @@ Release history and changes planned for the next version.
     waited for the next screen update.
   - Add a Waybar `REC` indicator that stops the recording when clicked.
   - Install `wf-recorder` with the Hyprland package group (Arch and Fedora).
+  - `SUPER + F1` opens a searchable Hyprlauncher list of the keybindings
+    Hyprland has loaded (`hypr-keybinds.sh`, read from `hyprctl binds -j`).
+    A bind without a description is listed under its dispatcher name.
+  - Every bind in `keybindings.lua` now has a description, and
+    `tests/hypr-keybinds.sh` fails when a new one is added without one.
 - **DNS**:
   - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
     off, mDNS for resolving only, and no compiled-in public fallback servers.

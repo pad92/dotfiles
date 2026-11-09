@@ -110,6 +110,7 @@ local config = {
     bright_down = "swayosd-client --brightness lower",
     caps_lock = "swayosd-client --caps-lock",
     wallpaper = "~/.bin/awww.sh",
+    keybinds = "~/.bin/hypr-keybinds.sh",
     -- Critical notifications never expire, so they need a keyboard dismissal.
     notification_dismiss = "makoctl dismiss --all",
     notification_restore = "makoctl restore",
