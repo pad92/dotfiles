@@ -14,6 +14,9 @@ from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/obs"
+# Pinned by ansible/requirements.yml, as ansible.cfg does for real runs: the
+# test ansible.cfg replaces the repository one, which sets collections_path.
+COLLECTIONS = ROOT / ".ansible/collections"
 
 
 def load(name, path):
@@ -117,6 +120,21 @@ class EncoderSelectionTests(unittest.TestCase):
         with self.assertRaises(AnsibleFilterError):
             obs.obs_encoder_candidate(nodes, "qsv")
 
+    def test_forced_encoders_pick_a_matching_gpu(self):
+        hybrid = obs.obs_render_nodes(HYBRID_LAPTOP_NODES)
+        self.assertEqual(
+            obs.obs_encoder_candidate(hybrid, "x264"), {"kind": "x264", "device": None}
+        )
+        self.assertEqual(
+            obs.obs_encoder_candidate(hybrid, "vaapi")["device"], "/dev/dri/renderD128"
+        )
+        # NVIDIA drives the screens: forcing VAAPI uses the secondary AMD GPU.
+        nvidia_boot = obs.obs_render_nodes("renderD128 nvidia 1\nrenderD129 amdgpu 0\n")
+        self.assertEqual(
+            obs.obs_encoder_candidate(nvidia_boot, "vaapi"),
+            {"kind": "vaapi", "device": "/dev/dri/renderD129"},
+        )
+
     def test_failed_probe_falls_back_to_software_encoding(self):
         candidate = {"kind": "vaapi", "device": "/dev/dri/renderD128"}
         for probe in (False, None, "yes"):
@@ -134,6 +152,23 @@ class EncoderSelectionTests(unittest.TestCase):
         self.assertEqual(settings["record"]["rate_control"], "CQP")
         self.assertEqual(settings["stream"]["rate_control"], "CBR")
         self.assertNotIn("qp", settings["stream"])
+
+    def test_nvenc_records_constant_quality_and_streams_constant_bitrate(self):
+        settings = obs.obs_encoder_settings(
+            {"kind": "nvenc", "device": "/dev/dri/renderD129"}, True
+        )
+        self.assertEqual(settings["id"], "obs_nvenc_h264_tex")
+        self.assertTrue(settings["hardware"])
+        record, stream = settings["record"], settings["stream"]
+        self.assertEqual((record["rate_control"], record["cqp"]), ("CQP", 20))
+        self.assertEqual(record["keyint_sec"], 2)
+        self.assertEqual((stream["rate_control"], stream["bitrate"]), ("CBR", 6000))
+        self.assertNotIn("cqp", stream)
+        # Only the rate control differs between the two outputs.
+        self.assertEqual(
+            {k: v for k, v in stream.items() if k not in ("rate_control", "bitrate")},
+            {k: v for k, v in record.items() if k not in ("rate_control", "cqp")},
+        )
 
     def test_x264_preset_scales_with_cpu_threads(self):
         presets = {
@@ -187,6 +222,22 @@ class VideoSettingsTests(unittest.TestCase):
         with self.assertRaises(AnsibleFilterError):
             obs.obs_video_settings(obs.obs_select_monitor([]), 100)
 
+    def test_outputs_without_a_usable_size_are_ignored(self):
+        monitors = [
+            {"name": "DP-1", "width": 7680, "height": 0},
+            {"name": "HDMI-A-1", "width": "3840", "height": "2160"},
+            HYBRID_LAPTOP_MONITORS[1],
+        ]
+        self.assertEqual(obs.obs_select_monitor(monitors)["name"], "DP-2")
+        # Naming one does not bring it back: it would give an empty canvas.
+        for name in ("DP-1", "HDMI-A-1"):
+            with self.subTest(name=name), self.assertRaises(AnsibleFilterError):
+                obs.obs_select_monitor(monitors, name)
+
+    def test_missing_monitor_falls_back_to_a_1080p_canvas(self):
+        video = obs.obs_video_settings(None)
+        self.assertEqual((video["base_width"], video["base_height"]), (1920, 1080))
+
 
 class WebcamTests(unittest.TestCase):
     def test_infrared_and_metadata_nodes_are_not_cameras(self):
@@ -235,6 +286,30 @@ class WebcamTests(unittest.TestCase):
         self.assertIsNone(obs.obs_webcam_settings(obs.obs_pick_webcam([])))
         with self.assertRaises(AnsibleFilterError):
             obs.obs_pick_webcam(obs.obs_cameras(INTEGRATED_LISTING), "C920")
+
+    def test_preferred_camera_wins_over_the_external_one(self):
+        cameras = obs.obs_cameras(INTEGRATED_LISTING + EXTERNAL_LISTING)
+        by_name = obs.obs_pick_webcam(cameras, "Integrated_Webcam_HD")
+        self.assertEqual(by_name["node"], "/dev/video0")
+        by_path = obs.obs_pick_webcam(cameras, "usb-046d_Logi")
+        self.assertEqual(by_path["node"], "/dev/video4")
+
+    def test_camera_without_a_size_within_the_target_keeps_its_default(self):
+        listing = (
+            "### /dev/video0||4K Cam\n\t[0]: 'MJPG' (Motion-JPEG)\n"
+            "\t\tSize: Discrete 3840x2160\n"
+            "\t\t\tInterval: Discrete 0.033s (30.000 fps)\n"
+        )
+        settings = obs.obs_webcam_settings(
+            obs.obs_pick_webcam(obs.obs_cameras(listing))
+        )
+        self.assertEqual(settings["pixelformat"], MJPG)
+        self.assertEqual((settings["resolution"], settings["framerate"]), (-1, -1))
+
+    def test_detection_output_that_is_not_text_yields_no_device(self):
+        # A skipped or failed detection task registers no stdout string.
+        self.assertEqual(obs.obs_render_nodes(None), [])
+        self.assertEqual(obs.obs_cameras(None), [])
 
 
 class BrandThemeTests(unittest.TestCase):
@@ -598,6 +673,10 @@ class SceneCollectionTests(unittest.TestCase):
         )
         self.assertNotIn("filters", custom["AuxAudioDevice1"])
 
+    def test_scene_collection_requires_video_settings(self):
+        with self.assertRaises(AnsibleFilterError):
+            obs.obs_scene_collection(None, self.webcam)
+
     def test_output_is_deterministic_json(self):
         first = json.dumps(obs.obs_scene_collection(self.video, self.webcam))
         second = json.dumps(obs.obs_scene_collection(self.video, self.webcam))
@@ -650,6 +729,9 @@ class FirefoxPolicyTests(unittest.TestCase):
         for text in ("{", "[]", '{"policies": []}', '{"policies": {"Preferences": 1}}'):
             with self.subTest(text=text), self.assertRaises(AnsibleFilterError):
                 obs.obs_firefox_policies(text)
+        # Parsed data would skip the JSON validation: the role must pass text.
+        with self.assertRaises(AnsibleFilterError):
+            obs.obs_firefox_policies({"policies": {}})
 
     def run_play(self, work, firefox_installed=True):
         tasks = yaml.safe_load((ROLE / "tasks/firefox.yml").read_text())
@@ -1000,6 +1082,9 @@ class ConfigOwnershipTests(unittest.TestCase):
 
 
 class ProfileContractTests(unittest.TestCase):
+    # Loading the packages role resolves community.general.pacman even when its
+    # tasks are skipped by --tags.
+    @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_obs_profile_refuses_reconcile_before_any_role(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -1018,14 +1103,19 @@ class ProfileContractTests(unittest.TestCase):
                     "--tags",
                     "always",
                 ],
-                env=ansible_test_environment(work),
+                env={
+                    **ansible_test_environment(work),
+                    "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
+                },
                 capture_output=True,
                 text=True,
                 timeout=120,
                 check=False,
             )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("would treat every package outside 22_obs", result.stdout)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(
+            "would treat every package outside 22_obs", result.stdout, result.stderr
+        )
 
     def test_full_playbook_runs_the_obs_role_only_for_hosts_selecting_it(self):
         site = yaml.safe_load((ROOT / "ansible/site.yml").read_text())

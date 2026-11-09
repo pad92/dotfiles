@@ -14,16 +14,9 @@
     # Keep the workstation's saved group list; only add the OBS groups to it.
     packages_state_merge_selection: true
   pre_tasks:
-    - name: Require Arch Linux for the OBS profile
-      ansible.builtin.assert:
-        that:
-          - ansible_facts['system'] == 'Linux'
-          - ansible_facts['os_family'] == 'Archlinux'
-        fail_msg: The OBS profile only defines packages for Arch Linux and CachyOS.
-      tags: [always]
-
     # The profile selects a few groups only: a reconcile would offer to remove
-    # every other managed package of the workstation.
+    # every other managed package of the workstation. This checks an argument,
+    # not the host, so it runs first and rejects the call on any system.
     - name: Refuse package reconciliation from the OBS profile
       ansible.builtin.assert:
         that:
@@ -31,6 +24,14 @@
         fail_msg: >-
           packages_action=reconcile would treat every package outside 22_obs as
           obsolete. Reconcile with the full playbook (make install) instead.
+      tags: [always]
+
+    - name: Require Arch Linux for the OBS profile
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['system'] == 'Linux'
+          - ansible_facts['os_family'] == 'Archlinux'
+        fail_msg: The OBS profile only defines packages for Arch Linux and CachyOS.
       tags: [always]
   roles:
     - role: packages
