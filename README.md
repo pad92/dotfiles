@@ -125,18 +125,35 @@ The Hyprland configuration is written in Lua. See the
 [session guide](./dist/arch/install.md#gnome-keyring-pam-setup) for TTY
 startup, GNOME Keyring PAM, UWSM, and the systemd session.
 
-| Shortcut                            | Action                                           |
-| :---------------------------------- | :----------------------------------------------- |
-| `SUPER + Return`                    | Terminal                                         |
-| `SUPER + E / C / W`                 | File manager / editor / browser                  |
-| `SUPER + D`                         | Application menu                                 |
-| `SUPER + [0-9]`                     | Switch workspace; add `Shift` to move the window |
-| `SUPER + Arrows` or Vim keys        | Change focus; add `Shift` to move the window     |
-| `SUPER + F` / `SUPER + ALT + Space` | Fullscreen / floating                            |
-| `SUPER + L` / `SUPER + Delete`      | Lock / logout menu                               |
-| `SUPER + SHIFT + V`                 | Clipboard history                                |
-| `Print` / `SUPER + P`               | Screenshot                                       |
-| `SUPER + N`                         | Dismiss notifications; `Shift` restores the last |
+| Shortcut                                            | Action                                                          |
+| :-------------------------------------------------- | :-------------------------------------------------------------- |
+| `SUPER + Return`                                    | Terminal                                                        |
+| `SUPER + E / C / W`                                 | File manager / editor / browser                                 |
+| `SUPER + D`                                         | Application menu                                                |
+| `SUPER + SHIFT + Return`                            | Password manager (Proton Pass)                                  |
+| `SUPER + SHIFT + Q`                                 | Close the window                                                |
+| `SUPER + F` / `SUPER + ALT + Space`                 | Fullscreen / floating                                           |
+| `ALT + Tab`                                         | Cycle windows and raise the focused one                         |
+| `SUPER + Arrows`                                    | Change focus; add `Shift` to move the window                    |
+| `SUPER + [` / `SUPER + ]`                           | Focus the window on the left / right                            |
+| `SUPER + Left click` / `Right click`                | Drag to move / resize the window                                |
+| `SUPER + [0-9]`                                     | Switch workspace; add `Shift` to move the window there          |
+| `SUPER + ALT + [0-9]`                               | Send the window to a workspace and stay (keypad too)            |
+| `CTRL + SUPER + Left / Right`                       | Previous / next workspace                                       |
+| `SUPER + L` / `SUPER + Delete`                      | Lock / logout menu                                              |
+| `SUPER + SHIFT + V`                                 | Clipboard history                                               |
+| `SUPER + ALT + Right`                               | Change wallpaper                                                |
+| `SUPER + N`                                         | Dismiss notifications; `Shift` restores the last                |
+| `Print` / `SUPER + P`                               | Screenshot of a region, then edit it in Swappy                  |
+| `CTRL + Print` / `SUPER + CTRL + P`                 | Record a window (click) or a region (drag); press again to stop |
+| `CTRL + SHIFT + Print` / `SUPER + CTRL + SHIFT + P` | Record the focused screen; press again to stop                  |
+| `SUPER + Page Up / Page Down`                       | Zoom in / out around the pointer; `SUPER + Home` resets         |
+
+Volume, media, brightness and screenshot keys also work on the lock screen.
+Caps Lock shows its state in an on-screen indicator.
+
+Adding `CTRL` to a screenshot key records a video instead, and `SHIFT` widens
+the recording to the whole screen.
 
 Mako shows up to five notifications in the top-right corner, newest first, and
 draws them above fullscreen windows. `steam-optimize` turns on do-not-disturb
@@ -146,6 +163,22 @@ during games; critical alerts still appear and stay until dismissed.
 Copy its sample to `~/.config/awww/awww.conf` to configure sources. Renders are
 cached with a 2 GiB default quota, and `awww_random.timer` changes wallpapers
 every 30 minutes. ImageMagick is required.
+
+Recordings are H.264 MP4 files at 30 fps, without sound, saved in
+`~/Videos/Recordings` (the XDG videos folder). A few seconds of a 1440p screen
+take a few hundred kilobytes. Frames are copied continuously, so a still screen
+records correctly, and encoding a 1440p screen uses about 1.5 CPU cores while
+it runs. The path is copied to the clipboard when the recording stops. While it
+runs, Waybar shows a red `REC` label; clicking it stops the recording. A window
+is recorded as the area it covered when you picked it: if you move it, it
+leaves the frame, and anything drawn over it is recorded too.
+
+Settings are environment variables of the Hyprland session (for example in
+`~/.config/uwsm/env-hyprland`), documented at the top of
+[`hypr-record.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-record.sh):
+`HYPR_RECORD_AUDIO=1` adds the default audio input, and `HYPR_RECORD_HWENC=1`
+with `HYPR_RECORD_VAAPI_DEVICE` encodes on the GPU, falling back to libx264 if
+the encoder does not start.
 
 Hyprlock shows the time, battery, and current media. Its carousel option uses
 the AWWW sources; see the
@@ -265,6 +298,7 @@ Zsh adds it to `PATH`.
 | [`awww.sh`](./ansible/roles/dotfiles/files/home/.bin/awww.sh)                                                                    | Select and render wallpapers.                    |
 | [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
 | [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Record the desktop still and animated demo.      |
+| [`hypr-record.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-record.sh)                                                      | Record a screen or a window as a light MP4.      |
 | [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |

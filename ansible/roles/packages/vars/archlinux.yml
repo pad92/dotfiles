@@ -226,6 +226,7 @@ packages_family_groups:
       - tela-circle-icon-theme-dracula
       - ttf-dejavu
       - waybar
+      - wf-recorder
       - wl-clipboard
       - wlogout
       - xdg-desktop-portal-gtk

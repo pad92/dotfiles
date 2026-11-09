@@ -6,6 +6,16 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Hyprland**:
+  - Add screen recording with `hypr-record.sh` and wf-recorder. `CTRL + Print`
+    records a window or a region and `CTRL + SHIFT + Print` the focused screen;
+    the same key stops it. The file is a small H.264 MP4 in
+    `~/Videos/Recordings`, and a failed recording keeps its `.mp4.part` file
+    instead of being renamed. Frames are copied continuously (`wf-recorder -D`):
+    with damage tracking, a still screen gave an unreadable MP4 and a stop
+    waited for the next screen update.
+  - Add a Waybar `REC` indicator that stops the recording when clicked.
+  - Install `wf-recorder` with the Hyprland package group (Arch and Fedora).
 - **DNS**:
   - Add the `dns` tag, which makes systemd-resolved the only resolver: LLMNR
     off, mDNS for resolving only, and no compiled-in public fallback servers.
@@ -54,6 +64,12 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Docs**:
+  - List every Hyprland shortcut in the README. The table claimed Vim keys
+    that are not bound and left out window closing, `ALT + Tab`, the password
+    manager, `[` / `]` focus, mouse move and resize, sending a window to a
+    workspace without following it, relative workspaces, the wallpaper key and
+    zoom.
 - **Ansible**:
   - The `docker_daemon_dns` and `lact_config` filters no longer deep-copy
     Ansible's lazy containers. The copy also copied the templar, and rebuilding

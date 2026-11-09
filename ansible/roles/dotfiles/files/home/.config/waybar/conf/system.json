@@ -10,6 +10,15 @@
   "memory": {
     "format": "{}% "
   },
+  "custom/recording": {
+    "exec": "$HOME/.bin/hypr-record.sh status",
+    "on-click": "$HOME/.bin/hypr-record.sh stop",
+    "return-type": "json",
+    "interval": "once",
+    "signal": 8,
+    "hide-empty-text": true,
+    "tooltip": true
+  },
   "custom/lact-profile": {
     "exec": "$HOME/.config/waybar/modules/lact-profile status",
     "on-click": "$HOME/.config/waybar/modules/lact-profile cycle",

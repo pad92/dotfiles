@@ -121,6 +121,7 @@ window#waybar {
 #temperature,
 #backlight,
 #pulseaudio,
+#custom-recording,
 #custom-lact-profile,
 #custom-headsetcontrol,
 #tray,
@@ -134,6 +135,11 @@ window#waybar {
 
 #custom-lact-profile {
   font-size: 12px;
+}
+
+#custom-recording.recording {
+  background-color: @red;
+  font-weight: bold;
 }
 
 #battery.warning:not(.charging) {

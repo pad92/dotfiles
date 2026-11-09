@@ -62,6 +62,22 @@ hl.bind("Caps_Lock", hl.dsp.exec_cmd(config.utils.caps_lock), { description = "C
 hl.bind("Print", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
 hl.bind(config.mainMod .. " + P", hl.dsp.exec_cmd(config.utils.screenshot), { locked = true })
 
+-- Screen recording (light MP4): CTRL turns a screenshot key into a recording,
+-- SHIFT widens it to the whole screen. Press again to stop. Not available on
+-- the lock screen.
+hl.bind("CTRL + Print", hl.dsp.exec_cmd(config.utils.record_window), { description = "Record window" })
+hl.bind("CTRL + SHIFT + Print", hl.dsp.exec_cmd(config.utils.record_screen), { description = "Record screen" })
+hl.bind(
+  config.mainMod .. " + CTRL + P",
+  hl.dsp.exec_cmd(config.utils.record_window),
+  { description = "Record window" }
+)
+hl.bind(
+  config.mainMod .. " + CTRL + SHIFT + P",
+  hl.dsp.exec_cmd(config.utils.record_screen),
+  { description = "Record screen" }
+)
+
 -- Wallpaper & clipboard
 hl.bind(
   config.mainMod .. " + ALT + Right",
