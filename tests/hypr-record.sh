@@ -182,6 +182,14 @@ recorder_call()
     awk -v n="$1" '$0 == "--" { call++; next } call == n - 1 { print }' "$MOCK_LOG/wf-recorder.args"
 }
 
+# True when a line of wf-recorder call N matches the awk regex. A single awk
+# reads the whole file: `recorder_call | grep -q` is flaky under pipefail,
+# grep exits on the first match and awk then dies of SIGPIPE (status 141).
+recorder_has()
+{
+    awk -v n="$1" -v re="$2" '$0 == "--" { call++; next } call == n - 1 && $0 ~ re { found = 1 } END { exit !found }' "$MOCK_LOG/wf-recorder.args"
+}
+
 has_argument_pair()
 {
     local call=$1 option=$2 value=$3
@@ -213,11 +221,11 @@ has_argument_pair 1 -c libx264 || fail "the default encoder is not libx264"
 has_argument_pair 1 -r 30 || fail "the default frame rate is not a constant 30 fps"
 has_argument_pair 1 -m mp4 || fail "the muxer is not forced to mp4 for the .part name"
 # Damage tracking leaves a still screen with an unreadable MP4.
-recorder_call 1 | grep -qx -- -D || fail "frames are not copied continuously (-D)"
+recorder_has 1 '^-D$' || fail "frames are not copied continuously (-D)"
 has_argument_pair 1 -p preset=superfast || fail "the libx264 preset is not superfast"
 has_argument_pair 1 -F 'fps=30,crop=trunc(iw/2)*2:trunc(ih/2)*2' \
     || fail "frames are not dropped to 30 fps before the crop"
-! recorder_call 1 | grep -qx -- --audio || fail "audio was recorded although it was not requested"
+! recorder_has 1 '^--audio$' || fail "audio was recorded although it was not requested"
 [[ $(cat "$MOCK_LOG/wf-recorder.signals") == INT ]] \
     || fail "the toggle did not stop wf-recorder with SIGINT"
 final=$(only_file) || fail "the recording did not leave exactly one file"
@@ -237,7 +245,7 @@ expected_boxes=$'10,20 800x600\n2000,40 1280x720\n5,5 300x200'
 [[ $(cat "$MOCK_LOG/slurp.stdin") == "$expected_boxes" ]] \
     || fail "slurp got the wrong window boxes: $(cat "$MOCK_LOG/slurp.stdin")"
 has_argument_pair 1 -g "2000,40 1280x720" || fail "the picked geometry was not recorded"
-! recorder_call 1 | grep -qx -- -o || fail "a window recording also selected a whole output"
+! recorder_has 1 '^-o$' || fail "a window recording also selected a whole output"
 only_file > /dev/null || fail "the window recording was not saved"
 
 # --- Cancelling the selection creates nothing.
@@ -321,9 +329,9 @@ wait "$supervisor" || supervisor_status=$?
 [[ $(recorder_calls) == 2 ]] || fail "VAAPI failure was not retried exactly once"
 has_argument_pair 1 -d /dev/dri/renderD129 || fail "VAAPI did not use the configured device"
 has_argument_pair 2 -c libx264 || fail "the retry did not use libx264"
-! recorder_call 2 | grep -qx -- -d || fail "the libx264 retry kept the VAAPI device"
-recorder_call 1 | grep -qx -- -D || fail "the VAAPI attempt used damage tracking"
-recorder_call 2 | grep -qx -- -D || fail "the libx264 retry used damage tracking"
+! recorder_has 2 '^-d$' || fail "the libx264 retry kept the VAAPI device"
+recorder_has 1 '^-D$' || fail "the VAAPI attempt used damage tracking"
+recorder_has 2 '^-D$' || fail "the libx264 retry used damage tracking"
 [[ $(only_file) == *.mp4 ]] || fail "the fallback recording was not saved"
 
 # --- A stop sent before wf-recorder handles SIGINT still stops it (slow start).
@@ -347,20 +355,20 @@ reset_case hwenc-no-device
 export HYPR_RECORD_HWENC=1
 record_and_toggle screen
 has_argument_pair 1 -c libx264 || fail "VAAPI was attempted without a configured device"
-! recorder_call 1 | grep -qx -- -d || fail "a VAAPI device was guessed"
+! recorder_has 1 '^-d$' || fail "a VAAPI device was guessed"
 
 # --- Audio is opt-in.
 reset_case audio
 export HYPR_RECORD_AUDIO=1
 record_and_toggle screen
-recorder_call 1 | grep -qx -- --audio || fail "HYPR_RECORD_AUDIO=1 did not record audio"
+recorder_has 1 '^--audio$' || fail "HYPR_RECORD_AUDIO=1 did not record audio"
 
 # --- The frame rate setting drives both -r and the frame-dropping filter.
 reset_case fps
 export HYPR_RECORD_FPS=15
 record_and_toggle screen
 has_argument_pair 1 -r 15 || fail "HYPR_RECORD_FPS did not set the frame rate"
-recorder_call 1 | grep -q -- '^fps=15,' || fail "HYPR_RECORD_FPS did not reach the filter"
+recorder_has 1 '^fps=15,' || fail "HYPR_RECORD_FPS did not reach the filter"
 unset HYPR_RECORD_FPS
 
 # --- Unknown modes are rejected.

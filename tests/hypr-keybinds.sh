@@ -122,8 +122,10 @@ set -e
 # The real config is loaded against a stub `hl` that records every bind, so a
 # new bind without a description fails here instead of showing up as a bare
 # dispatcher name in the list.
-command -v lua >/dev/null 2>&1 || fail "lua is required to check keybindings.lua"
-HOME="$TEST_DIR" lua - "$HYPR_DIR" <<'EOF' || fail "keybindings.lua check failed"
+# Alpine (the CI image) installs the interpreter as lua5.4 only.
+LUA=$(command -v lua || command -v lua5.4) ||
+    fail "lua or lua5.4 is required to check keybindings.lua"
+HOME="$TEST_DIR" "$LUA" - "$HYPR_DIR" <<'EOF' || fail "keybindings.lua check failed"
 local hypr_dir = arg[1]
 package.path = hypr_dir .. "/?.lua;" .. package.path
 
