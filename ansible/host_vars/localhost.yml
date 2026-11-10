@@ -12,6 +12,7 @@ packages_host_groups:
     - 14_iac_opentofu
     - 20_apps
     - 22_obs
+    - 23_vpn
   PadsTower:
     - 01_base
     - 02_fonts

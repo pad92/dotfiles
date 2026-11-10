@@ -50,6 +50,17 @@
     - system_dns_manage | bool
   tags: [dns]
 
+# Only hosts that select 23_vpn get the VPN, even though the Vault applies
+# to every host.
+- name: Configure the SAML VPN from the Ansible Vault
+  ansible.builtin.import_tasks: vpn.yml
+  when:
+    - packages_action | default('install') != 'plan'
+    - >-
+      '23_vpn' in (packages_selected_groups |
+      default(packages_host_groups.get(ansible_facts['hostname'], [])))
+  tags: [vpn]
+
 - name: Apply kernel hardening
   ansible.builtin.import_tasks: kernel_hardening.yml
   tags: [kernel_hardening]

@@ -298,3 +298,6 @@ packages_family_groups:
       - v4l2loopback-dkms
       - wireplumber
       - xdg-desktop-portal-hyprland
+    # SAML VPN client; the gateway comes from the Ansible Vault.
+    23_vpn:
+      - openfortivpn

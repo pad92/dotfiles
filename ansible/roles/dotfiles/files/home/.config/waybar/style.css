@@ -124,6 +124,7 @@ window#waybar {
 #custom-recording,
 #custom-lact-profile,
 #custom-headsetcontrol,
+#custom-vpn,
 #tray,
 #mode,
 #bluetooth,
@@ -135,6 +136,19 @@ window#waybar {
 
 #custom-lact-profile {
   font-size: 12px;
+}
+
+#custom-vpn.connected {
+  border-bottom: 3px solid @green;
+}
+
+#custom-vpn.connecting {
+  border-bottom: 3px solid @yellow;
+}
+
+#custom-vpn.failed,
+#custom-vpn.unknown {
+  border-bottom: 3px solid @red;
 }
 
 #custom-recording.recording {

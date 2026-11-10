@@ -6,6 +6,7 @@
   "modules-center": ["clock"],
   "modules-right": [
     "custom/recording",
+    "custom/vpn",
     "pulseaudio",
     "bluetooth",
     "cpu",

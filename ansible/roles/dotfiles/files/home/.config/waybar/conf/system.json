@@ -27,6 +27,15 @@
     "hide-empty-text": true,
     "tooltip": true
   },
+  "custom/vpn": {
+    "exec": "$HOME/.config/waybar/modules/vpn status",
+    "on-click": "$HOME/.config/waybar/modules/vpn toggle",
+    "return-type": "json",
+    "interval": 5,
+    "signal": 9,
+    "hide-empty-text": true,
+    "tooltip": true
+  },
   "battery": {
     "states": {
       "good": 95,

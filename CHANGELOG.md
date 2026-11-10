@@ -47,6 +47,19 @@ Release history and changes planned for the next version.
   - Add a migration note for hosts installed with openresolv and the dnsmasq
     relay (`dist/arch/dns-migration.md`): preview, apply, checks, undo, and
     package removal.
+- **VPN**:
+  - Add the `23_vpn` package group (`openfortivpn`), selected on PadsP5560
+    only, and the `vpn` tag of the `system` role. The VPN uses the browser
+    SAML login and gives its DNS servers to systemd-resolved on the ppp link,
+    so `/etc/resolv.conf` stays the resolved stub link.
+  - The gateway lives only in the Ansible Vault
+    (`ansible/group_vars/all/vault_vpn.yml`, ignored by Git). Without it the
+    role changes nothing. Values are checked before they reach the daemon
+    configuration or the polkit rule.
+  - A polkit rule lets the session user start and stop
+    `openfortivpn@work.service`, and only that unit, without a password.
+  - Add a Waybar `VPN` indicator: a click connects and opens the SAML login
+    in the browser, a second click disconnects.
 
 ### Changed
 
