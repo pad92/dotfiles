@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+#
+# vault-toggle — encrypt a plain file with Ansible Vault, or decrypt an
+# encrypted one, in place. Built to run on the file open in an editor (the Zed
+# task "vault: toggle" passes $ZED_FILE), but it works from any shell.
+#
+#   vault-toggle [--force] FILE
+#
+# The vault password comes from the first source that applies:
+#   1. ANSIBLE_VAULT_PASSWORD_FILE or ANSIBLE_VAULT_IDENTITY_LIST, as set;
+#   2. vault_password_file or vault_identity_list in the ansible.cfg that
+#      ansible-vault loads from the current directory;
+#   3. the nearest .vault, .vault_pass, .vault_pass.txt or .vault-password
+#      file found walking up from FILE's directory;
+#   4. an interactive prompt.
+# In cases 1 and 2 ansible-vault reads the source itself; this script adds
+# nothing, so a vault-id set up for the project keeps working.
+#
+# Decryption refuses a file that Git would track (tracked, or not ignored),
+# since the plain text would then show up in the next commit. --force
+# overrides that check.
+#
+# Exit codes: 0 on success, 2 on invalid usage or refused file, otherwise the
+# ansible-vault exit code.
+
+set -euo pipefail
+
+# shellcheck disable=SC2016 # the literal header text, not a variable
+readonly VAULT_HEADER='$ANSIBLE_VAULT;'
+readonly PASSWORD_FILE_NAMES=(.vault .vault_pass .vault_pass.txt .vault-password)
+readonly EXIT_USAGE=2
+
+die()
+{
+    printf 'vault-toggle: %s\n' "$1" >&2
+    exit "$EXIT_USAGE"
+}
+
+usage()
+{
+    printf 'Usage: vault-toggle [--force] FILE\n' >&2
+    exit "$EXIT_USAGE"
+}
+
+is_vault_encrypted()
+{
+    local first_line=''
+    IFS= read -r first_line <"$1" || true
+    [[ $first_line == "$VAULT_HEADER"* ]]
+}
+
+# True when ansible-vault already has a password source of its own.
+has_configured_vault_secret()
+{
+    [[ -n ${ANSIBLE_VAULT_PASSWORD_FILE:-} || -n ${ANSIBLE_VAULT_IDENTITY_LIST:-} ]] \
+        && return 0
+    ansible-config dump --only-changed 2>/dev/null \
+        | grep -Eq '^DEFAULT_VAULT_(PASSWORD_FILE|IDENTITY_LIST)\b'
+}
+
+# ansible-vault runs an executable password file and uses its output, so a
+# file picked up by walking the tree could run code planted in a cloned
+# repository. Only a plain, private, non-executable file of the user is used.
+is_trusted_password_file()
+{
+    local path=$1
+    [[ -f $path && ! -L $path && ! -x $path && -O $path ]] || return 1
+    local mode
+    mode=$(stat -c '%a' -- "$path")
+    (( (8#$mode & 8#022) == 0 ))
+}
+
+find_password_file()
+{
+    local dir=$1 name candidate
+    while :; do
+        for name in "${PASSWORD_FILE_NAMES[@]}"; do
+            candidate="$dir/$name"
+            [[ -e $candidate ]] || continue
+            if is_trusted_password_file "$candidate"; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+            printf 'vault-toggle: ignoring %s (must be a private, non-executable regular file you own)\n' \
+                "$candidate" >&2
+        done
+        [[ $dir == / ]] && return 1
+        dir=$(dirname -- "$dir")
+    done
+}
+
+# Succeeds when decrypting FILE could put its plain text into a commit.
+# check-ignore never reports a tracked file as ignored, even when a pattern
+# matches it, so this also covers a vault file that was force-added.
+is_exposed_to_git()
+{
+    local dir=$1 base=$2
+    git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
+    ! git -C "$dir" check-ignore -q -- "$base"
+}
+
+main()
+{
+    local force=false
+    while (( $# > 0 )); do
+        case $1 in
+            --force) force=true; shift ;;
+            -h|--help) usage ;;
+            --) shift; break ;;
+            -*) die "unknown option: $1" ;;
+            *) break ;;
+        esac
+    done
+    (( $# == 1 )) || usage
+
+    local file=$1
+    [[ -n $file ]] || usage
+    [[ -f $file ]] || die "not a regular file: $file"
+    [[ -r $file && -w $file ]] || die "file must be readable and writable: $file"
+    command -v ansible-vault >/dev/null || die "ansible-vault is not installed"
+
+    local dir base
+    dir=$(cd -- "$(dirname -- "$file")" && pwd -P)
+    base=$(basename -- "$file")
+
+    local action=encrypt
+    if is_vault_encrypted "$file"; then
+        action=decrypt
+        if ! $force && is_exposed_to_git "$dir" "$base"; then
+            die "refusing to decrypt $file: Git tracks it or does not ignore it (use --force)"
+        fi
+    fi
+
+    local -a secret_args=()
+    local password_file
+    if has_configured_vault_secret; then
+        :
+    elif password_file=$(find_password_file "$dir"); then
+        secret_args=(--vault-password-file "$password_file")
+    else
+        secret_args=(--ask-vault-pass)
+    fi
+
+    ansible-vault "$action" "${secret_args[@]}" -- "$file"
+}
+
+main "$@"

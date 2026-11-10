@@ -70,6 +70,8 @@ dotfiles_files:
   - .config/user-dirs.conf
   - .config/user-dirs.locale
   - .config/autostart/nm-applet.desktop
+  - .config/zed/keymap.json
+  - .config/zed/tasks.json
 dotfiles_templates:
   - src: home/.zshrc.j2
     dest: .zshrc

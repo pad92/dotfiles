@@ -1,0 +1,12 @@
+[
+  {
+    "label": "vault: toggle",
+    "command": "$HOME/.bin/vault-toggle",
+    "args": ["--", "$ZED_FILE"],
+    "save": "current",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "hide": "on_success"
+  }
+]

@@ -69,6 +69,7 @@ test-shell: ## Run the shell integration tests
 	bash tests/hypr-keybinds.sh
 	bash tests/hypr-screenshot.sh
 	bash tests/hypr-record.sh
+	bash tests/vault-toggle.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
 

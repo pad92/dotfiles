@@ -108,7 +108,7 @@ covers variables, package ownership, and system settings.
 | `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for the `22_obs` group: host-tuned profile, scenes, webcam.    |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for the `22_obs` group: host-tuned profile, scenes, webcam.     |
 | `dotfiles`                                 | Run the whole dotfiles role.                                                  |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
@@ -247,6 +247,23 @@ Neovim uses Lua, Telescope, Treesitter, Mason, and native LSP. Neovim 0.8+
 loads plugins with lazy.nvim; Neovim 0.7.2 uses a compatibility loader with
 older plugin releases. Vim uses Vundle.
 
+Zed is installed on Arch with the `10_sre_devops` package group. In Zed,
+`CTRL + ALT + V` saves the active file and runs
+[`vault-toggle`](./ansible/roles/dotfiles/files/home/.bin/vault-toggle) on it:
+a plain file is encrypted with Ansible Vault, an encrypted one is decrypted in
+place. The playbook manages `~/.config/zed/tasks.json` and `keymap.json` for
+this, so edits made to them in Zed are replaced (with a `.bak` copy) on the
+next run. `settings.json` is left alone.
+
+`vault-toggle` takes the password from `ANSIBLE_VAULT_PASSWORD_FILE` or
+`ANSIBLE_VAULT_IDENTITY_LIST`, then from the project `ansible.cfg`, then from
+the nearest `.vault`, `.vault_pass`, `.vault_pass.txt` or `.vault-password`
+above the file, and prompts as a last resort. A password file found that way
+is used only if you own it, it is not executable and no one else can write
+to it, because ansible-vault runs an executable password file. Decryption is
+refused when Git tracks the file or does not ignore it; `vault-toggle --force
+FILE` overrides that from a terminal.
+
 GitLab publishes standalone configuration archives for both editors. Back up
 your current configuration first: extraction replaces files with the same
 names.
@@ -302,10 +319,11 @@ Zsh adds it to `PATH`.
 | [`razer_dpi.py`](./ansible/roles/dotfiles/files/home/.bin/razer_dpi.py)                                                          | Configure Razer mouse DPI.                       |
 | [`hypr-screenshot.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-screenshot.sh)                                              | Record the desktop still and animated demo.      |
 | [`hypr-record.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-record.sh)                                                      | Record a screen or a window as a light MP4.      |
-| [`hypr-keybinds.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-keybinds.sh)                                                   | List the loaded keybindings (`SUPER + F1`).      |
+| [`hypr-keybinds.sh`](./ansible/roles/dotfiles/files/home/.bin/hypr-keybinds.sh)                                                  | List the loaded keybindings (`SUPER + F1`).      |
 | [`comcut`](./ansible/roles/dotfiles/files/home/.bin/comcut), [`comskip.sh`](./ansible/roles/dotfiles/files/home/.bin/comskip.sh) | Detect and remove commercial breaks.             |
 | [`diff-cmd`](./ansible/roles/dotfiles/files/home/.bin/diff-cmd)                                                                  | Compare command output for two arguments.        |
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
+| [`vault-toggle`](./ansible/roles/dotfiles/files/home/.bin/vault-toggle)                                                          | Encrypt or decrypt a file with Ansible Vault.    |
 
 `backup.sh` only cleans package caches when you pass `--clean-packages`: it
 then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
