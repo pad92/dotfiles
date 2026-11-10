@@ -38,16 +38,20 @@ def valid_package_name(value: Any) -> bool:
 
 def select_package_groups(
     explicit: Any,
-    hostname: Any,
     host_groups: Any,
     defaults: Any,
     detected_graphics_groups: Any = None,
 ) -> Any:
-    """Choose package groups and prefer complete automatic graphics detection."""
+    """Choose package groups and prefer complete automatic graphics detection.
+
+    An explicit one-run selection wins unchanged. Otherwise the host's own list
+    applies, then the OS defaults. Detected graphics groups replace the
+    graphics groups of either list.
+    """
     if explicit is not None:
         selected = explicit
-    elif isinstance(hostname, str) and isinstance(host_groups, dict):
-        selected = host_groups.get(hostname, defaults)
+    elif host_groups is not None:
+        selected = host_groups
     else:
         selected = defaults
 

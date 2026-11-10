@@ -1,0 +1,4 @@
+---
+# Desktop with an AMD CPU.
+packages_host_groups: "{{ packages_workstation_groups + ['21_steam'] }}"
+dotfiles_hypridle_enabled: false

@@ -47,10 +47,9 @@ protections, ASLR, ptrace and kernel-address restrictions, and inotify limits.
 IPv4 forwarding is enabled only when `12_containers_docker` or
 `13_containers_podman` is selected, and disabled otherwise. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
-so LAN and VPN interfaces can configure it. Set
-`system_ipv6_enabled_by_hostname` in `host_vars` to override the policy per
-machine. The current inventory keeps
-IPv6 enabled on `PadsTower` and disables it on `PadsP5560`. Disabling IPv6 sets
+so LAN and VPN interfaces can configure it. Set `system_ipv6_enabled: false`
+in a host's settings file (see [Per-host settings](#per-host-settings)) to
+disable it on that machine. `PadsP5560` disables IPv6 and `PadsTower` keeps it. Disabling IPv6 sets
 the `all` and `default` sysctls so existing and future interfaces follow the
 host policy.
 
@@ -83,6 +82,30 @@ settings. Ansible does not reboot the workstation.
 Run either tag with `make install ANSIBLE_ARGS="--tags ssh_client_hardening --ask-become-pass"`
 or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
 
+### Per-host settings
+
+The inventory has a single `localhost` host. At the start of `site.yml` and
+`obs.yml`, a `group_by` task adds it to the group `host_<hostname>`, using
+the hostname fact; characters other than letters, digits and `_` become `_`.
+Ansible then loads `ansible/group_vars/host_<hostname>.yml` on top of
+`ansible/group_vars/all/`. A machine without such a file keeps the role
+defaults: OS and GPU package groups, IPv6 on, hypridle on.
+
+`group_vars/all/packages.yml` defines `packages_workstation_groups`, the
+groups both workstations share. Each host file builds its list from it:
+
+```yaml
+# ansible/group_vars/host_PadsP5560.yml
+packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
+system_ipv6_enabled: false
+dotfiles_hypridle_enabled: false
+```
+
+To add a machine, create `ansible/group_vars/host_<hostname>.yml` with the
+output of `hostname -s`. `packages_host_groups` is a list; the packages role
+rejects any other type. A `-e` option still overrides any of these settings
+for one run.
+
 ### DNS
 
 The `dns` tag makes systemd-resolved the only DNS resolver. NetworkManager
@@ -99,8 +122,9 @@ and `/etc/systemd/resolved.conf.d/60-dotfiles-dns.conf` sets the policy:
 
 The tag needs `systemd-resolved.service`, a running `NetworkManager.service`
 and `nmcli`. When one of them is missing, the role says which and skips the DNS
-policy without changing anything. Set `system_dns_manage: false` in
-`ansible/host_vars/localhost.yml` to leave the resolver alone on every run,
+policy without changing anything. Set `system_dns_manage: false` in the
+host's settings file (see [Per-host settings](#per-host-settings)) to leave
+the resolver alone on every run,
 including full runs, for example after
 [undoing the migration](../dist/arch/dns-migration.md#5-undo-the-migration).
 
@@ -373,9 +397,9 @@ AUR installation flow without installing the selected official repository
 packages.
 
 Package groups are selected automatically from OS defaults and detected GPU
-facts. Configure exact selections by hostname in `host_vars/localhost.yml`; those
-lists replace the defaults. `packages_group_selection` remains available as a
-one-run override. Vault is optional. When `.vault` (ignored by Git) exists, the
+facts. A machine with its own `packages_host_groups` list (see
+[Per-host settings](#per-host-settings)) replaces those defaults.
+`packages_group_selection` remains available as a one-run override. Vault is optional. When `.vault` (ignored by Git) exists, the
 `make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
 `DOTFILES_VAULT_PASSWORD_FILE=/path` on the `make` command line to use another
 file. A fresh clone without `.vault` runs without Vault. Example of a one-run package group
@@ -478,7 +502,8 @@ the Hyprland portal backend, `qt6-wayland`, `v4l-utils`, `v4l2loopback-dkms`,
 the `obs-backgroundremoval` plugin (built from the AUR), `simde`, and
 `ttf-montserrat`. `simde` is a build requirement of every OBS 33 plugin that
 the AUR recipe does not declare. The plugin's `onnxruntime` dependency takes any provider
-already installed (CPU, CUDA or ROCm); the filter itself runs on the CPU. PadsP5560 selects it in `host_vars`. To install OBS and
+already installed (CPU, CUDA or ROCm); the filter itself runs on the CPU. Both workstations select it through
+`packages_workstation_groups`. To install OBS and
 nothing else, use the standalone profile:
 
 ```sh
@@ -570,8 +595,8 @@ camera carries no sound, so pick the microphone in the meeting as usual.
 
 ### SAML VPN
 
-The `23_vpn` group installs `openfortivpn`; only PadsP5560 selects it in
-`host_vars`. The `vpn` tag of the `system` role then configures the
+The `23_vpn` group installs `openfortivpn`; only PadsP5560 selects it, in
+`group_vars/host_PadsP5560.yml`. The `vpn` tag of the `system` role then configures the
 `openfortivpn@work.service` instance. Its gateway comes from an Ansible Vault
 file that Git ignores, so neither the repository nor its mirrors hold it:
 

@@ -63,6 +63,17 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Ansible hosts**:
+  - Each machine's settings move to `ansible/group_vars/host_<hostname>.yml`,
+    loaded through a `group_by` task on the hostname fact. The shared groups
+    are listed once in `packages_workstation_groups`
+    (`group_vars/all/packages.yml`).
+  - Upgrade: `ansible/host_vars/localhost.yml` is gone, and so are the maps
+    keyed by hostname. `packages_host_groups` is now a list, and
+    `system_ipv6_enabled_by_hostname` and
+    `dotfiles_hypridle_enabled_by_hostname` become the booleans
+    `system_ipv6_enabled` and `dotfiles_hypridle_enabled`. The packages role
+    fails with a clear message when `packages_host_groups` is still a map.
 - **DNS**:
   - Link `/etc/resolv.conf` to the resolved stub. A regular file that another
     program owns, such as a connected VPN client, is reported and kept.

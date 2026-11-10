@@ -62,13 +62,12 @@ class ModuleCase(unittest.TestCase):
 class PackageFilterTests(unittest.TestCase):
     def test_group_selection_falls_back_to_defaults_and_replaces_graphics(self):
         self.assertEqual(
-            filters.select_package_groups(None, None, {}, ["01_base"]), ["01_base"]
+            filters.select_package_groups(None, None, ["01_base"]), ["01_base"]
         )
         self.assertEqual(
             filters.select_package_groups(
                 None,
-                "host",
-                {"host": ["01_base", "09_nvidia_legacy"]},
+                ["01_base", "09_nvidia_legacy"],
                 [],
                 ["09_nvidia_modern"],
             ),
@@ -76,9 +75,7 @@ class PackageFilterTests(unittest.TestCase):
         )
         # An explicit selection is never rewritten by detection.
         self.assertEqual(
-            filters.select_package_groups(
-                ["08_amd"], "host", {}, [], ["09_nvidia_modern"]
-            ),
+            filters.select_package_groups(["08_amd"], None, [], ["09_nvidia_modern"]),
             ["08_amd"],
         )
 

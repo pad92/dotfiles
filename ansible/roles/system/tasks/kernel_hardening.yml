@@ -1,4 +1,11 @@
 ---
+- name: Validate the IPv6 switch
+  ansible.builtin.assert:
+    quiet: true
+    that: system_ipv6_enabled is boolean
+    fail_msg: Use YAML true or false for system_ipv6_enabled.
+  tags: [kernel_hardening]
+
 - name: Check whether optional desktop sysctls are available
   ansible.builtin.stat:
     path: '{{ item.path }}'

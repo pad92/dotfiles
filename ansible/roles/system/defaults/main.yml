@@ -1,8 +1,8 @@
 ---
 system_initramfs_generator: auto
 system_initramfs_report_roots: [/boot, /efi]
-system_ipv6_enabled_default: true
-system_ipv6_enabled_by_hostname: {}
+# Set it to false in group_vars/host_<hostname>.yml to disable IPv6.
+system_ipv6_enabled: true
 system_i915_enable_guc: null
 system_i915_guc_supported: false
 system_amd_pstate_epp: balance_performance

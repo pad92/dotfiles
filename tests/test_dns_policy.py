@@ -693,7 +693,6 @@ class DnsTaskTests(unittest.TestCase):
                 tasks,
                 {
                     "ansible_facts": {"hostname": "fixture"},
-                    "packages_host_groups": {},
                     "packages_selected_groups": (
                         ["12_containers_docker"] if docker else []
                     ),

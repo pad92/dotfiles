@@ -1,0 +1,14 @@
+---
+# Package groups shared by the workstations. A host composes its own list
+# from it in group_vars/host_<hostname>.yml; it is not applied on its own.
+packages_workstation_groups:
+  - 01_base
+  - 02_fonts
+  - 03_gtk
+  - 04_printers
+  - 10_sre_devops
+  - 11_hyprland
+  - 12_containers_docker
+  - 14_iac_opentofu
+  - 20_apps
+  - 22_obs
