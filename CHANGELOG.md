@@ -60,6 +60,15 @@ Release history and changes planned for the next version.
     `openfortivpn@work.service`, and only that unit, without a password.
   - Add a Waybar `VPN` indicator: a click connects and opens the SAML login
     in the browser, a second click disconnects.
+- **Ansible Vault**:
+  - Add `vault-toggle`, which encrypts a plain file or decrypts an encrypted
+    one in place. It reads the password from the Ansible environment or
+    `ansible.cfg`, else from the nearest `.vault` file above the target, and
+    refuses to decrypt a file that Git would commit.
+  - Add a Zed task and the `CTRL + ALT + V` binding that run it on the active
+    file. The playbook now manages `~/.config/zed/tasks.json` and
+    `keymap.json`.
+  - Install Zed on Arch with the `10_sre_devops` package group.
 
 ### Changed
 

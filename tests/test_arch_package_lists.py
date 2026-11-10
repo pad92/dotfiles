@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import re
 import unittest
 from collections import Counter
@@ -34,6 +35,20 @@ RECORD_COMMAND_PACKAGES = {
     "hyprctl": "hyprland",
     "jq": "jq",
     "slurp": "slurp",
+}
+ZED_TASKS = (
+    Path(__file__).parents[1]
+    / "ansible/roles/dotfiles/files/home/.config/zed/tasks.json"
+)
+VAULT_TOGGLE_SCRIPT = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/vault-toggle"
+)
+# Arch package providing each command vault-toggle runs. 10_sre_devops
+# installs them together with zed, which runs the "vault: toggle" task.
+VAULT_TOGGLE_COMMAND_PACKAGES = {
+    "ansible-vault": "ansible-core",
+    "ansible-config": "ansible-core",
+    "git": "git",
 }
 CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
@@ -174,6 +189,20 @@ class ArchPackageGroupTests(unittest.TestCase):
         for command, package in RECORD_COMMAND_PACKAGES.items():
             with self.subTest(command=command):
                 self.assertIn(package, installed)
+
+    def test_sre_devops_installs_zed_and_the_vault_toggle_runtime(self):
+        tasks = json.loads(ZED_TASKS.read_text(encoding="utf-8"))
+        commands = {task["command"] for task in tasks}
+        self.assertEqual(commands, {"$HOME/.bin/vault-toggle"})
+        script = VAULT_TOGGLE_SCRIPT.read_text(encoding="utf-8")
+        for command in VAULT_TOGGLE_COMMAND_PACKAGES:
+            with self.subTest(command=command):
+                self.assertRegex(script, rf"(?m)^[^#\n]*\b{re.escape(command)}\b")
+        packages = set(self.groups["10_sre_devops"])
+        self.assertIn("zed", packages)
+        for command, package in VAULT_TOGGLE_COMMAND_PACKAGES.items():
+            with self.subTest(command=command):
+                self.assertIn(package, packages)
 
     def test_default_groups_install_the_notification_font(self):
         font = next(

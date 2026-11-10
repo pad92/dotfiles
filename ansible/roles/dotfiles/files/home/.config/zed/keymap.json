@@ -1,0 +1,8 @@
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-alt-v": ["task::Spawn", { "task_name": "vault: toggle" }]
+    }
+  }
+]

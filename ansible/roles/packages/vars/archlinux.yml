@@ -197,6 +197,7 @@ packages_family_groups:
       - whois
       - yamllint
       - yq
+      - zed
     11_hyprland:
       - awww
       - brightnessctl
