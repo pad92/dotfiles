@@ -62,13 +62,15 @@ full_session=$(jq -n --arg dir "$REPO" --argjson now "$now" '{
     model: {display_name: "Opus 5.5"}, effort: {level: "high"},
     workspace: {current_dir: $dir},
     pr: {number: 33, review_state: "approved", kind: "mr"},
-    context_window: {used_percentage: 31.7},
+    context_window: {used_percentage: 31.7, context_window_size: 200000,
+        current_usage: {input_tokens: 3000, cache_creation_input_tokens: 10400,
+                        cache_read_input_tokens: 50000, output_tokens: 9999}},
     rate_limits: {five_hour: {used_percentage: 23.5, resets_at: ($now + 7230)},
                   seven_day: {used_percentage: 41.2, resets_at: ($now + 4 * 86400 + 30)}},
     cost: {total_cost_usd: 9.99, total_lines_added: 120, total_lines_removed: 30}
 }')
 expect_output "full session renders on one line" \
-    "Opus 5.5 high  ~/my repo [main +2 ~1 ?1 ↑1]  !33 approved  ctx ▰▰▰▱▱▱▱▱▱▱ 31%  23% 2h  41% 4j  +120/-30" \
+    "Opus 5.5 high  ~/my repo [main +2 ~1 ?1 ↑1]  !33 approved  ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k  23% 2h  41% 4j  +120/-30" \
     "$(render <<<"$full_session")"
 
 # Early in a session most fields are null or absent: nothing may be invented
@@ -117,6 +119,32 @@ expect_output "gauge is capped at ten cells" 'ctx ▰▰▰▰▰▰▰▰▰▰
     "$(render <<<'{"context_window":{"used_percentage":120}}')"
 expect_output "gauge rounds to the nearest cell" 'ctx ▰▰▰▰▰▱▱▱▱▱ 45%' \
     "$(render <<<'{"context_window":{"used_percentage":45}}')"
+
+# Tokens in the window: input and both cache counters, never the output
+# tokens, which used_percentage does not count either.
+# context USAGE_JSON [SIZE]: render a 40% gauge with that usage and size.
+context()
+{
+    render <<<"{\"context_window\":{\"used_percentage\":40,
+        \"context_window_size\":${2:-null},\"current_usage\":$1}}"
+}
+gauge='ctx ▰▰▰▰▱▱▱▱▱▱ 40%'
+expect_output "output tokens are not counted in the window" "$gauge 2k/200k" \
+    "$(context '{"input_tokens":2000,"output_tokens":150000}' 200000)"
+expect_output "tokens under one thousand are shown exactly" "$gauge 999/200k" \
+    "$(context '{"input_tokens":999}' 200000)"
+expect_output "thousands are rounded down" "$gauge 1k/200k" \
+    "$(context '{"input_tokens":1999}' 200000)"
+expect_output "a round million has no decimal" "$gauge 999k/1M" \
+    "$(context '{"cache_read_input_tokens":999999}' 1000000)"
+expect_output "millions keep one decimal, rounded down" "$gauge 1.2M/1M" \
+    "$(context '{"input_tokens":1299999}' 1000000)"
+expect_output "an unknown window size leaves the count alone" "$gauge 63k" \
+    "$(context '{"input_tokens":63400}')"
+expect_output "no usage yet shows the gauge without tokens" "$gauge" \
+    "$(context null 200000)"
+expect_output "an empty usage object counts zero tokens" "$gauge 0/200k" \
+    "$(context '{}' 200000)"
 
 # Thresholds: below 50 green, 50 to 79 yellow, 80 and above red.
 for case in 49:32 50:33 79:33 80:31; do

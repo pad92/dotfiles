@@ -74,7 +74,10 @@ changes.
 
 `~/.bin/claude-statusline` renders the Claude Code status line on one line with
 the colors of `pad.zsh-theme`: model, reasoning effort, directory, Git state,
-open merge request, context gauge, subscription limits and changed lines. Each
+open merge request, context gauge, subscription limits and changed lines. The
+gauge is followed by the tokens in the context window and its size, rounded
+down: `ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`. Compact when it turns yellow (50 %) or
+red (80 %); the count is hidden until the first response. Each
 limit shows its usage and the time left before it resets, rounded down: `16% 2h`
 for the 5-hour window, then `3% 4j` for the 7-day window (in hours during its
 last day). Segments without data are hidden. The
@@ -89,3 +92,19 @@ role never versions this file because it also holds local permissions and
 project context. A file that is not a JSON object stops the play unchanged.
 Override `dotfiles_claude_statusline` to change the command or add options such
 as `padding` or `refreshInterval`.
+
+## Codex status line
+
+Codex has no external status line command: it draws a list of built-in items.
+The `dotfiles_codex` tag writes `dotfiles_codex_status_line` to `status_line`
+in the `[tui]` table of `~/.codex/config.toml` only when `dotfiles_codex_binary`
+(`codex` by default) is found. The default shows the model and reasoning
+effort, directory, branch, context used, tokens, then the 5-hour and weekly
+limits. Codex ignores an unknown item with a warning at startup.
+
+Only that key is touched: trusted projects, comments and the tables Codex
+maintains stay as they are, and a value already equal, even on several lines,
+is left alone. A file that is not valid TOML stops the play unchanged. If the
+existing key cannot be edited in place (an array on several lines, or
+`tui.status_line` outside the table), the file is restored and the play fails.
+A new file is created with mode `0600`.
