@@ -1,14 +1,8 @@
 ---
-- name: Resolve the hostname-specific hypridle setting
-  ansible.builtin.set_fact:
-    dotfiles_hypridle_enabled: >-
-      {{ dotfiles_hypridle_enabled_by_hostname.get(
-         ansible_facts['hostname'] | default(''), dotfiles_hypridle_enabled_default) }}
-
 - name: Validate the hypridle switch
   ansible.builtin.assert:
     that: dotfiles_hypridle_enabled is boolean
-    fail_msg: Use YAML true or false for the hostname-specific hypridle setting.
+    fail_msg: Use YAML true or false for dotfiles_hypridle_enabled.
 
 - name: Find managed user unit files and drop-ins
   ansible.builtin.find:

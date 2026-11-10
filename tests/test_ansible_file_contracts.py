@@ -166,12 +166,10 @@ class FileContractTests(unittest.TestCase):
                     "gather_facts": False,
                     "vars": {
                         "ansible_facts": {"hostname": "fixture"},
-                        "system_ipv6_enabled_default": True,
+                        "system_ipv6_enabled": True,
                         "system_optional_sysctls": {
                             "results": [{"stat": {"exists": False}}] * 4
                         },
-                        "packages_host_groups": {},
-                        "system_ipv6_enabled_by_hostname": {},
                     },
                     "tasks": [
                         task,

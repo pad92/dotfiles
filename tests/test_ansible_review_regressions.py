@@ -161,7 +161,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 f'ANSIBLE_VAULT_PASSWORD_FILE="{self.work}/.vault"', dry_run(target)
             )
 
-    def render_hardening(self, groups):
+    def render_hardening(self, groups, ipv6_enabled=True):
         template = ROLES / "system/templates/hardening.conf.j2"
         output = self.work / "hardening.conf"
         self.run_play(
@@ -172,12 +172,10 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "gather_facts": False,
                     "vars": {
                         "ansible_facts": {"hostname": "fixture"},
-                        "system_ipv6_enabled_default": True,
-                        "system_ipv6_enabled_by_hostname": {},
+                        "system_ipv6_enabled": ipv6_enabled,
                         "system_optional_sysctls": {
                             "results": [{"stat": {"exists": False}}] * 4
                         },
-                        "packages_host_groups": {},
                         "packages_selected_groups": groups,
                     },
                     "tasks": [
@@ -202,6 +200,26 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         ]:
             with self.subTest(groups=groups):
                 self.assertIn(expected, self.render_hardening(groups))
+
+    def test_ipv6_follows_the_host_switch(self):
+        for enabled, expected in [(True, "0"), (False, "1")]:
+            with self.subTest(enabled=enabled):
+                policy = self.render_hardening(["01_base"], ipv6_enabled=enabled)
+                self.assertIn(f"net.ipv6.conf.all.disable_ipv6 = {expected}", policy)
+                self.assertIn(
+                    f"net.ipv6.conf.default.disable_ipv6 = {expected}", policy
+                )
+
+    # The former hostname map must fail loudly instead of selecting its keys.
+    @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
+    def test_package_role_rejects_a_hostname_map_of_groups(self):
+        output = self.run_play(
+            self.package_role_play(packages_host_groups={"PadsTower": ["01_base"]}),
+            "--check",
+            expect_success=False,
+        )
+        self.assertIn("packages_host_groups takes a list of package groups", output)
+        self.assertNotIn(MARKER, output)
 
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_system_tags_load_the_package_group_selection(self):

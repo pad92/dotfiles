@@ -26,6 +26,10 @@
           obsolete. Reconcile with the full playbook (make install) instead.
       tags: [always]
 
+    - name: Load the settings of this host
+      ansible.builtin.import_tasks: tasks/host_profile.yml
+      tags: [always]
+
     - name: Require Arch Linux for the OBS profile
       ansible.builtin.assert:
         that:

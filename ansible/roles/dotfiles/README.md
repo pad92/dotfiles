@@ -44,19 +44,17 @@ queued without waiting for completion. A successful play therefore confirms
 submission, not service health; inspect `systemctl --user --failed` and
 `journalctl --user -b` if a service does not start.
 
-Hypridle is enabled by default. Configure individual machines in
-`ansible/host_vars/localhost.yml` using the detected hostname:
+Hypridle is enabled by default. To stop it on one machine, set this in its
+`ansible/group_vars/host_<hostname>.yml`:
 
 ```yaml
-dotfiles_hypridle_enabled_by_hostname:
-  PadsP5560: true
-  PadsTower: false
+dotfiles_hypridle_enabled: false
 ```
 
 A `false` value stops the user service and disables its automatic startup.
 A `true` value keeps the normal graphical-unit activation; `hypridle.service`
-must remain in `dotfiles_systemd_graphical_units`. Hosts absent from the map
-use `dotfiles_hypridle_enabled_default`, which defaults to `true`.
+must remain in `dotfiles_systemd_graphical_units`. Hosts without the setting
+use the role default, `true`.
 A running user systemd manager is required to apply either state.
 
 Set `dotfiles_update_vim_plugins=true` to update the declared Vim plugin

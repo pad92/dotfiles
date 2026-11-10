@@ -24,10 +24,12 @@ ANSIBLE_BACKUP_ROOT ?= $(HOME)
 # environment also reaches nested Ansible commands such as ansible-inventory.
 DOTFILES_VAULT_PASSWORD_FILE ?= $(CURDIR)/.vault
 ANSIBLE_VAULT_ENV = $(if $(wildcard $(DOTFILES_VAULT_PASSWORD_FILE)),ANSIBLE_VAULT_PASSWORD_FILE="$(DOTFILES_VAULT_PASSWORD_FILE)")
-ANSIBLE_YAML_FILES := $(wildcard ansible/site.yml ansible/obs.yml ansible/backup.yml ansible/inventory.yml \
-	ansible/host_vars/*.yml ansible/group_vars/*.yml \
+# Vault files are encrypted, not YAML: yamllint skips them.
+ANSIBLE_YAML_FILES := $(filter-out ansible/group_vars/all/vault%,$(wildcard \
+	ansible/site.yml ansible/obs.yml ansible/backup.yml ansible/inventory.yml \
+	ansible/tasks/*.yml ansible/group_vars/*.yml ansible/group_vars/*/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
-	ansible/roles/*/vars/*.yml)
+	ansible/roles/*/vars/*.yml))
 
 .PHONY: help install install-obs lint lint-ansible test test-python test-shell coverage screenshot \
 	ansible-backup-ls ansible-backup-rm

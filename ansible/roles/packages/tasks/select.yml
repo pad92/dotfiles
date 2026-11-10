@@ -141,12 +141,22 @@
           + (packages_detected_graphics_groups | default([])))
          | unique | sort }}
 
+- name: Validate the host package groups
+  ansible.builtin.assert:
+    quiet: true
+    that: >-
+      packages_host_groups is none or
+      (packages_host_groups is sequence and packages_host_groups is not string
+       and packages_host_groups is not mapping)
+    fail_msg: >-
+      packages_host_groups takes a list of package groups. Set it for this
+      machine in ansible/group_vars/host_<hostname>.yml.
+
 - name: Apply package group selection
   ansible.builtin.set_fact:
     packages_selected_groups: >-
       {{ packages_group_selection | default(none)
-         | select_package_groups(ansible_facts['hostname'], packages_host_groups,
-                                packages_group_defaults,
+         | select_package_groups(packages_host_groups, packages_group_defaults,
                                 packages_detected_graphics_groups | default([])) }}
 
 - name: Validate selected package groups

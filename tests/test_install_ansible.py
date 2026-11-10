@@ -18,21 +18,16 @@ SPEC.loader.exec_module(FILTERS)
 
 
 class PackageStateTests(unittest.TestCase):
-    def test_package_groups_use_explicit_then_hostname_then_fact_defaults(self):
-        host_groups = {"workstation": ["01_base", "12_containers_docker"]}
+    def test_package_groups_use_explicit_then_host_then_fact_defaults(self):
+        host_groups = ["01_base", "12_containers_docker"]
         defaults = ["01_base", "03_gtk", "09_nvidia_modern"]
         self.assertEqual(
-            FILTERS.select_package_groups(None, "workstation", host_groups, defaults),
-            host_groups["workstation"],
+            FILTERS.select_package_groups(None, host_groups, defaults), host_groups
         )
-        self.assertEqual(
-            FILTERS.select_package_groups([], "workstation", host_groups, defaults),
-            [],
-        )
-        self.assertEqual(
-            FILTERS.select_package_groups(None, "unknown", host_groups, defaults),
-            defaults,
-        )
+        self.assertEqual(FILTERS.select_package_groups([], host_groups, defaults), [])
+        # An empty host list is a choice, not a missing one.
+        self.assertEqual(FILTERS.select_package_groups(None, [], defaults), [])
+        self.assertEqual(FILTERS.select_package_groups(None, None, defaults), defaults)
 
     def test_valid_state_is_normalized(self):
         state = FILTERS.parse_package_state_json(

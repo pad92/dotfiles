@@ -48,8 +48,8 @@ dotfiles_file_handlers:
   .config/hypr/hyprtoolkit.conf: [Restart Hyprlauncher]
   .config/mako/config: [Reload Mako configuration]
 dotfiles_systemd_directory: .config/systemd
-dotfiles_hypridle_enabled_default: true
-dotfiles_hypridle_enabled_by_hostname: {}
+# Set it to false in group_vars/host_<hostname>.yml to stop hypridle.
+dotfiles_hypridle_enabled: true
 dotfiles_systemd_graphical_units:
   - awww.service
   - awww_random.timer

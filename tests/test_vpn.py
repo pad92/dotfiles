@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import yaml
+from ansible_host_profiles import configured_hostnames, resolve_host_settings
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -236,13 +237,14 @@ console.log(JSON.stringify(cases.map(([a, s]) => {
         self.assertIn("'23_vpn' in", entry["when"][1])
 
     def test_only_padsp5560_selects_the_vpn_group(self):
-        host_groups = yaml.safe_load(
-            (ROOT / "ansible/host_vars/localhost.yml").read_text()
-        )["packages_host_groups"]
-        self.assertEqual(
-            sorted(host for host, groups in host_groups.items() if "23_vpn" in groups),
-            ["PadsP5560"],
-        )
+        with tempfile.TemporaryDirectory() as work:
+            selecting = [
+                hostname
+                for hostname in configured_hostnames()
+                if "23_vpn"
+                in resolve_host_settings(hostname, work)[0]["packages_host_groups"]
+            ]
+        self.assertEqual(selecting, ["PadsP5560"])
         arch = yaml.safe_load(
             (ROOT / "ansible/roles/packages/vars/archlinux.yml").read_text()
         )

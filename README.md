@@ -71,9 +71,9 @@ targets use `$HOME`; set `ANSIBLE_BACKUP_ROOT=/path` to select another root.
 <details>
 <summary>Package selection and Arch specifics</summary>
 
-Package groups come from OS defaults and detected GPUs. Set
-`packages_host_groups` per hostname in `ansible/host_vars/localhost.yml`, or
-pass `-e packages_group_selection=...` for one run. Automatic GPU selection
+Package groups come from OS defaults and detected GPUs. Each machine sets its
+own list, `packages_host_groups`, in `ansible/group_vars/host_<hostname>.yml`,
+or you pass `-e packages_group_selection=...` for one run. Automatic GPU selection
 requires every controller to be identified. Package variables load by OS
 family, then use the first matching exact-version, major-version, or
 distribution override.

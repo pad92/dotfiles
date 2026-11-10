@@ -5,7 +5,7 @@
     msg: >-
       No package group selection was computed (the packages selection tasks were
       skipped). GPU module and gaming tasks are skipped, and the sysctl and
-      DNS policies fall back to the hostname groups in packages_host_groups.
+      DNS policies fall back to the host's packages_host_groups.
   when: packages_selected_groups is not defined
   tags: [gpu_modules, gaming, kernel_hardening, package_services, dns]
 
@@ -58,7 +58,7 @@
     - packages_action | default('install') != 'plan'
     - >-
       '23_vpn' in (packages_selected_groups |
-      default(packages_host_groups.get(ansible_facts['hostname'], [])))
+      default(packages_host_groups | default(none) or []))
   tags: [vpn]
 
 - name: Apply kernel hardening

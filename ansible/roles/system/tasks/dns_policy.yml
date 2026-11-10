@@ -15,7 +15,7 @@
   ansible.builtin.set_fact:
     system_dns_docker_selected: >-
       {{ '12_containers_docker' in (packages_selected_groups |
-         default(packages_host_groups.get(ansible_facts['hostname'], []))) }}
+         default(packages_host_groups | default(none) or [])) }}
 
 - name: Add the Docker bridge to the resolved stub listeners
   ansible.builtin.set_fact:

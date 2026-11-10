@@ -6,6 +6,10 @@
   vars:
     dotfiles_repository: '{{ playbook_dir | dirname }}'
   pre_tasks:
+    - name: Load the settings of this host
+      ansible.builtin.import_tasks: tasks/host_profile.yml
+      tags: [always]
+
     - name: Require a supported Linux distribution family
       ansible.builtin.assert:
         that:

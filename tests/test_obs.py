@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 from ansible.errors import AnsibleFilterError
+from ansible_host_profiles import resolve_host_settings
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1121,10 +1122,9 @@ class ProfileContractTests(unittest.TestCase):
         site = yaml.safe_load((ROOT / "ansible/site.yml").read_text())
         role = next(entry for entry in site[0]["roles"] if entry["role"] == "obs")
         self.assertIn("'22_obs' in", role["when"])
-        host_vars = yaml.safe_load(
-            (ROOT / "ansible/host_vars/localhost.yml").read_text()
-        )
-        self.assertIn("22_obs", host_vars["packages_host_groups"]["PadsP5560"])
+        with tempfile.TemporaryDirectory() as work:
+            settings, _ = resolve_host_settings("PadsP5560", work)
+        self.assertIn("22_obs", settings["packages_host_groups"])
 
 
 if __name__ == "__main__":

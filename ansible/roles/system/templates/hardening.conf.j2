@@ -1,7 +1,7 @@
 # Managed by Ansible. Desktop hardening based on the previous local policy.
 {% set system_selected_groups = packages_group_selection
    if packages_group_selection is defined and packages_group_selection is not none
-   else packages_selected_groups | default(packages_host_groups.get(ansible_facts['hostname'], [])) %}
+   else packages_selected_groups | default(packages_host_groups | default(none) or []) %}
 
 # Protect shared files and reduce kernel information exposure.
 fs.protected_hardlinks = 1
@@ -49,8 +49,7 @@ net.ipv4.icmp_ratemask = 88089
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_rfc1337 = 1
 
-# Keep IPv6 enabled by default; hosts can override this policy in host vars.
-{% set system_ipv6_enabled = system_ipv6_enabled_by_hostname.get(ansible_facts['hostname'], system_ipv6_enabled_default) %}
+# Keep IPv6 enabled by default; a host can disable it in its group_vars.
 net.ipv6.conf.all.disable_ipv6 = {{ 0 if system_ipv6_enabled else 1 }}
 net.ipv6.conf.default.disable_ipv6 = {{ 0 if system_ipv6_enabled else 1 }}
 {% if system_ipv6_enabled %}
