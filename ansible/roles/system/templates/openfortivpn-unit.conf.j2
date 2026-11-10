@@ -1,0 +1,6 @@
+# Managed by Ansible.
+[Service]
+# The unit is ready only once the tunnel is up, after the browser login.
+TimeoutStartSec={{ system_vpn_start_timeout }}
+# Every attempt needs a new browser login, so systemd never retries alone.
+Restart=no

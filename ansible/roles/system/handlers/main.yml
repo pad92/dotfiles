@@ -67,3 +67,7 @@
     msg: >-
       Docker reads its bridge and DNS settings at startup. Restart
       docker.service once no running container needs to stay up.
+
+- name: Reload the systemd manager
+  ansible.builtin.systemd_service:
+    daemon_reload: true

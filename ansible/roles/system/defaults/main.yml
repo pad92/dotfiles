@@ -91,3 +91,23 @@ system_dns_resolved_stub: /run/systemd/resolve/stub-resolv.conf
 # NetworkManager or systemd-resolved wrote it, or when it lists only loopback
 # servers. true also replaces a file another program owns, such as a VPN client.
 system_dns_force_resolv_conf_link: false
+# SAML VPN through openfortivpn. The gateway lives only in the Ansible Vault
+# (ansible/group_vars/all/vault_vpn.yml, ignored by Git): without
+# vault_vpn_gateway_host the vpn tasks change nothing.
+system_vpn_gateway_host: "{{ vault_vpn_gateway_host | default('') }}"
+system_vpn_gateway_port: "{{ vault_vpn_gateway_port | default(443) }}"
+# Instance of openfortivpn@.service; the daemon reads <config dir>/<name>.conf.
+system_vpn_name: work
+# Local port where the browser hands the SAML session back to openfortivpn.
+system_vpn_saml_port: 8020
+# The SAML login waits for the browser and the MFA before the tunnel is ready.
+system_vpn_start_timeout: 5min
+system_vpn_config_dir: /etc/openfortivpn
+system_vpn_unit_dropin_dir: /etc/systemd/system/openfortivpn@{{ system_vpn_name }}.service.d
+system_vpn_polkit_rule: /etc/polkit-1/rules.d/60-dotfiles-vpn.rules
+# The Waybar module reads the unit name and the login URL here.
+system_vpn_waybar_config: /etc/openfortivpn/waybar.json
+# Users of an active local session who may start and stop the VPN unit
+# without a password. No other unit or verb is granted.
+system_vpn_users:
+  - "{{ lookup('env', 'USER') }}"

@@ -20,3 +20,4 @@ packages_family_group_labels:
   20_apps: Applications
   21_steam: Steam and games
   22_obs: OBS Studio and virtual camera
+  23_vpn: openfortivpn SAML VPN

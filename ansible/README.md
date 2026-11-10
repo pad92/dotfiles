@@ -567,3 +567,50 @@ default value, still editable in `about:config`). Other policies in that file
 are kept, and invalid JSON stops the run; `obs_virtualcam_firefox_v4l2: false`
 skips it. In the browser, pick "OBS Virtual Camera" as the camera. The virtual
 camera carries no sound, so pick the microphone in the meeting as usual.
+
+### SAML VPN
+
+The `23_vpn` group installs `openfortivpn`; only PadsP5560 selects it in
+`host_vars`. The `vpn` tag of the `system` role then configures the
+`openfortivpn@work.service` instance. Its gateway comes from an Ansible Vault
+file that Git ignores, so neither the repository nor its mirrors hold it:
+
+```sh
+mkdir -p ansible/group_vars/all
+ansible-vault create --vault-password-file .vault ansible/group_vars/all/vault_vpn.yml
+```
+
+```yaml
+vault_vpn_gateway_host: vpn.example.com
+vault_vpn_gateway_port: 443
+```
+
+Without `vault_vpn_gateway_host`, or on a host without `23_vpn`, the tasks
+change nothing and leave files of an earlier run in place. The host must be a
+DNS name and the ports numbers: a newline or a space could otherwise add
+settings to the daemon configuration or the polkit rule.
+
+The role writes:
+
+- `/etc/openfortivpn/work.conf` (root, `0600`): SAML login on local port 8020,
+  `set-dns = 1` and `use-resolvconf = 1`. The DNS servers and search domains
+  reach systemd-resolved on the `ppp0` link through `systemd-resolvconf`, so
+  `/etc/resolv.conf` stays the stub link of the DNS policy and the link
+  settings disappear with the tunnel, even after a crash.
+- A unit drop-in with `TimeoutStartSec=5min` (the unit is ready only after
+  the browser login) and `Restart=no` (each attempt needs a new login).
+- `/etc/polkit-1/rules.d/60-dotfiles-vpn.rules`: the users in
+  `system_vpn_users` (default: the user running Ansible), from an active local
+  session, may start and stop that unit without a password. Other units and
+  verbs keep the default policy.
+- `/etc/openfortivpn/waybar.json`: the unit name and the login URL, read by
+  the Waybar `VPN` module. A click starts the unit and opens the login page;
+  the indicator turns yellow while it waits for the browser and green once the
+  tunnel is up. A second click disconnects.
+
+From a terminal, the same unit works without Waybar:
+
+```sh
+systemctl start --no-block openfortivpn@work.service
+journalctl -fu openfortivpn@work.service
+```
