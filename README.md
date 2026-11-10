@@ -108,7 +108,7 @@ covers variables, package ownership, and system settings.
 | `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for the `22_obs` group: host-tuned profile, scenes, webcam.     |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
 | `dotfiles`                                 | Run the whole dotfiles role.                                                  |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |

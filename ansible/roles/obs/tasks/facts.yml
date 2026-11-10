@@ -138,6 +138,16 @@
          | obs_pick_webcam(obs_webcam, [obs_virtualcam_label])
          | obs_webcam_settings }}
 
+# The files are written once: a camera plugged in after this run never reaches
+# the scenes, which would otherwise only show "webcam: none" in the report.
+- name: Warn when no webcam was found
+  ansible.builtin.debug:
+    msg: >-
+      No colour webcam was found: the scenes get no Caméra source and no
+      "5 - Caméra" scene. Plug the webcam in, close OBS, then rerun with
+      -e obs_config_force=true.
+  when: not (obs_webcam_settings or {})
+
 # The package file list finds the module wherever the build installed it
 # (OBS 33 reads both /usr/lib/obs-plugins and /usr/lib/obs-modules/plugins).
 - name: List the background removal plugin files
@@ -177,12 +187,27 @@
     - obs_webcam_background != 'none'
     - not obs_background_plugin_installed | bool
 
-- name: Validate the brand theme
+- name: Validate the OBS profiles
   ansible.builtin.assert:
     that:
-      - obs_brand_theme in obs_brand_palettes
+      - obs_profiles | length > 0
+      - obs_profiles | map(attribute='usage') | difference(['record', 'stream']) | length == 0
+      - obs_profiles | map(attribute='directory') | unique | length == obs_profiles | length
     fail_msg: >-
-      obs_brand_theme must be one of {{ obs_brand_palettes.keys() | list | join(', ') }}.
+      Each entry of obs_profiles needs a name, a unique directory and a usage
+      of record or stream.
+
+- name: Validate the brand palettes
+  ansible.builtin.assert:
+    that:
+      - obs_brand_palettes is mapping
+      - obs_brand_palettes | length > 0
+      - obs_brand_palettes.values() | rejectattr('text', 'defined') | list | length == 0
+      - obs_brand_palettes.values() | rejectattr('background', 'defined') | list | length == 0
+      - obs_brand_palettes.values() | rejectattr('primary', 'defined') | list | length == 0
+    fail_msg: >-
+      obs_brand_palettes must map each palette name to its text, background
+      and primary colours.
 
 # OBS opens face 0 of the matched file. A variable font's Bold is a named
 # instance (index above 0xFFFF), so OBS would draw its default Thin weight;
@@ -241,6 +266,6 @@
         {{ obs_webcam_background if obs_webcam_filters | length > 0
            else 'unchanged' }}
       brand: >-
-        {{ obs_brand_theme }} theme, {{ obs_brand_font }}
+        {{ obs_brand_palettes.keys() | join(', ') }} palettes, {{ obs_brand_font }}
         {{ 'static Bold' if obs_brand_font_static_bold | bool else 'Bold MISSING' }}
       recordings: '{{ obs_recording_directory }}'

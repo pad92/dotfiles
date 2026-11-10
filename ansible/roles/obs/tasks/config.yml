@@ -25,43 +25,49 @@
     path: '{{ item }}'
     state: directory
     mode: '0755'
-  loop:
-    - '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}'
-    - '{{ obs_config_dir }}/basic/scenes'
-    - '{{ obs_recording_directory }}'
+  loop: >-
+    {{ [obs_config_dir ~ '/basic/scenes', obs_recording_directory]
+       + obs_profiles | map(attribute='directory')
+         | map('regex_replace', '^', obs_config_dir ~ '/basic/profiles/') | list }}
   become: false
 
 # force: false creates the files once; OBS owns them afterwards.
-- name: Write the OBS demo profile
+- name: Write the OBS recording and streaming profiles
   ansible.builtin.template:
     src: basic.ini.j2
-    dest: '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}/basic.ini'
+    dest: '{{ obs_config_dir }}/basic/profiles/{{ obs_profile.directory }}/basic.ini'
     mode: '0644'
     force: '{{ obs_config_force | bool }}'
     backup: '{{ obs_config_force | bool }}'
+  loop: '{{ obs_profiles }}'
+  loop_control:
+    loop_var: obs_profile
+    label: '{{ obs_profile.name }}'
   become: false
 
 - name: Write the OBS encoder settings
   ansible.builtin.copy:
-    content: "{{ obs_encoder_settings[item] | to_nice_json(indent=4) }}\n"
-    dest: '{{ obs_config_dir }}/basic/profiles/{{ obs_profile_directory }}/{{ item }}Encoder.json'
+    content: "{{ obs_encoder_settings[item.1] | to_nice_json(indent=4) }}\n"
+    dest: '{{ obs_config_dir }}/basic/profiles/{{ item.0.directory }}/{{ item.1 }}Encoder.json'
     mode: '0644'
     force: '{{ obs_config_force | bool }}'
     backup: '{{ obs_config_force | bool }}'
-  loop: [record, stream]
+  loop: "{{ obs_profiles | product(['record', 'stream']) | list }}"
+  loop_control:
+    label: '{{ item.0.name }} {{ item.1 }}'
   become: false
 
-- name: Write the application demo scene collection
+- name: Write one application demo scene collection per palette
   ansible.builtin.copy:
     # Folded with '>' so the file ends with a newline.
     content: >
       {{ obs_video_settings | obs_scene_collection(obs_webcam_settings, {
-           'name': obs_scene_collection_name,
+           'name': obs_scene_collection_name ~ ' - ' ~ item.key,
            'title': obs_demo_title,
            'pause_text': obs_pause_text,
-           'background': obs_brand_palettes[obs_brand_theme].background,
-           'text_color': obs_brand_palettes[obs_brand_theme].text,
-           'primary': obs_brand_primary,
+           'background': item.value.background,
+           'text_color': item.value.text,
+           'primary': item.value.primary,
            'font': obs_brand_font,
            'mic_device': obs_mic_device,
            'desktop_audio_device': obs_desktop_audio_device,
@@ -70,10 +76,13 @@
            'webcam_cutout': obs_webcam_background == 'cutout'
              and obs_webcam_filters | length > 0 })
          | to_nice_json(indent=4) }}
-    dest: '{{ obs_config_dir }}/basic/scenes/{{ obs_scene_collection_file }}.json'
+    dest: '{{ obs_config_dir }}/basic/scenes/{{ obs_scene_collection_file }}_{{ item.key }}.json'
     mode: '0644'
     force: '{{ obs_config_force | bool }}'
     backup: '{{ obs_config_force | bool }}'
+  loop: '{{ obs_brand_palettes | dict2items }}'
+  loop_control:
+    label: '{{ obs_scene_collection_name }} - {{ item.key }}'
   become: false
 
 # Earlier runs installed this launcher; the packaged OBS entry replaces it.

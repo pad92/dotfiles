@@ -1,5 +1,5 @@
 [General]
-Name={{ obs_profile_name }}
+Name={{ obs_profile.name }}
 
 [Output]
 Mode=Advanced
@@ -10,7 +10,8 @@ MaxRetries=25
 
 [AdvOut]
 Encoder={{ obs_encoder_settings.id }}
-RecEncoder={{ obs_encoder_settings.id }}
+{# none records with the stream encoder, so a stream is encoded once. #}
+RecEncoder={{ obs_encoder_settings.id if obs_profile.usage == 'record' else 'none' }}
 RecType=Standard
 RecFilePath={{ obs_recording_directory }}
 RecFormat2=hybrid_mp4
@@ -26,8 +27,13 @@ ApplyServiceSettings=true
 [Video]
 BaseCX={{ obs_video_settings.base_width }}
 BaseCY={{ obs_video_settings.base_height }}
+{% if obs_profile.usage == 'record' %}
+OutputCX={{ obs_video_settings.base_width }}
+OutputCY={{ obs_video_settings.base_height }}
+{% else %}
 OutputCX={{ obs_video_settings.output_width }}
 OutputCY={{ obs_video_settings.output_height }}
+{% endif %}
 FPSType=0
 FPSCommon={{ obs_video_settings.fps }}
 ScaleType=lanczos

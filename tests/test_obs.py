@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -307,6 +308,63 @@ class WebcamTests(unittest.TestCase):
         self.assertEqual(settings["pixelformat"], MJPG)
         self.assertEqual((settings["resolution"], settings["framerate"]), (-1, -1))
 
+    def test_role_warns_when_no_webcam_is_found(self):
+        facts = yaml.safe_load((ROLE / "tasks/facts.yml").read_text())
+        tasks = [
+            task
+            for task in facts
+            if task["name"]
+            in (
+                "Pick the webcam and build its source settings",
+                "Warn when no webcam was found",
+            )
+        ]
+        self.assertEqual(len(tasks), 2)
+        # An unplugged camera, a virtual camera only, then the C920e.
+        virtual = (
+            "### /dev/video10||OBS Virtual Camera\n"
+            + EXTERNAL_LISTING.split("\n", 1)[1]
+        )
+        for listing, warned in (
+            ("", True),
+            (virtual, True),
+            (EXTERNAL_LISTING, False),
+        ):
+            with self.subTest(warned=warned), tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp)
+                play = work / "play.yml"
+                play.write_text(
+                    yaml.safe_dump(
+                        [
+                            {
+                                "hosts": "localhost",
+                                "connection": "local",
+                                "gather_facts": False,
+                                "vars": {
+                                    "obs_camera_listing": {"stdout": listing},
+                                    "obs_webcam": "",
+                                    "obs_virtualcam_label": "OBS Virtual Camera",
+                                },
+                                "tasks": tasks,
+                            }
+                        ]
+                    )
+                )
+                result = subprocess.run(
+                    ["ansible-playbook", "-i", "localhost,", str(play)],
+                    env=ansible_test_environment(work),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(
+                    "No colour webcam was found" in result.stdout,
+                    warned,
+                    result.stdout,
+                )
+
     def test_detection_output_that_is_not_text_yields_no_device(self):
         # A skipped or failed detection task registers no stdout string.
         self.assertEqual(obs.obs_render_nodes(None), [])
@@ -357,15 +415,37 @@ class BrandThemeTests(unittest.TestCase):
                 camera["pos"][axis] + camera["bounds"][axis],
             )
 
-    def test_role_maps_both_documented_palettes(self):
+    def test_role_maps_the_brand_and_desktop_palettes(self):
         defaults = yaml.safe_load((ROLE / "defaults/main.yml").read_text())
         palettes = defaults["obs_brand_palettes"]
-        self.assertEqual(palettes["dark"], {"text": "#FFFFFF", "background": "#242428"})
         self.assertEqual(
-            palettes["light"], {"text": "#2A3235", "background": "#FFFFFF"}
+            palettes["Sombre"],
+            {"text": "#FFFFFF", "background": "#242428", "primary": "#41A890"},
         )
-        self.assertEqual(defaults["obs_brand_primary"], "#41A890")
+        self.assertEqual(
+            palettes["Clair"],
+            {"text": "#2A3235", "background": "#FFFFFF", "primary": "#41A890"},
+        )
         self.assertEqual(defaults["obs_brand_font"], "Montserrat")
+
+    def test_gruvbox_palette_follows_the_desktop_theme(self):
+        defaults = yaml.safe_load((ROLE / "defaults/main.yml").read_text())
+        toolkit = (
+            ROOT
+            / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprtoolkit.conf.j2"
+        ).read_text()
+        theme = {
+            key: "#" + value[-6:].upper()
+            for key, value in re.findall(r"^(\w+) = 0x([0-9A-Fa-f]{8})$", toolkit, re.M)
+        }
+        self.assertEqual(
+            defaults["obs_brand_palettes"]["Gruvbox"],
+            {
+                "text": theme["text"],
+                "background": theme["background"],
+                "primary": theme["accent"],
+            },
+        )
 
     def test_variable_font_instances_do_not_count_as_static_bold(self):
         facts = yaml.safe_load((ROLE / "tasks/facts.yml").read_text())
@@ -502,11 +582,14 @@ class WebcamBackgroundTests(unittest.TestCase):
 
     def collection(self, mode):
         filters = obs.obs_webcam_filters(mode, True, 16)
-        return obs.obs_scene_collection(
-            {"base_width": 2560, "base_height": 1440},
-            {"device_id": "/dev/video0"},
-            {"webcam_filters": filters, "webcam_cutout": mode == "cutout"},
-        ), filters
+        return (
+            obs.obs_scene_collection(
+                {"base_width": 2560, "base_height": 1440},
+                {"device_id": "/dev/video0"},
+                {"webcam_filters": filters, "webcam_cutout": mode == "cutout"},
+            ),
+            filters,
+        )
 
     def scene_items(self, collection, name):
         scene = next(s for s in collection["sources"] if s["name"] == name)
@@ -1047,24 +1130,65 @@ class ConfigOwnershipTests(unittest.TestCase):
             self.assertFalse(launcher.exists())
             self.assertFalse((ROLE / "templates/obs-demo.desktop.j2").exists())
 
+    def test_recording_keeps_the_canvas_and_streaming_encodes_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / "templates").symlink_to(ROLE / "templates")
+            self.assert_ran(self.run_config(work, False))
+            profiles = work / "home/.config/obs-studio/basic/profiles"
+            self.assertEqual(
+                sorted(path.name for path in profiles.iterdir()),
+                ["Enregistrement", "Streaming"],
+            )
+            record = (profiles / "Enregistrement/basic.ini").read_text()
+            self.assertIn("OutputCX=2560\nOutputCY=1440\n", record)
+            self.assertIn("RecEncoder=ffmpeg_vaapi_tex\n", record)
+            stream = (profiles / "Streaming/basic.ini").read_text()
+            self.assertIn("Name=Streaming\n", stream)
+            self.assertIn("OutputCX=1920\nOutputCY=1080\n", stream)
+            self.assertIn("Encoder=ffmpeg_vaapi_tex\n", stream)
+            self.assertIn("RecEncoder=none\n", stream)
+            settings = json.loads(
+                (profiles / "Streaming/streamEncoder.json").read_text()
+            )
+            self.assertEqual(settings["rate_control"], "CBR")
+
+    def test_each_palette_gets_its_own_scene_collection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / "templates").symlink_to(ROLE / "templates")
+            self.assert_ran(self.run_config(work, False))
+            scenes = work / "home/.config/obs-studio/basic/scenes"
+            self.assertEqual(
+                sorted(path.name for path in scenes.iterdir()),
+                ["Applis_Clair.json", "Applis_Gruvbox.json", "Applis_Sombre.json"],
+            )
+            gruvbox = json.loads((scenes / "Applis_Gruvbox.json").read_text())
+            self.assertEqual(gruvbox["name"], "Applis - Gruvbox")
+            sources = {source["name"]: source for source in gruvbox["sources"]}
+            # OBS stores colours as opaque ABGR: #1D2021 -> 0xFF21201D.
+            self.assertEqual(sources["Fond"]["settings"]["color"], 0xFF21201D)
+            self.assertEqual(sources["Accent"]["settings"]["color"], 0xFF98A583)
+            self.assertEqual(sources["Titre"]["settings"]["color1"], 0xFFB2DBEB)
+
     def test_files_are_created_once_then_left_to_obs_unless_forced(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             # The templates are resolved relative to the playbook directory.
             (work / "templates").symlink_to(ROLE / "templates")
-            profile = work / "home/.config/obs-studio/basic/profiles/Demo_Applis"
-            scenes = work / "home/.config/obs-studio/basic/scenes/Demo_Applis.json"
+            profile = work / "home/.config/obs-studio/basic/profiles/Enregistrement"
+            scenes = work / "home/.config/obs-studio/basic/scenes/Applis_Sombre.json"
 
             self.assert_ran(self.run_config(work, False))
             basic = (profile / "basic.ini").read_text()
+            self.assertIn("Name=Enregistrement", basic)
             self.assertIn("RecEncoder=ffmpeg_vaapi_tex", basic)
             self.assertIn("BaseCX=2560", basic)
-            self.assertIn("OutputCY=1080", basic)
             self.assertIn("FPSCommon=60", basic)
             self.assertIn(f"RecFilePath={work}/home/Videos/OBS", basic)
             record = json.loads((profile / "recordEncoder.json").read_text())
             self.assertEqual(record["vaapi_device"], "/dev/dri/renderD128")
-            self.assertEqual(json.loads(scenes.read_text())["name"], "Démo Applis")
+            self.assertEqual(json.loads(scenes.read_text())["name"], "Applis - Sombre")
             self.assertTrue(scenes.read_text().endswith("}\n"))
 
             (profile / "basic.ini").write_text("edited in OBS\n")
