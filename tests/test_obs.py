@@ -307,6 +307,63 @@ class WebcamTests(unittest.TestCase):
         self.assertEqual(settings["pixelformat"], MJPG)
         self.assertEqual((settings["resolution"], settings["framerate"]), (-1, -1))
 
+    def test_role_warns_when_no_webcam_is_found(self):
+        facts = yaml.safe_load((ROLE / "tasks/facts.yml").read_text())
+        tasks = [
+            task
+            for task in facts
+            if task["name"]
+            in (
+                "Pick the webcam and build its source settings",
+                "Warn when no webcam was found",
+            )
+        ]
+        self.assertEqual(len(tasks), 2)
+        # An unplugged camera, a virtual camera only, then the C920e.
+        virtual = (
+            "### /dev/video10||OBS Virtual Camera\n"
+            + EXTERNAL_LISTING.split("\n", 1)[1]
+        )
+        for listing, warned in (
+            ("", True),
+            (virtual, True),
+            (EXTERNAL_LISTING, False),
+        ):
+            with self.subTest(warned=warned), tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp)
+                play = work / "play.yml"
+                play.write_text(
+                    yaml.safe_dump(
+                        [
+                            {
+                                "hosts": "localhost",
+                                "connection": "local",
+                                "gather_facts": False,
+                                "vars": {
+                                    "obs_camera_listing": {"stdout": listing},
+                                    "obs_webcam": "",
+                                    "obs_virtualcam_label": "OBS Virtual Camera",
+                                },
+                                "tasks": tasks,
+                            }
+                        ]
+                    )
+                )
+                result = subprocess.run(
+                    ["ansible-playbook", "-i", "localhost,", str(play)],
+                    env=ansible_test_environment(work),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(
+                    "No colour webcam was found" in result.stdout,
+                    warned,
+                    result.stdout,
+                )
+
     def test_detection_output_that_is_not_text_yields_no_device(self):
         # A skipped or failed detection task registers no stdout string.
         self.assertEqual(obs.obs_render_nodes(None), [])
@@ -502,11 +559,14 @@ class WebcamBackgroundTests(unittest.TestCase):
 
     def collection(self, mode):
         filters = obs.obs_webcam_filters(mode, True, 16)
-        return obs.obs_scene_collection(
-            {"base_width": 2560, "base_height": 1440},
-            {"device_id": "/dev/video0"},
-            {"webcam_filters": filters, "webcam_cutout": mode == "cutout"},
-        ), filters
+        return (
+            obs.obs_scene_collection(
+                {"base_width": 2560, "base_height": 1440},
+                {"device_id": "/dev/video0"},
+                {"webcam_filters": filters, "webcam_cutout": mode == "cutout"},
+            ),
+            filters,
+        )
 
     def scene_items(self, collection, name):
         scene = next(s for s in collection["sources"] if s["name"] == name)

@@ -35,6 +35,9 @@ Release history and changes planned for the next version.
     (Robust Video Matting on the CPU, whose soft alpha follows hair; the
     lighter MediaPipe model remains available with `obs_webcam_model`). A soft
     blur remains available with `obs_webcam_background=blur`.
+  - Warn when no webcam is found. The scenes are written once, so a camera
+    plugged in later never reached them and only `webcam: none` in the final
+    report said so.
   - Style the demo scenes with the brand palette (dark by default, light
     available), the #41A890 accent and static Montserrat weights.
   - Install the running kernel's headers when a DKMS package is selected.

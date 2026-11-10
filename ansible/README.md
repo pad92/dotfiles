@@ -535,6 +535,8 @@ The `obs` role reads the host before writing anything:
   cameras win over integrated ones (`obs_webcam` matches a name or path). The
   source uses the `/dev/v4l/by-id` link, else `by-path`, in MJPEG up to
   1280x720 at 30 fps: YUYV at 1080p drops to 5 fps on USB 2.
+  Without a camera the scenes get no Caméra source, and the run warns: plug
+  the webcam in and regenerate with `-e obs_config_force=true`.
 - Recordings: hybrid MP4 in `$(xdg-user-dir VIDEOS)/OBS`.
 - Webcam background: with `obs-backgroundremoval` installed, the default
   `obs_webcam_background=cutout` makes the background transparent so the
@@ -551,8 +553,7 @@ The `obs` role reads the host before writing anything:
   is 0.5), and `obs_webcam_edge_trim` (2 pixels) trims the room's halo off the
   outline. The contour filter keeps the upstream 0.05, since a larger value
   merges small background areas, such as the gap under an arm, into the
-  person. `blur` keeps a soft blurred background (`obs_webcam_blur`, 6 out of
-  20) in a framed inset, `none` keeps the raw picture. Unchanged frames and a
+  person. `blur` keeps a soft blurred background (`obs_webcam_blur`, 6 out of 20) in a framed inset, `none` keeps the raw picture. Unchanged frames and a
   hidden camera skip inference. The plugin is built against the installed OBS: rebuild it with
   yay after an OBS upgrade if OBS reports it as not loaded.
 

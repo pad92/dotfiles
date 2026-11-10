@@ -138,6 +138,16 @@
          | obs_pick_webcam(obs_webcam, [obs_virtualcam_label])
          | obs_webcam_settings }}
 
+# The files are written once: a camera plugged in after this run never reaches
+# the scenes, which would otherwise only show "webcam: none" in the report.
+- name: Warn when no webcam was found
+  ansible.builtin.debug:
+    msg: >-
+      No colour webcam was found: the scenes get no Caméra source and no
+      "5 - Caméra" scene. Plug the webcam in, close OBS, then rerun with
+      -e obs_config_force=true.
+  when: not (obs_webcam_settings or {})
+
 # The package file list finds the module wherever the build installed it
 # (OBS 33 reads both /usr/lib/obs-plugins and /usr/lib/obs-modules/plugins).
 - name: List the background removal plugin files
