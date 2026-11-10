@@ -12,6 +12,9 @@ import yaml
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
+# ini_file comes from community.general; CI installs the pinned version here
+# and Ansible ignores the checkout ansible.cfg that would point to it.
+COLLECTIONS = ROOT / ".ansible/collections"
 FAKE_BINARY = "codex-dotfiles-test"
 STATUS_LINE = ["model-with-reasoning", "context-used", "used-tokens"]
 # What a real file looks like: trusted projects, a [tui] table with its own
@@ -35,6 +38,7 @@ memories = true
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
+@unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
 class CodexConfigTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -78,6 +82,7 @@ class CodexConfigTests(unittest.TestCase):
         playbook.write_text(yaml.safe_dump(play))
         environment = ansible_test_environment(self.work)
         environment["PATH"] = f"{self.fake_bin}:{environment['PATH']}"
+        environment["ANSIBLE_COLLECTIONS_PATH"] = str(COLLECTIONS)
         command = ["ansible-playbook", "-i", "localhost,", str(playbook)]
         if check:
             command.append("--check")
@@ -167,23 +172,23 @@ class CodexConfigTests(unittest.TestCase):
         }
         for name, original in originals.items():
             with self.subTest(layout=name):
+                shutil.rmtree(self.config.parent, ignore_errors=True)
                 self.write_config(original, mode=0o640)
                 result = self.run_play()
                 self.assertNotEqual(result.returncode, 0, result.stdout)
                 self.assertIn("the file was restored", result.stdout)
                 self.assertEqual(self.config.read_text(), original)
                 self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o640)
-                shutil.rmtree(self.config.parent)
 
     def test_invalid_config_fails_without_being_overwritten(self):
         for original in ("[tui\n", "tui = 3\n"):
             with self.subTest(original=original):
+                shutil.rmtree(self.config.parent, ignore_errors=True)
                 self.write_config(original)
                 result = self.run_play()
                 self.assertNotEqual(result.returncode, 0, result.stdout)
                 self.assertIn("is not valid TOML", result.stdout)
                 self.assertEqual(self.config.read_text(), original)
-                shutil.rmtree(self.config.parent)
 
     def test_identifiers_needing_toml_escaping_are_refused(self):
         self.write_config(EXISTING)
