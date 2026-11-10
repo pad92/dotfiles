@@ -527,7 +527,8 @@ The `obs` role reads the host before writing anything:
   thread count. Force one with `obs_encoder=nvenc|vaapi|x264`.
 - Video: the canvas is 16:9 at the native height of the largest external
   output from `hyprctl monitors` (`obs_capture_output` picks one), scaled with
-  Lanczos to `obs_output_height` (1080). Frame rate is 60 with a hardware
+  Lanczos to `obs_output_height` (1080) in the streaming profile; the
+  recording profile keeps the canvas size. Frame rate is 60 with a hardware
   encoder on a 60 Hz screen, 30 otherwise. Without a Hyprland session the
   canvas falls back to 1920x1080.
 - Webcam: every `/dev/video*` node is listed and only colour capture nodes
@@ -557,16 +558,23 @@ The `obs` role reads the host before writing anything:
   hidden camera skip inference. The plugin is built against the installed OBS: rebuild it with
   yay after an OBS upgrade if OBS reports it as not loaded.
 
-The scenes follow the brand guide: Montserrat, text #FFFFFF on #242428 in
-the default dark theme (`obs_brand_theme=light` uses #2A3235 on #FFFFFF), and
-the primary colour #41A890 for the title underline and the frame around the
-camera. Titles need the static Montserrat weights from `ttf-montserrat`: OBS
-opens the first face of a font file, which is the Thin instance of the variable
+Each entry of `obs_brand_palettes` gets its own scene collection, named
+"Applis - <palette>", with Montserrat titles. Sombre (#FFFFFF on #242428) and
+Clair (#2A3235 on #FFFFFF) follow the brand guide with the primary colour
+#41A890. Gruvbox (#EBDBB2 on #1D2021, accent #83A598) matches the desktop
+theme. The primary colour draws the title underline and the frame around the
+camera.
+
+Titles need the static Montserrat weights from `ttf-montserrat`: OBS opens the
+first face of a font file, which is the Thin instance of the variable
 Montserrat shipped with Google Fonts. The run warns when no static Bold face
 exists.
 
-It creates the profile and the scene collection "Démo Applis" next to the
-existing ones. Scenes: intro (title and camera), screen with a camera inset,
+It creates two profiles next to the existing ones. "Enregistrement"
+records the native canvas at constant quality. "Streaming" scales to
+`obs_output_height` at a constant bitrate, and its recordings reuse the stream
+encoder, so a stream is encoded once. It also creates one scene collection
+per palette. Scenes: intro (title and camera), screen with a camera inset,
 screen only, one application window on a backdrop with the camera, camera
 only, and a pause card. Desktop audio and the microphone (`obs_mic_device`,
 RNNoise unless `obs_mic_noise_suppression=false`) are global sources. Screen

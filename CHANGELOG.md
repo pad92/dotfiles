@@ -26,8 +26,11 @@ Release history and changes planned for the next version.
     installs OBS, its PipeWire and portal runtime and the detected GPU drivers
     without the rest of the workstation.
   - Add the `obs` role: encoder, canvas, frame rate and webcam come from the
-    host, with a test encode before a hardware encoder is used. It creates an
-    application demo profile and scene collection once and leaves them to OBS.
+    host, with a test encode before a hardware encoder is used. It creates the
+    profiles and scene collections once and leaves them to OBS.
+  - Create an "Enregistrement" profile, which records the native canvas at
+    constant quality, and a "Streaming" profile, which streams 1080p at a
+    constant bitrate and records with the stream encoder.
   - Configure v4l2loopback with `exclusive_caps=1` so web meetings such as
     Teams can use the OBS virtual camera. A Firefox policy makes Firefox read
     V4L2 cameras directly, since PipeWire never lists the loopback device.
@@ -38,8 +41,9 @@ Release history and changes planned for the next version.
   - Warn when no webcam is found. The scenes are written once, so a camera
     plugged in later never reached them and only `webcam: none` in the final
     report said so.
-  - Style the demo scenes with the brand palette (dark by default, light
-    available), the #41A890 accent and static Montserrat weights.
+  - Create one scene collection per palette: "Applis - Sombre" and
+    "Applis - Clair" follow the brand guide (#41A890 accent), "Applis -
+    Gruvbox" matches the desktop theme. Titles use static Montserrat weights.
   - Install the running kernel's headers when a DKMS package is selected.
   - Partial profiles such as `make install-obs` add their groups to the saved
     package selection instead of replacing it (`packages_state_merge_selection`).
