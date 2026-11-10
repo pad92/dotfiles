@@ -10,6 +10,9 @@
 # Subscription limits show their usage and the time left before they reset:
 # "16% 2h" for the 5-hour window, then "3% 4j" for the 7-day window.
 #
+# The context gauge is followed by the tokens in the window and its size,
+# "63k/200k": the percentage tells when to compact, the count how much is left.
+#
 # A segment whose data is absent is omitted rather than shown as zero, so an
 # ordinary session stays short. NO_COLOR disables ANSI colors.
 
@@ -38,6 +41,13 @@ read_session()
     jq -r '
         def int: if type == "number" then floor else "" end;
         def remaining: if type == "number" then (. - now | floor) else "" end;
+        # Same sum as used_percentage: what the next request sends as input.
+        def context_tokens:
+            if type == "object" then
+                [.input_tokens, .cache_creation_input_tokens,
+                 .cache_read_input_tokens]
+                | map(select(type == "number")) | add // 0 | floor
+            else "" end;
         [
             (.model.display_name // .model.id // ""),
             (.effort.level // ""),
@@ -46,6 +56,8 @@ read_session()
             (.pr.review_state // ""),
             (.pr.kind // ""),
             (.context_window.used_percentage | int),
+            (.context_window.current_usage | context_tokens),
+            (.context_window.context_window_size | int),
             (.rate_limits.five_hour.used_percentage | int),
             (.rate_limits.five_hour.resets_at | remaining),
             (.rate_limits.seven_day.used_percentage | int),
@@ -77,15 +89,38 @@ level_color()
     fi
 }
 
+# Token count as "850", "63k" or "1.2M", rounded down so the window never
+# looks emptier than it is.
+compact_tokens()
+{
+    local tokens=$1 tenths
+    if ((tokens >= 1000000)); then
+        tenths=$((tokens / 100000))
+        printf '%d' $((tenths / 10))
+        ((tenths % 10)) && printf '.%d' $((tenths % 10))
+        printf 'M'
+    elif ((tokens >= 1000)); then
+        printf '%dk' $((tokens / 1000))
+    else
+        printf '%d' "$tokens"
+    fi
+}
+
+# "ctx <gauge> 31% 63k/200k". The token part needs the current usage; the
+# window size is added only when it is known.
 context_segment()
 {
-    local percent=$1 filled bar='' i
+    local percent=$1 tokens=${2:-} size=${3:-} filled bar='' i
     filled=$(((percent * BAR_CELLS + 50) / 100))
     for ((i = 0; i < BAR_CELLS; i++)); do
         if ((i < filled)); then bar+='▰'; else bar+='▱'; fi
     done
     printf '%sctx%s %s%s %s%%%s' "$DIM" "$RESET" "$(level_color "$percent")" \
         "$bar" "$percent" "$RESET"
+    [[ -n $tokens ]] || return 0
+    printf ' %s%s' "$DIM" "$(compact_tokens "$tokens")"
+    [[ -n $size ]] && ((size > 0)) && printf '/%s' "$(compact_tokens "$size")"
+    printf '%s' "$RESET"
 }
 
 # Time left, rounded down so it never promises more than there is:
@@ -194,11 +229,13 @@ main()
     fi
 
     local model effort directory pr_number pr_state pr_kind context
+    local context_tokens context_size
     local five_hour five_hour_reset seven_day seven_day_reset spend cost_cents
     local added removed
     local worktree vim_mode fast agent cache_cold
     IFS=$'\x1f' read -r model effort directory pr_number pr_state pr_kind \
-        context five_hour five_hour_reset seven_day seven_day_reset spend cost_cents \
+        context context_tokens context_size five_hour five_hour_reset \
+        seven_day seven_day_reset spend cost_cents \
         added removed worktree vim_mode fast agent cache_cold <<<"$fields"
 
     local -a segments=()
@@ -212,7 +249,7 @@ main()
     [[ -n $fast ]] && segments+=("${YELLOW}fast${RESET}")
     [[ -n $agent ]] && segments+=("${DIM}agent${RESET} ${BLUE}${agent}${RESET}")
 
-    [[ -n $context ]] && segments+=("$(context_segment "$context")")
+    [[ -n $context ]] && segments+=("$(context_segment "$context" "$context_tokens" "$context_size")")
     [[ -n $five_hour ]] && segments+=("$(limit_segment "$five_hour" "$five_hour_reset")")
     [[ -n $seven_day ]] && segments+=("$(limit_segment "$seven_day" "$seven_day_reset")")
     [[ -n $spend ]] && segments+=("${DIM}budget${RESET} $(limit_segment "$spend")")

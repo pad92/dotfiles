@@ -112,6 +112,7 @@ covers variables, package ownership, and system settings.
 | `dotfiles`                                 | Run the whole dotfiles role.                                                  |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
+| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
 | `dotfiles_runtime`, `vim`                  | Check Vim; update plugins with `dotfiles_update_vim_plugins=true`.            |
 | `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                       |

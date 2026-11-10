@@ -145,6 +145,9 @@ packages_family_groups:
       - bat
       - btop
       - check-jsonschema
+      # AI coding agents: claude-code and claude-desktop come from the AUR.
+      - claude-code
+      - claude-desktop
       - cosign
       - curl
       - ethtool
@@ -172,6 +175,7 @@ packages_family_groups:
       - mtr
       - mypy
       - nmap
+      - openai-codex
       - openbsd-netcat
       - openssh
       - packer

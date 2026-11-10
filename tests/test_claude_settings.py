@@ -109,7 +109,7 @@ class ClaudeSettingsTests(unittest.TestCase):
         existing = {
             "permissions": {"allow": ["Bash(git status)"]},
             "theme": "auto",
-            "autoMode": {"environment": ["Cloud Temple — CTSI2"]},
+            "autoMode": {"environment": ["Équipe — exemple"]},
         }
         self.write_settings(json.dumps(existing, ensure_ascii=False), mode=0o644)
 
@@ -117,7 +117,7 @@ class ClaudeSettingsTests(unittest.TestCase):
         merged = json.loads(self.settings.read_text())
         self.assertEqual(merged, {**existing, "statusLine": self.statusline})
         self.assertEqual(list(merged), [*existing, "statusLine"])
-        self.assertIn("Cloud Temple — CTSI2", self.settings.read_text())
+        self.assertIn("Équipe — exemple", self.settings.read_text())
         self.assertEqual(stat.S_IMODE(self.settings.stat().st_mode), 0o644)
 
         written = self.settings.read_bytes()

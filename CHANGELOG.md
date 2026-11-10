@@ -69,6 +69,17 @@ Release history and changes planned for the next version.
     file. The playbook now manages `~/.config/zed/tasks.json` and
     `keymap.json`.
   - Install Zed on Arch with the `10_sre_devops` package group.
+- **AI coding agents**:
+  - The Claude Code status line shows the tokens in the context window next
+    to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
+    are not counted, like in the percentage.
+  - Add the `dotfiles_codex` tag: when `codex` is installed it sets
+    `status_line` in the `[tui]` table of `~/.codex/config.toml` (model,
+    directory, branch, context used, tokens, 5-hour and weekly limits) and
+    leaves the rest of the file alone. A file Codex could not load stops the
+    play unchanged; a layout the edit cannot handle is restored.
+  - Install `claude-code`, `claude-desktop` (AUR) and `openai-codex` with the
+    `10_sre_devops` group on Arch.
 
 ### Changed
 
