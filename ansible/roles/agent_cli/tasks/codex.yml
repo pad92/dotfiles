@@ -1,0 +1,134 @@
+---
+# ~/.codex/config.toml also holds trusted projects and state that Codex
+# rewrites itself, so only the status_line key of [tui] is managed here.
+- name: Look for the Codex binary
+  ansible.builtin.command:
+    argv: [sh, -c, 'command -v "$1"', sh, '{{ agent_cli_codex_binary }}']
+  environment:
+    PATH: "{{ agent_cli_home }}/.local/bin:{{ lookup('env', 'PATH') }}"
+  register: agent_cli_codex_binary_lookup
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Configure the Codex status line
+  when: agent_cli_codex_binary_lookup.rc == 0
+  vars:
+    agent_cli_codex_config_path: '{{ agent_cli_home }}/{{ agent_cli_codex_config }}'
+    # Prints [tui] status_line as JSON, "null" when unset; fails on a file
+    # that is not valid TOML.
+    agent_cli_codex_read_status_line:
+      - '{{ ansible_playbook_python }}'
+      - -c
+      - |
+        import json, sys, tomllib
+        with open(sys.argv[1], "rb") as config:
+            tui = tomllib.load(config).get("tui", {})
+        if not isinstance(tui, dict):
+            sys.exit("tui is not a table")
+        print(json.dumps(tui.get("status_line")))
+      - '{{ agent_cli_codex_config_path }}'
+  block:
+    # The identifiers are written as a TOML array without escaping.
+    - name: Require plain Codex status line identifiers
+      ansible.builtin.assert:
+        that:
+          - agent_cli_codex_status_line is sequence
+          - agent_cli_codex_status_line is not string
+          - agent_cli_codex_status_line | length > 0
+          - >-
+            agent_cli_codex_status_line | map('string')
+            | reject('match', '^[a-z0-9-]+$') | list | length == 0
+        fail_msg: >-
+          agent_cli_codex_status_line must be a non-empty list of identifiers
+          made of lowercase letters, digits and hyphens.
+        quiet: true
+
+    - name: Inspect the Codex configuration
+      ansible.builtin.stat:
+        path: '{{ agent_cli_codex_config_path }}'
+        get_checksum: false
+        get_mime: false
+        get_attributes: false
+      register: agent_cli_codex_config_stat
+
+    - name: Read the Codex configuration
+      ansible.builtin.slurp:
+        src: '{{ agent_cli_codex_config_path }}'
+      register: agent_cli_codex_config_raw
+      when: agent_cli_codex_config_stat.stat.exists
+
+    # Refuse to edit a file Codex itself could not load rather than damage it.
+    - name: Read the current Codex status line
+      ansible.builtin.command:
+        argv: '{{ agent_cli_codex_read_status_line }}'
+      register: agent_cli_codex_status_line_current
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: agent_cli_codex_config_stat.stat.exists
+
+    - name: Require a valid Codex configuration
+      ansible.builtin.assert:
+        that:
+          - agent_cli_codex_status_line_current.rc == 0
+        fail_msg: >-
+          {{ agent_cli_codex_config_path }} is not valid TOML with a [tui]
+          table; fix it by hand before deploying the status line.
+        quiet: true
+      when: agent_cli_codex_config_stat.stat.exists
+
+    - name: Ensure the Codex directory exists
+      ansible.builtin.file:
+        path: '{{ agent_cli_codex_config_path | dirname }}'
+        state: directory
+        mode: '0700'
+      when: not agent_cli_codex_config_stat.stat.exists
+
+    # Compared as parsed values: Codex may rewrite the array with another
+    # layout, which must not be reported as a change.
+    - name: Write the Codex status line
+      when: >-
+        not agent_cli_codex_config_stat.stat.exists
+        or (agent_cli_codex_status_line_current.stdout | from_json)
+           != (agent_cli_codex_status_line | map('string') | list)
+      block:
+        # ini_file edits one line and keeps the rest of the file; a TOML table
+        # header and a single-line key have the same syntax as INI.
+        - name: Set status_line in the tui table
+          community.general.ini_file:
+            path: '{{ agent_cli_codex_config_path }}'
+            section: tui
+            option: status_line
+            value: "{{ agent_cli_codex_status_line | map('string') | list | to_json }}"
+            mode: >-
+              {{ agent_cli_codex_config_stat.stat.mode
+                 if agent_cli_codex_config_stat.stat.exists else '0600' }}
+
+        # A line edit cannot see a multi-line array or a tui.status_line key
+        # written outside the table: check what Codex will actually load.
+        - name: Verify the written Codex status line
+          ansible.builtin.command:
+            argv: '{{ agent_cli_codex_read_status_line }}'
+          register: agent_cli_codex_status_line_written
+          changed_when: false
+          failed_when: >-
+            agent_cli_codex_status_line_written.rc != 0
+            or (agent_cli_codex_status_line_written.stdout | from_json)
+               != (agent_cli_codex_status_line | map('string') | list)
+          when: not ansible_check_mode
+      rescue:
+        - name: Restore the previous Codex configuration
+          ansible.builtin.copy:
+            dest: '{{ agent_cli_codex_config_path }}'
+            content: '{{ agent_cli_codex_config_raw.content | b64decode }}'
+            mode: '{{ agent_cli_codex_config_stat.stat.mode }}'
+          when: agent_cli_codex_config_stat.stat.exists
+
+        - name: Report the Codex status line that could not be written
+          ansible.builtin.fail:
+            msg: >-
+              status_line could not be set in the [tui] table of
+              {{ agent_cli_codex_config_path }}; the file was restored. Write
+              the key on one line inside [tui], or remove it, then deploy
+              again.

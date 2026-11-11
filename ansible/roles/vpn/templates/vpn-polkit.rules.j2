@@ -1,0 +1,16 @@
+// Managed by Ansible. Lets the listed users of an active local session start
+// and stop the VPN unit without a password; everything else keeps the
+// default systemd policy.
+polkit.addRule(function (action, subject) {
+  var unit = {{ ('openfortivpn@' ~ vpn_name ~ '.service') | to_json }};
+  var verbs = ["start", "stop"];
+  var users = {{ vpn_users | to_json }};
+  if (action.id === "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") === unit &&
+      verbs.indexOf(action.lookup("verb")) >= 0 &&
+      users.indexOf(subject.user) >= 0 &&
+      subject.local && subject.active) {
+    return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

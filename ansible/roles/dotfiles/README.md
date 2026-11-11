@@ -84,27 +84,4 @@ last day). Segments without data are hidden. The
 estimated cost appears only when no subscription limit is reported, because it
 is a list-price estimate. `NO_COLOR` disables colors. The script needs `jq`.
 
-The `dotfiles_claude` tag adds the `statusLine` key to `~/.claude/settings.json`
-only when `dotfiles_claude_binary` (`claude` by default) is found in `PATH` or
-`~/.local/bin`. Otherwise nothing is created or changed. Other settings, their
-order and the file mode are kept. A new file is created with mode `0600`. The
-role never versions this file because it also holds local permissions and
-project context. A file that is not a JSON object stops the play unchanged.
-Override `dotfiles_claude_statusline` to change the command or add options such
-as `padding` or `refreshInterval`.
-
-## Codex status line
-
-Codex has no external status line command: it draws a list of built-in items.
-The `dotfiles_codex` tag writes `dotfiles_codex_status_line` to `status_line`
-in the `[tui]` table of `~/.codex/config.toml` only when `dotfiles_codex_binary`
-(`codex` by default) is found. The default shows the model and reasoning
-effort, directory, branch, context used, tokens, then the 5-hour and weekly
-limits. Codex ignores an unknown item with a warning at startup.
-
-Only that key is touched: trusted projects, comments and the tables Codex
-maintains stay as they are, and a value already equal, even on several lines,
-is left alone. A file that is not valid TOML stops the play unchanged. If the
-existing key cannot be edited in place (an array on several lines, or
-`tui.status_line` outside the table), the file is restored and the play fails.
-A new file is created with mode `0600`.
+The `agent_cli` role adds this script to the Claude Code settings.

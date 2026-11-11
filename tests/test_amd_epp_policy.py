@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-TASKS = ROOT / "ansible/roles/system/tasks/amd_epp_policy.yml"
+TASKS = ROOT / "ansible/roles/cpu_power/tasks/amd_epp_policy.yml"
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
@@ -76,12 +76,12 @@ module.exit_json(changed=True, path=str(path), changed_files=[str(path)])
                             "DOTFILES_TEST_PREFERENCES": str(self.available_preferences)
                         },
                         "vars": {
-                            "system_amd_policy": {
+                            "cpu_power_amd_policy": {
                                 "path": str(
                                     self.policy / "energy_performance_preference"
                                 ),
                             },
-                            "system_amd_pstate_epp": "balance_performance",
+                            "cpu_power_amd_pstate_epp": "balance_performance",
                         },
                         "tasks": [{"ansible.builtin.include_tasks": str(TASKS)}],
                     }

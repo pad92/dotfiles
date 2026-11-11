@@ -1,0 +1,5 @@
+---
+# Users added to the docker group with 12_containers_docker. Membership grants
+# root-equivalent access to the Docker daemon.
+docker_group_users:
+  - "{{ lookup('env', 'USER') }}"

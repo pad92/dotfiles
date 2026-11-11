@@ -112,9 +112,9 @@ class LactDeploymentTests(unittest.TestCase):
     def test_tag_migrates_with_backup_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
-            role = work / "system"
-            shutil.copytree(ROOT / "ansible/roles/system", role)
-            tasks = yaml.safe_load((role / "tasks/lact.yml").read_text())
+            role = work / "lact"
+            shutil.copytree(ROOT / "ansible/roles/lact", role)
+            tasks = yaml.safe_load((role / "tasks/main.yml").read_text())
             tasks[0] = {
                 "name": "Provide isolated service facts",
                 "ansible.builtin.set_fact": {
@@ -130,7 +130,7 @@ class LactDeploymentTests(unittest.TestCase):
                     if module in task:
                         task[module].pop("owner", None)
                         task[module].pop("group", None)
-            (role / "tasks/lact.yml").write_text(yaml.safe_dump(tasks))
+            (role / "tasks/main.yml").write_text(yaml.safe_dump(tasks))
             (role / "handlers/main.yml").write_text(
                 yaml.safe_dump(
                     [
@@ -148,8 +148,8 @@ class LactDeploymentTests(unittest.TestCase):
                 "#!/bin/sh\nif [ \"$*\" = 'cli list' ]; then\n  echo '0: GPU-Ab (Test AMD) [Dedicated]'\nelif [ \"$*\" = 'cli --gpu-id GPU-Ab info' ]; then\n  echo 'Driver Used: amdgpu'\nelse\n  exit 1\nfi\n"
             )
             lact.chmod(0o755)
-            config = work / "lact/config.yaml"
-            config.parent.mkdir()
+            config = work / "etc/lact/config.yaml"
+            config.parent.mkdir(parents=True)
             original = {
                 "version": 7,
                 "profiles": {
@@ -164,12 +164,12 @@ class LactDeploymentTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "environment": {"PATH": f"{binary}:{os.environ['PATH']}"},
-                    "vars": {"system_lact_config_path": str(config)},
+                    "vars": {"lact_config_path": str(config)},
                     "tasks": [
                         {
                             "ansible.builtin.import_role": {
                                 "name": str(role),
-                                "tasks_from": "lact",
+                                "tasks_from": "main",
                             },
                             "tags": ["lact"],
                         }

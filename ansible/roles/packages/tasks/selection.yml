@@ -1,0 +1,9 @@
+---
+# Read-only entry point: the playbooks run it first under the always tag, so
+# every role that reads packages_selected_groups gets it whatever tags are
+# passed, without this role knowing their tags.
+- name: Load platform package variables
+  ansible.builtin.import_tasks: load_platform_vars.yml
+
+- name: Select requested package groups
+  ansible.builtin.import_tasks: select.yml

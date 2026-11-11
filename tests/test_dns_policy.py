@@ -15,10 +15,11 @@ import yaml
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
-DETECTION = ROOT / "ansible/roles/system/tasks/dns.yml"
-TASKS = ROOT / "ansible/roles/system/tasks/dns_policy.yml"
-ROLE_MAIN = ROOT / "ansible/roles/system/tasks/main.yml"
-DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/system/defaults/main.yml").read_text())
+DETECTION = ROOT / "ansible/roles/dns/tasks/prerequisites.yml"
+TASKS = ROOT / "ansible/roles/dns/tasks/policy.yml"
+ROLE_MAIN = ROOT / "ansible/roles/dns/tasks/main.yml"
+SITE = ROOT / "ansible/site.yml"
+DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/dns/defaults/main.yml").read_text())
 SPEC = importlib.util.spec_from_file_location(
     "dns_filters", ROOT / "ansible/filter_plugins/dns.py"
 )
@@ -669,8 +670,8 @@ class DnsTaskTests(unittest.TestCase):
         return self.run_play(
             tasks,
             {
-                "system_dns_relay_files": [str(self.relay_file)],
-                "system_dns_legacy_files": [str(path) for path in legacy_files],
+                "dns_relay_files": [str(self.relay_file)],
+                "dns_legacy_files": [str(path) for path in legacy_files],
             },
             *arguments,
         )
@@ -686,7 +687,7 @@ class DnsTaskTests(unittest.TestCase):
                 "Manage the systemd-resolved policy",
             )
             tasks[-1]["ansible.builtin.template"]["src"] = str(
-                ROOT / "ansible/roles/system/templates/resolved-dns.conf.j2"
+                ROOT / "ansible/roles/dns/templates/resolved-dns.conf.j2"
             )
             tasks[-1].pop("notify")
             self.run_play(
@@ -696,7 +697,7 @@ class DnsTaskTests(unittest.TestCase):
                     "packages_selected_groups": (
                         ["12_containers_docker"] if docker else []
                     ),
-                    "system_dns_resolved_dropin": str(dropin),
+                    "dns_resolved_dropin": str(dropin),
                 },
             )
             settings = [
@@ -713,7 +714,7 @@ class DnsTaskTests(unittest.TestCase):
 
     def test_unquoted_yaml_boolean_is_rejected(self):
         tasks = self.task_slice("Validate the DNS policy", "Validate the DNS policy")
-        output = self.run_play(tasks, {"system_dns_llmnr": False}, succeed=False)
+        output = self.run_play(tasks, {"dns_llmnr": False}, succeed=False)
         self.assertIn("quoted strings", output)
 
     def test_loopback_profiles_are_reset_and_reapplied_when_the_relay_is_found(self):
@@ -796,9 +797,9 @@ class DnsTaskTests(unittest.TestCase):
         return self.run_play(
             tasks,
             {
-                "system_dns_relay_files": [str(path) for path in relay_files],
-                "system_dns_legacy_files": [str(path) for path in legacy_files],
-                "system_dns_backup_dir": str(self.work / "backup"),
+                "dns_relay_files": [str(path) for path in relay_files],
+                "dns_legacy_files": [str(path) for path in legacy_files],
+                "dns_backup_dir": str(self.work / "backup"),
             },
             *arguments,
         )
@@ -866,11 +867,11 @@ class DnsTaskTests(unittest.TestCase):
         output = self.run_play(
             tasks,
             {
-                "system_dns_relay_files": [str(relay)],
-                "system_dns_legacy_files": [str(legacy)],
-                "system_dns_backup_dir": str(self.work / "backup"),
-                "system_dns_resolv_conf": str(resolv_conf),
-                "system_dns_resolved_stub": str(self.work / "run/stub-resolv.conf"),
+                "dns_relay_files": [str(relay)],
+                "dns_legacy_files": [str(legacy)],
+                "dns_backup_dir": str(self.work / "backup"),
+                "dns_resolv_conf": str(resolv_conf),
+                "dns_resolved_stub": str(self.work / "run/stub-resolv.conf"),
             },
             "--check",
         )
@@ -891,9 +892,9 @@ class DnsTaskTests(unittest.TestCase):
         output = self.run_play(
             [task],
             {
-                "system_dns_dnsmasq_unit": {"stat": {"exists": True}},
-                "system_dns_relay_found": relay_found,
-                "system_dns_docker_selected": docker_selected,
+                "dns_dnsmasq_unit": {"stat": {"exists": True}},
+                "dns_relay_found": relay_found,
+                "dns_docker_selected": docker_selected,
             },
         )
         return "DNSMASQ STOPPED" in output
@@ -917,10 +918,10 @@ class DnsTaskTests(unittest.TestCase):
         return self.run_play(
             tasks,
             {
-                "system_dns_docker_selected": True,
-                "system_unit_directory": str(unit.parent),
-                "system_dns_relay_files": [str(self.relay_file)],
-                "system_dns_legacy_files": [],
+                "dns_docker_selected": True,
+                "dns_unit_directory": str(unit.parent),
+                "dns_relay_files": [str(self.relay_file)],
+                "dns_legacy_files": [],
             },
             succeed=succeed,
         )
@@ -954,8 +955,8 @@ class DnsTaskTests(unittest.TestCase):
         output = self.run_play(
             tasks,
             {
-                "system_dns_docker_selected": True,
-                "system_docker_daemon_config_path": str(daemon),
+                "dns_docker_selected": True,
+                "dns_docker_daemon_config_path": str(daemon),
             },
             *arguments,
             succeed=succeed,
@@ -989,9 +990,9 @@ class DnsTaskTests(unittest.TestCase):
         return self.run_play(
             tasks,
             {
-                "system_dns_resolv_conf": str(resolv_conf),
-                "system_dns_resolved_stub": str(stub),
-                "system_dns_backup_dir": str(self.work / "backup"),
+                "dns_resolv_conf": str(resolv_conf),
+                "dns_resolved_stub": str(stub),
+                "dns_backup_dir": str(self.work / "backup"),
                 **variables,
             },
             *arguments,
@@ -1045,7 +1046,7 @@ class DnsTaskTests(unittest.TestCase):
         content = VPN_HEADER + "nameserver 192.0.2.10\n"
         resolv_conf = self.write(self.work / "etc/resolv.conf", content)
         output = self.resolv_conf_play(
-            resolv_conf, stub, system_dns_force_resolv_conf_link=True
+            resolv_conf, stub, dns_force_resolv_conf_link=True
         )
         self.assertEqual(os.readlink(resolv_conf), str(stub))
         self.assertEqual(
@@ -1113,8 +1114,8 @@ class DnsTaskTests(unittest.TestCase):
         self.write(daemon, json.dumps(original))
         block = self.docker_block()
         variables = {
-            "system_dns_docker_selected": True,
-            "system_docker_daemon_config_path": str(daemon),
+            "dns_docker_selected": True,
+            "dns_docker_daemon_config_path": str(daemon),
         }
         self.run_play(block, variables)
         written = json.loads(daemon.read_text())
@@ -1130,8 +1131,8 @@ class DnsTaskTests(unittest.TestCase):
         self.run_play(
             self.docker_block(),
             {
-                "system_dns_docker_selected": True,
-                "system_docker_daemon_config_path": str(daemon),
+                "dns_docker_selected": True,
+                "dns_docker_daemon_config_path": str(daemon),
             },
         )
         self.assertNotIn("PluginLoader with aliases", self.stderr)
@@ -1144,8 +1145,8 @@ class DnsTaskTests(unittest.TestCase):
                 self.run_play(
                     self.docker_block(),
                     {
-                        "system_dns_docker_selected": True,
-                        "system_docker_daemon_config_path": str(daemon),
+                        "dns_docker_selected": True,
+                        "dns_docker_daemon_config_path": str(daemon),
                     },
                 )
                 self.assertEqual(
@@ -1159,8 +1160,8 @@ class DnsTaskTests(unittest.TestCase):
         output = self.run_play(
             self.docker_block(),
             {
-                "system_dns_docker_selected": True,
-                "system_docker_daemon_config_path": str(daemon),
+                "dns_docker_selected": True,
+                "dns_docker_daemon_config_path": str(daemon),
             },
             succeed=False,
         )
@@ -1180,21 +1181,21 @@ class DnsTaskTests(unittest.TestCase):
                 task["ansible.builtin.debug"] = {"msg": f"STAND-IN {task['name']}"}
             if "ansible.builtin.template" in task:
                 task["ansible.builtin.template"]["src"] = str(
-                    ROOT / "ansible/roles/system/templates/resolved-dns.conf.j2"
+                    ROOT / "ansible/roles/dns/templates/resolved-dns.conf.j2"
                 )
         work = self.work
         variables = {
             "ansible_facts": {"hostname": "fixture"},
             "packages_selected_groups": ["12_containers_docker"],
-            "system_unit_directory": str(work / "units"),
-            "system_dns_resolved_dropin": str(work / "etc/resolved.conf.d/60-dns.conf"),
-            "system_dns_networkmanager_conf": str(work / "etc/nm/conf.d/60-dns.conf"),
-            "system_dns_relay_files": [str(self.relay_file)],
-            "system_dns_legacy_files": [str(work / "etc/nm/conf.d/rc-manager.conf")],
-            "system_dns_backup_dir": str(work / "backup"),
-            "system_dns_resolv_conf": str(work / "etc/resolv.conf"),
-            "system_dns_resolved_stub": str(work / "run/stub-resolv.conf"),
-            "system_docker_daemon_config_path": str(work / "etc/docker/daemon.json"),
+            "dns_unit_directory": str(work / "units"),
+            "dns_resolved_dropin": str(work / "etc/resolved.conf.d/60-dns.conf"),
+            "dns_networkmanager_conf": str(work / "etc/nm/conf.d/60-dns.conf"),
+            "dns_relay_files": [str(self.relay_file)],
+            "dns_legacy_files": [str(work / "etc/nm/conf.d/rc-manager.conf")],
+            "dns_backup_dir": str(work / "backup"),
+            "dns_resolv_conf": str(work / "etc/resolv.conf"),
+            "dns_resolved_stub": str(work / "run/stub-resolv.conf"),
+            "dns_docker_daemon_config_path": str(work / "etc/docker/daemon.json"),
         }
         return self.run_play(
             tasks,
@@ -1304,7 +1305,7 @@ class DnsTaskTests(unittest.TestCase):
             "Make systemd-resolved the only DNS resolver",
             source=ROLE_MAIN,
         )
-        # Stand in for the dns.yml import, keeping its conditions.
+        # Stand in for the prerequisites.yml import, keeping its conditions.
         policy = tasks[-1]
         policy.pop("ansible.builtin.import_tasks")
         policy["ansible.builtin.debug"] = {"msg": "POLICY IMPORTED"}
@@ -1316,15 +1317,26 @@ class DnsTaskTests(unittest.TestCase):
         self.assertNotIn("DNS policy disabled", output)
 
     def test_disabled_policy_reads_and_changes_nothing(self):
-        # A string, as -e system_dns_manage=false passes it.
-        output = self.run_entry({"system_dns_manage": "false"})
+        # A string, as -e dns_manage=false passes it.
+        output = self.run_entry({"dns_manage": "false"})
         self.assertNotIn("POLICY IMPORTED", output)
         self.assertIn("DNS policy disabled", output)
 
-    def test_package_plan_does_not_import_the_policy(self):
-        output = self.run_entry({"packages_action": "plan"})
-        self.assertNotIn("POLICY IMPORTED", output)
-        self.assertNotIn("DNS policy disabled", output)
+    def test_package_plan_skips_the_dns_role(self):
+        # The plan guard lives on the role entry of the playbook.
+        entry = next(
+            role
+            for role in yaml.safe_load(SITE.read_text())[0]["roles"]
+            if role["role"] == "dns"
+        )
+        tasks = [
+            {"ansible.builtin.debug": {"msg": "DNS ROLE RUNS"}, "when": entry["when"]}
+        ]
+        self.assertNotIn(
+            "DNS ROLE RUNS", self.run_play(tasks, {"packages_action": "plan"})
+        )
+        self.assertIn("DNS ROLE RUNS", self.run_play(tasks, {}))
+        self.assertEqual(entry["tags"], ["system", "dns"])
 
 
 if __name__ == "__main__":

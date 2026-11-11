@@ -9,7 +9,7 @@ import yaml
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
-ROLE = ROOT / "ansible/roles/system"
+ROLE = ROOT / "ansible/roles/gpu"
 
 
 class RuntimePmTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class RuntimePmTests(unittest.TestCase):
                 work = Path(tmp)
                 target = work / "runtime-pm.rules"
                 target.write_text("existing rule\n")
-                tasks = yaml.safe_load((ROLE / "tasks/gpu_runtime_pm.yml").read_text())
+                tasks = yaml.safe_load((ROLE / "tasks/runtime_pm.yml").read_text())
                 # Inject the hardware result; exercise the actual Ansible decisions.
                 tasks = tasks[1:]
                 for task in tasks:
@@ -44,7 +44,7 @@ class RuntimePmTests(unittest.TestCase):
                                 "gather_facts": False,
                                 "vars": {
                                     "packages_selected_groups": ["09_nvidia_modern"],
-                                    "system_hybrid_laptop_detection": {
+                                    "gpu_hybrid_laptop_detection": {
                                         "stdout": detection
                                     },
                                 },

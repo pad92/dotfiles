@@ -162,7 +162,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             )
 
     def render_hardening(self, groups, ipv6_enabled=True):
-        template = ROLES / "system/templates/hardening.conf.j2"
+        template = ROLES / "hardening/templates/hardening.conf.j2"
         output = self.work / "hardening.conf"
         self.run_play(
             [
@@ -172,8 +172,8 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "gather_facts": False,
                     "vars": {
                         "ansible_facts": {"hostname": "fixture"},
-                        "system_ipv6_enabled": ipv6_enabled,
-                        "system_optional_sysctls": {
+                        "hardening_ipv6_enabled": ipv6_enabled,
+                        "hardening_optional_sysctls": {
                             "results": [{"stat": {"exists": False}}] * 4
                         },
                         "packages_selected_groups": groups,
@@ -228,7 +228,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             "ANSIBLE_CONFIG": str(ROOT / "ansible.cfg"),
             "ANSIBLE_LOCAL_TEMP": str(self.work / "ansible-local"),
         }
-        for tag in ["system", "kernel_hardening", "dns"]:
+        for tag in ["system", "kernel_hardening", "dns", "gpu_modules", "obs"]:
             with self.subTest(tag=tag):
                 result = subprocess.run(
                     [
@@ -246,11 +246,8 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("Apply package group selection", result.stdout)
-                self.assertIn(
-                    "Warn when the package group selection is unavailable",
-                    result.stdout,
-                )
+                # The selection is an include, so --list-tasks shows its entry.
+                self.assertIn("Select the package groups of this host", result.stdout)
 
     # gaming.yml uses community.general.pacman, resolved even when skipped.
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
@@ -265,12 +262,12 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         "packages_gaming_required_packages": [
                             "dotfiles-test-package-that-does-not-exist"
                         ],
-                        "system_cpu_power_managers": [],
+                        "cpu_power_managers": [],
                     },
                     "tasks": [
                         {
                             "ansible.builtin.include_tasks": str(
-                                ROLES / "system/tasks/gaming.yml"
+                                ROLES / "gaming/tasks/main.yml"
                             )
                         },
                         {"ansible.builtin.debug": {"msg": MARKER}},
@@ -298,7 +295,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "tasks": [
                         {
                             "ansible.builtin.include_tasks": str(
-                                ROLES / "system/tasks/gaming.yml"
+                                ROLES / "gaming/tasks/main.yml"
                             )
                         }
                     ],
@@ -311,7 +308,9 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     def run_amd_persistence(self, **extra_vars):
         destination = self.work / "tmpfiles.d/dotfiles-amd-cpu.conf"
         destination.parent.mkdir(exist_ok=True)
-        tasks = yaml.safe_load((ROLES / "system/tasks/amd_persistence.yml").read_text())
+        tasks = yaml.safe_load(
+            (ROLES / "cpu_power/tasks/amd_persistence.yml").read_text()
+        )
         for task in tasks:
             for module in ("ansible.builtin.template", "ansible.builtin.file"):
                 if module in task:
@@ -319,7 +318,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     task[module].pop("group", None)
                     if module == "ansible.builtin.template":
                         task[module]["src"] = str(
-                            ROLES / "system/templates" / task[module]["src"]
+                            ROLES / "cpu_power/templates" / task[module]["src"]
                         )
         self.run_play(
             [
@@ -328,9 +327,9 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
-                        "system_amd_tmpfiles_path": str(destination),
-                        "system_amd_pstate_epp": "balance_performance",
-                        "system_amd_x3d_mode": None,
+                        "cpu_power_amd_tmpfiles_path": str(destination),
+                        "cpu_power_amd_pstate_epp": "balance_performance",
+                        "cpu_power_amd_x3d_mode": None,
                         **extra_vars,
                     },
                     "tasks": tasks,
@@ -341,9 +340,9 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
 
     def test_amd_controls_are_persisted_in_governor_then_epp_order(self):
         destination = self.run_amd_persistence(
-            system_amd_epp_files={"files": [{"path": "/sys/policy0/epp"}]},
-            system_amd_x3d_mode="cache",
-            system_amd_x3d_controls={"files": [{"path": "/sys/x3d/amd_x3d_mode"}]},
+            cpu_power_amd_epp_files={"files": [{"path": "/sys/policy0/epp"}]},
+            cpu_power_amd_x3d_mode="cache",
+            cpu_power_amd_x3d_controls={"files": [{"path": "/sys/x3d/amd_x3d_mode"}]},
         )
         lines = [
             line
@@ -364,11 +363,13 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
 
     def test_amd_persistence_is_removed_when_nothing_is_managed(self):
         destination = self.run_amd_persistence(
-            system_amd_epp_files={"files": [{"path": "/sys/policy0/epp"}]}
+            cpu_power_amd_epp_files={"files": [{"path": "/sys/policy0/epp"}]}
         )
         self.assertTrue(destination.exists())
         # A power manager now owns EPP, so discovery is skipped.
-        destination = self.run_amd_persistence(system_amd_epp_files={"skipped": True})
+        destination = self.run_amd_persistence(
+            cpu_power_amd_epp_files={"skipped": True}
+        )
         self.assertFalse(destination.exists())
 
     def test_missing_arch_packages_honour_provides(self):
@@ -489,7 +490,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         tasks = [
             task
             for task in yaml.safe_load(
-                (ROLES / "system/tasks/kernel_hardening.yml").read_text()
+                (ROLES / "hardening/tasks/kernel_hardening.yml").read_text()
             )
             if task["name"].startswith("Read the active")
         ]
@@ -507,7 +508,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "gather_facts": False,
                     "environment": {"PATH": f"{binary}:{os.environ['PATH']}"},
                     "vars": {
-                        "system_optional_sysctls": {
+                        "hardening_optional_sysctls": {
                             "results": [{"stat": {"exists": True}}] * 4
                         }
                     },
@@ -516,8 +517,8 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         {
                             "ansible.builtin.assert": {
                                 "that": [
-                                    "system_mmap_rnd_bits.stdout == '32'",
-                                    "system_unprivileged_bpf_disabled.stdout == '32'",
+                                    "hardening_mmap_rnd_bits.stdout == '32'",
+                                    "hardening_unprivileged_bpf_disabled.stdout == '32'",
                                 ]
                             }
                         }
@@ -602,9 +603,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     def test_runtime_pm_rule_changes_reload_udev(self):
         tasks = [
             task
-            for task in yaml.safe_load(
-                (ROLES / "system/tasks/gpu_runtime_pm.yml").read_text()
-            )
+            for task in yaml.safe_load((ROLES / "gpu/tasks/runtime_pm.yml").read_text())
             if "80-dotfiles-nvidia-runtime-pm.rules" in yaml.safe_dump(task)
         ]
         self.assertEqual(len(tasks), 2)
@@ -619,7 +618,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     )
                     if module.endswith("copy"):
                         task[module]["src"] = str(
-                            ROLES / "system/files" / task[module]["src"]
+                            ROLES / "gpu/files" / task[module]["src"]
                         )
 
         def run(detection):
@@ -631,12 +630,10 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         "gather_facts": False,
                         "vars": {
                             "packages_selected_groups": ["09_nvidia_modern"],
-                            "system_hybrid_laptop_detection": {"stdout": detection},
+                            "gpu_hybrid_laptop_detection": {"stdout": detection},
                         },
                         "tasks": tasks,
-                        "handlers": self.stub_handlers(
-                            ROLES / "system/handlers/main.yml"
-                        ),
+                        "handlers": self.stub_handlers(ROLES / "gpu/handlers/main.yml"),
                     }
                 ]
             )
@@ -656,7 +653,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         sysctl_dir.mkdir()
         (sysctl_dir / "80-gamecompatibility.conf").write_text("vm.x = 1\n")
         all_tasks = yaml.safe_load(
-            (ROLES / "system/tasks/kernel_hardening.yml").read_text()
+            (ROLES / "hardening/tasks/kernel_hardening.yml").read_text()
         )
         names = [
             "Check for legacy gaming sysctl drop-ins",
@@ -678,7 +675,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 "connection": "local",
                 "gather_facts": False,
                 "tasks": tasks,
-                "handlers": self.stub_handlers(ROLES / "system/handlers/main.yml"),
+                "handlers": self.stub_handlers(ROLES / "hardening/handlers/main.yml"),
             }
         ]
         output = self.run_play(play)
@@ -691,9 +688,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         unit_directory.mkdir(exist_ok=True)
         for unit in units:
             (unit_directory / unit).write_text("[Unit]\n")
-        tasks = yaml.safe_load(
-            (ROLES / "system/tasks/package_services.yml").read_text()
-        )
+        tasks = yaml.safe_load((ROLES / "package_services/tasks/main.yml").read_text())
         # Stop before systemd and account changes; only the selection is tested.
         stop = next(
             index
@@ -701,15 +696,9 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             if task["name"] == "Enable and start services for the selected packages"
         )
         tasks = tasks[:stop]
-        for task in tasks:
-            for module in ("ansible.builtin.file", "ansible.builtin.template"):
-                if module in task:
-                    task[module].pop("owner", None)
-                    task[module].pop("group", None)
-            if "ansible.builtin.template" in task:
-                template = task["ansible.builtin.template"]
-                template["src"] = str(ROLES / "system/templates" / template["src"])
-        defaults = yaml.safe_load((ROLES / "system/defaults/main.yml").read_text())
+        defaults = yaml.safe_load(
+            (ROLES / "package_services/defaults/main.yml").read_text()
+        )
         return self.run_play(
             [
                 {
@@ -718,17 +707,18 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "gather_facts": False,
                     "vars": {
                         "ansible_facts": {"os_family": "Archlinux"},
-                        "system_package_services": defaults["system_package_services"],
-                        "system_unit_directory": str(unit_directory),
+                        "package_services_by_group": defaults[
+                            "package_services_by_group"
+                        ],
+                        "package_services_unit_directory": str(unit_directory),
                         "packages_selected_groups": groups,
                         **extra_vars,
                     },
-                    "handlers": self.stub_handlers(ROLES / "system/handlers/main.yml"),
                     "tasks": tasks
                     + [
                         {
                             "ansible.builtin.debug": {
-                                "msg": "ENABLE {{ system_package_services_to_enable }}"
+                                "msg": "ENABLE {{ package_services_to_enable }}"
                             }
                         }
                     ],
@@ -755,18 +745,18 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertIn("unit file is missing: fwupd-refresh.timer", output)
 
     def test_conflicting_power_managers_are_removed_only_when_accepted(self):
-        tasks = yaml.safe_load((ROLES / "system/tasks/gaming.yml").read_text())
+        tasks = yaml.safe_load((ROLES / "gaming/tasks/main.yml").read_text())
         block = next(task for task in tasks if "block" in task)["block"]
         decide = next(t for t in block if t["name"].startswith("Decide whether"))
         conflict = ["auto-cpufreq.service"]
 
         def decision(action, answer=None, conflicts=conflict, check=False):
             facts = {
-                "system_conflicting_power_managers": conflicts,
-                "system_power_manager_conflict_action": action,
+                "gaming_conflicting_power_managers": conflicts,
+                "gaming_power_manager_conflict_action": action,
             }
             if answer is not None:
-                facts["system_power_manager_prompt"] = {"user_input": answer}
+                facts["gaming_power_manager_prompt"] = {"user_input": answer}
             output = self.run_play(
                 [
                     {
@@ -778,7 +768,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                             decide,
                             {
                                 "ansible.builtin.debug": {
-                                    "msg": "REMOVE={{ system_remove_power_managers"
+                                    "msg": "REMOVE={{ gaming_remove_power_managers"
                                     " | bool }}"
                                 },
                                 "check_mode": False,
@@ -806,7 +796,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertFalse(decision("remove", check=True))
 
     def test_ananicy_restarts_only_when_its_rules_package_changed(self):
-        tasks = yaml.safe_load((ROLES / "system/tasks/gaming.yml").read_text())
+        tasks = yaml.safe_load((ROLES / "gaming/tasks/main.yml").read_text())
         block = next(task for task in tasks if "block" in task)["block"]
         task = next(t for t in block if t["name"].startswith("Restart ananicy-cpp"))
         task = {
@@ -814,7 +804,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             "when": task["when"],
             "ansible.builtin.debug": {"msg": "ANANICY RESTART"},
         }
-        defaults = yaml.safe_load((ROLES / "system/defaults/main.yml").read_text())
+        defaults = yaml.safe_load((ROLES / "gaming/defaults/main.yml").read_text())
 
         def run(changed):
             return self.run_play(
@@ -825,8 +815,8 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         "gather_facts": False,
                         "vars": {
                             "packages_changed_this_run": changed,
-                            "system_ananicy_rule_packages": defaults[
-                                "system_ananicy_rule_packages"
+                            "gaming_ananicy_rule_packages": defaults[
+                                "gaming_ananicy_rule_packages"
                             ],
                         },
                         "tasks": [task],

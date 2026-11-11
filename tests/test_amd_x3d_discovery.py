@@ -29,7 +29,7 @@ class X3dDiscoveryTests(unittest.TestCase):
                 (driver / name).symlink_to(device, target_is_directory=True)
             all_tasks = yaml.safe_load(
                 (
-                    ROOT / "ansible/roles/system/tasks/amd_cpu_performance.yml"
+                    ROOT / "ansible/roles/cpu_power/tasks/amd_cpu_performance.yml"
                 ).read_text()
             )
             start = next(
@@ -62,7 +62,7 @@ module.exit_json(changed=changed, path=str(path), changed_files=[str(path)] if c
                     "hosts": "localhost",
                     "connection": "local",
                     "gather_facts": False,
-                    "vars": {"system_amd_x3d_mode": "cache"},
+                    "vars": {"cpu_power_amd_x3d_mode": "cache"},
                     "tasks": tasks,
                 }
             ]
@@ -95,5 +95,5 @@ module.exit_json(changed=changed, path=str(path), changed_files=[str(path)] if c
                 all(path.read_text().strip() == "cache" for path in controls)
             )
             self.assertRegex(run(), r"changed=0\b")
-            play[0]["vars"]["system_amd_x3d_mode"] = None
+            play[0]["vars"]["cpu_power_amd_x3d_mode"] = None
             self.assertRegex(run(), r"changed=0\b")

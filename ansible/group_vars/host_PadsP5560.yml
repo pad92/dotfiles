@@ -1,5 +1,5 @@
 ---
 # Laptop with hybrid Intel and NVIDIA graphics.
 packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
-system_ipv6_enabled: false
+hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false

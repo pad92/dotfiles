@@ -1,0 +1,56 @@
+---
+- name: Enable color output in pacman
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: '^[# \t]*Color[ \t]*$'
+    line: Color
+    insertafter: '^\[options\]$'
+    backup: true
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Configure pacman progress bar options
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: '^[# \t]*{{ package_manager_pacman_option }}[ \t]*$'
+    line: '{{ package_manager_pacman_option }}'
+    insertafter: '^\[options\]$'
+    backup: true
+  loop: '{{ package_manager_pacman_progress_options }}'
+  loop_control:
+    loop_var: package_manager_pacman_option
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Enable pacman disk-space checks
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: '^[# \t]*CheckSpace[ \t]*$'
+    line: CheckSpace
+    insertafter: '^\[options\]$'
+    backup: true
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Set pacman parallel downloads
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: '^[# \t]*ParallelDownloads[ \t]*='
+    line: ParallelDownloads = 5
+    insertafter: '^\[options\]$'
+    backup: true
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Enable the standard multilib repository
+  ansible.builtin.replace:
+    path: /etc/pacman.conf
+    regexp: '(?m)^#\[multilib\]\r?\n#Include = /etc/pacman\.d/mirrorlist$'
+    replace: "[multilib]\nInclude = /etc/pacman.d/mirrorlist"
+    backup: true
+  register: package_manager_pacman_multilib
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Synchronize databases and upgrade installed packages after enabling multilib
+  community.general.pacman:
+    update_cache: true
+    upgrade: true
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - package_manager_pacman_multilib.changed

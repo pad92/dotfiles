@@ -1,0 +1,5 @@
+---
+gpu_initramfs_generator: auto
+gpu_initramfs_report_roots: [/boot, /efi]
+gpu_i915_enable_guc: null
+gpu_i915_guc_supported: false

@@ -1,0 +1,13 @@
+---
+cpu_power_amd_pstate_epp: balance_performance
+cpu_power_amd_x3d_mode: null
+# Boot-time copy of the AMD CPU controls applied by Ansible.
+cpu_power_amd_tmpfiles_path: /etc/tmpfiles.d/dotfiles-amd-cpu.conf
+cpu_power_managers:
+  - power-profiles-daemon.service
+  - auto-cpufreq.service
+  - tlp.service
+  - tuned.service
+  - tuned-ppd.service
+  - cpupower.service
+  - system76-power.service

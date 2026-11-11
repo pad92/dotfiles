@@ -1,0 +1,38 @@
+---
+# The policy drives systemd-resolved through NetworkManager. Both are detected
+# instead of assumed from the distribution, and a host without them keeps its
+# resolver as it is.
+- name: Read installed services for the DNS policy
+  ansible.builtin.service_facts:
+
+- name: Look for the nmcli client
+  ansible.builtin.command:
+    argv: [nmcli, --version]
+  register: dns_nmcli
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# nmcli needs a running NetworkManager; resolved only has to be installed,
+# since the policy enables and starts it.
+- name: Record the missing DNS prerequisites
+  ansible.builtin.set_fact:
+    dns_missing: >-
+      {{ ([] if 'systemd-resolved.service' in ansible_facts.services | default({})
+          else ['systemd-resolved.service'])
+         + ([] if (ansible_facts.services | default({}))
+                 .get('NetworkManager.service', {}).get('state') == 'running'
+            else ['NetworkManager.service (running)'])
+         + ([] if dns_nmcli.rc | default(1) == 0 else ['nmcli']) }}
+
+- name: Report that the DNS policy is skipped
+  ansible.builtin.debug:
+    msg: >-
+      DNS policy skipped, nothing was changed. Missing:
+      {{ dns_missing | join(', ') }}. It needs systemd-resolved, a running
+      NetworkManager and nmcli.
+  when: dns_missing | length > 0
+
+- name: Apply the DNS policy
+  ansible.builtin.import_tasks: policy.yml
+  when: dns_missing | length == 0

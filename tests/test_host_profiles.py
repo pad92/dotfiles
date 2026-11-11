@@ -37,13 +37,13 @@ class HostProfileTests(unittest.TestCase):
         settings = self.settings("PadsP5560")
         self.assertIn("host_PadsP5560", settings["group_names"])
         self.assertEqual(settings["packages_host_groups"], WORKSTATION + ["23_vpn"])
-        self.assertIs(settings["system_ipv6_enabled"], False)
+        self.assertIs(settings["hardening_ipv6_enabled"], False)
         self.assertIs(settings["dotfiles_hypridle_enabled"], False)
 
     def test_tower_adds_steam_and_keeps_the_ipv6_default(self):
         settings = self.settings("PadsTower")
         self.assertEqual(settings["packages_host_groups"], WORKSTATION + ["21_steam"])
-        self.assertEqual(settings["system_ipv6_enabled"], UNSET)
+        self.assertEqual(settings["hardening_ipv6_enabled"], UNSET)
         self.assertIs(settings["dotfiles_hypridle_enabled"], False)
 
     # A fresh machine must not inherit a known host's packages or settings.
@@ -52,7 +52,7 @@ class HostProfileTests(unittest.TestCase):
         self.assertIn("host_fresh_box", settings["group_names"])
         for name in [
             "packages_host_groups",
-            "system_ipv6_enabled",
+            "hardening_ipv6_enabled",
             "dotfiles_hypridle_enabled",
         ]:
             with self.subTest(setting=name):

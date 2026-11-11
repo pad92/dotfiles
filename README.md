@@ -89,28 +89,33 @@ makepkg builds disable debug packages and may not run on a different CPU.
 ## Ansible tags
 
 Run a subset with `make install ANSIBLE_ARGS="--tags <tag>"`. The
-supported-distribution check always runs. The [Ansible guide](./ansible/README.md)
-covers variables, package ownership, and system settings.
+supported-distribution check and the read-only package group selection always
+run. The [Ansible guide](./ansible/README.md) lists the roles and covers
+variables, package ownership, and system settings.
 
 | Tags                                       | Action                                                                        |
 | :----------------------------------------- | :---------------------------------------------------------------------------- |
-| `packages`                                 | Select, install, and reconcile packages.                                      |
-| `packages_select`                          | Select package groups.                                                        |
+| `package_manager`                          | Configure pacman and makepkg.                                                 |
+| `packages`                                 | Configure pacman, then install and reconcile packages.                        |
 | `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                        |
 | `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                 |
 | `yay`                                      | Configure pacman and run the AUR flow only.                                   |
-| `system`                                   | Run the whole system role.                                                    |
-| `package_services`                         | Enable the services of the selected package groups.                           |
+| `system`                                   | Run every host role from `lact` to `cpu_power`, and makepkg.                  |
+| `package_services`                         | Enable the services of the selected package groups and the Docker group.      |
+| `docker`                                   | Add the Docker group users.                                                   |
+| `hardening`                                | Configure SSH client defaults and desktop sysctls.                            |
 | `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                             |
 | `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.             |
-| `gpu_modules`                              | Select GPU groups and configure NVIDIA/i915 kernel modules.                   |
+| `vpn`                                      | Configure the openfortivpn SAML VPN.                                          |
+| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                   |
 | `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                 |
-| `amd_cpu_performance`                      | Apply supported AMD CPU settings.                                             |
+| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                             |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
-| `dotfiles`                                 | Run the whole dotfiles role.                                                  |
+| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
 | `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
+| `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
 | `dotfiles_runtime`, `vim`                  | Check Vim; update plugins with `dotfiles_update_vim_plugins=true`.            |

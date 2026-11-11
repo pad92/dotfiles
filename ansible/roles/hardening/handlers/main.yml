@@ -1,0 +1,6 @@
+---
+- name: Report legacy sysctl values kept until reboot
+  ansible.builtin.debug:
+    msg: >-
+      Legacy gaming sysctl drop-ins were removed. Their values stay active
+      until the next reboot; the managed policy has already been applied.

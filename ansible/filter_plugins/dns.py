@@ -340,8 +340,8 @@ def _require_fixed_cidr_in_bridge(config: dict[str, Any], bridge_ip: str) -> Non
         raise AnsibleFilterError(
             f"fixed-cidr {fixed_cidr} in the Docker daemon configuration is "
             f"outside the bridge network {bridge_network} of "
-            "system_docker_bridge_ip, and Docker would not start. Change "
-            "fixed-cidr or system_docker_bridge_ip."
+            "dns_docker_bridge_ip, and Docker would not start. Change "
+            "fixed-cidr or dns_docker_bridge_ip."
         )
 
 

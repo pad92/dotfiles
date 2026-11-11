@@ -69,7 +69,7 @@ class FileContractTests(unittest.TestCase):
         generator.chmod(0o755)
         image = output_dir / "image"
         handlers = yaml.safe_load(
-            (ROOT / "ansible/roles/system/handlers/main.yml").read_text()
+            (ROOT / "ansible/roles/gpu/handlers/main.yml").read_text()
         )
         output = self.run_play(
             [
@@ -78,8 +78,8 @@ class FileContractTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
-                        "system_initramfs_generator_effective": "dracut",
-                        "system_initramfs_report_roots": [str(output_dir)],
+                        "gpu_initramfs_generator_effective": "dracut",
+                        "gpu_initramfs_report_roots": [str(output_dir)],
                     },
                     "handlers": handlers,
                     "tasks": [
@@ -149,13 +149,15 @@ class FileContractTests(unittest.TestCase):
         task = next(
             task
             for task in yaml.safe_load(
-                (ROOT / "ansible/roles/system/tasks/kernel_hardening.yml").read_text()
+                (
+                    ROOT / "ansible/roles/hardening/tasks/kernel_hardening.yml"
+                ).read_text()
             )
             if task["name"] == "Parse the intended desktop sysctl settings"
         )
-        template = ROOT / "ansible/roles/system/templates/hardening.conf.j2"
-        expression = task["ansible.builtin.set_fact"]["system_hardening_policy_entries"]
-        task["ansible.builtin.set_fact"]["system_hardening_policy_entries"] = (
+        template = ROOT / "ansible/roles/hardening/templates/hardening.conf.j2"
+        expression = task["ansible.builtin.set_fact"]["hardening_policy_entries"]
+        task["ansible.builtin.set_fact"]["hardening_policy_entries"] = (
             expression.replace("'hardening.conf.j2'", repr(str(template)))
         )
         self.run_play(
@@ -166,8 +168,8 @@ class FileContractTests(unittest.TestCase):
                     "gather_facts": False,
                     "vars": {
                         "ansible_facts": {"hostname": "fixture"},
-                        "system_ipv6_enabled": True,
-                        "system_optional_sysctls": {
+                        "hardening_ipv6_enabled": True,
+                        "hardening_optional_sysctls": {
                             "results": [{"stat": {"exists": False}}] * 4
                         },
                     },
@@ -175,7 +177,7 @@ class FileContractTests(unittest.TestCase):
                         task,
                         {
                             "ansible.builtin.assert": {
-                                "that": "system_hardening_policy_entries | length > 0"
+                                "that": "hardening_policy_entries | length > 0"
                             }
                         },
                     ],
@@ -196,7 +198,7 @@ class FileContractTests(unittest.TestCase):
             (sysctl_dir / name).write_text(f"old {name}\n")
 
         tasks = yaml.safe_load(
-            (ROOT / "ansible/roles/system/tasks/kernel_hardening.yml").read_text()
+            (ROOT / "ansible/roles/hardening/tasks/kernel_hardening.yml").read_text()
         )
         migration_start = next(
             index
@@ -220,7 +222,7 @@ class FileContractTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
-                        "system_optional_sysctls": {
+                        "hardening_optional_sysctls": {
                             "results": [
                                 {"stat": {"exists": True}},
                                 {"stat": {"exists": True}},

@@ -1,0 +1,22 @@
+---
+agent_cli_home: "{{ lookup('env', 'HOME') }}"
+# Claude Code status line: merged into ~/.claude/settings.json only when the
+# binary below is found, leaving every other setting untouched.
+agent_cli_claude_binary: claude
+agent_cli_claude_settings: .claude/settings.json
+agent_cli_claude_statusline:
+  type: command
+  command: '{{ agent_cli_home }}/.bin/claude-statusline'
+# Codex status line: Codex only accepts its own item identifiers, not a
+# command. Written to [tui] status_line of ~/.codex/config.toml only when the
+# binary below is found, leaving every other setting untouched.
+agent_cli_codex_binary: codex
+agent_cli_codex_config: .codex/config.toml
+agent_cli_codex_status_line:
+  - model-with-reasoning
+  - current-dir
+  - git-branch
+  - context-used
+  - used-tokens
+  - five-hour-limit
+  - weekly-limit

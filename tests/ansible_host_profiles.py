@@ -13,7 +13,11 @@ HOST_PROFILE = ROOT / "ansible/tasks/host_profile.yml"
 HOST_FILES = sorted((ROOT / "ansible/group_vars").glob("host_*.yml"))
 # Marks a variable that no group_vars file sets, so the role default applies.
 UNSET = "<role default>"
-SETTINGS = ["packages_host_groups", "system_ipv6_enabled", "dotfiles_hypridle_enabled"]
+SETTINGS = [
+    "packages_host_groups",
+    "hardening_ipv6_enabled",
+    "dotfiles_hypridle_enabled",
+]
 
 
 def configured_hostnames():

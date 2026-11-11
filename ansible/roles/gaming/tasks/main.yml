@@ -1,0 +1,165 @@
+---
+# cpu_power owns the list of CPU power managers and reads their state; this
+# role makes power-profiles-daemon the only one when gaming is selected.
+- name: Read installed gaming packages
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Qq
+  register: gaming_installed_packages
+  changed_when: false
+  check_mode: false
+  when: ansible_facts.get('os_family', '') == 'Archlinux'
+
+- name: Find missing gaming service dependencies
+  ansible.builtin.set_fact:
+    gaming_missing_packages: >-
+      {{ packages_gaming_required_packages
+         | difference(gaming_installed_packages.stdout_lines | default([])) }}
+
+# Check mode skips package installation, so dependencies may legitimately be
+# absent there; report them instead of failing the simulation.
+- name: Report gaming dependencies that a real run would install
+  ansible.builtin.debug:
+    msg: >-
+      Gaming services are not simulated because these packages are not
+      installed yet: {{ gaming_missing_packages | join(', ') }}
+  when:
+    - ansible_check_mode
+    - gaming_missing_packages | length > 0
+
+- name: Require the gaming service dependencies
+  ansible.builtin.assert:
+    that:
+      - gaming_missing_packages | length == 0
+    fail_msg: >-
+      Install the complete 21_steam group before configuring gaming services.
+      Run with --tags packages,gaming and check for skipped AUR packages.
+      Missing: {{ gaming_missing_packages | join(', ') }}
+  when: not ansible_check_mode
+
+- name: Configure gaming services
+  when: gaming_missing_packages | length == 0
+  block:
+    - name: Read CPU power manager states
+      ansible.builtin.include_role:
+        name: cpu_power
+        tasks_from: power_manager_facts
+        public: true
+
+    - name: List CPU power managers that conflict with power-profiles-daemon
+      ansible.builtin.set_fact:
+        gaming_conflicting_power_managers: >-
+          {{ cpu_power_active_managers
+             | reject('equalto', 'power-profiles-daemon.service') | list }}
+
+    - name: Ask before removing conflicting CPU power managers
+      ansible.builtin.pause:
+        prompt: >-
+          {{ gaming_conflicting_power_managers | join(', ') }} would control CPU
+          power alongside power-profiles-daemon. Stop, disable and uninstall
+          them? [y/N]
+      register: gaming_power_manager_prompt
+      when:
+        - gaming_conflicting_power_managers | length > 0
+        - gaming_power_manager_conflict_action == 'ask'
+        - not ansible_check_mode
+
+    - name: Decide whether to remove conflicting CPU power managers
+      ansible.builtin.set_fact:
+        gaming_remove_power_managers: >-
+          {{ gaming_conflicting_power_managers | length > 0
+             and not ansible_check_mode
+             and (gaming_power_manager_conflict_action == 'remove'
+                  or (gaming_power_manager_conflict_action == 'ask'
+                      and gaming_power_manager_prompt.user_input | default('')
+                          | trim | lower in ['y', 'yes'])) }}
+
+    - name: Remove conflicting CPU power managers
+      when: gaming_remove_power_managers | bool
+      block:
+        - name: Find the unit files of conflicting CPU power managers
+          ansible.builtin.command:
+            argv:
+              - systemctl
+              - show
+              - --property=FragmentPath
+              - --value
+              - --
+              - '{{ item }}'
+          loop: '{{ gaming_conflicting_power_managers }}'
+          register: gaming_power_manager_units
+          changed_when: false
+
+        # A unit file that no package owns (local unit) is only stopped and
+        # disabled; pacman -Qqo exits 1 for it.
+        - name: Find the packages that own conflicting CPU power managers
+          ansible.builtin.command:
+            argv: [pacman, -Qqo, --, '{{ item }}']
+          loop: >-
+            {{ gaming_power_manager_units.results
+               | map(attribute='stdout') | map('trim') | select | list }}
+          register: gaming_power_manager_owners
+          changed_when: false
+          failed_when: gaming_power_manager_owners.rc not in [0, 1]
+          when: ansible_facts.get('os_family', '') == 'Archlinux'
+
+        - name: Stop and disable conflicting CPU power managers
+          ansible.builtin.systemd_service:
+            name: '{{ item }}'
+            state: stopped
+            enabled: false
+          loop: '{{ gaming_conflicting_power_managers }}'
+
+        - name: Uninstall conflicting CPU power manager packages
+          community.general.pacman:
+            name: >-
+              {{ gaming_power_manager_owners.results | default([])
+                 | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+                 | map(attribute='stdout') | map('trim') | unique | list }}
+            state: absent
+          when: >-
+            gaming_power_manager_owners.results | default([])
+            | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+            | list | length > 0
+
+        - name: Read CPU power manager states after removal
+          ansible.builtin.include_role:
+            name: cpu_power
+            tasks_from: power_manager_facts
+            public: true
+
+    - name: Require a single CPU power manager
+      ansible.builtin.assert:
+        that:
+          - item not in cpu_power_active_managers
+        fail_msg: >-
+          {{ item }} is active or enabled. Stop and disable it before selecting
+          power-profiles-daemon for gaming; both would control CPU power.
+          Rerun and answer yes, or set gaming_power_manager_conflict_action=remove.
+      loop: >-
+        {{ cpu_power_managers |
+           reject('equalto', 'power-profiles-daemon.service') | list }}
+
+    - name: Unmask the selected gaming power manager
+      ansible.builtin.systemd_service:
+        name: power-profiles-daemon.service
+        masked: false
+
+    - name: Enable the gaming services
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        enabled: true
+        state: started
+      loop:
+        - ananicy-cpp.service
+        - power-profiles-daemon.service
+
+    # ananicy-cpp loads its rules at startup.
+    - name: Restart ananicy-cpp after its rules package changed
+      ansible.builtin.systemd_service:
+        name: ananicy-cpp.service
+        state: restarted
+      when: >-
+        packages_changed_this_run | default([])
+        | intersect(gaming_ananicy_rule_packages) | length > 0

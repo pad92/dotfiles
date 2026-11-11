@@ -1,0 +1,10 @@
+---
+# Only AMD CPUs have controls managed here. power_manager_facts.yml is also
+# included by the gaming role to find the CPU power managers in use.
+- name: Configure supported AMD CPU controls
+  ansible.builtin.import_tasks: amd_cpu_performance.yml
+  when: "'AuthenticAMD' in (ansible_facts['processor'] | default([]))"
+
+- name: Persist supported AMD CPU controls across reboots
+  ansible.builtin.import_tasks: amd_persistence.yml
+  when: "'AuthenticAMD' in (ansible_facts['processor'] | default([]))"

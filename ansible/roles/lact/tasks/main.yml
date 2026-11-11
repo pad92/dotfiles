@@ -1,0 +1,99 @@
+---
+- name: Discover the installed LACT service
+  ansible.builtin.service_facts:
+
+- name: Configure LACT when its daemon is installed
+  when: "'lactd.service' in ansible_facts.services"
+  block:
+    - name: Enable and start the LACT daemon
+      ansible.builtin.systemd_service:
+        name: lactd.service
+        enabled: true
+        state: started
+
+    - name: Read canonical GPU identifiers from LACT
+      ansible.builtin.command:
+        argv: [timeout, 10s, lact, cli, list]
+      register: lact_gpu_listing
+      changed_when: false
+      check_mode: false
+
+    - name: Read the driver for each detected LACT GPU
+      ansible.builtin.command:
+        argv: [timeout, 10s, lact, cli, --gpu-id, '{{ item }}', info]
+      loop: '{{ lact_gpu_listing.stdout | lact_gpu_ids }}'
+      register: lact_gpu_info
+      changed_when: false
+      check_mode: false
+
+    - name: Select GPUs supported by the LACT profile defaults
+      ansible.builtin.set_fact:
+        lact_amd_gpu_ids: >-
+          {{ lact_gpu_info.results | selectattr('stdout', 'search',
+             '(?m)^Driver Used: amdgpu(?:\s|$)') | map(attribute='item') | list }}
+        lact_nvidia_gpu_ids: >-
+          {{ lact_gpu_info.results | selectattr('stdout', 'search',
+             '(?m)^Driver Used: nvidia(?:\s|$)') | map(attribute='item') | list }}
+
+    - name: Preserve LACT configuration when no profiled GPU is detected
+      ansible.builtin.debug:
+        msg: No AMD or NVIDIA GPU was reported by LACT; its configuration is unchanged.
+      when:
+        - lact_amd_gpu_ids | length == 0
+        - lact_nvidia_gpu_ids | length == 0
+
+    - name: Deploy profiles for detected AMD and NVIDIA GPUs
+      when: >-
+        lact_amd_gpu_ids | length > 0 or
+        lact_nvidia_gpu_ids | length > 0
+      block:
+        - name: Inspect the system LACT configuration
+          ansible.builtin.stat:
+            path: '{{ lact_config_path }}'
+          register: lact_config_stat
+
+        - name: Preserve LACT configuration links and non-file paths
+          ansible.builtin.assert:
+            quiet: true
+            that:
+              - >-
+                not lact_config_stat.stat.exists or
+                lact_config_stat.stat.isreg | default(false)
+            fail_msg: >-
+              {{ lact_config_path }} must be a regular file, not a symlink
+              or directory. Set lact_config_path to the intended regular
+              configuration file before deploying LACT.
+
+        - name: Read the existing LACT settings
+          ansible.builtin.slurp:
+            src: '{{ lact_config_path }}'
+          register: lact_config_content
+          when: lact_config_stat.stat.exists
+
+        - name: Validate and merge the discovered LACT identifiers
+          ansible.builtin.set_fact:
+            lact_config: >-
+              {{ (lact_config_content.content | b64decode | from_yaml
+                  if lact_config_stat.stat.exists else {})
+                 | lact_config(lact_gpu_listing.stdout | lact_gpu_ids,
+                               lact_amd_gpu_ids, lact_profiles,
+                               lact_nvidia_gpu_ids,
+                               lact_nvidia_profiles) }}
+
+        - name: Create the system LACT configuration directory
+          ansible.builtin.file:
+            path: '{{ lact_config_path | dirname }}'
+            state: directory
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: Write the validated LACT profiles with a backup
+          ansible.builtin.copy:
+            content: '{{ lact_config | to_nice_yaml(indent=2, sort_keys=false) }}'
+            dest: '{{ lact_config_path }}'
+            owner: root
+            group: root
+            mode: '0644'
+            backup: true
+          notify: Restart LACT

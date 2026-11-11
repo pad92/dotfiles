@@ -1,3 +1,0 @@
-{{ {'unit': 'openfortivpn@' ~ system_vpn_name ~ '.service',
-    'login_url': 'https://' ~ system_vpn_gateway_host ~ ':' ~ system_vpn_gateway_port
-                 ~ '/remote/saml/start?redirect=1'} | to_nice_json(indent=2) }}

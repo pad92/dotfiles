@@ -1,0 +1,34 @@
+---
+- name: Regenerate Arch initramfs
+  dotfiles_initramfs:
+    generator: '{{ gpu_initramfs_generator_effective }}'
+    report_roots: '{{ gpu_initramfs_report_roots }}'
+  register: gpu_initramfs_result
+  notify: Report regenerated initramfs files
+
+- name: Report regenerated initramfs files
+  ansible.builtin.debug:
+    msg: '{{ gpu_initramfs_result.changed_files }}'
+  when: gpu_initramfs_result.changed_files | length > 0
+
+- name: Reload udev rules
+  ansible.builtin.command:
+    argv: [udevadm, control, --reload]
+  changed_when: true
+
+# The rule matches add and bind events, so replay bind for bound NVIDIA devices.
+- name: Apply NVIDIA runtime PM udev rule
+  ansible.builtin.command:
+    argv:
+      - udevadm
+      - trigger
+      - --action=bind
+      - --subsystem-match=pci
+      - --property-match=DRIVER=nvidia
+  changed_when: true
+
+- name: Report NVIDIA runtime PM kept until reboot
+  ansible.builtin.debug:
+    msg: >-
+      The NVIDIA runtime PM udev rule was removed. Devices keep
+      power/control=auto until the next reboot.

@@ -1,0 +1,17 @@
+---
+lact_config_path: /etc/lact/config.yaml
+# Fan curves remain hardware defaults unless already customized in LACT.
+lact_profiles:
+  Auto:
+    performance_level: auto
+  Adaptive:
+    performance_level: auto
+  PreferMaximumPerformance:
+    performance_level: high
+lact_nvidia_profiles:
+  Auto:
+    power_mizer_mode: Auto
+  Adaptive:
+    power_mizer_mode: Adaptive
+  PreferMaximumPerformance:
+    power_mizer_mode: PreferMaximumPerformance
