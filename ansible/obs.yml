@@ -3,11 +3,10 @@
 # detected GPU drivers for hardware encoding and the browser virtual camera.
 # It skips the system and dotfiles roles. Run it with `make install-obs`.
 - name: Install and configure OBS Studio for application demos
-  hosts: localhost
+  hosts: all
   become: true
-  gather_facts: true
+  gather_facts: false
   vars:
-    dotfiles_repository: '{{ playbook_dir | dirname }}'
     # Evaluated lazily, after the packages role has classified the GPUs.
     packages_group_selection: >-
       {{ ['22_obs'] + (packages_detected_graphics_groups | default([])) }}
@@ -26,8 +25,8 @@
           obsolete. Reconcile with the full playbook (make install) instead.
       tags: [always]
 
-    - name: Load the settings of this host
-      ansible.builtin.import_tasks: tasks/host_profile.yml
+    - name: Gather the facts of the target
+      ansible.builtin.import_tasks: tasks/target.yml
       tags: [always]
 
     - name: Require Arch Linux for the OBS profile

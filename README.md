@@ -49,6 +49,14 @@ make install
 directory. Installation is additive: packages that were already installed stay
 unmanaged.
 
+Ansible reaches the machine over SSH, even when it is the one you type on.
+`HOST` selects a host of `ansible/inventory.yml` and defaults to the short
+hostname (`uname -n` up to the first dot).
+The target needs an SSH server and the repository cloned in `~/.dotfiles`:
+`make install HOST=PadsP5560` configures the laptop from the desktop. A new
+machine first gets an inventory entry; see
+[Per-host settings](./ansible/README.md#per-host-settings).
+
 ## Common tasks
 
 Options in `ANSIBLE_ARGS` go straight to `ansible-playbook`.
@@ -72,7 +80,7 @@ targets use `$HOME`; set `ANSIBLE_BACKUP_ROOT=/path` to select another root.
 <summary>Package selection and Arch specifics</summary>
 
 Package groups come from OS defaults and detected GPUs. Each machine sets its
-own list, `packages_host_groups`, in `ansible/group_vars/host_<hostname>.yml`,
+own list, `packages_host_groups`, in `ansible/host_vars/<hostname>.yml`,
 or you pass `-e packages_group_selection=...` for one run. Automatic GPU selection
 requires every controller to be identified. Package variables load by OS
 family, then use the first matching exact-version, major-version, or

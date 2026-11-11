@@ -113,10 +113,23 @@ Release history and changes planned for the next version.
     old name is ignored.
 
 - **Ansible hosts**:
-  - Each machine's settings move to `ansible/group_vars/host_<hostname>.yml`,
-    loaded through a `group_by` task on the hostname fact. The shared groups
-    are listed once in `packages_workstation_groups`
-    (`group_vars/all/packages.yml`).
+  - The playbooks reach the workstations over SSH. `ansible/inventory.yml`
+    lists PadsTower and PadsP5560, and each machine's settings are in
+    `ansible/host_vars/<hostname>.yml`. The shared groups are listed once in
+    `packages_workstation_groups` (`group_vars/all/packages.yml`).
+  - `make install` and `make install-obs` target `HOST`, which defaults to
+    the short hostname (`uname -n` up to the first dot): `make install HOST=PadsP5560` configures the laptop from
+    another machine. The backup targets still read the local home.
+  - The facts are gathered as the SSH user (`tasks/target.yml`), and a play
+    stops when the machine reports another hostname than its inventory name.
+  - The roles read the home, user, `PATH`, `XDG_STATE_HOME`, PCI devices and
+    OBS helper scripts on the target instead of the controller.
+  - The Vim, tmux and Zsh links point into the target's clone,
+    `dotfiles_repository` (default `~/.dotfiles`), and deployment stops when
+    it is missing.
+  - Upgrade: a target needs an SSH server that accepts the user's key, and
+    this repository cloned in `~/.dotfiles`. A new machine must be added to
+    the inventory.
   - Upgrade: `ansible/host_vars/localhost.yml` is gone, and so are the maps
     keyed by hostname. `packages_host_groups` is now a list, and
     `system_ipv6_enabled_by_hostname` and
@@ -145,6 +158,33 @@ Release history and changes planned for the next version.
   - A changed Mako config reloads Mako, and a changed `hyprtoolkit.conf`
     restarts Hyprlauncher. Other rendered files no longer trigger these
     handlers.
+  - Render the host-dependent files from variables instead of shipping a copy
+    per hostname: the Waybar `config` and `conf/temperature.json`,
+    `hypridle.conf` and the Hyprland `hosts/settings.lua`. The templates hold
+    no host logic. PadsTower and PadsP5560 set their values in
+    `host_vars/<hostname>.yml`; the monitors and workspaces they share
+    are in the new `group_vars/all/main.yml`.
+  - A machine is portable when the `form_factor` fact says so, or when
+    `dotfiles_is_portable` is set. Waybar then shows the backlight and
+    battery, and Hyprland turns off blur and shadows.
+  - Hyprland no longer loads `hosts/<hostname>.lua`: `include/host.lua`
+    applies `hosts/settings.lua`, and a change to that file reloads Hyprland.
+    `hosts/common.lua` and `is-host.sh` are removed.
+  - The PadsTower suspend after one hour is now
+    `dotfiles_hypridle_suspend_timeout: 3600`. Other hosts default to 0, which
+    never suspends.
+  - The role validates its settings before changing anything and has a
+    `meta/main.yml`. Rendered files get an explicit owner, group and mode
+    (`dotfiles_template_mode`, default `0644`).
+  - Upgrade: the monitor outputs, whose descriptions contain serial numbers,
+    move to the Vault as `vault_dotfiles_monitor_outputs`
+    (`group_vars/all/vault.yml`, see `vault.yml-example`). Without it the Dell
+    and ASUS monitors and their workspace and window rules fall back to the
+    generic monitor rule. The `~/.config/waybar/config` link to
+    `config.<hostname>` is replaced by a rendered file, and
+    `dotfiles_waybar_host_config` is gone.
+  - `hypr-screenshot.sh` renders a generic Waybar config and empty Hyprland
+    host settings for its demo home. Its `WAYBAR_CONFIG` variable is gone.
 - **CI**:
   - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh` for GitLab CI,
     `make test-python` and `make coverage`. It runs each slow test in its own

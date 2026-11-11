@@ -225,10 +225,45 @@ class PackageFilterTests(unittest.TestCase):
         self.assertIs(
             exported["recorded_package_groups"], filters.recorded_package_groups
         )
-        self.assertEqual(len(exported), 14)
+        self.assertIs(exported["dotfiles_to_lua"], filters.to_lua)
+        self.assertEqual(len(exported), 15)
         self.assertEqual(
             set(lact.FilterModule().filters()), {"lact_gpu_ids", "lact_config"}
         )
+
+
+class LuaFilterTests(unittest.TestCase):
+    def test_tables_keep_key_order_and_quote_non_identifier_keys(self):
+        rendered = filters.to_lua(
+            {"output": "DP-1", "end": 1, "with-dash": True, "rules": [], "none": None}
+        )
+        self.assertEqual(
+            rendered,
+            "{\n"
+            '  output = "DP-1",\n'
+            '  ["end"] = 1,\n'
+            '  ["with-dash"] = true,\n'
+            "  rules = {},\n"
+            "  none = nil,\n"
+            "}",
+        )
+
+    def test_strings_cannot_escape_the_literal(self):
+        self.assertEqual(
+            filters.to_lua('a"b\\c\n\x01]] --'), '"a\\"b\\\\c\\n\\001]] --"'
+        )
+        self.assertEqual(filters.to_lua("°C"), '"°C"')
+
+    def test_nested_lists_are_indented_from_the_given_level(self):
+        self.assertEqual(
+            filters.to_lua([{"workspace": 1}], level=1),
+            "{\n    {\n      workspace = 1,\n    },\n  }",
+        )
+
+    def test_unsupported_values_are_rejected(self):
+        for value in (float("nan"), float("inf"), b"bytes", {1: "x"}, object()):
+            with self.subTest(value=value), self.assertRaises((TypeError, ValueError)):
+                filters.to_lua(value)
 
 
 class LactFilterTests(unittest.TestCase):

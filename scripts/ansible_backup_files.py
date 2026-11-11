@@ -39,9 +39,15 @@ def trust_inventory_templates(value: object) -> object:
 
 
 def load_configuration(root: Path, extra_vars: list[str]) -> dict:
-    """Resolve role defaults and localhost inventory overrides through Ansible."""
+    """Resolve role defaults and group_vars/all overrides through Ansible.
+
+    The SSH inventory names the workstations, not this machine: a one-host
+    localhost inventory still loads ansible/group_vars through --playbook-dir.
+    """
     command = [
         "ansible-inventory",
+        "--inventory",
+        "localhost,",
         "--playbook-dir",
         str(REPOSITORY_ROOT / "ansible"),
         "--host",
@@ -127,10 +133,7 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     files = set(
         defaults["dotfiles_files"]
         + [template["dest"] for template in defaults["dotfiles_templates"]]
-        + [
-            ".config/waybar/config",
-            ".config/hypr/hyprlock/carousel-image.sh",
-        ]
+        + [".config/hypr/hyprlock/carousel-image.sh"]
     )
 
     source_root = REPOSITORY_ROOT / "ansible/roles/dotfiles/files/home"

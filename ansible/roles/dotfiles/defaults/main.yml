@@ -1,6 +1,15 @@
 ---
-dotfiles_home: "{{ lookup('env', 'HOME') }}"
+# Home and owner of the deployed files: the SSH user of the target, whose
+# facts ansible/tasks/target.yml gathers without become.
+dotfiles_home: "{{ ansible_facts['user_dir'] }}"
+dotfiles_owner: "{{ ansible_facts['user_id'] }}"
+dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
+# Files are copied and rendered from the controller's copy of the role.
 dotfiles_source_root: '{{ role_path }}/files/home'
+# Clone of this repository on the target. The submodules are initialized
+# there and dotfiles_links point into it, so it must exist on every target.
+dotfiles_repository: '{{ dotfiles_home }}/.dotfiles'
+dotfiles_link_root: '{{ dotfiles_repository }}/ansible/roles/dotfiles/files/home'
 # Icon theme written into the GTK 2/3, hyprtoolkit and Mako configurations.
 dotfiles_icon_theme: Papirus-Dark
 # Mako does not follow theme inheritance, so it also searches the parent theme.
@@ -44,11 +53,14 @@ dotfiles_directory_handlers:
 # Handlers for single files whose program does not watch its configuration.
 dotfiles_file_handlers:
   .config/hypr/hypridle.conf: [Restart hypridle]
+  .config/hypr/hosts/settings.lua: [Reload Hyprland]
   # Hyprlauncher reads the hyprtoolkit theme only at startup.
   .config/hypr/hyprtoolkit.conf: [Restart Hyprlauncher]
   .config/mako/config: [Reload Mako configuration]
+  .config/waybar/config: [Reload Waybar]
+  .config/waybar/conf/temperature.json: [Reload Waybar]
 dotfiles_systemd_directory: .config/systemd
-# Set it to false in group_vars/host_<hostname>.yml to stop hypridle.
+# Set it to false in host_vars/<hostname>.yml to stop hypridle.
 dotfiles_hypridle_enabled: true
 # User unit links removed from the repository; deployment deletes them when
 # they are still symlinks (paths are relative to the user systemd directory).
@@ -91,7 +103,82 @@ dotfiles_templates:
     dest: .config/hypr/hyprtoolkit.conf
   - src: home/.config/mako/config.j2
     dest: .config/mako/config
-dotfiles_waybar_host_config: "config.{{ ansible_facts['hostname'] }}"
+  - src: home/.config/hypr/hypridle.conf.j2
+    dest: .config/hypr/hypridle.conf
+  - src: home/.config/hypr/hosts/settings.lua.j2
+    dest: .config/hypr/hosts/settings.lua
+  - src: home/.config/waybar/config.j2
+    dest: .config/waybar/config
+  - src: home/.config/waybar/conf/temperature.json.j2
+    dest: .config/waybar/conf/temperature.json
+# Mode of rendered files without their own mode in dotfiles_templates.
+dotfiles_template_mode: '0644'
+
+# Hardware. form_factor comes from the DMI chassis type; set
+# dotfiles_is_portable in host_vars/<hostname>.yml when it is wrong.
+dotfiles_portable_form_factors:
+  - Convertible
+  - Detachable
+  - Hand Held
+  - Laptop
+  - Notebook
+  - Portable
+  - Sub Notebook
+  - Tablet
+dotfiles_is_portable: >-
+  {{ ansible_facts.get('form_factor', '') in dotfiles_portable_form_factors }}
+
+# hypridle timeouts in seconds. A suspend timeout of 0 never suspends.
+dotfiles_hypridle_lock_timeout: 300
+dotfiles_hypridle_dpms_timeout: 900
+dotfiles_hypridle_suspend_timeout: 0
+
+# Hyprland host settings, rendered into ~/.config/hypr/hosts/settings.lua.
+# Each monitor is a hl.monitor() table: output, mode, position, scale. A
+# monitor whose output is empty (for example a Vault value that is not
+# defined) is left out, with the workspace and window rules that use it; the
+# generic rule of conf/monitors.lua then handles the display.
+dotfiles_hypr_monitors: []
+# hl.workspace_rule() tables: workspace, monitor, default.
+dotfiles_hypr_workspace_rules: []
+# hl.window_rule() tables: match, monitor.
+dotfiles_hypr_window_rules: []
+# Blur and shadows cost battery, so portable machines turn them off.
+dotfiles_hypr_effects_enabled: '{{ not dotfiles_is_portable | bool }}'
+# Output that a touchscreen maps to, such as eDP-1. Empty leaves it unset.
+dotfiles_hypr_touch_output: ''
+
+# Waybar. A temperature#<name> module is shown only when a sensor of that name
+# is listed in dotfiles_waybar_temperature_sensors; the portable modules only
+# on a portable machine.
+dotfiles_waybar_modules_right:
+  - custom/recording
+  - custom/vpn
+  - pulseaudio
+  - bluetooth
+  - cpu
+  - temperature#cpu
+  - memory
+  - temperature#gpu
+  - '{{ dotfiles_waybar_portable_modules if dotfiles_is_portable | bool else [] }}'
+  - custom/lact-profile
+  - custom/headsetcontrol
+  - tray
+dotfiles_waybar_portable_modules:
+  - backlight
+  - battery
+# Each sensor: name, label (tooltip), hwmon_path (an absolute /sys path to the
+# hwmon directory), input_filename (tempN_input) and optional
+# critical_threshold. hwmon numbers change between boots, so use the stable
+# device path that contains the hwmonN directory.
+dotfiles_waybar_temperature_sensors: []
+dotfiles_waybar_temperature_critical: 90
+dotfiles_waybar_includes:
+  - ~/.config/waybar/conf/system.json
+  - ~/.config/waybar/conf/connectivity.json
+  - ~/.config/waybar/conf/audio.json
+  - ~/.config/waybar/conf/workspaces.json
+  - ~/.config/waybar/conf/temperature.json
 dotfiles_update_vim_plugins: false
 dotfiles_vim_plugins:
   - repo: https://github.com/VundleVim/Vundle.vim.git

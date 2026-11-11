@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import re
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 PACKAGE_NAME = re.compile(r"^[a-zA-Z0-9@._+-]+$")
@@ -383,6 +384,90 @@ def changed_packages(before: Any, after: Any) -> list[str]:
     )
 
 
+LUA_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+LUA_KEYWORDS = {
+    "and",
+    "break",
+    "do",
+    "else",
+    "elseif",
+    "end",
+    "false",
+    "for",
+    "function",
+    "goto",
+    "if",
+    "in",
+    "local",
+    "nil",
+    "not",
+    "or",
+    "repeat",
+    "return",
+    "then",
+    "true",
+    "until",
+    "while",
+}
+
+
+def _lua_string(value: str) -> str:
+    escaped = []
+    for character in value:
+        if character in '"\\':
+            escaped.append("\\" + character)
+        elif character == "\n":
+            escaped.append("\\n")
+        elif ord(character) < 32 or ord(character) == 127:
+            # Decimal escapes are valid in every Lua version.
+            escaped.append(f"\\{ord(character):03d}")
+        else:
+            escaped.append(character)
+    return '"' + "".join(escaped) + '"'
+
+
+def to_lua(value: Any, indent: int = 2, level: int = 0) -> str:
+    """Render YAML data as a Lua literal for a generated configuration module.
+
+    Mappings become tables with named fields, sequences become arrays and
+    strings are escaped, so values from inventories and the Vault cannot break
+    out of the literal. Keys keep their order; other types are rejected.
+    """
+    if value is None:
+        return "nil"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            raise ValueError("to_lua cannot render NaN or infinity")
+        return repr(value)
+    if isinstance(value, str):
+        return _lua_string(value)
+    padding = " " * (indent * (level + 1))
+    closing = " " * (indent * level)
+    if isinstance(value, Mapping):
+        if not value:
+            return "{}"
+        fields = []
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError(f"to_lua needs string keys, got {key!r}")
+            if LUA_IDENTIFIER.fullmatch(key) and key not in LUA_KEYWORDS:
+                name = key
+            else:
+                name = f"[{_lua_string(key)}]"
+            fields.append(f"{padding}{name} = {to_lua(item, indent, level + 1)},")
+        return "{\n" + "\n".join(fields) + f"\n{closing}}}"
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray)):
+        if not value:
+            return "{}"
+        items = [f"{padding}{to_lua(item, indent, level + 1)}," for item in value]
+        return "{\n" + "\n".join(items) + f"\n{closing}}}"
+    raise TypeError(f"to_lua cannot render {type(value).__name__}")
+
+
 class FilterModule:
     def filters(self) -> dict[str, Any]:
         return {
@@ -400,4 +485,5 @@ class FilterModule:
             "safe_removal_preview": safe_removal_preview,
             "unneeded_graphics_packages": unneeded_graphics_packages,
             "changed_packages": changed_packages,
+            "dotfiles_to_lua": to_lua,
         }

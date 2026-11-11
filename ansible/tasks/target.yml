@@ -1,0 +1,21 @@
+---
+# The plays escalate with become, which would gather the facts as root. They
+# are gathered as the SSH user instead, so user_id, user_dir and env describe
+# the account whose home the roles configure.
+- name: Gather the facts of the SSH user
+  ansible.builtin.setup:
+    gather_subset: '{{ workstation_fact_subset | default(["all"]) }}'
+  become: false
+  tags: [always]
+
+# host_vars/<name>.yml holds the monitors, sensors and packages of one machine.
+- name: Refuse a machine that is not the inventory host
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['hostname'] == inventory_hostname
+    fail_msg: >-
+      {{ inventory_hostname }} reached a machine named
+      {{ ansible_facts['hostname'] }}, which its host_vars do not describe.
+      Fix the SSH address of {{ inventory_hostname }}.
+    quiet: true
+  tags: [always]

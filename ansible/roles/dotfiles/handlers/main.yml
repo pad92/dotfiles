@@ -28,6 +28,16 @@
   changed_when: true
   become: false
 
+# Applies a changed hosts/settings.lua to the running session. Nothing runs
+# when Hyprland is not running.
+- name: Reload Hyprland
+  ansible.builtin.shell:
+    cmd: pgrep -x Hyprland >/dev/null && hyprctl reload
+    executable: /bin/sh
+  changed_when: true
+  failed_when: false
+  become: false
+
 - name: Restart Hyprlauncher
   ansible.builtin.shell:
     cmd: |

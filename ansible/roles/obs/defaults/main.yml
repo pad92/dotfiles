@@ -1,5 +1,5 @@
 ---
-obs_home: "{{ lookup('env', 'HOME') }}"
+obs_home: "{{ ansible_facts['user_dir'] }}"
 obs_config_dir: '{{ obs_home }}/.config/obs-studio'
 # Profiles created by the role; existing ones are untouched. record keeps the
 # native canvas size at constant quality; stream scales to obs_output_height at

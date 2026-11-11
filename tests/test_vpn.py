@@ -359,10 +359,10 @@ class VpnWaybarTests(unittest.TestCase):
     def test_waybar_refresh_signal_matches_the_module_settings(self):
         settings = json.loads((WAYBAR / "conf/system.json").read_text())["custom/vpn"]
         self.assertEqual(settings["signal"], self.api["WAYBAR_SIGNAL"])
-        for host in ("config.PadsP5560", "config.PadsTower"):
-            self.assertIn(
-                "custom/vpn", json.loads((WAYBAR / host).read_text())["modules-right"]
-            )
+        defaults = yaml.safe_load(
+            (ROOT / "ansible/roles/dotfiles/defaults/main.yml").read_text()
+        )
+        self.assertIn("custom/vpn", defaults["dotfiles_waybar_modules_right"])
 
 
 if __name__ == "__main__":

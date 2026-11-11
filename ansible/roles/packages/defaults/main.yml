@@ -1,10 +1,10 @@
 ---
-# Groups of this host, set in ansible/group_vars/host_<hostname>.yml. The
+# Groups of this host, set in ansible/host_vars/<hostname>.yml. The
 # list replaces the OS and GPU defaults; null keeps the defaults.
 packages_host_groups: null
-packages_state_directory:
-  "{{ lookup('env', 'XDG_STATE_HOME') | default(lookup('env',
-  'HOME') + '/.local/state', true) }}/dotfiles"
+packages_state_directory: >-
+  {{ ansible_facts['env'].get('XDG_STATE_HOME') or
+     ansible_facts['user_dir'] ~ '/.local/state' }}/dotfiles
 packages_action: install
 # Partial profiles (ansible/obs.yml) add their groups to the saved selection
 # instead of replacing it with their narrower list.

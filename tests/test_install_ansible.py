@@ -118,6 +118,7 @@ class InstallerTargetTests(unittest.TestCase):
                     # Ignore a developer's local .vault so the result is stable.
                     f"DOTFILES_VAULT_PASSWORD_FILE={bin_dir / 'missing-vault'}",
                     "ANSIBLE_ARGS=--check -e packages_action=plan",
+                    "HOST=PadsP5560",
                 ],
                 cwd=ROOT,
                 env=env,
@@ -129,7 +130,31 @@ class InstallerTargetTests(unittest.TestCase):
             lines = capture.read_text().splitlines()
             self.assertEqual(lines[0], str(ROOT / "ansible.cfg"))
             self.assertEqual(lines[1], str(ROOT / "ansible/site.yml"))
-            self.assertEqual(lines[2:], ["--check", "-e", "packages_action=plan"])
+            # The playbook targets one inventory host over SSH.
+            self.assertEqual(
+                lines[2:],
+                ["--limit", "PadsP5560", "--check", "-e", "packages_action=plan"],
+            )
+
+    # tasks/target.yml compares the short hostname fact with the host name.
+    def test_default_host_is_the_short_hostname(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bin_dir = Path(temporary)
+            uname = bin_dir / "uname"
+            uname.write_text("#!/bin/sh\necho PadsTower.example.lan\n")
+            uname.chmod(0o755)
+            env = os.environ.copy()
+            env["PATH"] = f"{bin_dir}:{env['PATH']}"
+            result = subprocess.run(
+                ["make", "--no-print-directory", "-n", "install"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('--limit "PadsTower"', result.stdout)
 
 
 class RepositorySplitTests(unittest.TestCase):

@@ -1,6 +1,6 @@
 ---
 # Package groups shared by the workstations. A host composes its own list
-# from it in group_vars/host_<hostname>.yml; it is not applied on its own.
+# from it in host_vars/<hostname>.yml; it is not applied on its own.
 packages_workstation_groups:
   - 01_base
   - 02_fonts

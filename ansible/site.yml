@@ -1,13 +1,11 @@
 ---
-- name: Configure this Linux workstation
-  hosts: localhost
+- name: Configure the Linux workstations
+  hosts: all
   become: true
-  gather_facts: true
-  vars:
-    dotfiles_repository: '{{ playbook_dir | dirname }}'
+  gather_facts: false
   pre_tasks:
-    - name: Load the settings of this host
-      ansible.builtin.import_tasks: tasks/host_profile.yml
+    - name: Gather the facts of the target
+      ansible.builtin.import_tasks: tasks/target.yml
       tags: [always]
 
     - name: Require a supported Linux distribution family

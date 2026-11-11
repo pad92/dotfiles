@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: dotfiles
+  author: pad
+  description: >-
+    Deploys the user configuration of a Hyprland workstation (Hyprland,
+    Waybar, hypridle, Mako, shells, editors) into the home directory.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [dotfiles, hyprland, waybar, desktop]
+# The play gathers facts and runs the system roles first; this role needs no
+# other role of its own.
+dependencies: []

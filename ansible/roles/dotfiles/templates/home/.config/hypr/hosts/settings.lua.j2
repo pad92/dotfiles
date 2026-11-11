@@ -1,0 +1,9 @@
+-- {{ ansible_managed }}
+-- Host settings for Hyprland, loaded by include/host.lua. Edit the
+-- dotfiles_hypr_* variables of the dotfiles role, not this file.
+return {
+  monitors = {{ dotfiles_hypr_active_monitors | dotfiles_to_lua(level=1) }},
+  workspace_rules = {{ dotfiles_hypr_active_workspace_rules | dotfiles_to_lua(level=1) }},
+  window_rules = {{ dotfiles_hypr_active_window_rules | dotfiles_to_lua(level=1) }},
+  config = {{ dotfiles_hypr_config | dotfiles_to_lua(level=1) }},
+}

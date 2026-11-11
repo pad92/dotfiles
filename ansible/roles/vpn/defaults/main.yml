@@ -18,5 +18,5 @@ vpn_waybar_config: /etc/openfortivpn/waybar.json
 # Users of an active local session who may start and stop the VPN unit
 # without a password. No other unit or verb is granted.
 vpn_users:
-  - "{{ lookup('env', 'USER') }}"
+  - "{{ ansible_facts['user_id'] }}"
 vpn_unit_directory: /usr/lib/systemd/system

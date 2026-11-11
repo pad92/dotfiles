@@ -1,5 +1,6 @@
 """Exercise individual file deployment, backups and reloads in a temporary home."""
 
+import getpass
 import os
 import shutil
 import subprocess
@@ -11,6 +12,8 @@ import yaml
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
+# The role owns its files by the SSH user that tasks/target.yml describes.
+USER_FACTS = {"user_id": getpass.getuser(), "user_gid": os.getgid()}
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
@@ -44,6 +47,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
+                        "ansible_facts": USER_FACTS,
                         "dotfiles_home": str(home),
                         "dotfiles_directories": [],
                         "dotfiles_files": [],
@@ -65,7 +69,6 @@ class DotfilesDeployTests(unittest.TestCase):
                             {"src": "home/unrelated.j2", "dest": ".unrelated"},
                         ],
                         "dotfiles_systemd_graphical_units": [],
-                        "dotfiles_waybar_host_config": "config.test",
                     },
                     "tasks": [
                         {
@@ -174,10 +177,10 @@ class DotfilesDeployTests(unittest.TestCase):
             )
             source = role / "files/home"
             # Each deployed file costs one Ansible module run per play, so keep
-            # only the Waybar files this test relies on: the host-specific
-            # configuration and one executable in a subdirectory.
+            # only the Waybar file this test relies on: one executable in a
+            # subdirectory.
             waybar = source / ".config/waybar"
-            kept = {"config.PadsTower", "modules/lact-profile"}
+            kept = {"modules/lact-profile"}
             for path in sorted(waybar.rglob("*"), reverse=True):
                 relative = path.relative_to(waybar).as_posix()
                 if path.is_dir():
@@ -202,6 +205,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
+                        "ansible_facts": USER_FACTS,
                         "dotfiles_home": str(home),
                         "dotfiles_repository": str(ROOT),
                         "dotfiles_directories": [
@@ -218,7 +222,6 @@ class DotfilesDeployTests(unittest.TestCase):
                         "dotfiles_templates": [],
                         "dotfiles_systemd_graphical_units": [],
                         "dotfiles_systemd_directory": ".config/test-systemd",
-                        "dotfiles_waybar_host_config": "config.PadsTower",
                     },
                     "tasks": [
                         {
@@ -274,10 +277,6 @@ class DotfilesDeployTests(unittest.TestCase):
                 (home / ".config/sample-app/alias").read_text(), "original\n"
             )
             self.assertTrue((home / ".config/empty-root").is_dir())
-            self.assertEqual(
-                (home / ".config/waybar/config").read_text(),
-                (waybar / "config.PadsTower").read_text(),
-            )
             self.assertTrue(
                 os.access(home / ".config/waybar/modules/lact-profile", os.X_OK)
             )

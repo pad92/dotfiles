@@ -79,11 +79,20 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_lspci.rc | default(1) == 0
 
-- name: Find PCI class files when lspci is unavailable
-  ansible.builtin.set_fact:
-    packages_pci_class_files: >-
-      {{ query('ansible.builtin.fileglob',
-         '/sys/bus/pci/devices/*/class') }}
+# Lookups would read the controller's sysfs: the target's is read over SSH.
+- name: Read PCI controller identifiers from sysfs when lspci is unavailable
+  ansible.builtin.command:
+    argv:
+      - sh
+      - -c
+      - >-
+        for device in /sys/bus/pci/devices/*; do
+        [ -r "$device/class" ] || continue;
+        printf '%s %s %s\n' "$(cat "$device/class")"
+        "$(cat "$device/vendor")" "$(cat "$device/device")"; done
+  register: packages_pci_sysfs_listing
+  changed_when: false
+  check_mode: false
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_lspci.rc | default(1) != 0
@@ -92,12 +101,10 @@
   ansible.builtin.set_fact:
     packages_pci_sysfs_devices: >-
       {{ packages_pci_sysfs_devices | default([]) + [{
-         'class': lookup('ansible.builtin.file', item),
-         'vendor': lookup('ansible.builtin.file',
-             item | regex_replace('/class$', '/vendor')),
-         'device': lookup('ansible.builtin.file',
-             item | regex_replace('/class$', '/device')) }] }}
-  loop: '{{ packages_pci_class_files | default([]) }}'
+         'class': item.split()[0],
+         'vendor': item.split()[1],
+         'device': item.split()[2] }] }}
+  loop: '{{ packages_pci_sysfs_listing.stdout_lines | default([]) }}'
   when: ansible_facts['os_family'] == 'Archlinux'
 
 - name: Record graphics detection from sysfs
@@ -105,7 +112,7 @@
     packages_graphics_controllers_found: '{{ packages_pci_sysfs_devices |
       default([]) | graphics_controllers_found }}'
     packages_graphics_detection_available: >-
-      {{ packages_pci_class_files | default([]) | length > 0 }}
+      {{ packages_pci_sysfs_devices | default([]) | length > 0 }}
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_lspci.rc | default(1) != 0
@@ -150,7 +157,7 @@
        and packages_host_groups is not mapping)
     fail_msg: >-
       packages_host_groups takes a list of package groups. Set it for this
-      machine in ansible/group_vars/host_<hostname>.yml.
+      machine in ansible/host_vars/<hostname>.yml.
 
 - name: Apply package group selection
   ansible.builtin.set_fact:
