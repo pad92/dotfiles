@@ -237,3 +237,61 @@ if 'show' in args:
             self.run_play(plays)
         self.assertEqual(mask.read_text(), "Existing local configuration\n")
         self.assertEqual(log.read_text(), "")
+
+    def test_obsolete_tracker_unit_links_are_not_shipped_and_are_removed(self):
+        user_units = ROLES / "dotfiles/files/home/.config/systemd/user"
+        shipped = [
+            path.relative_to(user_units)
+            for path in user_units.rglob("*")
+            if path.is_symlink() and "tracker-miner" in str(path.readlink())
+        ]
+        self.assertEqual(shipped, [])
+        defaults = yaml.safe_load((ROLES / "dotfiles/defaults/main.yml").read_text())
+        obsolete = defaults["dotfiles_obsolete_user_unit_links"]
+        self.assertIn("gnome-session.target.wants/tracker-miner-fs-3.service", obsolete)
+        self.assertIn(
+            "gnome-session.target.wants/tracker-miner-rss-3.service", obsolete
+        )
+        source = self.directory / "source/.config/systemd/user"
+        source.mkdir(parents=True)
+        target = self.directory / "target/.config/systemd/user"
+        (target / "gnome-session.target.wants").mkdir(parents=True)
+        fs, rss = (target / name for name in obsolete)
+        fs.symlink_to("/usr/lib/systemd/user/tracker-miner-fs-3.service")
+        # A real file at an obsolete path is local configuration and must stay.
+        rss.write_text("[Unit]\nDescription=Local\n")
+        binary = self.directory / "bin"
+        binary.mkdir()
+        log = self.directory / "systemctl.log"
+        systemctl = binary / "systemctl"
+        systemctl.write_text(f'#!/bin/sh\necho "$*" >> "{log}"\n')
+        systemctl.chmod(0o755)
+        plays = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "environment": {"PATH": f"{binary}:{os.environ['PATH']}"},
+                "vars": {
+                    "dotfiles_source_root": str(self.directory / "source"),
+                    "dotfiles_home": str(self.directory / "target"),
+                    "dotfiles_systemd_graphical_units": [],
+                },
+                "tasks": [
+                    {
+                        "ansible.builtin.include_role": {
+                            "name": str(ROLES / "dotfiles"),
+                            "tasks_from": "user_systemd",
+                        }
+                    }
+                ],
+            }
+        ]
+        self.run_play(plays)
+        self.assertFalse(fs.is_symlink())
+        self.assertEqual(rss.read_text(), "[Unit]\nDescription=Local\n")
+        self.assertIn("--user daemon-reload", log.read_text())
+        log.write_text("")
+        result = self.run_play(plays)
+        self.assertRegex(result.stdout, r"changed=0\b")
+        self.assertEqual(log.read_text(), "")

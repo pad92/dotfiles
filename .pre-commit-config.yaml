@@ -62,8 +62,6 @@ repos:
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
       - id: check-symlinks
-        # These systemd links are valid when the optional Tracker package is installed.
-        exclude: '^ansible/roles/dotfiles/files/home/\.config/systemd/user/gnome-session\.target\.wants/tracker-miner-(fs|rss)-3\.service$'
       - id: destroyed-symlinks
 
       # Security leak detection
