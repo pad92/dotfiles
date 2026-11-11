@@ -50,6 +50,12 @@ dotfiles_file_handlers:
 dotfiles_systemd_directory: .config/systemd
 # Set it to false in group_vars/host_<hostname>.yml to stop hypridle.
 dotfiles_hypridle_enabled: true
+# User unit links removed from the repository; deployment deletes them when
+# they are still symlinks (paths are relative to the user systemd directory).
+dotfiles_obsolete_user_unit_links:
+  # Tracker 3 became localsearch, whose units are static and D-Bus activated.
+  - gnome-session.target.wants/tracker-miner-fs-3.service
+  - gnome-session.target.wants/tracker-miner-rss-3.service
 dotfiles_systemd_graphical_units:
   - awww.service
   - awww_random.timer

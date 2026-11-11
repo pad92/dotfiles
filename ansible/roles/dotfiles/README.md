@@ -44,6 +44,10 @@ queued without waiting for completion. A successful play therefore confirms
 submission, not service health; inspect `systemctl --user --failed` and
 `journalctl --user -b` if a service does not start.
 
+`dotfiles_obsolete_user_unit_links` lists unit links the repository no longer
+ships, relative to `~/.config/systemd/user`. Deployment deletes each one that is
+still a symlink and leaves a regular file at that path alone.
+
 Hypridle is enabled by default. To stop it on one machine, set this in its
 `ansible/group_vars/host_<hostname>.yml`:
 

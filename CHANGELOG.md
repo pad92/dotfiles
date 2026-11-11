@@ -176,6 +176,12 @@ Release history and changes planned for the next version.
     Ansible's lazy containers. The copy also copied the templar, and rebuilding
     its plugin loaders printed `PluginLoader with aliases` deprecation warnings
     (seen with ansible-core 2.22).
+  - Stop shipping the `gnome-session.target.wants/tracker-miner-fs-3.service`
+    and `tracker-miner-rss-3.service` links. Tracker 3 is now `localsearch`,
+    whose units are static and started over D-Bus, so both links were broken
+    in `~/.config/systemd/user`. Deployment removes them from existing homes
+    (`dotfiles_obsolete_user_unit_links`) when they are still symlinks, and
+    the `check-symlinks` pre-commit hook no longer excludes them.
 - **DNS**:
   - Stop the relay `dnsmasq.service` before removing the relay files. Those
     files are how the role recognises the relay, so a run interrupted between

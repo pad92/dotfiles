@@ -98,6 +98,29 @@
     label: '{{ item.item.path }}'
   notify: Reload the user systemd manager
 
+- name: Inspect obsolete user unit links
+  ansible.builtin.stat:
+    path: '{{ dotfiles_home }}/{{ dotfiles_systemd_directory }}/user/{{ item }}'
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ dotfiles_obsolete_user_unit_links }}'
+  register: dotfiles_obsolete_user_unit_link_states
+
+- name: Remove obsolete user unit links
+  ansible.builtin.file:
+    path: '{{ item.stat.path }}'
+    state: absent
+  # Only symlinks are removed; a real file there is local configuration.
+  loop: >-
+    {{ dotfiles_obsolete_user_unit_link_states.results
+       | selectattr('stat.islnk', 'defined') | selectattr('stat.islnk')
+       | list }}
+  loop_control:
+    label: '{{ item.item }}'
+  notify: Reload the user systemd manager
+
 - name: Reload user units and inspect hypridle before disabling it
   ansible.builtin.systemd_service:
     name: hypridle.service
