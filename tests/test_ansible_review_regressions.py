@@ -1,5 +1,6 @@
 """Regression tests for defects found while reviewing the Ansible project."""
 
+import json
 import os
 import shutil
 import subprocess
@@ -444,6 +445,11 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         (elsewhere / "gitconfig").write_text("local\n")
         (home / ".gitconfig").symlink_to(elsewhere / "gitconfig")
         (home / ".vim").symlink_to(elsewhere)
+        # The former per-host Waybar selection link is removed, not backed up.
+        waybar = home / ".config/waybar"
+        waybar.mkdir(parents=True)
+        (waybar / "config.PadsTower").write_text("{}\n")
+        (waybar / "config").symlink_to(waybar / "config.PadsTower")
         play = [
             {
                 "hosts": "localhost",
@@ -455,10 +461,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "dotfiles_directories": [],
                     "dotfiles_files": [".gitconfig"],
                     "dotfiles_links": [{"src": ".vim", "dest": ".vim"}],
-                    "dotfiles_templates": [],
+                    "dotfiles_templates": [
+                        {
+                            "src": "home/.config/waybar/config.j2",
+                            "dest": ".config/waybar/config",
+                        }
+                    ],
                     "dotfiles_systemd_graphical_units": [],
                     "dotfiles_systemd_directory": ".config/test-systemd",
-                    "dotfiles_waybar_host_config": "config.fixture",
                 },
                 "tasks": [
                     {
@@ -484,6 +494,12 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertEqual(os.readlink(home / ".vim.bak"), str(elsewhere))
         self.assertEqual(os.readlink(home / ".vim"), str(role / "files/home/.vim"))
         self.assertEqual((elsewhere / "gitconfig").read_text(), "local\n")
+        self.assertFalse((waybar / "config").is_symlink())
+        self.assertIn(
+            "custom/vpn", json.loads((waybar / "config").read_text())["modules-right"]
+        )
+        self.assertFalse((waybar / "config.bak").exists())
+        self.assertEqual((waybar / "config.PadsTower").read_text(), "{}\n")
 
     # Skipping these reads in check mode silently dropped vm.mmap_rnd_bits.
     def test_sysctl_reads_run_in_check_mode(self):

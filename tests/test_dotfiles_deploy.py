@@ -65,7 +65,6 @@ class DotfilesDeployTests(unittest.TestCase):
                             {"src": "home/unrelated.j2", "dest": ".unrelated"},
                         ],
                         "dotfiles_systemd_graphical_units": [],
-                        "dotfiles_waybar_host_config": "config.test",
                     },
                     "tasks": [
                         {
@@ -174,10 +173,10 @@ class DotfilesDeployTests(unittest.TestCase):
             )
             source = role / "files/home"
             # Each deployed file costs one Ansible module run per play, so keep
-            # only the Waybar files this test relies on: the host-specific
-            # configuration and one executable in a subdirectory.
+            # only the Waybar file this test relies on: one executable in a
+            # subdirectory.
             waybar = source / ".config/waybar"
-            kept = {"config.PadsTower", "modules/lact-profile"}
+            kept = {"modules/lact-profile"}
             for path in sorted(waybar.rglob("*"), reverse=True):
                 relative = path.relative_to(waybar).as_posix()
                 if path.is_dir():
@@ -218,7 +217,6 @@ class DotfilesDeployTests(unittest.TestCase):
                         "dotfiles_templates": [],
                         "dotfiles_systemd_graphical_units": [],
                         "dotfiles_systemd_directory": ".config/test-systemd",
-                        "dotfiles_waybar_host_config": "config.PadsTower",
                     },
                     "tasks": [
                         {
@@ -274,10 +272,6 @@ class DotfilesDeployTests(unittest.TestCase):
                 (home / ".config/sample-app/alias").read_text(), "original\n"
             )
             self.assertTrue((home / ".config/empty-root").is_dir())
-            self.assertEqual(
-                (home / ".config/waybar/config").read_text(),
-                (waybar / "config.PadsTower").read_text(),
-            )
             self.assertTrue(
                 os.access(home / ".config/waybar/modules/lact-profile", os.X_OK)
             )

@@ -1,0 +1,91 @@
+---
+# Fail before any change when a setting is missing or malformed. Values from
+# group_vars and the Vault end up in Lua, JSON and shell configuration.
+- name: Validate the dotfiles settings
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - dotfiles_home is string
+      - dotfiles_home is match('^/.+')
+      - dotfiles_home | normpath != '/'
+      - dotfiles_owner is match('^[A-Za-z0-9_][A-Za-z0-9_.-]*$')
+      - dotfiles_group is match('^[A-Za-z0-9_][A-Za-z0-9_.-]*$')
+      - dotfiles_template_mode is match('^0[0-7]{3}$')
+      - dotfiles_is_portable | string | lower in ['true', 'false']
+      - dotfiles_icon_theme is match('^[A-Za-z0-9._+-]+$')
+      - dotfiles_hypridle_lock_timeout | string is match('^[0-9]+$')
+      - dotfiles_hypridle_dpms_timeout | string is match('^[0-9]+$')
+      - dotfiles_hypridle_suspend_timeout | string is match('^[0-9]+$')
+      - dotfiles_hypr_monitors is sequence and dotfiles_hypr_monitors is not string
+      - >-
+        dotfiles_hypr_monitors | reject('mapping') | list | length == 0
+      - >-
+        dotfiles_hypr_monitors | rejectattr('output', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_hypr_active_monitors | rejectattr('mode', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_hypr_active_monitors | rejectattr('position', 'defined')
+        | list | length == 0
+      # YAML reads an unquoted 0x1440 position as a hexadecimal number.
+      - >-
+        dotfiles_hypr_active_monitors | map(attribute='mode')
+        | reject('string') | list | length == 0
+      - >-
+        dotfiles_hypr_active_monitors | map(attribute='position')
+        | reject('string') | list | length == 0
+      - >-
+        dotfiles_hypr_active_monitors | rejectattr('scale', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_hypr_workspace_rules | rejectattr('workspace', 'defined')
+        | list | length == 0
+      - >-
+        (dotfiles_hypr_workspace_rules + dotfiles_hypr_window_rules)
+        | rejectattr('monitor', 'defined') | list | length == 0
+      - >-
+        dotfiles_hypr_window_rules | rejectattr('match', 'mapping')
+        | list | length == 0
+      - dotfiles_hypr_touch_output is string
+      - dotfiles_hypr_effects_enabled | string | lower in ['true', 'false']
+      - dotfiles_waybar_temperature_sensors | reject('mapping') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | rejectattr('name', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | rejectattr('label', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | rejectattr('hwmon_path', 'defined')
+        | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors
+        | rejectattr('input_filename', 'defined') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='name')
+        | map('string') | reject('match', '^[a-z0-9_-]+$') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='name') | unique
+        | list | length == dotfiles_waybar_temperature_sensors | length
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='label')
+        | reject('string') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='hwmon_path')
+        | map('string') | reject('match', '^/sys/[A-Za-z0-9_.:/-]+$') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='hwmon_path')
+        | map('string') | select('search', '[.][.]') | list | length == 0
+      - >-
+        dotfiles_waybar_temperature_sensors | map(attribute='input_filename')
+        | map('string') | reject('match', '^temp[0-9]+_input$') | list | length == 0
+    fail_msg: >-
+      Invalid dotfiles settings. Check dotfiles_home (an absolute path other
+      than /), dotfiles_template_mode (an octal string such as '0644'), the
+      hypridle timeouts (whole seconds), dotfiles_hypr_monitors (output, and
+      quoted mode and position strings plus scale for each monitor), the workspace and window rules
+      (each with a monitor; window rules with a match mapping), and every entry
+      of dotfiles_waybar_temperature_sensors (unique name, label, hwmon_path
+      under /sys and input_filename tempN_input). See
+      ansible/roles/dotfiles/README.md.

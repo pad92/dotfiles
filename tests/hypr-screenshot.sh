@@ -64,7 +64,8 @@ fi
 home="$WORK_DIR/home"
 (build_demo_home "$home") || fail "the demo home could not be built"
 for rendered in .zshrc .config/hypr/hyprlock.conf .gtkrc-2.0 .config/gtk-3.0/settings.ini \
-    .config/hypr/hyprtoolkit.conf .config/mako/config; do
+    .config/hypr/hyprtoolkit.conf .config/mako/config .config/waybar/config \
+    .config/hypr/hosts/settings.lua; do
     [[ -f $home/$rendered && ! -L $home/$rendered ]] \
         || fail "$rendered was not rendered into the demo home"
     grep -qE '\{\{|\{%' "$home/$rendered" && fail "$rendered kept a template expression"
@@ -78,7 +79,11 @@ while IFS= read -r link; do
     [[ -e $ROOT_DIR/${target#/home/demo/.dotfiles/} ]] \
         || fail "$link points to a missing repository file: $target"
 done < <(find "$home" -type l)
-[[ -L $home/.config/waybar/config ]] || fail "the demo home has no Waybar config"
+jq -e '(.["modules-right"] | index("clock") == null and index("tray") != null
+        and all(startswith("temperature#") | not))
+    and (.include | all(endswith("/temperature.json") | not))' \
+    "$home/.config/waybar/config" >/dev/null \
+    || fail "the demo Waybar config is not the generic one of the role defaults"
 [[ -L $home/.config/gtk-3.0/gtk.css ]] || fail "the demo home lost the GTK 3 stylesheet"
 # The demo follows the theme of the role defaults, whatever it is.
 theme=$(sed -n 's/^dotfiles_icon_theme: *//p' "$ROOT_DIR/ansible/roles/dotfiles/defaults/main.yml")

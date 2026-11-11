@@ -145,6 +145,33 @@ Release history and changes planned for the next version.
   - A changed Mako config reloads Mako, and a changed `hyprtoolkit.conf`
     restarts Hyprlauncher. Other rendered files no longer trigger these
     handlers.
+  - Render the host-dependent files from variables instead of shipping a copy
+    per hostname: the Waybar `config` and `conf/temperature.json`,
+    `hypridle.conf` and the Hyprland `hosts/settings.lua`. The templates hold
+    no host logic. PadsTower and PadsP5560 set their values in
+    `group_vars/host_<hostname>.yml`; the monitors and workspaces they share
+    are in the new `group_vars/all/main.yml`.
+  - A machine is portable when the `form_factor` fact says so, or when
+    `dotfiles_is_portable` is set. Waybar then shows the backlight and
+    battery, and Hyprland turns off blur and shadows.
+  - Hyprland no longer loads `hosts/<hostname>.lua`: `include/host.lua`
+    applies `hosts/settings.lua`, and a change to that file reloads Hyprland.
+    `hosts/common.lua` and `is-host.sh` are removed.
+  - The PadsTower suspend after one hour is now
+    `dotfiles_hypridle_suspend_timeout: 3600`. Other hosts default to 0, which
+    never suspends.
+  - The role validates its settings before changing anything and has a
+    `meta/main.yml`. Rendered files get an explicit owner, group and mode
+    (`dotfiles_template_mode`, default `0644`).
+  - Upgrade: the monitor outputs, whose descriptions contain serial numbers,
+    move to the Vault as `vault_dotfiles_monitor_outputs`
+    (`group_vars/all/vault.yml`, see `vault.yml-example`). Without it the Dell
+    and ASUS monitors and their workspace and window rules fall back to the
+    generic monitor rule. The `~/.config/waybar/config` link to
+    `config.<hostname>` is replaced by a rendered file, and
+    `dotfiles_waybar_host_config` is gone.
+  - `hypr-screenshot.sh` renders a generic Waybar config and empty Hyprland
+    host settings for its demo home. Its `WAYBAR_CONFIG` variable is gone.
 - **CI**:
   - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh` for GitLab CI,
     `make test-python` and `make coverage`. It runs each slow test in its own

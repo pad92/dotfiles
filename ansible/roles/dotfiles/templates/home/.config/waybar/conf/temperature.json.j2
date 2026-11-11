@@ -1,0 +1,12 @@
+{
+{% for sensor in dotfiles_waybar_temperature_sensors %}
+  "temperature#{{ sensor.name }}": {
+    "hwmon-path-abs": {{ sensor.hwmon_path | to_json }},
+    "input-filename": {{ sensor.input_filename | to_json }},
+    "critical-threshold": {{ sensor.critical_threshold | default(dotfiles_waybar_temperature_critical) | int }},
+    "format-critical": "{temperatureC}°C ",
+    "format": "{temperatureC}°C ",
+    "tooltip-format": {{ (sensor.label ~ ': {temperatureC}°C') | to_json(ensure_ascii=false) }}
+  }{{ '' if loop.last else ',' }}
+{% endfor %}
+}

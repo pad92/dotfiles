@@ -127,10 +127,7 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     files = set(
         defaults["dotfiles_files"]
         + [template["dest"] for template in defaults["dotfiles_templates"]]
-        + [
-            ".config/waybar/config",
-            ".config/hypr/hyprlock/carousel-image.sh",
-        ]
+        + [".config/hypr/hyprlock/carousel-image.sh"]
     )
 
     source_root = REPOSITORY_ROOT / "ansible/roles/dotfiles/files/home"

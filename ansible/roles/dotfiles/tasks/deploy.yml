@@ -1,4 +1,29 @@
 ---
+# Before the rendered Waybar configuration, ~/.config/waybar/config was a
+# link to a per-host config.<hostname> file. Such a link is only a selection,
+# so it is removed rather than backed up; its target is left alone.
+- name: Inspect the Waybar configuration path
+  ansible.builtin.stat:
+    path: '{{ dotfiles_home }}/.config/waybar/config'
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: dotfiles_waybar_config_stat
+
+- name: Remove the legacy Waybar host selection link
+  ansible.builtin.file:
+    path: '{{ dotfiles_home }}/.config/waybar/config'
+    state: absent
+  when: dotfiles_waybar_legacy_link
+  vars:
+    dotfiles_waybar_legacy_link: >-
+      {{ dotfiles_waybar_config_stat.stat.islnk | default(false) and
+         dotfiles_waybar_config_stat.stat.lnk_source | dirname ==
+         dotfiles_home ~ '/.config/waybar' and
+         dotfiles_waybar_config_stat.stat.lnk_source | basename
+         is match('config[.]') }}
+
 - name: Build managed path lists
   ansible.builtin.set_fact:
     dotfiles_link_destinations: >-
@@ -8,8 +33,8 @@
          dotfiles_systemd_directory + '/user']) | map('normpath') | list }}
     dotfiles_file_paths: >-
       {{ (dotfiles_files + (dotfiles_templates | map(attribute='dest') | list)
-         + ['.config/waybar/config',
-            '.config/hypr/hyprlock/carousel-image.sh']) | map('normpath') | list }}
+         + ['.config/hypr/hyprlock/carousel-image.sh'])
+         | map('normpath') | list }}
 
 - name: Combine managed paths
   ansible.builtin.set_fact:
@@ -57,7 +82,9 @@
          (dotfiles_links | selectattr('dest', 'equalto', item.item) |
           map(attribute='src') | first)) or
         (item.item not in dotfiles_link_destinations and
-         item.item != '.config/waybar/config')))
+         not (ansible_check_mode and item.item == '.config/waybar/config' and
+              dotfiles_waybar_config_stat.stat.lnk_source | default('')
+              | dirname == dotfiles_home ~ '/.config/waybar'))))
   register: dotfiles_backup_stats
 
 - name: Refuse to replace existing backup paths
@@ -144,7 +171,9 @@
       ansible.builtin.template:
         src: '{{ item.src }}'
         dest: '{{ dotfiles_home }}/{{ item.dest }}'
-        mode: preserve
+        owner: '{{ dotfiles_owner }}'
+        group: '{{ dotfiles_group }}'
+        mode: '{{ item.mode | default(dotfiles_template_mode) }}'
         backup: true
       loop: '{{ dotfiles_templates }}'
       loop_control:
@@ -172,23 +201,11 @@
       ansible.builtin.template:
         src: home/.config/hypr/hyprlock/carousel-image.sh.j2
         dest: '{{ dotfiles_home }}/.config/hypr/hyprlock/carousel-image.sh'
-        mode: preserve
+        owner: '{{ dotfiles_owner }}'
+        group: '{{ dotfiles_group }}'
+        mode: '0755'
         backup: true
       tags: [hyprlock_carousel]
-
-    - name: Check for a host-specific Waybar configuration
-      ansible.builtin.stat:
-        path: '{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}'
-      register: dotfiles_waybar_host_stat
-
-    - name: Select the host-specific Waybar configuration
-      ansible.builtin.file:
-        src: '{{ dotfiles_home }}/.config/waybar/{{ dotfiles_waybar_host_config }}'
-        dest: '{{ dotfiles_home }}/.config/waybar/config'
-        state: link
-        force: true
-      when: dotfiles_waybar_host_stat.stat.isreg | default(false)
-      notify: Reload Waybar
 
     - name: Deploy user systemd units
       ansible.builtin.import_tasks: user_systemd.yml

@@ -10,8 +10,9 @@ make install ANSIBLE_ARGS=--ask-become-pass
 The playbook supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora. It
 installs selected package groups, copies static dotfiles, renders host-aware
 templates, links the Vim, tmux, and Zsh source trees, initializes Git submodules
-at the revisions recorded by the repository, selects a Waybar configuration
-matching the hostname, reloads live configuration, and configures makepkg for
+at the revisions recorded by the repository, renders the Waybar, hypridle and
+Hyprland monitor settings from each host's variables, reloads live
+configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS without generating separate debug
 packages. Packages built with native CPU flags may not run on a different CPU.
 Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
@@ -128,6 +129,22 @@ packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
 hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
 ```
+
+`group_vars/all/main.yml` holds the desktop settings both workstations share:
+the external Dell and ASUS monitors and the workspaces they open. A host file
+then sets what differs, such as the ASUS refresh rate, the laptop panel or the
+Waybar temperature sensors. The `dotfiles` role README lists these variables.
+
+The monitor outputs come from the Vault, because their EDID descriptions end
+with the serial number. Copy `group_vars/all/vault.yml-example` and fill in the
+descriptions printed by `hyprctl monitors all`:
+
+```sh
+ansible-vault create --vault-password-file .vault ansible/group_vars/all/vault.yml
+```
+
+Git ignores this file. Without it, the playbook still runs and Hyprland
+handles these monitors with its generic `preferred, auto` rule.
 
 To add a machine, create `ansible/group_vars/host_<hostname>.yml` with the
 output of `hostname -s`. `packages_host_groups` is a list; the packages role
