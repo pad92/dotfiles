@@ -1,0 +1,23 @@
+---
+- name: Validate Docker group users
+  ansible.builtin.assert:
+    that:
+      - item | length > 0
+      - item != 'root'
+    fail_msg: docker_group_users must list regular user names.
+  loop: '{{ docker_group_users }}'
+
+- name: Read the docker group
+  ansible.builtin.getent:
+    database: group
+    key: docker
+    fail_key: false
+
+- name: Add users to the docker group
+  ansible.builtin.user:
+    name: '{{ item }}'
+    groups: docker
+    append: true
+  loop: '{{ docker_group_users }}'
+  when: ansible_facts.getent_group.docker is defined
+  notify: Report group membership requires login

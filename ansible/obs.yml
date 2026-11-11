@@ -37,6 +37,14 @@
           - ansible_facts['os_family'] == 'Archlinux'
         fail_msg: The OBS profile only defines packages for Arch Linux and CachyOS.
       tags: [always]
+
+    - name: Select the package groups of this host
+      ansible.builtin.include_role:
+        name: packages
+        tasks_from: selection
+        apply:
+          tags: [always]
+      tags: [always]
   roles:
     - role: packages
       tags: [packages]

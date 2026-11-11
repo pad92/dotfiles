@@ -1,0 +1,8 @@
+---
+- name: Configure Claude Code
+  ansible.builtin.import_tasks: claude.yml
+  tags: [dotfiles_claude]
+
+- name: Configure Codex
+  ansible.builtin.import_tasks: codex.yml
+  tags: [dotfiles_codex]

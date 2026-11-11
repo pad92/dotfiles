@@ -15,9 +15,9 @@ from ansible_host_profiles import configured_hostnames, resolve_host_settings
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
-TASKS = ROOT / "ansible/roles/system/tasks/vpn.yml"
-ROLE_MAIN = ROOT / "ansible/roles/system/tasks/main.yml"
-DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/system/defaults/main.yml").read_text())
+TASKS = ROOT / "ansible/roles/vpn/tasks/main.yml"
+SITE = ROOT / "ansible/site.yml"
+DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/vpn/defaults/main.yml").read_text())
 MODULE = ROOT / "ansible/roles/dotfiles/files/home/.config/waybar/modules/vpn"
 WAYBAR = ROOT / "ansible/roles/dotfiles/files/home/.config/waybar"
 HANDLER = "Reload the systemd manager"
@@ -46,7 +46,7 @@ class VpnTaskTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.work = Path(temporary.name)
         # The play runs from the work directory, so templates resolve there.
-        (self.work / "templates").symlink_to(ROOT / "ansible/roles/system/templates")
+        (self.work / "templates").symlink_to(ROOT / "ansible/roles/vpn/templates")
         self.units = self.work / "units"
         self.units.mkdir()
         (self.units / "openfortivpn@.service").write_text("[Service]\n")
@@ -54,14 +54,14 @@ class VpnTaskTests(unittest.TestCase):
         (self.work / "rules.d").mkdir()
         self.config_dir = self.work / "openfortivpn"
         self.paths = {
-            "system_unit_directory": str(self.units),
-            "system_vpn_config_dir": str(self.config_dir),
-            "system_vpn_unit_dropin_dir": str(
+            "vpn_unit_directory": str(self.units),
+            "vpn_config_dir": str(self.config_dir),
+            "vpn_unit_dropin_dir": str(
                 self.work / "units.d/openfortivpn@work.service.d"
             ),
-            "system_vpn_polkit_rule": str(self.work / "rules.d/60-dotfiles-vpn.rules"),
-            "system_vpn_waybar_config": str(self.config_dir / "waybar.json"),
-            "system_vpn_users": ["alice"],
+            "vpn_polkit_rule": str(self.work / "rules.d/60-dotfiles-vpn.rules"),
+            "vpn_waybar_config": str(self.config_dir / "waybar.json"),
+            "vpn_users": ["alice"],
         }
 
     def run_play(self, variables, succeed=True):
@@ -117,7 +117,7 @@ class VpnTaskTests(unittest.TestCase):
         output = self.run_play({})
         self.assertIn("VPN skipped", output)
         self.assertFalse(self.config_dir.exists())
-        self.assertFalse(Path(self.paths["system_vpn_polkit_rule"]).exists())
+        self.assertFalse(Path(self.paths["vpn_polkit_rule"]).exists())
 
     def test_vault_gateway_renders_a_saml_config_that_keeps_resolv_conf(self):
         output = self.run_play(self.configured())
@@ -139,14 +139,12 @@ class VpnTaskTests(unittest.TestCase):
             },
         )
         self.assertEqual(config.stat().st_mode & 0o777, 0o600)
-        dropin = (
-            Path(self.paths["system_vpn_unit_dropin_dir"]) / "60-dotfiles-saml.conf"
-        )
+        dropin = Path(self.paths["vpn_unit_dropin_dir"]) / "60-dotfiles-saml.conf"
         self.assertIn("TimeoutStartSec=5min\n", dropin.read_text())
         self.assertIn("Restart=no\n", dropin.read_text())
         self.assertIn(f"HANDLER {HANDLER}", output)
         self.assertEqual(
-            json.loads(Path(self.paths["system_vpn_waybar_config"]).read_text()),
+            json.loads(Path(self.paths["vpn_waybar_config"]).read_text()),
             {
                 "unit": "openfortivpn@work.service",
                 "login_url": f"https://{GATEWAY}:10443/remote/saml/start?redirect=1",
@@ -166,10 +164,10 @@ class VpnTaskTests(unittest.TestCase):
             {"vault_vpn_gateway_port": "443\ninsecure-ssl = 1"},
             {"vault_vpn_gateway_port": 0},
             {"vault_vpn_gateway_port": 65536},
-            {"system_vpn_saml_port": 80},
-            {"system_vpn_name": "../work"},
-            {"system_vpn_users": ['alice"; return polkit.Result.YES; //']},
-            {"system_vpn_users": "alice"},
+            {"vpn_saml_port": 80},
+            {"vpn_name": "../work"},
+            {"vpn_users": ['alice"; return polkit.Result.YES; //']},
+            {"vpn_users": "alice"},
         ]:
             # Each case starts clean, so one accepted value cannot fail the others.
             shutil.rmtree(self.config_dir, ignore_errors=True)
@@ -189,7 +187,7 @@ class VpnTaskTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "requires node")
     def test_polkit_rule_grants_only_start_and_stop_of_the_vpn_unit(self):
         self.run_play(self.configured())
-        rule = Path(self.paths["system_vpn_polkit_rule"]).read_text()
+        rule = Path(self.paths["vpn_polkit_rule"]).read_text()
         harness = """
 const rules = [];
 const polkit = {addRule: (f) => rules.push(f), Result: {YES: "yes", NOT_HANDLED: "not_handled"}};
@@ -229,11 +227,11 @@ console.log(JSON.stringify(cases.map(([a, s]) => {
 
     def test_role_runs_the_vpn_tasks_under_their_own_tag(self):
         entry = next(
-            task
-            for task in yaml.safe_load(ROLE_MAIN.read_text())
-            if task.get("ansible.builtin.import_tasks") == "vpn.yml"
+            role
+            for role in yaml.safe_load(SITE.read_text())[0]["roles"]
+            if role["role"] == "vpn"
         )
-        self.assertEqual(entry["tags"], ["vpn"])
+        self.assertEqual(entry["tags"], ["system", "vpn"])
         self.assertIn("'23_vpn' in", entry["when"][1])
 
     def test_only_padsp5560_selects_the_vpn_group(self):

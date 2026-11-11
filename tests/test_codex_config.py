@@ -60,18 +60,18 @@ class CodexConfigTests(unittest.TestCase):
                 "connection": "local",
                 "gather_facts": False,
                 "vars": {
-                    "dotfiles_home": str(self.home),
-                    "dotfiles_codex_binary": (
+                    "agent_cli_home": str(self.home),
+                    "agent_cli_codex_binary": (
                         FAKE_BINARY if installed else "codex-dotfiles-test-absent"
                     ),
-                    "dotfiles_codex_status_line": (
+                    "agent_cli_codex_status_line": (
                         STATUS_LINE if status_line is None else status_line
                     ),
                 },
                 "tasks": [
                     {
                         "ansible.builtin.import_role": {
-                            "name": str(ROOT / "ansible/roles/dotfiles"),
+                            "name": str(ROOT / "ansible/roles/agent_cli"),
                             "tasks_from": "codex",
                         }
                     }
@@ -210,10 +210,10 @@ class CodexConfigTests(unittest.TestCase):
         if codex is None:
             self.skipTest("requires codex")
         defaults = yaml.safe_load(
-            (ROOT / "ansible/roles/dotfiles/defaults/main.yml").read_text()
+            (ROOT / "ansible/roles/agent_cli/defaults/main.yml").read_text()
         )
         binary = Path(codex).read_bytes()
-        for item in defaults["dotfiles_codex_status_line"]:
+        for item in defaults["agent_cli_codex_status_line"]:
             with self.subTest(item=item):
                 self.assertIn(item.encode(), binary)
 

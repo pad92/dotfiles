@@ -42,16 +42,16 @@ class ClaudeSettingsTests(unittest.TestCase):
                 "connection": "local",
                 "gather_facts": False,
                 "vars": {
-                    "dotfiles_home": str(self.home),
+                    "agent_cli_home": str(self.home),
                     # A name absent from PATH stands for "not installed".
-                    "dotfiles_claude_binary": (
+                    "agent_cli_claude_binary": (
                         FAKE_BINARY if installed else "claude-dotfiles-test-absent"
                     ),
                 },
                 "tasks": [
                     {
                         "ansible.builtin.import_role": {
-                            "name": str(ROOT / "ansible/roles/dotfiles"),
+                            "name": str(ROOT / "ansible/roles/agent_cli"),
                             "tasks_from": "claude",
                         }
                     }

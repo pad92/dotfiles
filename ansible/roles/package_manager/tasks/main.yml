@@ -1,0 +1,11 @@
+---
+# pacman.conf must be ready (multilib) before the packages role installs.
+- name: Configure pacman
+  ansible.builtin.import_tasks: pacman.yml
+  tags:
+    [pacman, pacman_config, packages, packages_install, packages_reconcile, yay]
+
+# makepkg kept the system tag it had in the former system role.
+- name: Configure makepkg
+  ansible.builtin.import_tasks: makepkg.yml
+  tags: [makepkg, makepkg_config, system]

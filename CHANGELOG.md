@@ -90,6 +90,28 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Ansible roles**:
+  - Split the `system` role into one role per function: `lact`, `gaming`,
+    `package_services`, `docker`, `hardening`, `dns`, `vpn`, `gpu` and
+    `cpu_power`. The `system` tag still runs all of them, and every former
+    task tag still works.
+  - Move the pacman and makepkg settings into the new `package_manager` role,
+    which runs before the packages are installed.
+  - Move the Claude Code and Codex status line settings out of `dotfiles` into
+    the new `agent_cli` role.
+  - The playbooks select the package groups first under the `always` tag, so
+    the `packages` role no longer lists the tags of the roles that read the
+    selection. The `packages_select` tag is gone.
+  - With `packages_action=plan`, every role that changes the host is now
+    skipped, including makepkg, hardening, GPU and AMD CPU settings when they
+    are run by tag.
+  - Rename the role variables after their new role, for example
+    `system_dns_manage` to `dns_manage`, `system_ipv6_enabled` to
+    `hardening_ipv6_enabled`, `system_power_manager_conflict_action` to
+    `gaming_power_manager_conflict_action` and `dotfiles_claude_statusline` to
+    `agent_cli_claude_statusline`. A host override or `-e` option that uses an
+    old name is ignored.
+
 - **Ansible hosts**:
   - Each machine's settings move to `ansible/group_vars/host_<hostname>.yml`,
     loaded through a `group_by` task on the hostname fact. The shared groups

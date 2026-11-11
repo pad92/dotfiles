@@ -1,0 +1,3 @@
+---
+# Set it to false in group_vars/host_<hostname>.yml to disable IPv6.
+hardening_ipv6_enabled: true

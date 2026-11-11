@@ -21,14 +21,71 @@
           This playbook currently supports Arch Linux/CachyOS, Debian/Ubuntu,
           and Fedora. Add package mappings before using another distribution.
       tags: [always]
+
+    # Read-only. Several roles read packages_selected_groups, so it is computed
+    # whatever tags are passed.
+    - name: Select the package groups of this host
+      ansible.builtin.include_role:
+        name: packages
+        tasks_from: selection
+        apply:
+          tags: [always]
+      tags: [always]
+  # One role per function. The plan action (packages_action=plan) is read-only
+  # for the whole playbook, so every role that changes the host skips it. The
+  # system tag still selects every role of the former system role.
   roles:
+    - role: package_manager
+      when: packages_action | default('install') != 'plan'
+      tags: [package_manager]
     - role: packages
       tags: [packages]
-    - role: system
-      tags: [system]
+    - role: lact
+      when: packages_action | default('install') != 'plan'
+      tags: [system, lact]
+    - role: gaming
+      when:
+        - packages_action | default('install') != 'plan'
+        - ansible_facts["os_family"] == "Archlinux"
+        - "'21_steam' in (packages_selected_groups | default([]))"
+      tags: [system, gaming]
+    - role: package_services
+      when:
+        - packages_action | default('install') != 'plan'
+        - packages_selected_groups is defined
+      tags: [system, package_services]
+    - role: docker
+      when:
+        - packages_action | default('install') != 'plan'
+        - "'12_containers_docker' in (packages_selected_groups | default([]))"
+      tags: [system, docker, package_services]
+    - role: hardening
+      when: packages_action | default('install') != 'plan'
+      tags: [system, hardening]
+    - role: dns
+      when: packages_action | default('install') != 'plan'
+      tags: [system, dns]
+    # Only hosts that select 23_vpn get the VPN, even though the Vault applies
+    # to every host.
+    - role: vpn
+      when:
+        - packages_action | default('install') != 'plan'
+        - >-
+          '23_vpn' in (packages_selected_groups |
+          default(packages_host_groups | default(none) or []))
+      tags: [system, vpn]
+    - role: gpu
+      when: packages_action | default('install') != 'plan'
+      tags: [system, gpu, gpu_modules]
+    - role: cpu_power
+      when: packages_action | default('install') != 'plan'
+      tags: [system, cpu_power, amd_cpu_performance]
     - role: dotfiles
       become: false
       tags: [dotfiles]
+    - role: agent_cli
+      become: false
+      tags: [dotfiles, agent_cli]
     - role: obs
       when: "'22_obs' in (packages_selected_groups | default([]))"
       tags: [obs]

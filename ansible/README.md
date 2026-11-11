@@ -22,9 +22,37 @@ generation. Conflict backups use an atomic move that refuses existing targets.
 AUR installation uses a dedicated module for yay/paru, without Pacman's
 unsupported `--print-format` calls.
 
+## Roles
+
+Each role has one function. `site.yml` runs them in this order:
+
+| Role               | Function                                                                                    |
+| :----------------- | :------------------------------------------------------------------------------------------ |
+| `package_manager`  | Configure pacman (`/etc/pacman.conf`, `multilib`) and makepkg.                              |
+| `packages`         | Select package groups, then install and reconcile their packages.                           |
+| `lact`             | Write the LACT GPU profiles for the GPUs that LACT reports.                                 |
+| `gaming`           | Check the Steam group's services and make power-profiles-daemon the only CPU power manager. |
+| `package_services` | Enable the services of the selected package groups.                                         |
+| `docker`           | Add `docker_group_users` to the `docker` group.                                             |
+| `hardening`        | Apply the desktop sysctl policy and the SSH client defaults.                                |
+| `dns`              | Make systemd-resolved the only resolver, for the host and Docker.                           |
+| `vpn`              | Configure the openfortivpn SAML VPN from the Ansible Vault.                                 |
+| `gpu`              | Configure the NVIDIA and i915 kernel modules and hybrid runtime PM.                         |
+| `cpu_power`        | Apply the AMD EPP and X3D settings and read which power manager runs.                       |
+| `dotfiles`         | Deploy the home directory files and the user units.                                         |
+| `agent_cli`        | Set the Claude Code and Codex status lines.                                                 |
+| `obs`              | Configure OBS Studio and its virtual camera for `22_obs`.                                   |
+
+Package group selection only reads the host, so both playbooks run it first
+with the `always` tag (`include_role` of `packages`, `tasks_from: selection`).
+Every role that reads `packages_selected_groups` then has it, whatever tags are
+passed. Roles that change the host skip `packages_action=plan`. The `system`
+tag selects every role that came from the former `system` role. A role's
+variables start with its name, for example `dns_manage` or `cpu_power_amd_pstate_epp`.
+
 The yay bootstrap keeps makepkg's package, source, build and log destinations
 inside its temporary build tree. Initramfs reporting inventories
-`system_initramfs_report_roots` (default: `/boot`, `/efi`). Add any custom image
+`gpu_initramfs_report_roots` (default: `/boot`, `/efi`). Add any custom image
 or hook output directories, including targets outside those trees, to this list.
 Unreadable inventory paths fail the task instead of producing a partial success.
 Package transaction internals and arbitrary external hooks are not a complete
@@ -47,7 +75,7 @@ protections, ASLR, ptrace and kernel-address restrictions, and inotify limits.
 IPv4 forwarding is enabled only when `12_containers_docker` or
 `13_containers_podman` is selected, and disabled otherwise. It uses loose reverse-path filtering for asymmetric
 VPN routes, disables shared-media redirects, and keeps IPv6 enabled by default
-so LAN and VPN interfaces can configure it. Set `system_ipv6_enabled: false`
+so LAN and VPN interfaces can configure it. Set `hardening_ipv6_enabled: false`
 in a host's settings file (see [Per-host settings](#per-host-settings)) to
 disable it on that machine. `PadsP5560` disables IPv6 and `PadsTower` keeps it. Disabling IPv6 sets
 the `all` and `default` sysctls so existing and future interfaces follow the
@@ -97,7 +125,7 @@ groups both workstations share. Each host file builds its list from it:
 ```yaml
 # ansible/group_vars/host_PadsP5560.yml
 packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
-system_ipv6_enabled: false
+hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
 ```
 
@@ -112,17 +140,17 @@ The `dns` tag makes systemd-resolved the only DNS resolver. NetworkManager
 hands it each link's servers (`/etc/NetworkManager/conf.d/60-dotfiles-dns.conf`),
 and `/etc/systemd/resolved.conf.d/60-dotfiles-dns.conf` sets the policy:
 
-- `LLMNR=no` (`system_dns_llmnr`). A single-label name that DNS cannot resolve
+- `LLMNR=no` (`dns_llmnr`). A single-label name that DNS cannot resolve
   is never asked on the local network, where any host could answer it.
-- `MulticastDNS=resolve` (`system_dns_multicast_dns`). `.local` names still
+- `MulticastDNS=resolve` (`dns_multicast_dns`). `.local` names still
   resolve, but the host does not announce its name.
-- An empty `FallbackDNS=` (`system_dns_fallback_servers`). When no link has DNS
+- An empty `FallbackDNS=` (`dns_fallback_servers`). When no link has DNS
   servers, lookups fail instead of going to the compiled-in public resolvers in
   clear text. List servers there to keep a fallback.
 
 The tag needs `systemd-resolved.service`, a running `NetworkManager.service`
 and `nmcli`. When one of them is missing, the role says which and skips the DNS
-policy without changing anything. Set `system_dns_manage: false` in the
+policy without changing anything. Set `dns_manage: false` in the
 host's settings file (see [Per-host settings](#per-host-settings)) to leave
 the resolver alone on every run,
 including full runs, for example after
@@ -136,7 +164,7 @@ section describes the rules it relies on.
 #### Docker
 
 With `12_containers_docker`, resolved also listens on the Docker bridge address
-(`system_docker_bridge_ip`, default `10.184.1.1/28`). The role sets it as `bip`
+(`dns_docker_bridge_ip`, default `10.184.1.1/28`). The role sets it as `bip`
 and as the only `dns` entry in `/etc/docker/daemon.json`, and keeps the other
 keys. Containers then get the host's view, including VPN split DNS. The
 listener binds even while `docker0` is absent.
@@ -150,7 +178,7 @@ A `/28` leaves 13 addresses for containers on the default bridge, after the
 network, broadcast and bridge addresses. User-defined networks take their
 subnets from `default-address-pools`, not from `bip`. A `fixed-cidr` inside
 the bridge network is kept. One outside it makes the play fail, because Docker
-would refuse to start; change `fixed-cidr` or `system_docker_bridge_ip`. An
+would refuse to start; change `fixed-cidr` or `dns_docker_bridge_ip`. An
 empty `daemon.json` is read as `{}`.
 
 Before changing anything, the role lists the port 53 listeners with `ss`. If a
@@ -173,7 +201,7 @@ remove the `dns` entry yourself if Docker stays installed.
 #### resolv.conf
 
 The role enables and starts `systemd-resolved.service`, then links
-`/etc/resolv.conf` (`system_dns_resolv_conf`) to
+`/etc/resolv.conf` (`dns_resolv_conf`) to
 `/run/systemd/resolve/stub-resolv.conf`. A link that already resolves to the
 stub, relative or not, is left alone. A link to another file, including
 `/run/systemd/resolve/resolv.conf`, is replaced: that file sends programs
@@ -189,7 +217,7 @@ a copy after disconnecting, and the next run links it again.
 Any other regular file is left alone, and the play prints its first comment
 line. This is typically a VPN client that rewrote the file while connected:
 run the tag again after disconnecting. Set
-`system_dns_force_resolv_conf_link` to `true` to replace it anyway.
+`dns_force_resolv_conf_link` to `true` to replace it anyway.
 
 If the stub file is missing once resolved has started, the play fails before
 linking `resolv.conf`. NetworkManager may have been reloaded by then and may
@@ -199,7 +227,7 @@ does not answer. The Docker settings are written last.
 
 #### Former dnsmasq relay
 
-The relay is recognised by the files in `system_dns_relay_files`. Only when one
+The relay is recognised by the files in `dns_relay_files`. Only when one
 of them exists does the role touch NetworkManager profiles and
 `dnsmasq.service`. Without them, a loopback DNS server is treated as a
 deliberate local resolver (unbound, dnscrypt-proxy) and left alone, and so is
@@ -218,7 +246,7 @@ With the relay present:
   unchanged. Profiles without IP settings, such as bridge ports, are skipped.
 - The relay files are removed and `dnsmasq.service` is stopped and disabled.
 
-The NetworkManager files in `system_dns_legacy_files` (`dns.conf`, and the
+The NetworkManager files in `dns_legacy_files` (`dns.conf`, and the
 `rc-manager.conf` with `rc-manager=resolvconf` from the earlier install guide)
 are removed when they set nothing but `dns=` or `rc-manager=` in `[main]`. A
 file with other settings is kept and reported, since its DNS lines may still
@@ -233,7 +261,7 @@ covers their removal.
 
 Each file the role removes or replaces (relay files, legacy NetworkManager
 files, a regular `resolv.conf`) is first copied under its full path to
-`system_dns_backup_dir`, for example
+`dns_backup_dir`, for example
 `/var/lib/dotfiles/dns-backup/etc/resolv.conf`. The directory is readable by
 root only and the copies have mode `0600`, so restore them with an explicit
 mode rather than `cp -a`. When a later run backs up the same path again, the
@@ -264,16 +292,16 @@ alone.
 
 The `amd_cpu_performance` tag uses the CPU vendor from Ansible facts and the
 controls exposed by the kernel. With AMD P-State in active mode, it selects
-`powersave` before applying `system_amd_pstate_epp` (default:
+`powersave` before applying `cpu_power_amd_pstate_epp` (default:
 `balance_performance`). Both values must be available on the CPU policy.
 Here, `powersave` lets EPP guide the CPU's performance and energy use.
 
 Ansible skips direct EPP changes while a known power manager is active or
 enabled (`power-profiles-daemon`, auto-cpufreq, TLP, or tuned). This preserves
 the manager's selected profile, including a game's temporary performance profile.
-Set `system_amd_pstate_epp: null` to disable direct EPP management entirely.
+Set `cpu_power_amd_pstate_epp: null` to disable direct EPP management entirely.
 
-The X3D CCD mode stays unchanged unless `system_amd_x3d_mode` is set to `cache`
+The X3D CCD mode stays unchanged unless `cpu_power_amd_x3d_mode` is set to `cache`
 or `frequency` and the kernel exposes the AMD X3D control. Choose the mode for
 the workloads of the target machine. Ansible does not change Core Performance
 Boost or the kernel boot parameters.
@@ -285,7 +313,7 @@ make install ANSIBLE_ARGS="--tags amd_cpu_performance --ask-become-pass"
 ```
 
 Ansible also writes the settings it applied to
-`/etc/tmpfiles.d/dotfiles-amd-cpu.conf` (`system_amd_tmpfiles_path`), so
+`/etc/tmpfiles.d/dotfiles-amd-cpu.conf` (`cpu_power_amd_tmpfiles_path`), so
 `systemd-tmpfiles` restores them at boot: the `powersave` governor first, then the
 EPP preference, then the X3D mode. EPP lines are only written while no power
 manager is active or enabled. The file is removed when Ansible no longer manages
@@ -309,7 +337,7 @@ When `21_steam` is selected, Ansible enables and starts `ananicy-cpp` and
 `power-profiles-daemon`. If auto-cpufreq, TLP, tuned, or another known CPU
 power manager is active or enabled, the playbook asks whether to stop, disable,
 and uninstall it, and stops if you decline. Set
-`-e system_power_manager_conflict_action=remove` to remove it without asking, or
+`-e gaming_power_manager_conflict_action=remove` to remove it without asking, or
 `fail` to keep the old behavior. Check mode never removes anything. Once
 the check passes, Ansible removes any systemd mask from
 `power-profiles-daemon.service` before enabling it. An existing `ananicy-cpp`
@@ -343,7 +371,7 @@ in existing profiles. Other settings and automation are preserved.
 When no named profile exists, `Auto` becomes active after the profiles are added.
 Identifier casing is repaired; an unknown GPU or conflicting entries stop
 deployment before the configuration is written. A symlink or directory at
-`system_lact_config_path` is also refused. Changes are backed up and restart
+`lact_config_path` is also refused. Changes are backed up and restart
 `lactd`.
 
 ```sh
@@ -379,7 +407,7 @@ package role then loads the first matching exact-version, major-version, or
 distribution override. Selection, installation, and reconciliation stay in
 separate task files.
 
-On Arch Linux and CachyOS, the package role sets `Color`, `ILoveCandy`, and
+On Arch Linux and CachyOS, the `package_manager` role sets `Color`, `ILoveCandy`, and
 `CheckSpace`, enables the standard `multilib` repository, and sets
 `ParallelDownloads = 5` in `/etc/pacman.conf`. On CachyOS, it also enables
 `PrettyProgressBar`. Enabling `multilib` triggers `pacman -Syu`,
@@ -409,7 +437,7 @@ override:
 make install ANSIBLE_ARGS="--ask-become-pass -e '{\"packages_group_selection\":[\"01_base\",\"03_gtk\"]}'"
 ```
 
-On Arch Linux, selecting an NVIDIA profile makes the system role manage
+On Arch Linux, selecting an NVIDIA profile makes the `gpu` role manage
 `/etc/modprobe.d/zz-dotfiles-gpu.conf`. Both profiles enable zero-initialized
 system memory and DRM modesetting. Runtime D3 uses the NVIDIA driver's default:
 supported Ampere and newer notebooks use fine-grained power management.
@@ -432,15 +460,15 @@ adequate temporary storage.
 
 When either NVIDIA profile is selected, Ansible detects `mkinitcpio` or
 `dracut` and regenerates the initramfs after the module configuration changes.
-If both or neither are installed, set `system_initramfs_generator` to
+If both or neither are installed, set `gpu_initramfs_generator` to
 `mkinitcpio` or `dracut`. GSP firmware is enabled by default on supported GPUs,
 so Ansible does not set it. The i915 GuC option remains at the kernel default,
 matching the commented local setting. To configure it for the modern Intel
-profile, set `system_i915_enable_guc` to `-1`, `0`, `1`, `2`, or `3`; `-1`
+profile, set `gpu_i915_enable_guc` to `-1`, `0`, `1`, `2`, or `3`; `-1`
 keeps automatic selection, while `1` enables GuC submission and `2` enables
 HuC authentication; `3` enables both. The kernel documents these features and
 notes that support varies by platform. Values `1`, `2`, and `3` also require
-`system_i915_guc_supported: true`, which must only be set after confirming the
+`gpu_i915_guc_supported: true`, which must only be set after confirming the
 GPU supports the selected operation. See NVIDIA's [runtime D3 documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html),
 [power management documentation](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html),
 and the kernel's [i915 driver documentation](https://docs.kernel.org/gpu/i915.html).
@@ -479,11 +507,11 @@ Removals never touch the built-in base set (`base`, `glibc`, `pacman`, `systemd`
 Use `--check --tags dotfiles` to preview dotfile link changes separately.
 
 The `package_services` tag enables and starts the units of selected package
-groups on Arch Linux (`system_package_services`): `bluetooth.service` with
+groups on Arch Linux (`package_services_by_group`): `bluetooth.service` with
 `01_base`, `cups.socket` with `04_printers`,
 `docker.socket` with `12_containers_docker`, and `fwupd-refresh.timer` with
 `20_apps`. A unit whose file is missing is reported instead of enabled. With
-`12_containers_docker`, the users in `system_docker_group_users` (default: the
+`12_containers_docker`, the users in `docker_group_users` (default: the
 user running `make install`) join the `docker` group, which grants
 root-equivalent access to the Docker daemon; log in again to use it. When the
 playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
@@ -511,8 +539,8 @@ make install-obs ANSIBLE_ARGS=--ask-become-pass
 ```
 
 `ansible/obs.yml` runs the `packages` role with `22_obs` plus the GPU groups
-detected by `lspci`, then the `obs` role. It skips the `system` and `dotfiles`
-roles and refuses `packages_action=reconcile`, which would treat every other
+detected by `lspci`, then the `obs` role. It skips every other role
+and refuses `packages_action=reconcile`, which would treat every other
 managed package as obsolete. Run a reconcile with `make install` instead. Any
 selected `*-dkms` package also brings the headers of the running kernel; the
 package that owns `/usr/lib/modules/<kernel>/vmlinuz` names them (for example
@@ -605,7 +633,7 @@ camera carries no sound, so pick the microphone in the meeting as usual.
 ### SAML VPN
 
 The `23_vpn` group installs `openfortivpn`; only PadsP5560 selects it, in
-`group_vars/host_PadsP5560.yml`. The `vpn` tag of the `system` role then configures the
+`group_vars/host_PadsP5560.yml`. The `vpn` role then configures the
 `openfortivpn@work.service` instance. Its gateway comes from an Ansible Vault
 file that Git ignores, so neither the repository nor its mirrors hold it:
 
@@ -634,7 +662,7 @@ The role writes:
 - A unit drop-in with `TimeoutStartSec=5min` (the unit is ready only after
   the browser login) and `Restart=no` (each attempt needs a new login).
 - `/etc/polkit-1/rules.d/60-dotfiles-vpn.rules`: the users in
-  `system_vpn_users` (default: the user running Ansible), from an active local
+  `vpn_users` (default: the user running Ansible), from an active local
   session, may start and stop that unit without a password. Other units and
   verbs keep the default policy.
 - `/etc/openfortivpn/waybar.json`: the unit name and the login URL, read by

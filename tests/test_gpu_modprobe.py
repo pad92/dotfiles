@@ -4,10 +4,10 @@ from pathlib import Path
 from jinja2 import Environment
 
 TEMPLATE = (
-    Path(__file__).parents[1] / "ansible/roles/system/templates/gpu-modprobe.conf.j2"
+    Path(__file__).parents[1] / "ansible/roles/gpu/templates/gpu-modprobe.conf.j2"
 )
 I915_TEMPLATE = (
-    Path(__file__).parents[1] / "ansible/roles/system/templates/i915-modprobe.conf.j2"
+    Path(__file__).parents[1] / "ansible/roles/gpu/templates/i915-modprobe.conf.j2"
 )
 
 
@@ -41,7 +41,7 @@ class GpuModprobeTemplateTests(unittest.TestCase):
 
         self.assertIn(
             "options i915 enable_guc=3",
-            template.render(system_i915_enable_guc=3),
+            template.render(gpu_i915_enable_guc=3),
         )
 
 

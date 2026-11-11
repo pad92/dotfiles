@@ -14,6 +14,7 @@ kend = "kend"
 parem = "parem"
 Monstre = "Monstre"
 Effet = "Effet"
+exemple = "exemple"
 wronly = "wronly"
 
 [default.extend-identifiers]

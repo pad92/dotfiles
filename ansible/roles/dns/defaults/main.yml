@@ -1,0 +1,42 @@
+---
+# false leaves the resolver setup untouched, for example after undoing the
+# migration; a full run otherwise applies the DNS policy again.
+dns_manage: true
+# DNS: systemd-resolved is the only resolver. Quote the values: YAML reads a
+# bare no as a boolean. LLMNR stays off so single-label names never reach the
+# local network; mDNS resolves .local names without announcing this host.
+dns_llmnr: 'no'
+dns_multicast_dns: resolve
+# Used only when no link has DNS servers. Empty disables the compiled-in
+# public resolvers instead of sending queries to them in clear text.
+dns_fallback_servers: []
+dns_resolved_dropin: /etc/systemd/resolved.conf.d/60-dotfiles-dns.conf
+dns_networkmanager_conf: /etc/NetworkManager/conf.d/60-dotfiles-dns.conf
+# Host address of docker0. With 12_containers_docker, Docker uses it as `bip`
+# and containers query the resolved stub listening on it.
+dns_docker_bridge_ip: 10.184.1.1/28
+dns_docker_daemon_config_path: /etc/docker/daemon.json
+# Files of the former dnsmasq relay. Finding one of them is what allows the
+# role to reset loopback-only NetworkManager profiles and stop dnsmasq.service;
+# without them, a loopback DNS server is treated as a deliberate local resolver.
+dns_relay_files:
+  - /etc/dnsmasq.d/home-failover.conf
+  - /etc/NetworkManager/dispatcher.d/90-dnsmasq-upstream
+  - /etc/tmpfiles.d/dnsmasq-upstream.conf
+# NetworkManager settings left by the former relay and the former install
+# guide (rc-manager=resolvconf for openresolv). They override dns= or rewrite
+# /etc/resolv.conf. Each is removed when it sets nothing but dns= or
+# rc-manager= in [main]; a file with other settings is reported and kept.
+dns_legacy_files:
+  - /etc/NetworkManager/conf.d/dns.conf
+  - /etc/NetworkManager/conf.d/rc-manager.conf
+# Relay files, legacy files and a regular /etc/resolv.conf are copied here
+# under their full path (for example <dir>/etc/resolv.conf) before removal.
+dns_backup_dir: /var/lib/dotfiles/dns-backup
+dns_resolv_conf: /etc/resolv.conf
+dns_resolved_stub: /run/systemd/resolve/stub-resolv.conf
+# A regular resolv.conf is replaced by the stub link only when openresolv,
+# NetworkManager or systemd-resolved wrote it, or when it lists only loopback
+# servers. true also replaces a file another program owns, such as a VPN client.
+dns_force_resolv_conf_link: false
+dns_unit_directory: /usr/lib/systemd/system

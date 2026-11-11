@@ -1,0 +1,175 @@
+---
+- name: Validate the IPv6 switch
+  ansible.builtin.assert:
+    quiet: true
+    that: hardening_ipv6_enabled is boolean
+    fail_msg: Use YAML true or false for hardening_ipv6_enabled.
+  tags: [kernel_hardening]
+
+- name: Check whether optional desktop sysctls are available
+  ansible.builtin.stat:
+    path: '{{ item.path }}'
+  loop:
+    - name: user namespaces
+      path: /proc/sys/kernel/unprivileged_userns_clone
+    - name: unprivileged BPF
+      path: /proc/sys/kernel/unprivileged_bpf_disabled
+    - name: mmap randomization
+      path: /proc/sys/vm/mmap_rnd_bits
+    - name: BPF JIT hardening
+      path: /proc/sys/net/core/bpf_jit_harden
+  register: hardening_optional_sysctls
+  tags: [kernel_hardening]
+
+- name: Read the active mmap randomization setting
+  ansible.builtin.command:
+    argv: [sysctl, -n, vm.mmap_rnd_bits]
+  register: hardening_mmap_rnd_bits
+  changed_when: false
+  # Read-only: the rendered policy depends on the current value.
+  check_mode: false
+  when: hardening_optional_sysctls.results[2].stat.exists
+  tags: [kernel_hardening]
+
+- name: Read the active unprivileged BPF setting
+  ansible.builtin.command:
+    argv: [sysctl, -n, kernel.unprivileged_bpf_disabled]
+  register: hardening_unprivileged_bpf_disabled
+  changed_when: false
+  # Read-only: the rendered policy depends on the current value.
+  check_mode: false
+  when: hardening_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Manage the desktop sysctl policy
+  ansible.builtin.template:
+    src: hardening.conf.j2
+    dest: /etc/sysctl.d/60-dotfiles-hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [kernel_hardening]
+
+- name: Parse the intended desktop sysctl settings
+  ansible.builtin.set_fact:
+    hardening_policy_entries: >-
+      {{ lookup('ansible.builtin.template', 'hardening.conf.j2') |
+         regex_findall('(?m)^\s*([A-Za-z0-9_.]+)\s*=\s*([^#\n]+)') }}
+  tags: [kernel_hardening]
+
+- name: Apply desktop sysctl settings through the sysctl module
+  ansible.posix.sysctl:
+    name: '{{ item.0 }}'
+    value: '{{ item.1 | trim }}'
+    sysctl_file: /etc/sysctl.d/60-dotfiles-hardening.conf
+    sysctl_set: true
+    reload: false
+  loop: '{{ hardening_policy_entries }}'
+  loop_control:
+    label: '/etc/sysctl.d/60-dotfiles-hardening.conf: {{ item.0 }}'
+  tags: [kernel_hardening]
+
+- name: Check for legacy gaming sysctl drop-ins
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  register: hardening_legacy_gaming_sysctls
+  tags: [kernel_hardening]
+
+- name: Back up legacy gaming sysctl files
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: '{{ item }}.dotfiles-backup'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  loop_control:
+    index_var: hardening_legacy_gaming_sysctl_index
+  when: >-
+    hardening_legacy_gaming_sysctls.results[
+    hardening_legacy_gaming_sysctl_index].stat.exists
+  tags: [kernel_hardening]
+
+- name: Remove legacy gaming sysctl files
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  notify: Report legacy sysctl values kept until reboot
+  loop:
+    - /etc/sysctl.d/80-gamecompatibility.conf
+    - /etc/sysctl.d/99-cachyos-gaming.conf
+  tags: [kernel_hardening]
+
+- name: Persist reversible unprivileged BPF restriction
+  ansible.builtin.template:
+    src: unprivileged-bpf.conf.j2
+    dest: /etc/sysctl.d/70-dotfiles-bpf.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  when: >-
+    hardening_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Apply reversible unprivileged BPF restriction
+  ansible.posix.sysctl:
+    name: kernel.unprivileged_bpf_disabled
+    value: '2'
+    sysctl_file: /etc/sysctl.d/70-dotfiles-bpf.conf
+    sysctl_set: true
+    reload: false
+  when:
+    - hardening_optional_sysctls.results[1].stat.exists
+    - hardening_unprivileged_bpf_disabled.stdout | default('') | trim == '0'
+    - not ansible_check_mode
+  tags: [kernel_hardening]
+
+- name: Check for superseded dotfiles sysctl files
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /etc/sysctl.d/hardening.conf
+    - /etc/sysctl.d/zz-dotfiles-hardening.conf
+    - /etc/sysctl.d/zz-dotfiles-bpf.conf
+  register: hardening_superseded_sysctls
+  tags: [kernel_hardening]
+
+- name: Back up superseded dotfiles sysctl files
+  ansible.builtin.copy:
+    src: '{{ item.stat.path }}'
+    dest: '{{ item.stat.path }}.dotfiles-backup'
+    remote_src: true
+    backup: true
+    owner: root
+    group: root
+    mode: '0644'
+  loop: '{{ hardening_superseded_sysctls.results }}'
+  loop_control:
+    label: '{{ item.stat.path }}'
+  when:
+    - item.stat.exists
+    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+      hardening_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]
+
+- name: Remove superseded dotfiles sysctl files after backup
+  ansible.builtin.file:
+    path: '{{ item.stat.path }}'
+    state: absent
+  loop: '{{ hardening_superseded_sysctls.results }}'
+  loop_control:
+    label: '{{ item.stat.path }}'
+  when:
+    - item.stat.exists
+    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+      hardening_optional_sysctls.results[1].stat.exists
+  tags: [kernel_hardening]

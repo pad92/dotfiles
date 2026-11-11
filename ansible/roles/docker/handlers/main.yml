@@ -1,0 +1,6 @@
+---
+- name: Report group membership requires login
+  ansible.builtin.debug:
+    msg: >-
+      Docker group membership changed. Log out and back in before using docker
+      without sudo.

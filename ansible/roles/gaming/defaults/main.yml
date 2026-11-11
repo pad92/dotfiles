@@ -1,0 +1,6 @@
+---
+# What to do when another CPU power manager would run alongside the gaming
+# power-profiles-daemon: ask, remove (stop, disable, uninstall), or fail.
+gaming_power_manager_conflict_action: ask
+# Packages whose update requires ananicy-cpp to reload its rules.
+gaming_ananicy_rule_packages: [cachyos-ananicy-rules]

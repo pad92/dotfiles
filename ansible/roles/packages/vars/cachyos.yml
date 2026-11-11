@@ -1,8 +1,4 @@
 ---
-packages_pacman_progress_options:
-  - ILoveCandy
-  - PrettyProgressBar
-
 packages_distribution_family_group_overrides:
   Archlinux:
     21_steam:

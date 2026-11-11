@@ -4,7 +4,7 @@ repo=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 . "$repo/ansible/roles/dotfiles/files/home/.config/uwsm/gpu-devices.sh"
-detector="$repo/ansible/roles/system/files/detect-hybrid-laptop.sh"
+detector="$repo/ansible/roles/gpu/files/detect-hybrid-laptop.sh"
 
 card() {
     mkdir -p "$tmp/$1/class/drm/$2/device" "$tmp/$1/dev" "$tmp/drivers/$3" "$tmp/$1/class/power_supply"

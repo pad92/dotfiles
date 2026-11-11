@@ -1,0 +1,8 @@
+---
+- name: Apply SSH client hardening
+  ansible.builtin.import_tasks: ssh_hardening.yml
+  tags: [ssh_client_hardening]
+
+- name: Apply kernel hardening
+  ansible.builtin.import_tasks: kernel_hardening.yml
+  tags: [kernel_hardening]

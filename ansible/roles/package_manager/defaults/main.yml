@@ -1,0 +1,6 @@
+---
+# pacman progress bar options; CachyOS's pacman also supports PrettyProgressBar.
+package_manager_pacman_progress_options: >-
+  {{ ['ILoveCandy', 'PrettyProgressBar']
+     if ansible_facts['distribution'] | lower == 'cachyos'
+     else ['ILoveCandy'] }}

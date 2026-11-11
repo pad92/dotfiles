@@ -1,0 +1,11 @@
+---
+- name: Report that the DNS policy is disabled
+  ansible.builtin.debug:
+    msg: >-
+      DNS policy disabled (dns_manage is false). The resolver setup is
+      left as it is.
+  when: not dns_manage | bool
+
+- name: Make systemd-resolved the only DNS resolver
+  ansible.builtin.import_tasks: prerequisites.yml
+  when: dns_manage | bool

@@ -1,0 +1,39 @@
+---
+- name: Select services for the selected package groups
+  ansible.builtin.set_fact:
+    package_services_selected: >-
+      {{ package_services_by_group.get(ansible_facts['os_family'], {}) | dict2items
+         | selectattr('key', 'in', packages_selected_groups)
+         | map(attribute='value') | flatten | unique | sort }}
+
+# A unit is enabled only once its package is installed, which also keeps check
+# mode from failing before packages exist.
+- name: Find unit files for the selected services
+  ansible.builtin.stat:
+    path: '{{ package_services_unit_directory }}/{{ item }}'
+    get_checksum: false
+  loop: '{{ package_services_selected }}'
+  register: package_services_unit_stats
+
+- name: Split installed and missing service units
+  ansible.builtin.set_fact:
+    package_services_to_enable: >-
+      {{ package_services_unit_stats.results | selectattr('stat.exists')
+         | map(attribute='item') | list }}
+    package_services_missing: >-
+      {{ package_services_unit_stats.results | rejectattr('stat.exists')
+         | map(attribute='item') | list }}
+
+- name: Report services whose package is not installed
+  ansible.builtin.debug:
+    msg: >-
+      Not enabled because their unit file is missing:
+      {{ package_services_missing | join(', ') }}
+  when: package_services_missing | length > 0
+
+- name: Enable and start services for the selected packages
+  ansible.builtin.systemd_service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+  loop: '{{ package_services_to_enable }}'

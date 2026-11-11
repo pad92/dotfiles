@@ -1,0 +1,5 @@
+---
+- name: Restart LACT
+  ansible.builtin.systemd_service:
+    name: lactd.service
+    state: restarted
