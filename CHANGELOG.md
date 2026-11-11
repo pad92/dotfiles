@@ -242,6 +242,11 @@ Release history and changes planned for the next version.
     in `~/.config/systemd/user`. Deployment removes them from existing homes
     (`dotfiles_obsolete_user_unit_links`) when they are still symlinks, and
     the `check-symlinks` pre-commit hook no longer excludes them.
+  - `package_services` enables `bluetooth.service` only when the kernel lists
+    a Bluetooth controller (`/sys/class/bluetooth/hci*`). Hosts without one
+    got a unit that could not start; the skipped unit is now reported, and
+    other units can declare a device the same way
+    (`package_services_device_requirements`).
 - **DNS**:
   - Stop the relay `dnsmasq.service` before removing the relay files. Those
     files are how the role recognises the relay, so a run interrupted between

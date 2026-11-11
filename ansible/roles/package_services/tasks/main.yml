@@ -15,14 +15,41 @@
   loop: '{{ package_services_selected }}'
   register: package_services_unit_stats
 
-- name: Split installed and missing service units
+# A host without the device would only get a unit that fails or idles, such as
+# bluetooth.service on a machine with no Bluetooth controller.
+- name: Look for the devices that selected services need
+  ansible.builtin.find:
+    paths: '{{ package_services_device_requirements[item].path }}'
+    patterns: '{{ package_services_device_requirements[item].patterns }}'
+    file_type: any
+  loop: >-
+    {{ package_services_selected
+       | select('in', package_services_device_requirements) | list }}
+  register: package_services_device_searches
+
+- name: Find services whose device or unit file is missing
   ansible.builtin.set_fact:
-    package_services_to_enable: >-
-      {{ package_services_unit_stats.results | selectattr('stat.exists')
+    package_services_without_device: >-
+      {{ package_services_device_searches.results
+         | selectattr('matched', 'defined') | selectattr('matched', '==', 0)
          | map(attribute='item') | list }}
     package_services_missing: >-
       {{ package_services_unit_stats.results | rejectattr('stat.exists')
          | map(attribute='item') | list }}
+
+- name: Select installed service units whose device is present
+  ansible.builtin.set_fact:
+    package_services_to_enable: >-
+      {{ package_services_unit_stats.results | selectattr('stat.exists')
+         | map(attribute='item')
+         | reject('in', package_services_without_device) | list }}
+
+- name: Report services skipped because their device is absent
+  ansible.builtin.debug:
+    msg: >-
+      Not enabled because no matching device was found:
+      {{ package_services_without_device | join(', ') }}
+  when: package_services_without_device | length > 0
 
 - name: Report services whose package is not installed
   ansible.builtin.debug:

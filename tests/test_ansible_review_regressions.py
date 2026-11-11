@@ -800,11 +800,18 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertFalse((sysctl_dir / "80-gamecompatibility.conf").exists())
         self.assertNotIn("HANDLER ", self.run_play(play))
 
-    def run_package_services(self, groups, units, expect_success=True, **extra_vars):
+    def run_package_services(
+        self, groups, units, devices=("hci0",), expect_success=True, **extra_vars
+    ):
         unit_directory = self.work / "units"
         unit_directory.mkdir(exist_ok=True)
         for unit in units:
             (unit_directory / unit).write_text("[Unit]\n")
+        # Stand-in for /sys/class/bluetooth, where controllers are symlinks.
+        device_directory = self.work / "bluetooth"
+        device_directory.mkdir(exist_ok=True)
+        for device in devices:
+            (device_directory / device).symlink_to(self.work)
         tasks = yaml.safe_load((ROLES / "package_services/tasks/main.yml").read_text())
         # Stop before systemd and account changes; only the selection is tested.
         stop = next(
@@ -828,6 +835,12 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                             "package_services_by_group"
                         ],
                         "package_services_unit_directory": str(unit_directory),
+                        "package_services_device_requirements": {
+                            unit: {**requirement, "path": str(device_directory)}
+                            for unit, requirement in defaults[
+                                "package_services_device_requirements"
+                            ].items()
+                        },
                         "packages_selected_groups": groups,
                         **extra_vars,
                     },
@@ -855,6 +868,30 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         # paccache.timer is installed but deliberately not managed.
         self.assertNotIn("paccache.timer", output)
         self.assertNotIn("fwupd-refresh.timer", output)
+
+    def test_bluetooth_is_not_enabled_without_a_controller(self):
+        units = ["bluetooth.service", "cups.socket"]
+        # The bluetooth module alone creates the class directory, not hciN.
+        output = self.run_package_services(
+            ["01_base", "04_printers"], units, devices=["not-a-controller"]
+        )
+        self.assertIn("ENABLE ['cups.socket']", output)
+        self.assertIn("no matching device was found: bluetooth.service", output)
+
+    def test_bluetooth_is_not_enabled_without_bluetooth_sysfs(self):
+        output = self.run_package_services(
+            ["01_base"],
+            ["bluetooth.service"],
+            devices=[],
+            package_services_device_requirements={
+                "bluetooth.service": {
+                    "path": str(self.work / "absent"),
+                    "patterns": ["hci*"],
+                }
+            },
+        )
+        self.assertIn("ENABLE []", output)
+        self.assertIn("no matching device was found: bluetooth.service", output)
 
     def test_services_without_unit_files_are_reported_not_enabled(self):
         output = self.run_package_services(["20_apps", "04_printers"], ["cups.socket"])
