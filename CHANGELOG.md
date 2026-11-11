@@ -230,6 +230,12 @@ Release history and changes planned for the next version.
     Ansible's lazy containers. The copy also copied the templar, and rebuilding
     its plugin loaders printed `PluginLoader with aliases` deprecation warnings
     (seen with ansible-core 2.22).
+  - Run sudo with `TERM=dumb` (`ansible.cfg`, `[sudo_become_plugin]`). Since
+    systemd 258, pam_systemd writes an OSC 3008 escape sequence to the
+    terminal when the sudo session closes. Ansible runs become tasks over
+    `ssh -tt`, so that sequence followed the module JSON and every become
+    task printed an empty `Module invocation had junk after the JSON data`
+    warning.
   - Stop shipping the `gnome-session.target.wants/tracker-miner-fs-3.service`
     and `tracker-miner-rss-3.service` links. Tracker 3 is now `localsearch`,
     whose units are static and started over D-Bus, so both links were broken
