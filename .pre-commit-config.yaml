@@ -30,6 +30,14 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: test-run-unit-tests
+        name: test the parallel unit test runner
+        language: system
+        entry: python3 scripts/ci/test_run_unit_tests.py
+        files: ^scripts/ci/(run_unit_tests|test_run_unit_tests)\.py$
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: build-pages
         name: build documentation pages (public/)
         language: system
