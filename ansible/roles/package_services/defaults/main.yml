@@ -8,3 +8,11 @@ package_services_by_group:
     12_containers_docker: [docker.socket]
     20_apps: [fwupd-refresh.timer]
 package_services_unit_directory: /usr/lib/systemd/system
+# Units that need a hardware device: such a unit is enabled only when an entry
+# matching `patterns` exists in `path`. The kernel lists each Bluetooth
+# controller as /sys/class/bluetooth/hciN; the directory itself can exist with
+# no controller once the bluetooth module is loaded.
+package_services_device_requirements:
+  bluetooth.service:
+    path: /sys/class/bluetooth
+    patterns: [hci*]

@@ -549,7 +549,11 @@ The `package_services` tag enables and starts the units of selected package
 groups on Arch Linux (`package_services_by_group`): `bluetooth.service` with
 `01_base`, `cups.socket` with `04_printers`,
 `docker.socket` with `12_containers_docker`, and `fwupd-refresh.timer` with
-`20_apps`. A unit whose file is missing is reported instead of enabled. With
+`20_apps`. A unit whose file is missing is reported instead of enabled.
+`bluetooth.service` is also skipped, with a message, when the host has no
+Bluetooth controller (no `hci*` entry in `/sys/class/bluetooth`); other units
+can require a device through `package_services_device_requirements`. A unit
+that is already enabled stays enabled. With
 `12_containers_docker`, the users in `docker_group_users` (default: the
 user running `make install`) join the `docker` group, which grants
 root-equivalent access to the Docker daemon; log in again to use it. When the
