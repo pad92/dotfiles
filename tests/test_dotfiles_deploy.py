@@ -102,8 +102,12 @@ class DotfilesDeployTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
 
+            # User units are covered by test_ansible_regressions; deploying the
+            # shipped ones here would triple the cost of every run.
             def deploy(theme, value="first"):
                 return run(
+                    "--skip-tags",
+                    "systemd",
                     "-e",
                     f"dotfiles_icon_theme={theme}",
                     "-e",

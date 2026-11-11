@@ -34,6 +34,17 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 | `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                             | Build the documentation site for review without deploying it.                 |
 | `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                    | Publish a release with notes from `CHANGELOG.md`.                             |
 
+### `unit_tests`
+
+[`scripts/ci/run_unit_tests.py`](../scripts/ci/run_unit_tests.py) runs the
+Python tests in parallel. A few tests drive `ansible-playbook` for up to two
+minutes while most take milliseconds, so each slow test gets its own process and starts
+first. The durations of the previous run are kept in the runner cache under
+`.cache/unit-tests/`, with one key for every branch. Without them, the first
+run starts one process per test class and is slower. The job also caches pip
+downloads and the Ansible collections, keyed on their requirement files. The
+log ends with the slowest tests.
+
 ### `pages`
 
 This job runs on `alpine:latest`, installs `python3` and `py3-markdown`, and

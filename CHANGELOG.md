@@ -145,6 +145,20 @@ Release history and changes planned for the next version.
   - A changed Mako config reloads Mako, and a changed `hyprtoolkit.conf`
     restarts Hyprlauncher. Other rendered files no longer trigger these
     handlers.
+- **CI**:
+  - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh` for GitLab CI,
+    `make test-python` and `make coverage`. It runs each slow test in its own
+    process and packs the fast tests of a module into one, then starts the
+    longest first. Durations come from the previous run
+    (`.cache/unit-tests/durations.json`, kept in the GitLab cache); tests
+    without one run one process per class. The run fails if fewer tests ran
+    than were discovered.
+  - `JOBS` defaults to the usable CPUs, capped by the container CPU quota and
+    by its memory limit (300 MiB per worker).
+  - The `unit_tests` job caches pip downloads and the Ansible collections.
+  - The template test of `test_dotfiles_deploy.py` skips the `systemd` tag:
+    user units have their own regression test, and deploying every shipped
+    unit made each run three times longer.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
