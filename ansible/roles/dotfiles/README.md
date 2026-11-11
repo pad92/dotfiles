@@ -5,6 +5,13 @@ static configuration and user scripts, renders templates, and links the
 Git-backed Vim, tmux, and Zsh trees. `templates/home/` contains files that use
 Ansible variables.
 
+The playbook reaches the target over SSH. Copies and templates come from the
+controller's copy of the role. The Vim, tmux and Zsh links point into the
+target's own clone of the repository, `dotfiles_repository` (`~/.dotfiles`),
+where the role also initializes the submodules; deployment stops when that
+clone is missing. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
+from the facts of the SSH user.
+
 Keep static files in their home-relative layout. For example,
 `files/home/.config/hypr/` deploys to `~/.config/hypr/`. Add variable-aware
 files under `templates/home/` and register them in `defaults/main.yml`. Scripts
@@ -41,7 +48,7 @@ read variables only; the host decisions are made in Ansible:
 
 `dotfiles_is_portable` is true when the `form_factor` fact, read from the DMI
 chassis type, names a laptop or another portable chassis. Set it in
-`group_vars/host_<hostname>.yml` when the firmware reports the wrong type. On
+`host_vars/<hostname>.yml` when the firmware reports the wrong type. On
 a portable machine Waybar adds the backlight and battery modules, and
 Hyprland turns off blur and shadows (`dotfiles_hypr_effects_enabled`).
 
@@ -72,7 +79,7 @@ display. That is what happens to the shared Dell and ASUS monitors when
 
 The role checks these settings before it changes anything (`tasks/validate.yml`)
 and stops with a message naming the expected format. Rendered files belong to
-the user who runs the playbook (`dotfiles_owner`, `dotfiles_group`) and use
+the SSH user (`dotfiles_owner`, `dotfiles_group`) and use
 `dotfiles_template_mode` (`0644`) unless the `dotfiles_templates` entry sets a
 `mode`.
 
@@ -107,7 +114,7 @@ ships, relative to `~/.config/systemd/user`. Deployment deletes each one that is
 still a symlink and leaves a regular file at that path alone.
 
 Hypridle is enabled by default. To stop it on one machine, set this in its
-`ansible/group_vars/host_<hostname>.yml`:
+`ansible/host_vars/<hostname>.yml`:
 
 ```yaml
 dotfiles_hypridle_enabled: false

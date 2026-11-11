@@ -1,10 +1,15 @@
 ---
-dotfiles_home: "{{ lookup('env', 'HOME') }}"
-# Owner of the rendered files: the user who runs the playbook, like
-# dotfiles_home. Facts cannot tell, because the play gathers them as root.
-dotfiles_owner: "{{ lookup('ansible.builtin.pipe', 'id -un') }}"
-dotfiles_group: "{{ lookup('ansible.builtin.pipe', 'id -gn') }}"
+# Home and owner of the deployed files: the SSH user of the target, whose
+# facts ansible/tasks/target.yml gathers without become.
+dotfiles_home: "{{ ansible_facts['user_dir'] }}"
+dotfiles_owner: "{{ ansible_facts['user_id'] }}"
+dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
+# Files are copied and rendered from the controller's copy of the role.
 dotfiles_source_root: '{{ role_path }}/files/home'
+# Clone of this repository on the target. The submodules are initialized
+# there and dotfiles_links point into it, so it must exist on every target.
+dotfiles_repository: '{{ dotfiles_home }}/.dotfiles'
+dotfiles_link_root: '{{ dotfiles_repository }}/ansible/roles/dotfiles/files/home'
 # Icon theme written into the GTK 2/3, hyprtoolkit and Mako configurations.
 dotfiles_icon_theme: Papirus-Dark
 # Mako does not follow theme inheritance, so it also searches the parent theme.
@@ -55,7 +60,7 @@ dotfiles_file_handlers:
   .config/waybar/config: [Reload Waybar]
   .config/waybar/conf/temperature.json: [Reload Waybar]
 dotfiles_systemd_directory: .config/systemd
-# Set it to false in group_vars/host_<hostname>.yml to stop hypridle.
+# Set it to false in host_vars/<hostname>.yml to stop hypridle.
 dotfiles_hypridle_enabled: true
 # User unit links removed from the repository; deployment deletes them when
 # they are still symlinks (paths are relative to the user systemd directory).
@@ -110,7 +115,7 @@ dotfiles_templates:
 dotfiles_template_mode: '0644'
 
 # Hardware. form_factor comes from the DMI chassis type; set
-# dotfiles_is_portable in group_vars/host_<hostname>.yml when it is wrong.
+# dotfiles_is_portable in host_vars/<hostname>.yml when it is wrong.
 dotfiles_portable_form_factors:
   - Convertible
   - Detachable

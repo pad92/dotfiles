@@ -1,5 +1,6 @@
 """Regression tests for defects found while reviewing the Ansible project."""
 
+import getpass
 import json
 import os
 import shutil
@@ -456,6 +457,11 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 "connection": "local",
                 "gather_facts": False,
                 "vars": {
+                    # Facts of the SSH user, as tasks/target.yml gathers them.
+                    "ansible_facts": {
+                        "user_id": getpass.getuser(),
+                        "user_gid": os.getgid(),
+                    },
                     "dotfiles_home": str(home),
                     "dotfiles_repository": str(ROOT),
                     "dotfiles_directories": [],
@@ -492,7 +498,11 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             (role / "files/home/.gitconfig").read_text(),
         )
         self.assertEqual(os.readlink(home / ".vim.bak"), str(elsewhere))
-        self.assertEqual(os.readlink(home / ".vim"), str(role / "files/home/.vim"))
+        # The link points into the target's clone, not the controller's role.
+        self.assertEqual(
+            os.readlink(home / ".vim"),
+            str(ROOT / "ansible/roles/dotfiles/files/home/.vim"),
+        )
         self.assertEqual((elsewhere / "gitconfig").read_text(), "local\n")
         self.assertFalse((waybar / "config").is_symlink())
         self.assertIn(

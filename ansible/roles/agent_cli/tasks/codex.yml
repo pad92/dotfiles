@@ -3,9 +3,14 @@
 # rewrites itself, so only the status_line key of [tui] is managed here.
 - name: Look for the Codex binary
   ansible.builtin.command:
-    argv: [sh, -c, 'command -v "$1"', sh, '{{ agent_cli_codex_binary }}']
-  environment:
-    PATH: "{{ agent_cli_home }}/.local/bin:{{ lookup('env', 'PATH') }}"
+    # The native installer uses ~/.local/bin, which a non-login PATH may lack.
+    argv:
+      - sh
+      - -c
+      - PATH="$1/.local/bin:$PATH" command -v "$2"
+      - sh
+      - '{{ agent_cli_home }}'
+      - '{{ agent_cli_codex_binary }}'
   register: agent_cli_codex_binary_lookup
   changed_when: false
   failed_when: false

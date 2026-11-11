@@ -1,4 +1,4 @@
-"""Resolve a machine's settings the way the playbooks do, through group_by."""
+"""Resolve a machine's settings the way the playbooks do, through the inventory."""
 
 import json
 import subprocess
@@ -9,9 +9,8 @@ from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "ansible/inventory.yml"
-HOST_PROFILE = ROOT / "ansible/tasks/host_profile.yml"
-HOST_FILES = sorted((ROOT / "ansible/group_vars").glob("host_*.yml"))
-# Marks a variable that no group_vars file sets, so the role default applies.
+HOST_FILES = sorted((ROOT / "ansible/host_vars").glob("*.yml"))
+# Marks a variable that no group_vars or host_vars file sets.
 UNSET = "<role default>"
 SETTINGS = [
     "packages_host_groups",
@@ -21,28 +20,34 @@ SETTINGS = [
 
 
 def configured_hostnames():
-    return [path.stem.removeprefix("host_") for path in HOST_FILES]
+    return [path.stem for path in HOST_FILES]
+
+
+def inventory_arguments(hostname):
+    """Inventory options that reach hostname locally, with its host_vars.
+
+    The repository inventory is used as is, so Ansible loads group_vars and
+    host_vars exactly as it does for `make install`. A host outside it is added
+    by a second inventory source, like a machine without host_vars.
+    """
+    arguments = ["-i", str(INVENTORY)]
+    if hostname not in yaml.safe_load(INVENTORY.read_text())["all"]["hosts"]:
+        arguments += ["-i", f"{hostname},"]
+    return arguments + ["-e", "ansible_connection=local"]
 
 
 def resolve_host_settings(hostname, work):
-    """Return the host's group names, settings and warnings for a hostname fact.
-
-    The play uses the repository inventory, so Ansible loads ansible/group_vars
-    exactly as it does for `make install`. The hostname fact is a play variable.
-    """
+    """Return the host's settings and warnings for an inventory host name."""
     output = Path(work) / f"settings-{hostname}.json"
     report = {name: f"{{{{ {name} | default({UNSET!r}) }}}}" for name in SETTINGS}
-    report["group_names"] = "{{ group_names }}"
     playbook = Path(work) / f"profile-{hostname}.yml"
     playbook.write_text(
         yaml.safe_dump(
             [
                 {
-                    "hosts": "localhost",
+                    "hosts": hostname,
                     "gather_facts": False,
-                    "vars": {"ansible_facts": {"hostname": hostname}},
                     "tasks": [
-                        {"ansible.builtin.import_tasks": str(HOST_PROFILE)},
                         {
                             "ansible.builtin.copy": {
                                 "content": "{{ report | to_json }}",
@@ -57,7 +62,7 @@ def resolve_host_settings(hostname, work):
         )
     )
     result = subprocess.run(
-        ["ansible-playbook", "-i", str(INVENTORY), str(playbook)],
+        ["ansible-playbook", *inventory_arguments(hostname), str(playbook)],
         cwd=work,
         env=ansible_test_environment(Path(work)),
         capture_output=True,

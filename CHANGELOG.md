@@ -113,10 +113,23 @@ Release history and changes planned for the next version.
     old name is ignored.
 
 - **Ansible hosts**:
-  - Each machine's settings move to `ansible/group_vars/host_<hostname>.yml`,
-    loaded through a `group_by` task on the hostname fact. The shared groups
-    are listed once in `packages_workstation_groups`
-    (`group_vars/all/packages.yml`).
+  - The playbooks reach the workstations over SSH. `ansible/inventory.yml`
+    lists PadsTower and PadsP5560, and each machine's settings are in
+    `ansible/host_vars/<hostname>.yml`. The shared groups are listed once in
+    `packages_workstation_groups` (`group_vars/all/packages.yml`).
+  - `make install` and `make install-obs` target `HOST`, which defaults to
+    `uname -n`: `make install HOST=PadsP5560` configures the laptop from
+    another machine. The backup targets still read the local home.
+  - The facts are gathered as the SSH user (`tasks/target.yml`), and a play
+    stops when the machine reports another hostname than its inventory name.
+  - The roles read the home, user, `PATH`, `XDG_STATE_HOME`, PCI devices and
+    OBS helper scripts on the target instead of the controller.
+  - The Vim, tmux and Zsh links point into the target's clone,
+    `dotfiles_repository` (default `~/.dotfiles`), and deployment stops when
+    it is missing.
+  - Upgrade: a target needs an SSH server that accepts the user's key, and
+    this repository cloned in `~/.dotfiles`. A new machine must be added to
+    the inventory.
   - Upgrade: `ansible/host_vars/localhost.yml` is gone, and so are the maps
     keyed by hostname. `packages_host_groups` is now a list, and
     `system_ipv6_enabled_by_hostname` and
@@ -149,7 +162,7 @@ Release history and changes planned for the next version.
     per hostname: the Waybar `config` and `conf/temperature.json`,
     `hypridle.conf` and the Hyprland `hosts/settings.lua`. The templates hold
     no host logic. PadsTower and PadsP5560 set their values in
-    `group_vars/host_<hostname>.yml`; the monitors and workspaces they share
+    `host_vars/<hostname>.yml`; the monitors and workspaces they share
     are in the new `group_vars/all/main.yml`.
   - A machine is portable when the `form_factor` fact says so, or when
     `dotfiles_is_portable` is set. Waybar then shows the backlight and

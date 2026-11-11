@@ -1,5 +1,5 @@
 ---
-# Settings shared by the workstations. group_vars/host_<hostname>.yml
+# Settings shared by the workstations. host_vars/<hostname>.yml
 # overrides any of them for one machine.
 
 # Both workstations drive the same external Dell and ASUS monitors. Hyprland

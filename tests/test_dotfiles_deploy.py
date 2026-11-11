@@ -1,5 +1,6 @@
 """Exercise individual file deployment, backups and reloads in a temporary home."""
 
+import getpass
 import os
 import shutil
 import subprocess
@@ -11,6 +12,8 @@ import yaml
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
+# The role owns its files by the SSH user that tasks/target.yml describes.
+USER_FACTS = {"user_id": getpass.getuser(), "user_gid": os.getgid()}
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
@@ -44,6 +47,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
+                        "ansible_facts": USER_FACTS,
                         "dotfiles_home": str(home),
                         "dotfiles_directories": [],
                         "dotfiles_files": [],
@@ -201,6 +205,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     "connection": "local",
                     "gather_facts": False,
                     "vars": {
+                        "ansible_facts": USER_FACTS,
                         "dotfiles_home": str(home),
                         "dotfiles_repository": str(ROOT),
                         "dotfiles_directories": [

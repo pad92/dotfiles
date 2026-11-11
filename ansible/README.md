@@ -1,7 +1,8 @@
 # Ansible setup
 
 Install `ansible-playbook` before using this setup. The `make install` target
-runs the local playbook. Pass options through `ANSIBLE_ARGS`:
+runs the playbook over SSH on `HOST`, this machine by default (see
+[Per-host settings](#per-host-settings)). Pass options through `ANSIBLE_ARGS`:
 
 ```sh
 make install ANSIBLE_ARGS=--ask-become-pass
@@ -113,18 +114,38 @@ or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
 
 ### Per-host settings
 
-The inventory has a single `localhost` host. At the start of `site.yml` and
-`obs.yml`, a `group_by` task adds it to the group `host_<hostname>`, using
-the hostname fact; characters other than letters, digits and `_` become `_`.
-Ansible then loads `ansible/group_vars/host_<hostname>.yml` on top of
-`ansible/group_vars/all/`. A machine without such a file keeps the role
-defaults: OS and GPU package groups, IPv6 on, hypridle on.
+`ansible/inventory.yml` lists the workstations by hostname, and Ansible
+reaches each one over SSH, the machine that runs `make install` included.
+`make install` targets `HOST`, which defaults to the output of `uname -n`:
+
+```sh
+make install HOST=PadsP5560 ANSIBLE_ARGS="--check --ask-become-pass"
+```
+
+Ansible loads `ansible/host_vars/<hostname>.yml` on top of
+`ansible/group_vars/all/`. The first tasks of `site.yml` and `obs.yml`
+(`tasks/target.yml`) gather the facts as the SSH user, not as root, so the
+roles configure that user's home. They then stop if the machine reports
+another hostname than its inventory name, because its `host_vars` describe
+other monitors and packages.
+
+Each target needs:
+
+- an SSH server that accepts the user's key; the `hardening` role never
+  configures `sshd`;
+- a clone of this repository in `~/.dotfiles`, or wherever
+  `dotfiles_repository` points. The Vim, tmux and Zsh links and the Git
+  submodules live in that clone. The other files are copied from the
+  controller.
+
+SSH resolves the inventory name through `~/.ssh/config` or DNS. Set
+`ansible_host` in the host file when it cannot.
 
 `group_vars/all/packages.yml` defines `packages_workstation_groups`, the
 groups both workstations share. Each host file builds its list from it:
 
 ```yaml
-# ansible/group_vars/host_PadsP5560.yml
+# ansible/host_vars/PadsP5560.yml
 packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
 hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
@@ -146,8 +167,8 @@ ansible-vault create --vault-password-file .vault ansible/group_vars/all/vault.y
 Git ignores this file. Without it, the playbook still runs and Hyprland
 handles these monitors with its generic `preferred, auto` rule.
 
-To add a machine, create `ansible/group_vars/host_<hostname>.yml` with the
-output of `hostname -s`. `packages_host_groups` is a list; the packages role
+To add a machine, add its `uname -n` name to `ansible/inventory.yml` and
+create `ansible/host_vars/<hostname>.yml`, even an empty one. `packages_host_groups` is a list; the packages role
 rejects any other type. A `-e` option still overrides any of these settings
 for one run.
 
@@ -650,7 +671,7 @@ camera carries no sound, so pick the microphone in the meeting as usual.
 ### SAML VPN
 
 The `23_vpn` group installs `openfortivpn`; only PadsP5560 selects it, in
-`group_vars/host_PadsP5560.yml`. The `vpn` role then configures the
+`host_vars/PadsP5560.yml`. The `vpn` role then configures the
 `openfortivpn@work.service` instance. Its gateway comes from an Ansible Vault
 file that Git ignores, so neither the repository nor its mirrors hold it:
 

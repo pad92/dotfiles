@@ -1,7 +1,8 @@
 ---
 - name: List GPU render nodes and their drivers
-  ansible.builtin.command:
-    argv: [sh, '{{ role_path }}/files/detect-render-nodes.sh']
+  ansible.builtin.script:
+    cmd: detect-render-nodes.sh
+    executable: sh
   register: obs_render_nodes_output
   changed_when: false
   check_mode: false
@@ -123,8 +124,9 @@
 # Enumerating every node skips metadata and infrared nodes (GREY only), which
 # a /dev/v4l/by-id "-index0" link can point to on laptops.
 - name: List V4L2 cameras and their formats
-  ansible.builtin.command:
-    argv: [sh, '{{ role_path }}/files/list-cameras.sh']
+  ansible.builtin.script:
+    cmd: list-cameras.sh
+    executable: sh
   register: obs_camera_listing
   changed_when: false
   failed_when: false

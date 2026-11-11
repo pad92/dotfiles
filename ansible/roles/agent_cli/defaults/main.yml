@@ -1,5 +1,5 @@
 ---
-agent_cli_home: "{{ lookup('env', 'HOME') }}"
+agent_cli_home: "{{ ansible_facts['user_dir'] }}"
 # Claude Code status line: merged into ~/.claude/settings.json only when the
 # binary below is found, leaving every other setting untouched.
 agent_cli_claude_binary: claude

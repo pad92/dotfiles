@@ -39,9 +39,15 @@ def trust_inventory_templates(value: object) -> object:
 
 
 def load_configuration(root: Path, extra_vars: list[str]) -> dict:
-    """Resolve role defaults and localhost inventory overrides through Ansible."""
+    """Resolve role defaults and group_vars/all overrides through Ansible.
+
+    The SSH inventory names the workstations, not this machine: a one-host
+    localhost inventory still loads ansible/group_vars through --playbook-dir.
+    """
     command = [
         "ansible-inventory",
+        "--inventory",
+        "localhost,",
         "--playbook-dir",
         str(REPOSITORY_ROOT / "ansible"),
         "--host",

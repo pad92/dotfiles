@@ -1,5 +1,10 @@
 ---
+# Workstations configured over SSH. Each inventory name is the hostname of
+# the machine: Ansible loads its settings from host_vars/<name>.yml, and the
+# playbooks stop when the machine reached reports another hostname. SSH
+# resolves the name through ~/.ssh/config or DNS; set ansible_host in
+# host_vars/<name>.yml when it cannot.
 all:
   hosts:
-    localhost:
-      ansible_connection: local
+    PadsTower:
+    PadsP5560:

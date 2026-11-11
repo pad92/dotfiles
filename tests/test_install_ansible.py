@@ -118,6 +118,7 @@ class InstallerTargetTests(unittest.TestCase):
                     # Ignore a developer's local .vault so the result is stable.
                     f"DOTFILES_VAULT_PASSWORD_FILE={bin_dir / 'missing-vault'}",
                     "ANSIBLE_ARGS=--check -e packages_action=plan",
+                    "HOST=PadsP5560",
                 ],
                 cwd=ROOT,
                 env=env,
@@ -129,7 +130,11 @@ class InstallerTargetTests(unittest.TestCase):
             lines = capture.read_text().splitlines()
             self.assertEqual(lines[0], str(ROOT / "ansible.cfg"))
             self.assertEqual(lines[1], str(ROOT / "ansible/site.yml"))
-            self.assertEqual(lines[2:], ["--check", "-e", "packages_action=plan"])
+            # The playbook targets one inventory host over SSH.
+            self.assertEqual(
+                lines[2:],
+                ["--limit", "PadsP5560", "--check", "-e", "packages_action=plan"],
+            )
 
 
 class RepositorySplitTests(unittest.TestCase):

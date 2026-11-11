@@ -78,7 +78,7 @@
         (item.item in dotfiles_file_paths and item.stat.isdir))) or
       (item.stat.islnk and
        ((item.item in dotfiles_link_destinations and
-         item.stat.lnk_source != dotfiles_source_root + '/' +
+         item.stat.lnk_source != dotfiles_link_root + '/' +
          (dotfiles_links | selectattr('dest', 'equalto', item.item) |
           map(attribute='src') | first)) or
         (item.item not in dotfiles_link_destinations and
@@ -137,9 +137,30 @@
       loop_control:
         label: '{{ item }}'
 
+    # The links point into the target's clone, not into the controller's.
+    - name: Inspect the repository clone the links point into
+      ansible.builtin.stat:
+        path: '{{ dotfiles_link_root }}'
+        get_checksum: false
+        get_mime: false
+        get_attributes: false
+      register: dotfiles_link_root_stat
+      when: dotfiles_links | length > 0
+
+    - name: Require the repository clone on the target
+      ansible.builtin.assert:
+        that:
+          - dotfiles_link_root_stat.stat.isdir | default(false)
+        fail_msg: >-
+          {{ dotfiles_link_root }} is missing on {{ inventory_hostname }}.
+          Clone the repository to {{ dotfiles_repository }} there, or set
+          dotfiles_repository to its clone.
+        quiet: true
+      when: dotfiles_links | length > 0
+
     - name: Link managed directories into the home directory
       ansible.builtin.file:
-        src: '{{ dotfiles_source_root }}/{{ item.src }}'
+        src: '{{ dotfiles_link_root }}/{{ item.src }}'
         dest: '{{ dotfiles_home }}/{{ item.dest }}'
         state: link
         force: false

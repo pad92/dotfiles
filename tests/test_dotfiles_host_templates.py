@@ -9,12 +9,11 @@ import unittest
 from pathlib import Path
 
 import yaml
+from ansible_host_profiles import inventory_arguments
 from ansible_test_environment import ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/dotfiles"
-INVENTORY = ROOT / "ansible/inventory.yml"
-HOST_PROFILE = ROOT / "ansible/tasks/host_profile.yml"
 RENDERED = {
     "home/.config/hypr/hypridle.conf.j2": "hypridle.conf",
     "home/.config/hypr/hosts/settings.lua.j2": "settings.lua",
@@ -67,17 +66,18 @@ class HostTemplateTests(unittest.TestCase):
         output.mkdir(exist_ok=True)
         play = [
             {
-                "hosts": "localhost",
+                "hosts": hostname,
                 "gather_facts": False,
                 "vars": {
                     "ansible_facts": {
                         "hostname": hostname,
                         "form_factor": form_factor,
+                        "user_id": "demo",
+                        "user_gid": 1000,
                     },
                     "dotfiles_home": str(self.work / "home"),
                 },
                 "tasks": [
-                    {"ansible.builtin.import_tasks": str(HOST_PROFILE)},
                     {
                         "ansible.builtin.import_role": {
                             "name": str(ROLE),
@@ -98,7 +98,7 @@ class HostTemplateTests(unittest.TestCase):
         ]
         playbook = self.work / f"play-{hostname}.yml"
         playbook.write_text(yaml.safe_dump(play))
-        command = ["ansible-playbook", "-i", str(INVENTORY), str(playbook)]
+        command = ["ansible-playbook", *inventory_arguments(hostname), str(playbook)]
         if extra_vars:
             command += ["-e", json.dumps(extra_vars)]
         result = subprocess.run(
