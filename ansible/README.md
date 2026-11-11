@@ -116,7 +116,8 @@ or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
 
 `ansible/inventory.yml` lists the workstations by hostname, and Ansible
 reaches each one over SSH, the machine that runs `make install` included.
-`make install` targets `HOST`, which defaults to the output of `uname -n`:
+`make install` targets `HOST`, which defaults to the short hostname of this
+machine (`uname -n` up to the first dot):
 
 ```sh
 make install HOST=PadsP5560 ANSIBLE_ARGS="--check --ask-become-pass"
@@ -167,7 +168,7 @@ ansible-vault create --vault-password-file .vault ansible/group_vars/all/vault.y
 Git ignores this file. Without it, the playbook still runs and Hyprland
 handles these monitors with its generic `preferred, auto` rule.
 
-To add a machine, add its `uname -n` name to `ansible/inventory.yml` and
+To add a machine, add its short hostname (`hostname -s`) to `ansible/inventory.yml` and
 create `ansible/host_vars/<hostname>.yml`, even an empty one. `packages_host_groups` is a list; the packages role
 rejects any other type. A `-e` option still overrides any of these settings
 for one run.

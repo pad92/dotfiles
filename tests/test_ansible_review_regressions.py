@@ -511,6 +511,97 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertFalse((waybar / "config.bak").exists())
         self.assertEqual((waybar / "config.PadsTower").read_text(), "{}\n")
 
+    def waybar_deploy_play(self, home, *arguments, expect_success=True):
+        """Deploy only the Waybar config template into home with a stub role."""
+        role = self.work / "dotfiles"
+        if not role.exists():
+            shutil.copytree(ROLES / "dotfiles", role, symlinks=True)
+            (role / "handlers/main.yml").write_text(
+                yaml.safe_dump(
+                    [
+                        {"name": h["name"], "ansible.builtin.debug": {"msg": h["name"]}}
+                        for h in yaml.safe_load(
+                            (role / "handlers/main.yml").read_text()
+                        )
+                    ]
+                )
+            )
+            (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+        play = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "vars": {
+                    "ansible_facts": {
+                        "user_id": getpass.getuser(),
+                        "user_gid": os.getgid(),
+                    },
+                    "dotfiles_home": str(home),
+                    "dotfiles_repository": str(ROOT),
+                    "dotfiles_directories": [],
+                    "dotfiles_files": [".gitconfig"],
+                    "dotfiles_links": [],
+                    "dotfiles_templates": [
+                        {
+                            "src": "home/.config/waybar/config.j2",
+                            "dest": ".config/waybar/config",
+                        }
+                    ],
+                    "dotfiles_systemd_graphical_units": [],
+                    "dotfiles_systemd_directory": ".config/test-systemd",
+                },
+                "tasks": [
+                    {
+                        "ansible.builtin.import_role": {
+                            "name": str(role),
+                            "tasks_from": "deploy",
+                        },
+                        "tags": ["dotfiles_deploy"],
+                    }
+                ],
+            }
+        ]
+        return self.run_play(
+            play,
+            "--tags",
+            "dotfiles_deploy",
+            *arguments,
+            expect_success=expect_success,
+        )
+
+    # The legacy link went first, so a refused backup left Waybar without config.
+    def test_refused_backup_keeps_the_legacy_waybar_link(self):
+        home = self.work / "home"
+        waybar = home / ".config/waybar"
+        waybar.mkdir(parents=True)
+        (waybar / "config.PadsTower").write_text("{}\n")
+        (waybar / "config").symlink_to(waybar / "config.PadsTower")
+        (home / ".gitconfig").symlink_to(waybar / "config.PadsTower")
+        (home / ".gitconfig.bak").write_text("older backup\n")
+        output = self.waybar_deploy_play(home, expect_success=False)
+        self.assertIn("Refusing to replace .gitconfig", output)
+        self.assertEqual(
+            os.readlink(waybar / "config"), str(waybar / "config.PadsTower")
+        )
+
+    # Check mode must list the backups that the real run makes.
+    def test_check_mode_reports_a_non_legacy_waybar_link_backup(self):
+        home = self.work / "home"
+        waybar = home / ".config/waybar"
+        waybar.mkdir(parents=True)
+        (waybar / "custom.json").write_text("{}\n")
+        (waybar / "config").symlink_to(waybar / "custom.json")
+        output = self.waybar_deploy_play(home, "--check")
+        self.assertIn(
+            f"{home}/.config/waybar/config -> .config/waybar/config.bak", output
+        )
+        self.waybar_deploy_play(home)
+        self.assertEqual(
+            os.readlink(waybar / "config.bak"), str(waybar / "custom.json")
+        )
+        self.assertFalse((waybar / "config").is_symlink())
+
     # Skipping these reads in check mode silently dropped vm.mmap_rnd_bits.
     def test_sysctl_reads_run_in_check_mode(self):
         tasks = [

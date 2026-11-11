@@ -16,7 +16,8 @@ PYTHON ?= python3
 ANSIBLE_PLAYBOOK ?= ansible-playbook
 ANSIBLE_ARGS ?=
 # Host of ansible/inventory.yml configured over SSH, this machine by default.
-HOST ?= $(shell uname -n)
+# The short hostname, as the hostname fact that tasks/target.yml checks.
+HOST ?= $(shell uname -n | cut -d. -f1)
 ANSIBLE_LINT ?= ansible-lint
 COVERAGE ?= $(PYTHON) -m coverage
 YAMLLINT ?= yamllint

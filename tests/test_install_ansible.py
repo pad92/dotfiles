@@ -136,6 +136,26 @@ class InstallerTargetTests(unittest.TestCase):
                 ["--limit", "PadsP5560", "--check", "-e", "packages_action=plan"],
             )
 
+    # tasks/target.yml compares the short hostname fact with the host name.
+    def test_default_host_is_the_short_hostname(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bin_dir = Path(temporary)
+            uname = bin_dir / "uname"
+            uname.write_text("#!/bin/sh\necho PadsTower.example.lan\n")
+            uname.chmod(0o755)
+            env = os.environ.copy()
+            env["PATH"] = f"{bin_dir}:{env['PATH']}"
+            result = subprocess.run(
+                ["make", "--no-print-directory", "-n", "install"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('--limit "PadsTower"', result.stdout)
+
 
 class RepositorySplitTests(unittest.TestCase):
     """Official packages must reach pacman, not the AUR helper."""

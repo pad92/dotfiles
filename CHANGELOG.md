@@ -118,7 +118,7 @@ Release history and changes planned for the next version.
     `ansible/host_vars/<hostname>.yml`. The shared groups are listed once in
     `packages_workstation_groups` (`group_vars/all/packages.yml`).
   - `make install` and `make install-obs` target `HOST`, which defaults to
-    `uname -n`: `make install HOST=PadsP5560` configures the laptop from
+    the short hostname (`uname -n` up to the first dot): `make install HOST=PadsP5560` configures the laptop from
     another machine. The backup targets still read the local home.
   - The facts are gathered as the SSH user (`tasks/target.yml`), and a play
     stops when the machine reports another hostname than its inventory name.

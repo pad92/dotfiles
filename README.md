@@ -50,7 +50,8 @@ directory. Installation is additive: packages that were already installed stay
 unmanaged.
 
 Ansible reaches the machine over SSH, even when it is the one you type on.
-`HOST` selects a host of `ansible/inventory.yml` and defaults to `uname -n`.
+`HOST` selects a host of `ansible/inventory.yml` and defaults to the short
+hostname (`uname -n` up to the first dot).
 The target needs an SSH server and the repository cloned in `~/.dotfiles`:
 `make install HOST=PadsP5560` configures the laptop from the desktop. A new
 machine first gets an inventory entry; see

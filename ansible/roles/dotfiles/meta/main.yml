@@ -6,7 +6,7 @@ galaxy_info:
     Deploys the user configuration of a Hyprland workstation (Hyprland,
     Waybar, hypridle, Mako, shells, editors) into the home directory.
   license: Unlicense
-  min_ansible_version: '2.17'
+  min_ansible_version: '2.21'
   platforms:
     - name: ArchLinux
       versions: [all]

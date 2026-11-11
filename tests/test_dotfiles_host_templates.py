@@ -243,6 +243,16 @@ class HostTemplateTests(unittest.TestCase):
                     {"output": "DP-1", "mode": "1920x1080", "position": 0, "scale": 1}
                 ]
             },
+            "quoted scale": {
+                "dotfiles_hypr_monitors": [
+                    {
+                        "output": "DP-1",
+                        "mode": "1920x1080",
+                        "position": "0x0",
+                        "scale": "1.5",
+                    }
+                ]
+            },
             "sensor without label": {
                 "dotfiles_waybar_temperature_sensors": [
                     {

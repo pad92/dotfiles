@@ -1,7 +1,9 @@
 ---
 # Before the rendered Waybar configuration, ~/.config/waybar/config was a
 # link to a per-host config.<hostname> file. Such a link is only a selection,
-# so it is removed rather than backed up; its target is left alone.
+# so it is removed rather than backed up; its target is left alone. It is
+# removed only once no backup conflict can stop the run, and check mode
+# reports it the same way as the real run.
 - name: Inspect the Waybar configuration path
   ansible.builtin.stat:
     path: '{{ dotfiles_home }}/.config/waybar/config'
@@ -11,12 +13,8 @@
     get_attributes: false
   register: dotfiles_waybar_config_stat
 
-- name: Remove the legacy Waybar host selection link
-  ansible.builtin.file:
-    path: '{{ dotfiles_home }}/.config/waybar/config'
-    state: absent
-  when: dotfiles_waybar_legacy_link
-  vars:
+- name: Recognize the legacy Waybar host selection link
+  ansible.builtin.set_fact:
     dotfiles_waybar_legacy_link: >-
       {{ dotfiles_waybar_config_stat.stat.islnk | default(false) and
          dotfiles_waybar_config_stat.stat.lnk_source | dirname ==
@@ -82,9 +80,8 @@
          (dotfiles_links | selectattr('dest', 'equalto', item.item) |
           map(attribute='src') | first)) or
         (item.item not in dotfiles_link_destinations and
-         not (ansible_check_mode and item.item == '.config/waybar/config' and
-              dotfiles_waybar_config_stat.stat.lnk_source | default('')
-              | dirname == dotfiles_home ~ '/.config/waybar'))))
+         not (item.item == '.config/waybar/config' and
+              dotfiles_waybar_legacy_link | bool))))
   register: dotfiles_backup_stats
 
 - name: Refuse to replace existing backup paths
@@ -128,6 +125,13 @@
 - name: Deploy paths after conflict backups
   when: not ansible_check_mode or not dotfiles_conflict_backups.changed
   block:
+    # Before the template, which would otherwise write through the link.
+    - name: Remove the legacy Waybar host selection link
+      ansible.builtin.file:
+        path: '{{ dotfiles_home }}/.config/waybar/config'
+        state: absent
+      when: dotfiles_waybar_legacy_link | bool
+
     - name: Create parent directories for managed paths
       ansible.builtin.file:
         path: '{{ dotfiles_home }}/{{ item }}'

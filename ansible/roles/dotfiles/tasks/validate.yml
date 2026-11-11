@@ -39,6 +39,12 @@
         dotfiles_hypr_active_monitors | rejectattr('scale', 'defined')
         | list | length == 0
       - >-
+        dotfiles_hypr_active_monitors | map(attribute='scale')
+        | reject('number') | list | length == 0
+      - >-
+        dotfiles_hypr_active_monitors | map(attribute='scale')
+        | select('boolean') | list | length == 0
+      - >-
         dotfiles_hypr_workspace_rules | rejectattr('workspace', 'defined')
         | list | length == 0
       - >-
@@ -84,8 +90,9 @@
       Invalid dotfiles settings. Check dotfiles_home (an absolute path other
       than /), dotfiles_template_mode (an octal string such as '0644'), the
       hypridle timeouts (whole seconds), dotfiles_hypr_monitors (output, and
-      quoted mode and position strings plus scale for each monitor), the workspace and window rules
-      (each with a monitor; window rules with a match mapping), and every entry
+      quoted mode and position strings plus a numeric scale for each
+      monitor), the workspace and window rules (each with a monitor; window
+      rules with a match mapping), and every entry
       of dotfiles_waybar_temperature_sensors (unique name, label, hwmon_path
       under /sys and input_filename tempN_input). See
       ansible/roles/dotfiles/README.md.
