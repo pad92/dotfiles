@@ -28,20 +28,6 @@ commit and deploy: the clone moves to that commit, and the files removed
 upstream go with it. A clone with local changes stops the deployment. The
 `package_vim` jobs read the same list to build `vim.tar.gz`.
 
-vim-instant-markdown does not start its preview on its own:
-`plugins.vim` sets `g:instant_markdown_autostart` to 0, since the plugin
-reports an error on every Markdown buffer when the `instant-markdown-d`
-server is not installed. Run `:InstantMarkdownPreview` to start it.
-
-The packages role installs that server on Arch: `nodejs-instant-markdown-d`
-from the AUR, in the `01_base` group. `dotfiles_vim_preview_packages` maps
-`ansible_facts['os_family']` to the package that provides it. On a listed
-family, the deployment reads `package_facts` and stops before copying
-anything if the package is missing; check mode only warns, since the
-packages role installs nothing then. Debian and Fedora package no such
-server and npm is not used, so those families are not listed and the
-preview is unavailable there.
-
 Vundle and tpm are gone, along with tmux-sensible, whose settings are now in
 `.tmux.conf`. A deployment removes what they left in the home
 (`dotfiles_retired_plugin_paths`): `~/.vim/bundle/` and `~/.tmux/plugins/`.

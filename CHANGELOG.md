@@ -120,11 +120,9 @@ Release history and changes planned for the next version.
     commits pinned in `dotfiles_vim_pack_plugins`, into the Vim package
     `~/.vim/pack/dotfiles/start/`, which Vim loads at startup. Deployment
     never ran `:PluginInstall`, so most declared plugins were missing; they
-    are all there now. vim-instant-markdown is actually loaded for the first
-    time since 2021, when it moved out of the `after/` directory that Vundle
-    was told to load. Its preview no longer starts on its own
-    (`:InstantMarkdownPreview`), because it reports an error on every
-    Markdown buffer without the `instant-markdown-d` server. The settings
+    are all there now. vim-instant-markdown is dropped: it had not loaded
+    since 2021, when it moved out of the `after/` directory that Vundle was
+    told to load, and it needed the `instant-markdown-d` server. The settings
     `.tmux.conf` took from tmux-sensible, which tpm never installed, are
     written in the file.
   - Remove what Vundle and tpm left in the home: `~/.vim/bundle/`,
@@ -136,13 +134,6 @@ Release history and changes planned for the next version.
     path moves to `<path>.bak`, and the deployment stops if that backup
     already exists. Check mode lists what would be removed or backed up.
     What they wrote into the clone through a link stays there.
-  - Install `instant-markdown-d`, the server behind
-    `:InstantMarkdownPreview`, on Arch with the AUR package
-    `nodejs-instant-markdown-d` in `01_base`. The deployment now stops when
-    the package for the host's OS family (`dotfiles_vim_preview_packages`,
-    read through `package_facts`) is missing; check mode only warns. Debian
-    and Fedora package no such server, so nothing is installed or checked
-    there and the preview stays unavailable.
   - `vim.tar.gz` ships the pinned plugins, without their Git metadata, so
     `scripts/vim.sh` no longer needs Git: it only downloads and extracts the
     archive. The package jobs read the plugin list from the role defaults

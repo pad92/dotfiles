@@ -12,7 +12,6 @@
       - dotfiles_group is match('^[A-Za-z0-9_][A-Za-z0-9_.-]*$')
       - dotfiles_template_mode is match('^0[0-7]{3}$')
       - dotfiles_is_portable | string | lower in ['true', 'false']
-      - dotfiles_vim_preview_packages is mapping
       - dotfiles_icon_theme is match('^[A-Za-z0-9._+-]+$')
       - dotfiles_hypridle_lock_timeout | string is match('^[0-9]+$')
       - dotfiles_hypridle_dpms_timeout | string is match('^[0-9]+$')

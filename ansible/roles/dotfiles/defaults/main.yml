@@ -67,22 +67,12 @@ dotfiles_vim_pack_plugins:
   - repo: https://github.com/tpope/vim-fugitive.git
     dest: .vim/pack/dotfiles/start/vim-fugitive
     version: 3b753cf8c6a4dcde6edee8827d464ba9b8c4a6f0 # pragma: allowlist secret
-  - repo: https://github.com/suan/vim-instant-markdown.git
-    dest: .vim/pack/dotfiles/start/vim-instant-markdown
-    version: 00cf249fe59e70d16fd6e10c18132af09552ed2c # pragma: allowlist secret
   - repo: https://github.com/chrisbra/colorizer.git
     dest: .vim/pack/dotfiles/start/colorizer
     version: f5d69c0dea9f36e2eb025c7d86cc62b5a0d8af62 # pragma: allowlist secret
   - repo: https://github.com/editorconfig/editorconfig-vim.git
     dest: .vim/pack/dotfiles/start/editorconfig-vim
     version: c0227885a06b155d5aa5465e08b9800e8c939f70 # pragma: allowlist secret
-# Package that provides instant-markdown-d, the server behind
-# :InstantMarkdownPreview, keyed by ansible_facts['os_family']. On a family
-# listed here, a deployment fails while the package is not installed; check
-# mode only warns, since the packages role installs nothing then. Debian and
-# Red Hat package no such server, so the preview is unavailable there.
-dotfiles_vim_preview_packages:
-  Archlinux: nodejs-instant-markdown-d
 # What Vundle and tpm left in the home before the Vim package and the tmux
 # settings replaced them. A deployment removes these paths, but stops first
 # if a Git repository under them holds work found nowhere else. A parent goes

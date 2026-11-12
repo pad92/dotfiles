@@ -204,14 +204,6 @@ class ArchPackageGroupTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIn(package, packages)
 
-    def test_default_groups_install_the_vim_markdown_preview_server(self):
-        # vim-instant-markdown needs instant-markdown-d, which the dotfiles
-        # role requires on Arch; the default groups must provide it.
-        packages = yaml.safe_load(DOTFILES_DEFAULTS.read_text(encoding="utf-8"))[
-            "dotfiles_vim_preview_packages"
-        ]
-        self.assertIn(packages["Archlinux"], self.default_group_packages())
-
     def test_default_groups_install_the_notification_font(self):
         font = next(
             line.split("=", 1)[1]

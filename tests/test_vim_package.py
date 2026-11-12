@@ -98,8 +98,7 @@ class VimPackageTests(unittest.TestCase):
         )
         commit_files(colors, {"colors/later.vim": '" later\n'}, "later")
 
-        # A plugin with an after directory and a filetype plugin, as
-        # vim-instant-markdown used to have and has now.
+        # A plugin with an after directory and a filetype plugin.
         markdown = self.work / "markdown"
         repository(markdown)
         markdown_pinned = commit_files(
