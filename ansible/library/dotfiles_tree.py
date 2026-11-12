@@ -88,9 +88,18 @@ def collect(root: str, tracked: bool = False, dest: str | None = None) -> list[d
             f"cannot list Git-tracked files of {root}: {error.stderr}"
         ) from error
 
-    def visit(path: str, ancestors: set[tuple[int, int]]) -> None:
+    def visit(
+        path: str, ancestors: set[tuple[int, int]], everything: bool = False
+    ) -> None:
+        # Git tracks a link to a directory as one entry, not the files the
+        # copy finds behind it, so everything under such a link is kept.
         relative = os.path.relpath(path, root)
-        if selected is not None and relative != "." and relative not in selected:
+        if (
+            not everything
+            and selected is not None
+            and relative != "."
+            and relative not in selected
+        ):
             return
         info = os.lstat(path)
         link = stat.S_ISLNK(info.st_mode)
@@ -122,7 +131,7 @@ def collect(root: str, tracked: bool = False, dest: str | None = None) -> list[d
         if directory:
             with os.scandir(path) as children:
                 for child in sorted(children, key=lambda entry: entry.name):
-                    visit(child.path, ancestors | {identity})
+                    visit(child.path, ancestors | {identity}, everything or link)
 
     visit(root, set())
     return result

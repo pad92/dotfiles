@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ansible.errors import AnsibleFilterError
+from git_fixtures import git, repository
 from test_ansible_modules import (
     Module,
     Result,
@@ -543,6 +544,35 @@ class BackupScriptTests(unittest.TestCase):
         }
         with self.assertRaises(RuntimeError):
             backups.managed_paths(configuration)
+
+    def test_trees_list_only_the_files_the_role_copies(self):
+        repository_root = self.home / "repository"
+        repository(repository_root)
+        source = repository_root / "ansible/roles/dotfiles/files/home"
+        (source / ".vim/config").mkdir(parents=True)
+        (source / ".vim/config/plugins.vim").write_text("tracked\n")
+        git(repository_root, "add", ".")
+        git(repository_root, "commit", "-q", "-m", "tree")
+        # What the working copy holds without Git: never deployed.
+        (source / ".vim/bundle/gruvbox").mkdir(parents=True)
+        (source / ".vim/bundle/gruvbox/colors.vim").write_text("plugin\n")
+        configuration = {
+            "dotfiles_directories": [],
+            "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+            "dotfiles_files": [],
+            "dotfiles_hyprlock_wallpaper": ".local/share/dotfiles/wallpaper.png",
+            "dotfiles_templates": [],
+            "dotfiles_systemd_directory": ".config/systemd",
+        }
+        (source / ".config/systemd").mkdir(parents=True)
+        with patch.object(backups, "REPOSITORY_ROOT", repository_root):
+            directories, files = backups.managed_paths(configuration)
+        self.assertIn(".vim/config", files)
+        self.assertIn(".vim/config/plugins.vim", files)
+        self.assertFalse(
+            [path for path in files if path.startswith(".vim/bundle")],
+            files,
+        )
 
     def test_main_lists_backups_as_text_and_json(self):
         backup = self.home / ".zshrc.bak"

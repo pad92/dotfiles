@@ -304,6 +304,24 @@ class ModuleTests(unittest.TestCase):
         self.assertTrue(failed.failed)
         self.assertIn("cannot list Git-tracked files", failed.data["msg"])
 
+    def test_tree_tracked_keeps_the_files_behind_a_tracked_directory_link(self):
+        parent = self.root / "linked"
+        repository(parent)
+        (parent / "shared").mkdir()
+        (parent / "shared/lib.zsh").write_text("shared")
+        source = parent / "home/zsh"
+        source.mkdir(parents=True)
+        (source / "lib").symlink_to("../../shared")
+        git(parent, "add", ".")
+        git(parent, "commit", "-m", "tree")
+
+        files = tree.collect(str(source), tracked=True, dest="/h/zsh")
+        entries = {os.path.relpath(entry["path"], source): entry for entry in files}
+        # Git tracks only the link, yet the copy follows it to a directory.
+        self.assertEqual(set(entries), {".", "lib", "lib/lib.zsh"})
+        self.assertTrue(entries["lib"]["isdir"])
+        self.assertEqual(entries["lib/lib.zsh"]["dest"], "/h/zsh/lib/lib.zsh")
+
     def test_backup_preserves_inode_modes_hardlinks_and_broken_links(self):
         src, dest = self.root / "source", self.root / "backup"
         src.mkdir(mode=0o700)

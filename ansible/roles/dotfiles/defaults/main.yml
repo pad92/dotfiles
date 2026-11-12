@@ -11,8 +11,13 @@ dotfiles_source_repository: '{{ role_path | dirname | dirname | dirname }}'
 dotfiles_source_root: '{{ role_path }}/files/home'
 # Where earlier versions linked .vim and the Zsh tree. A link that
 # still points there is replaced by a copy, and the files the programs had
-# added to the clone (plugins, backups) are copied next to it.
-dotfiles_legacy_link_root: '{{ dotfiles_home }}/.dotfiles/ansible/roles/dotfiles/files/home'
+# added to the clone (plugins, backups) are copied next to it. An inventory
+# that still sets the variables of those versions, dotfiles_link_root or
+# dotfiles_repository (the clone), is followed.
+dotfiles_legacy_link_root: >-
+  {{ dotfiles_link_root
+     | default((dotfiles_repository | default(dotfiles_home ~ '/.dotfiles'))
+               ~ '/ansible/roles/dotfiles/files/home') }}
 # Icon theme written into the GTK 2/3, hyprtoolkit and Mako configurations.
 dotfiles_icon_theme: Papirus-Dark
 # Mako does not follow theme inheritance, so it also searches the parent theme.

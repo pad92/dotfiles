@@ -406,6 +406,7 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             repository(source)
             (source / "home/.vim/config").mkdir(parents=True)
             (source / "home/.vim/config/plugins.vim").write_text("new\n")
+            (source / "home/.vim/config/keys.vim").write_text("shipped keys\n")
             (source / "home/zsh").mkdir()
             (source / "home/zsh/init.zsh").write_text("new\n")
             (source / ".gitignore").write_text("backup/\n")
@@ -422,11 +423,15 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             linked = clone / "files/home/.vim"
             (linked / "config").mkdir(parents=True)
             (linked / "config/plugins.vim").write_text("old\n")
+            (linked / "config/keys.vim").write_text("clone\n")
             linked_zsh = clone / "files/home/zsh"
             linked_zsh.mkdir()
             (linked_zsh / "init.zsh").write_text("old\n")
             git(clone, "add", ".")
             git(clone, "commit", "-q", "-m", "clone")
+            # A tracked file edited through the link: the shipped version
+            # replaces it, and the edit is kept as a backup.
+            (linked / "config/keys.vim").write_text("edited keys\n")
             # A Zsh plugin that an older version shipped as a submodule, left
             # behind once the clone dropped its gitlink: the .git file points
             # into the clone, and the files are those of an older commit.
@@ -541,17 +546,25 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             output = run("--check")
             self.assertIn("Check mode stops before replacing the links", output)
             self.assertIn("backup/notes.txt~", output)
+            self.assertIn("config/keys.vim", output)
             self.assertTrue((home / ".vim").is_symlink())
             self.assertEqual((linked / "config/plugins.vim").read_text(), "old\n")
 
-            output = run()
-            self.assertRegex(
-                output, r"changed: \[localhost\] => \(item=\.vim/backup/notes"
-            )
+            run()
             vim = home / ".vim"
             self.assertFalse(vim.is_symlink())
             self.assertFalse((home / ".vim.bak").exists())
+            self.assertFalse((home / ".vim.migrating").exists())
             self.assertEqual((vim / "config/plugins.vim").read_text(), "new\n")
+            self.assertEqual((vim / "config/keys.vim").read_text(), "shipped keys\n")
+            backups = sorted(
+                path.name
+                for path in (vim / "config").iterdir()
+                if path.name not in {"plugins.vim", "keys.vim"}
+            )
+            self.assertEqual(len(backups), 1, backups)
+            self.assertTrue(backups[0].startswith("keys.vim."), backups)
+            self.assertEqual((vim / "config" / backups[0]).read_text(), "edited keys\n")
             self.assertFalse((vim / "backup/controller~").exists())
             self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
             # A plugin Vundle had installed is not copied: the role would
@@ -587,6 +600,131 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
             self.assertRegex(run(), r"changed=0\b")
 
+    def deploy_vim(self, work, extra_vars=None, legacy_root=True):
+        """Deploy a .vim tree that ships config/plugins.vim, with --check first."""
+        role = work / "dotfiles"
+        shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+        (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+        source = work / "source"
+        repository(source)
+        (source / "home/.vim/config").mkdir(parents=True)
+        (source / "home/.vim/config/plugins.vim").write_text("new\n")
+        (source / "wallpaper.png").write_text("png\n")
+        git(source, "add", ".")
+        git(source, "commit", "-q", "-m", "source")
+        variables = {
+            "ansible_facts": USER_FACTS,
+            "dotfiles_home": str(work / "home"),
+            "dotfiles_source_repository": str(source),
+            "dotfiles_source_root": str(source / "home"),
+            "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+            "dotfiles_vim_pack_plugins": [],
+            "dotfiles_zsh_plugins": [],
+            "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
+            "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
+            "dotfiles_directories": [],
+            "dotfiles_files": [],
+            "dotfiles_templates": [],
+            "dotfiles_systemd_graphical_units": [],
+            "dotfiles_systemd_directory": ".config/test-systemd",
+        }
+        if legacy_root:
+            variables["dotfiles_legacy_link_root"] = str(work / "clone/files/home")
+        variables.update(extra_vars or {})
+        play = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "vars": variables,
+                "tasks": [
+                    {
+                        "ansible.builtin.import_role": {
+                            "name": str(role),
+                            "tasks_from": "deploy",
+                        },
+                        "tags": ["dotfiles_deploy"],
+                    }
+                ],
+            }
+        ]
+        playbook = work / "play.yml"
+        playbook.write_text(yaml.safe_dump(play))
+        outputs = []
+        for arguments in (["--check"], []):
+            result = subprocess.run(
+                [
+                    "ansible-playbook",
+                    "-i",
+                    "localhost,",
+                    str(playbook),
+                    "--tags",
+                    "dotfiles_deploy",
+                    "--skip-tags",
+                    "systemd",
+                    *arguments,
+                ],
+                cwd=ROOT,
+                env=ansible_test_environment(work),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            outputs.append(result.stdout)
+        return outputs
+
+    def test_dangling_legacy_link_is_replaced_without_its_clone(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            # The clone the link pointed into was deleted before deploying.
+            home = work / "home"
+            home.mkdir()
+            (home / ".vim").symlink_to(work / "clone/files/home/.vim")
+            self.deploy_vim(work)
+            vim = home / ".vim"
+            self.assertFalse(vim.is_symlink())
+            self.assertEqual((vim / "config/plugins.vim").read_text(), "new\n")
+
+    def test_replacement_stopped_after_removing_the_link_is_finished(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            # An earlier run filled the staging directory and removed the
+            # link, then stopped: the staging directory is the only copy.
+            home = work / "home"
+            staged = home / ".vim.migrating"
+            (staged / "backup").mkdir(parents=True)
+            (staged / "backup/notes.txt~").write_text("edited\n")
+            self.deploy_vim(work)
+            vim = home / ".vim"
+            self.assertFalse(staged.exists())
+            self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
+            self.assertEqual((vim / "config/plugins.vim").read_text(), "new\n")
+
+    def test_legacy_link_root_follows_the_former_clone_variable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            # An inventory of an earlier version placed the clone elsewhere.
+            clone = work / "elsewhere"
+            repository(clone)
+            linked = clone / "ansible/roles/dotfiles/files/home/.vim"
+            (linked / "config").mkdir(parents=True)
+            (linked / "config/plugins.vim").write_text("old\n")
+            git(clone, "add", ".")
+            git(clone, "commit", "-q", "-m", "clone")
+            (linked / "kept~").write_text("kept\n")
+            home = work / "home"
+            home.mkdir()
+            (home / ".vim").symlink_to(linked)
+            self.deploy_vim(
+                work, {"dotfiles_repository": str(clone)}, legacy_root=False
+            )
+            vim = home / ".vim"
+            self.assertFalse(vim.is_symlink())
+            self.assertFalse((home / ".vim.bak").exists())
+            self.assertEqual((vim / "kept~").read_text(), "kept\n")
+
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 class DotfilesTreeUpdateTests(unittest.TestCase):
@@ -598,6 +736,18 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             role = work / "dotfiles"
             shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
             (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+            handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
+            (role / "handlers/main.yml").write_text(
+                yaml.safe_dump(
+                    [
+                        {
+                            "name": handler["name"],
+                            "ansible.builtin.debug": {"msg": handler["name"]},
+                        }
+                        for handler in handlers
+                    ]
+                )
+            )
 
             plugin = work / "plugin"
             repository(plugin)
@@ -638,6 +788,12 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
                             "dotfiles_source_repository": str(source),
                             "dotfiles_source_root": str(source / "home"),
                             "dotfiles_legacy_link_root": str(work / "no-clone"),
+                            "dotfiles_directory_handlers": {},
+                            "dotfiles_file_handlers": {
+                                ".local/share/dotfiles/zsh/completions/_removed": [
+                                    "Reload Mako configuration"
+                                ]
+                            },
                             "dotfiles_trees": [
                                 {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
                             ],
@@ -744,6 +900,10 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             self.assertEqual((clone / "plugin.zsh").read_text(), "v2\n")
             self.assertFalse((clone / "dropped.zsh").exists())
             self.assertFalse((target / "completions/_removed").exists())
+            # Deleting a file runs the handlers of that file.
+            self.assertRegex(
+                output, r"RUNNING HANDLER \[[^]]*Reload Mako configuration"
+            )
             self.assertEqual((target / "completions/_edited").read_text(), "edited\n")
             self.assertIn("_edited was changed by hand, so it is kept", output)
             self.assertEqual((target / "completions/_local").read_text(), "local\n")

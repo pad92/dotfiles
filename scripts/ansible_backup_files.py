@@ -120,6 +120,19 @@ def has_symlink_component(path: Path) -> bool:
     return False
 
 
+def tracked_files(directory: Path) -> list[str]:
+    """Paths relative to directory that Git tracks, none if it does not exist."""
+    if not directory.is_dir():
+        return []
+    result = subprocess.run(
+        ["git", "-C", str(directory), "ls-files", "-z"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [path for path in result.stdout.split("\0") if path]
+
+
 def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     """Return the exact managed paths whose Ansible tasks can back up."""
     directories = (
@@ -140,23 +153,27 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     )
 
     source_root = REPOSITORY_ROOT / "ansible/roles/dotfiles/files/home"
-    source_directories = (
-        [
-            (relative_path, relative_path)
-            for relative_path in defaults["dotfiles_directories"]
-        ]
-        + [
-            (tree["src"], tree["dest"])
-            for tree in defaults["dotfiles_trees"]
-            if (source_root / validate_relative_path(tree["src"])).is_dir()
-        ]
-        + [
-            (
-                defaults["dotfiles_systemd_directory"],
-                defaults["dotfiles_systemd_directory"],
-            ),
-        ]
-    )
+    # The role copies only what Git tracks in a tree, whatever else lies in
+    # the working copy.
+    for tree in defaults["dotfiles_trees"]:
+        for relative_path in tracked_files(
+            source_root / validate_relative_path(tree["src"])
+        ):
+            parts = Path(relative_path).parts
+            files.update(
+                (Path(tree["dest"]).joinpath(*parts[:index])).as_posix()
+                for index in range(1, len(parts) + 1)
+            )
+
+    source_directories = [
+        (relative_path, relative_path)
+        for relative_path in defaults["dotfiles_directories"]
+    ] + [
+        (
+            defaults["dotfiles_systemd_directory"],
+            defaults["dotfiles_systemd_directory"],
+        ),
+    ]
     for source_relative, destination_relative in source_directories:
         source_directory = source_root / validate_relative_path(source_relative)
         if not source_directory.is_dir():

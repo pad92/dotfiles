@@ -56,24 +56,6 @@
   register: dotfiles_directory_copies
   notify: '{{ dotfiles_copy_handlers }}'
 
-# A looped task notifies the union of its handlers once any item changes, so
-# file-specific handlers are selected from the changed items here. Their keys
-# are paths under the home directory.
-- name: Notify handlers for changed files in {{ dotfiles_copy.dest }}
-  ansible.builtin.debug:
-    msg: '{{ dotfiles_changed_file_handlers }}'
-  vars:
-    dotfiles_changed_files: >-
-      {{ dotfiles_directory_copies.results | default([]) | selectattr('changed')
-         | map(attribute='item.dest') | map('relpath', dotfiles_home) | list }}
-    dotfiles_changed_file_handlers: >-
-      {{ dotfiles_file_handlers | dict2items
-         | selectattr('key', 'in', dotfiles_changed_files)
-         | map(attribute='value') | flatten | unique | list }}
-  changed_when: dotfiles_changed_file_handlers | length > 0
-  when: dotfiles_changed_file_handlers | length > 0
-  notify: '{{ dotfiles_changed_file_handlers }}'
-
 - name: Preserve dangling and cyclic source links in {{ dotfiles_copy.dest }}
   ansible.builtin.file:
     src: '{{ item.lnk_target }}'
@@ -147,7 +129,29 @@
   loop_control:
     label: '{{ item.item }}'
   when: item.stat.checksum == dotfiles_copy_previous_files[item.item]
+  register: dotfiles_copy_deletions
   notify: '{{ dotfiles_copy_handlers }}'
+
+# A looped task notifies the union of its handlers once any item changes, so
+# file-specific handlers are selected from the files copied or deleted here.
+# Their keys are paths under the home directory.
+- name: Notify handlers for changed files in {{ dotfiles_copy.dest }}
+  ansible.builtin.debug:
+    msg: '{{ dotfiles_changed_file_handlers }}'
+  vars:
+    dotfiles_changed_files: >-
+      {{ ((dotfiles_directory_copies.results | default([]) | selectattr('changed')
+          | map(attribute='item.dest') | list)
+         + (dotfiles_copy_deletions.results | default([]) | selectattr('changed')
+            | map(attribute='item.item') | list))
+         | map('relpath', dotfiles_home) | list }}
+    dotfiles_changed_file_handlers: >-
+      {{ dotfiles_file_handlers | dict2items
+         | selectattr('key', 'in', dotfiles_changed_files)
+         | map(attribute='value') | flatten | unique | list }}
+  changed_when: dotfiles_changed_file_handlers | length > 0
+  when: dotfiles_changed_file_handlers | length > 0
+  notify: '{{ dotfiles_changed_file_handlers }}'
 
 - name: Report the changed files no longer shipped in {{ dotfiles_copy.dest }}
   ansible.builtin.debug:

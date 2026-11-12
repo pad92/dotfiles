@@ -107,7 +107,15 @@ Release history and changes planned for the next version.
     files Git tracks are copied. A deployment replaces an old link into
     `~/.dotfiles` with a copy and brings over what programs had added there
     (Vim backups, swap files). Check mode lists those files and stops before
-    the replacement.
+    the replacement. Tracked files edited through the link are brought over
+    as well and kept as backups of the shipped version. The files are staged
+    in `<path>.migrating`, which the next run moves into place if a run
+    stops after removing the link. An inventory that still sets
+    `dotfiles_repository` or `dotfiles_link_root` is followed. A link left
+    dangling by a deleted clone is replaced too. A Git-tracked link to a
+    directory is copied with the files behind it, and the backup listing
+    (`scripts/ansible_backup_files.py`) only considers the files a tree
+    deploys.
   - Drop Vundle and tpm. The Vim plugins are cloned on the target at the
     commits pinned in `dotfiles_vim_pack_plugins`, into the Vim package
     `~/.vim/pack/dotfiles/start/`, which Vim loads at startup. Deployment
@@ -146,9 +154,11 @@ Release history and changes planned for the next version.
   - Record the files copied into each directory in
     `~/.local/state/dotfiles/manifests/`. The next deployment deletes those
     the repository no longer ships, such as `_fwupdmgr`, unless they were
-    changed on the target; files added by hand stay.
+    changed on the target; files added by hand stay. Deleting a file runs
+    the handlers `dotfiles_file_handlers` gives it.
   - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
-    `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone. The
+    `dotfiles_zsh_link_dest`, and `dotfiles_repository` only locates an old
+    clone (see `dotfiles_legacy_link_root`). The
     `dotfiles_submodules` tag and the `dotfiles_submodule_update` module are
     removed. `dotfiles_vim_pack_plugins` replaces `dotfiles_vim_plugins`;
     `dotfiles_update_vim_plugins`, the `dotfiles_runtime` and `vim` tags and

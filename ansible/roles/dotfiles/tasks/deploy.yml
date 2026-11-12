@@ -160,6 +160,20 @@
     label: '{{ item.item.item }}'
   when: item.changed
 
+# A legacy link may dangle once its clone is deleted or moved: it is still
+# replaced, but there is nothing behind it to bring over.
+- name: Inspect the clone directories behind legacy tree links
+  ansible.builtin.stat:
+    path: '{{ dotfiles_legacy_link_root }}/{{ item.src }}'
+    follow: true
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ dotfiles_legacy_tree_links }}'
+  loop_control:
+    label: '{{ item.dest }}'
+  register: dotfiles_legacy_tree_targets
+
 # Git lists, under each legacy link's target, what it does not track:
 # files the programs wrote there, such as Vim backups. A nested
 # repository, such as a plugin clone under .vim/bundle, comes as one entry.
@@ -176,7 +190,34 @@
   loop: '{{ dotfiles_legacy_tree_links }}'
   loop_control:
     label: '{{ item.dest }}'
+    index_var: dotfiles_legacy_tree_index
+  when: dotfiles_legacy_tree_targets.results[dotfiles_legacy_tree_index].stat.isdir | default(false)
   register: dotfiles_legacy_tree_files
+  changed_when: false
+  check_mode: false
+
+# Tracked files edited through the link differ from the clone's last
+# commit. They are brought over too, so the copy that replaces them keeps
+# the edited version as a backup.
+- name: List the tracked files edited behind legacy tree links
+  ansible.builtin.command:
+    argv:
+      - git
+      - -c
+      - core.quotePath=false
+      - -C
+      - '{{ dotfiles_legacy_link_root }}/{{ item.src }}'
+      - diff
+      - --name-only
+      - --relative
+      - --diff-filter=MT
+      - HEAD
+  loop: '{{ dotfiles_legacy_tree_links }}'
+  loop_control:
+    label: '{{ item.dest }}'
+    index_var: dotfiles_legacy_tree_index
+  when: dotfiles_legacy_tree_targets.results[dotfiles_legacy_tree_index].stat.isdir | default(false)
+  register: dotfiles_legacy_tree_edits
   changed_when: false
   check_mode: false
 
@@ -194,8 +235,9 @@
     msg: >-
       Check mode stops before replacing the links to the clone
       ({{ dotfiles_legacy_tree_links | map(attribute='dest') | join(', ') }})
-      with copies. Kept from the clone: {{ dotfiles_legacy_tree_files.results
-      | map(attribute='stdout_lines') | flatten | join(', ') or 'nothing' }}.
+      with copies. Kept from the clone: {{ (dotfiles_legacy_tree_files.results
+      + dotfiles_legacy_tree_edits.results)
+      | map(attribute='stdout_lines', default=[]) | flatten | join(', ') or 'nothing' }}.
   when: ansible_check_mode and dotfiles_legacy_tree_links | length > 0
 
 - name: Deploy paths after conflict backups
@@ -220,11 +262,92 @@
       loop_control:
         label: '{{ item }}'
 
+    # Each legacy link is replaced through a staging directory beside it,
+    # <dest>.migrating, filled from the clone before the link is removed and
+    # renamed into place after. While the link exists, the clone still holds
+    # everything, so a leftover staging directory is rebuilt; once it is
+    # gone, the staging directory is the only copy and the next run renames
+    # it instead.
+    - name: Clear the staging directories of legacy tree links
+      ansible.builtin.file:
+        path: '{{ dotfiles_home }}/{{ item.dest }}.migrating'
+        state: absent
+      loop: '{{ dotfiles_legacy_tree_links }}'
+      loop_control:
+        label: '{{ item.dest }}'
+
+    - name: Create the staging directories of legacy tree links
+      ansible.builtin.file:
+        path: '{{ dotfiles_home }}/{{ item.dest }}.migrating'
+        state: directory
+        mode: '0755'
+      loop: '{{ dotfiles_legacy_tree_links }}'
+      loop_control:
+        label: '{{ item.dest }}'
+
+    # cp creates the missing parents of each path and keeps its modes, links
+    # and nested Git checkouts. The pinned plugins are skipped with
+    # everything under them, since they are cloned below: the Zsh plugins,
+    # which older versions shipped as submodules, have a .git file that
+    # points into the clone. So are the Vundle and tpm leftovers, which would
+    # only be removed again. Git quotes a name with a newline or a quote,
+    # which then fails here rather than copying another path.
+    - name: Copy what the clone holds beyond the shipped files of legacy tree links
+      ansible.builtin.command:
+        argv: >-
+          {{ ['cp', '-a', '--parents', '--'] + dotfiles_kept_paths
+             + [dotfiles_home ~ '/' ~ item.item.dest ~ '.migrating/'] }}
+        chdir: '{{ dotfiles_legacy_link_root }}/{{ item.item.src }}'
+      vars:
+        dotfiles_tree_dest: '{{ item.item.dest | normpath }}'
+        # Relative to the tree; a nested repository comes with a final slash.
+        dotfiles_listed_paths: >-
+          {{ (item.stdout_lines | default([])
+              + dotfiles_legacy_tree_edits.results[dotfiles_legacy_tree_index].stdout_lines
+                | default([]))
+             | map('regex_replace', '/$', '') | unique | list }}
+        dotfiles_tree_cloned_paths: >-
+          {{ (((dotfiles_zsh_plugins + dotfiles_vim_pack_plugins)
+               | map(attribute='dest') | list)
+              + dotfiles_retired_plugin_paths)
+             | map('normpath')
+             | select('match', (dotfiles_tree_dest ~ '/') | regex_escape)
+             | map('relpath', dotfiles_tree_dest) | list }}
+        dotfiles_kept_paths: >-
+          {{ dotfiles_listed_paths
+             | reject('match', '(' ~ dotfiles_tree_cloned_paths | map('regex_escape')
+                               | join('|') ~ ')(/|$)')
+             | list
+             if dotfiles_tree_cloned_paths else dotfiles_listed_paths }}
+      loop: '{{ dotfiles_legacy_tree_files.results | default([]) }}'
+      loop_control:
+        label: '{{ item.item.dest }}'
+        index_var: dotfiles_legacy_tree_index
+      # It only runs into a staging directory just created empty.
+      changed_when: true
+      when: dotfiles_kept_paths | length > 0
+
     - name: Remove legacy tree links into a clone
       ansible.builtin.file:
         path: '{{ dotfiles_home }}/{{ item.dest }}'
         state: absent
       loop: '{{ dotfiles_legacy_tree_links }}'
+      loop_control:
+        label: '{{ item.dest }}'
+
+    # Also finishes a replacement that an earlier run stopped after removing
+    # the link.
+    - name: Move the staged copies of legacy tree links into place
+      ansible.builtin.command:
+        argv:
+          - mv
+          - -T
+          - --
+          - '{{ dotfiles_home }}/{{ item.dest }}.migrating'
+          - '{{ dotfiles_home }}/{{ item.dest }}'
+        creates: '{{ dotfiles_home }}/{{ item.dest }}'
+        removes: '{{ dotfiles_home }}/{{ item.dest }}.migrating'
+      loop: '{{ dotfiles_trees }}'
       loop_control:
         label: '{{ item.dest }}'
 
@@ -244,45 +367,6 @@
       loop_control:
         loop_var: dotfiles_copy_item
         label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'
-
-    # cp creates the missing parents of each path and keeps its modes, links
-    # and nested Git checkouts; an existing path is left alone. The pinned
-    # plugins are skipped with everything under them, since they are cloned
-    # below: the Zsh plugins, which older versions shipped as submodules,
-    # have a .git file that points into the clone. So are the Vundle and tpm
-    # leftovers, which would only be removed again.
-    # Git quotes a name with a newline or a quote, which then fails here
-    # rather than copying another path.
-    - name: Copy the files programs added behind legacy tree links
-      ansible.builtin.command:
-        argv:
-          - cp
-          - -a
-          - --parents
-          - --
-          - '{{ dotfiles_added_path }}'
-          - '{{ dotfiles_home }}/{{ item.0.item.dest }}/'
-        chdir: '{{ dotfiles_legacy_link_root }}/{{ item.0.item.src }}'
-        creates: '{{ dotfiles_home }}/{{ dotfiles_added_dest }}'
-      vars:
-        # Relative to the tree; a nested repository comes with a final slash.
-        dotfiles_added_path: "{{ item.1 | regex_replace('/$', '') }}"
-        dotfiles_added_dest: '{{ (item.0.item.dest ~ "/" ~ dotfiles_added_path) | normpath }}'
-        dotfiles_cloned_paths: >-
-          {{ (((dotfiles_zsh_plugins + dotfiles_vim_pack_plugins)
-               | map(attribute='dest') | list)
-              + dotfiles_retired_plugin_paths)
-             | map('normpath') | list }}
-      loop: >-
-        {{ dotfiles_legacy_tree_files.results | default([])
-           | subelements('stdout_lines', skip_missing=true) }}
-      loop_control:
-        label: '{{ dotfiles_added_dest }}'
-      when: >-
-        dotfiles_cloned_paths | length == 0 or
-        dotfiles_added_dest is not match('(' ~ dotfiles_cloned_paths
-                                         | map('regex_escape') | join('|')
-                                         ~ ')(/|$)')
 
     # The check above already passed; this checks again, then removes.
     - name: Remove the Vundle and tpm leftovers

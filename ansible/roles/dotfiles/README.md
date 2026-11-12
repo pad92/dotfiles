@@ -76,15 +76,21 @@ manifest yet, so it deletes nothing. Check mode reports the deletions without
 making them.
 
 Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
-link there (`dotfiles_legacy_link_root`), the deployment removes the link,
-copies the tree, then copies what Git does not track behind the link: Vim
-backups and swap files. It leaves out `.vim/bundle/`, which it would only
-remove again, and the pinned plugins, which are cloned rather than copied:
-the Zsh plugins, which older versions shipped as submodules, have a `.git`
-file that points into the clone. The clone itself is left untouched. Check
-mode lists the files it will bring over and stops before the replacement. A
-link that points anywhere else is backed up to `<path>.bak` like any other
-conflict.
+link there (`dotfiles_legacy_link_root`, which follows `dotfiles_link_root` or
+`dotfiles_repository` when an older inventory still sets them), the
+deployment first copies into `<path>.migrating` what the link holds beyond the
+shipped files: what Git does not track (Vim backups and swap files) and the
+tracked files edited through the link. It leaves out `.vim/bundle/`, which it
+would only remove again, and the pinned plugins, which are cloned rather than
+copied: the Zsh plugins, which older versions shipped as submodules, have a
+`.git` file that points into the clone. It then removes the link, renames
+`<path>.migrating` into place and copies the tree, so an edited file is
+replaced by the shipped one and kept as a timestamped backup. A run stopped
+after removing the link leaves `<path>.migrating`, which the next run renames.
+The clone itself is left untouched. A link whose clone was already deleted is
+replaced as well, with nothing to bring over. Check mode lists the files it
+will bring over and stops before the replacement. A link that points anywhere
+else is backed up to `<path>.bak` like any other conflict.
 
 The Hyprlock background is copied to
 `~/.local/share/dotfiles/wallpapers/` (`dotfiles_hyprlock_wallpaper`).
@@ -212,7 +218,8 @@ when their configuration directories change. A change under `.config/uwsm`
 prints a reminder to log in again, because UWSM reads it at session start.
 `dotfiles_file_handlers` maps single files to handlers when the program does not
 watch its configuration: a changed `.config/hypr/hypridle.conf` runs
-`try-restart hypridle.service`, which leaves a stopped or disabled service alone. A changed Waybar
+`try-restart hypridle.service`, which leaves a stopped or disabled service alone. A file
+handler also runs when a deployment deletes its file from a copied tree. A changed Waybar
 configuration or temperature file reloads Waybar, and a changed
 `hosts/settings.lua` reloads a running Hyprland. The role reloads the user systemd manager after unit
 changes and before starting the configured services. A user systemd manager
