@@ -71,6 +71,13 @@ dotfiles_vim_pack_plugins:
   - repo: https://github.com/editorconfig/editorconfig-vim.git
     dest: .vim/pack/dotfiles/start/editorconfig-vim
     version: c0227885a06b155d5aa5465e08b9800e8c939f70 # pragma: allowlist secret
+# Package that provides instant-markdown-d, the server behind
+# :InstantMarkdownPreview, keyed by ansible_facts['os_family']. On a family
+# listed here, a deployment fails while the package is not installed; check
+# mode only warns, since the packages role installs nothing then. Debian and
+# Red Hat package no such server, so the preview is unavailable there.
+dotfiles_vim_preview_packages:
+  Archlinux: nodejs-instant-markdown-d
 # What Vundle and tpm left in the home before the Vim package and the tmux
 # settings replaced them. A deployment removes these paths, but stops first
 # if a Git repository under them holds work found nowhere else. A parent goes

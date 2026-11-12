@@ -40,6 +40,8 @@ packages_family_groups:
       - mesa
       - mission-center
       - nfs-utils
+      # Markdown preview server for vim-instant-markdown (AUR).
+      - nodejs-instant-markdown-d
       - noise-suppression-for-voice
       - ntfs-3g
       - pacman-contrib

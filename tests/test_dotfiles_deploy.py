@@ -1024,3 +1024,88 @@ class DotfilesVimPackTests(unittest.TestCase):
             f"Kept {self.home / '.tmux'}, which still holds resurrect", output
         )
         self.assertRegex(self.run_play(), r"changed=0\b")
+
+
+@unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
+class DotfilesVimPreviewTests(unittest.TestCase):
+    """The Markdown preview server must be installed where it is packaged."""
+
+    PACKAGE = "nodejs-instant-markdown-d"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.work = Path(temporary.name)
+        self.playbook = self.work / "play.yml"
+        self.bin = self.work / "bin"
+        self.bin.mkdir()
+
+    def fake_pacman(self, *installed):
+        """Stand in for pacman -Qi, which package_facts reads on Arch."""
+        details = "".join(
+            f"Name            : {name}\nVersion         : 1-1\n"
+            "Architecture    : any\nProvides        : None\n\n"
+            for name in ("vim", *installed)
+        )
+        (self.work / "pacman-qi").write_text(details)
+        pacman = self.bin / "pacman"
+        pacman.write_text(f'#!/bin/sh\ncat "{self.work / "pacman-qi"}"\n')
+        pacman.chmod(0o755)
+
+    def run_play(self, os_family, *arguments):
+        play = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "vars": {"ansible_facts": {"os_family": os_family}},
+                "tasks": [
+                    {
+                        "ansible.builtin.import_role": {
+                            "name": str(ROOT / "ansible/roles/dotfiles"),
+                            "tasks_from": "vim_preview",
+                        }
+                    }
+                ],
+            }
+        ]
+        self.playbook.write_text(yaml.safe_dump(play))
+        environment = ansible_test_environment(self.work)
+        environment["PATH"] = f"{self.bin}{os.pathsep}{environment['PATH']}"
+        result = subprocess.run(
+            ["ansible-playbook", "-i", "localhost,", str(self.playbook), *arguments],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        return result.returncode, result.stdout + result.stderr
+
+    def test_a_missing_server_stops_the_deployment(self):
+        self.fake_pacman()
+        code, output = self.run_play("Archlinux")
+        self.assertNotEqual(code, 0, output)
+        self.assertIn(f"{self.PACKAGE} is not installed", output)
+
+    def test_check_mode_only_warns_about_a_missing_server(self):
+        # The packages role installs nothing in check mode.
+        self.fake_pacman()
+        code, output = self.run_play("Archlinux", "--check")
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"{self.PACKAGE} is not installed", output)
+
+    def test_an_installed_server_passes(self):
+        self.fake_pacman(self.PACKAGE)
+        code, output = self.run_play("Archlinux")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("is not installed", output)
+
+    def test_a_family_without_a_package_is_not_checked(self):
+        # No package to require: pacman is never read.
+        (self.bin / "pacman").write_text("#!/bin/sh\nexit 1\n")
+        (self.bin / "pacman").chmod(0o755)
+        code, output = self.run_play("Debian")
+        self.assertEqual(code, 0, output)
+        self.assertRegex(output, r"skipping: \[localhost\]")

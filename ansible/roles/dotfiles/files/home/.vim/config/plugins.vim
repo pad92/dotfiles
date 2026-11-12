@@ -5,6 +5,7 @@
 
 " vim-instant-markdown previews each Markdown buffer through the Node.js
 " instant-markdown-d server, which reports an error when it is not installed.
+" On Arch, the packages role installs it (nodejs-instant-markdown-d, AUR).
 " Start the preview by hand with :InstantMarkdownPreview.
 let g:instant_markdown_autostart = 0
 

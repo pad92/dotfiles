@@ -3,6 +3,10 @@
   ansible.builtin.import_tasks: validate.yml
   tags: [dotfiles_deploy]
 
+- name: Require the Vim Markdown preview server
+  ansible.builtin.import_tasks: vim_preview.yml
+  tags: [dotfiles_deploy]
+
 - name: Deploy dotfiles
   ansible.builtin.import_tasks: deploy.yml
   tags: [dotfiles_deploy]

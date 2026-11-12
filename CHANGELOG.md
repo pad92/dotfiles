@@ -126,6 +126,13 @@ Release history and changes planned for the next version.
     stops the deployment before anything changes. Check mode lists what
     would be removed. What they wrote into the clone through a link stays
     there.
+  - Install `instant-markdown-d`, the server behind
+    `:InstantMarkdownPreview`, on Arch with the AUR package
+    `nodejs-instant-markdown-d` in `01_base`. The deployment now stops when
+    the package for the host's OS family (`dotfiles_vim_preview_packages`,
+    read through `package_facts`) is missing; check mode only warns. Debian
+    and Fedora package no such server, so nothing is installed or checked
+    there and the preview stays unavailable.
   - `vim.tar.gz` ships the pinned plugins, without their Git metadata, so
     `scripts/vim.sh` no longer needs Git: it only downloads and extracts the
     archive. The package jobs read the plugin list from the role defaults
