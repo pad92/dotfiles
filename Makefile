@@ -10,23 +10,41 @@ unexport GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS \
 	GIT_IMPLICIT_WORK_TREE GIT_GRAFT_FILE GIT_INDEX_FILE GIT_NO_REPLACE_OBJECTS \
 	GIT_REPLACE_REF_BASE GIT_PREFIX GIT_SHALLOW_FILE GIT_COMMON_DIR
 
-# Output path for the Hyprland showcase screenshot
-SCREENSHOT ?= dist/hyprland.webp
-PYTHON ?= python3
-ANSIBLE_PLAYBOOK ?= ansible-playbook
-ANSIBLE_ARGS ?=
+# ---------------------------------------------------------------------------
+# Run options, set on the command line: make check TAGS=dotfiles HOST=PadsP5560
+# ---------------------------------------------------------------------------
+# Playbook of ansible/ to run: site (the workstation) or obs (OBS only).
+PLAYBOOK ?= site
 # Host of ansible/inventory.yml configured over SSH, this machine by default.
 # The short hostname, as the hostname fact that tasks/target.yml checks.
 HOST ?= $(shell uname -n | cut -d. -f1)
+# Comma-separated tag lists passed to --tags and --skip-tags.
+TAGS ?=
+SKIP_TAGS ?=
+# Any non-empty value asks for the sudo password (--ask-become-pass).
+BECOME_PASS ?=
+# Any other ansible-playbook option, for example "-e packages_upgrade_system=true".
+ANSIBLE_ARGS ?=
+
+# Tools and paths
+PYTHON ?= python3
+ANSIBLE_PLAYBOOK ?= ansible-playbook
+ANSIBLE_GALAXY ?= ansible-galaxy
+# Collections pinned in ansible/requirements.yml, installed where ansible.cfg
+# looks for them first.
+GALAXY_REQUIREMENTS := ansible/requirements.yml
+GALAXY_COLLECTIONS_PATH := .ansible/collections
 ANSIBLE_LINT ?= ansible-lint
 COVERAGE ?= $(PYTHON) -m coverage
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
 ANSIBLE_BACKUP_ROOT ?= $(HOME)
-# Vault is optional: export the local password file only when it exists. The
-# environment also reaches nested Ansible commands such as ansible-inventory.
-DOTFILES_VAULT_PASSWORD_FILE ?= $(CURDIR)/.vault
-ANSIBLE_VAULT_ENV = $(if $(wildcard $(DOTFILES_VAULT_PASSWORD_FILE)),ANSIBLE_VAULT_PASSWORD_FILE="$(DOTFILES_VAULT_PASSWORD_FILE)")
+# Output path for the Hyprland showcase screenshot
+SCREENSHOT ?= dist/hyprland.webp
+
+# Playbooks that configure an inventory host. backup.yml runs on localhost
+# only and has its own targets.
+PLAYBOOKS := site obs
 # Vault files are encrypted, not YAML: yamllint skips them.
 ANSIBLE_YAML_FILES := $(filter-out ansible/group_vars/all/vault%,$(wildcard \
 	ansible/site.yml ansible/obs.yml ansible/backup.yml ansible/inventory.yml \
@@ -34,26 +52,97 @@ ANSIBLE_YAML_FILES := $(filter-out ansible/group_vars/all/vault%,$(wildcard \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml))
 
-.PHONY: help install install-obs lint lint-ansible test test-python test-shell coverage screenshot \
+# Vault is optional: export the local password file only when it exists. The
+# environment also reaches nested Ansible commands such as ansible-inventory.
+DOTFILES_VAULT_PASSWORD_FILE ?= $(CURDIR)/.vault
+ANSIBLE_VAULT_ENV = $(if $(wildcard $(DOTFILES_VAULT_PASSWORD_FILE)),ANSIBLE_VAULT_PASSWORD_FILE="$(DOTFILES_VAULT_PASSWORD_FILE)")
+# ansible.cfg is named explicitly: Ansible ignores it in a world-writable
+# directory, and the targets may run from elsewhere with make -C.
+ANSIBLE_ENV = ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV)
+
+# $(call run_playbook,<extra options>): run PLAYBOOK on HOST. The selection
+# options come first, so ANSIBLE_ARGS can still add to or override them.
+# PLAYBOOK must be exactly one of PLAYBOOKS. $(error) is expanded when the
+# recipe runs, so an unknown PLAYBOOK only stops the targets that use it.
+run_playbook = $(if $(and $(filter 1,$(words $(PLAYBOOK))),$(filter $(PLAYBOOK),$(PLAYBOOKS))),,$(error PLAYBOOK=$(PLAYBOOK) is not one of: $(PLAYBOOKS)))$(ANSIBLE_ENV) \
+	$(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/$(PLAYBOOK).yml" --limit "$(HOST)" \
+	$(if $(TAGS),--tags "$(TAGS)") $(if $(SKIP_TAGS),--skip-tags "$(SKIP_TAGS)") \
+	$(if $(BECOME_PASS),--ask-become-pass) $(1) $(ANSIBLE_ARGS)
+
+.PHONY: help deploy check plan tags tasks install install-obs galaxy galaxy-force \
+	verify lint lint-ansible test test-python test-shell coverage screenshot \
 	ansible-backup-ls ansible-backup-rm
 
 help: ## Show this help
+	@printf 'Usage: make <target> [VARIABLE=value ...]\n\nTargets:\n'
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
-		| awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+		| awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@printf '\nVariables of the Ansible targets:\n'
+	@printf '  \033[36m%-18s\033[0m %s\n' \
+		'PLAYBOOK=$(PLAYBOOK)' 'playbook of ansible/: $(PLAYBOOKS)' \
+		'HOST=$(HOST)' 'inventory host, or a pattern such as all' \
+		'TAGS=a,b' 'run only these tags (list them with make tags)' \
+		'SKIP_TAGS=a,b' 'skip these tags' \
+		'BECOME_PASS=1' 'ask for the sudo password' \
+		'ANSIBLE_ARGS=...' 'any other ansible-playbook option'
 
-install: ## Run the Ansible setup over SSH on HOST (default: this machine; options in ANSIBLE_ARGS)
-	ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/site.yml" --limit "$(HOST)" $(ANSIBLE_ARGS)
+## Ansible runs ---------------------------------------------------------------
 
-install-obs: ## Install only OBS Studio, its runtime and the demo scenes on HOST
-	ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/obs.yml" --limit "$(HOST)" $(ANSIBLE_ARGS)
+deploy: ## Apply PLAYBOOK to HOST (TAGS, SKIP_TAGS, BECOME_PASS, ANSIBLE_ARGS)
+	$(call run_playbook)
+
+check: ## Preview deploy without changing HOST (--check, diffs shown)
+	$(call run_playbook,--check)
+
+plan: ## Print the package plan of HOST and change nothing
+	$(call run_playbook,-e packages_action=plan)
+
+# Listing runs no task, so it never needs the sudo password.
+tags tasks: override BECOME_PASS :=
+
+tags: ## List the tags of PLAYBOOK
+	$(call run_playbook,--list-tags)
+
+tasks: ## List the tasks that deploy would run with the current TAGS
+	$(call run_playbook,--list-tasks)
+
+# Former names, kept for scripts and habits.
+install: deploy ## Same as deploy
+
+# install-obs has its own recipe: as a prerequisite, deploy would run only
+# once, so `make install install-obs` would skip the OBS playbook.
+install-obs: override PLAYBOOK := obs
+install-obs: ## Same as deploy PLAYBOOK=obs: OBS, its runtime and demo scenes
+	$(call run_playbook)
+
+ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (default: HOME)
+	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml
+
+ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
+	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml -e dotfiles_backup_action=remove
+
+## Ansible collections ------------------------------------------------------
+
+# $(call galaxy_install,<extra options>)
+galaxy_install = $(ANSIBLE_GALAXY) collection install -r "$(CURDIR)/$(GALAXY_REQUIREMENTS)" \
+	-p "$(CURDIR)/$(GALAXY_COLLECTIONS_PATH)" $(1)
+
+galaxy: ## Install the pinned collections that are missing or at another version
+	$(call galaxy_install)
+
+galaxy-force: ## Reinstall the collections of requirements.yml even when installed (--force)
+	$(call galaxy_install,--force)
+
+## Repository checks ---------------------------------------------------------
+
+verify: lint test ## Run every static check and test suite (lint, then test)
 
 lint: lint-ansible ## Lint and syntax-check the Ansible project
 
 lint-ansible: ## Run Ansible lint, yamllint, and playbook syntax checks
-	$(ANSIBLE_LINT) ansible/site.yml ansible/obs.yml
+	$(ANSIBLE_LINT) $(PLAYBOOKS:%=ansible/%.yml)
 	$(YAMLLINT) -c $(YAMLLINT_CONFIG) $(ANSIBLE_YAML_FILES)
-	$(ANSIBLE_PLAYBOOK) ansible/site.yml --syntax-check
-	$(ANSIBLE_PLAYBOOK) ansible/obs.yml --syntax-check
+	$(foreach playbook,$(PLAYBOOKS),$(ANSIBLE_PLAYBOOK) ansible/$(playbook).yml --syntax-check &&) true
 
 test: test-python test-shell ## Run the Python and shell test suites
 
@@ -75,12 +164,6 @@ test-shell: ## Run the shell integration tests
 	bash tests/vault-toggle.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
-
-ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (default: HOME)
-	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml
-
-ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
-	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_VAULT_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml -e dotfiles_backup_action=remove
 
 screenshot: ## Render the Hyprland showcase still and animated demo next to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \

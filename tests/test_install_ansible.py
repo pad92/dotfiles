@@ -136,6 +136,97 @@ class InstallerTargetTests(unittest.TestCase):
                 ["--limit", "PadsP5560", "--check", "-e", "packages_action=plan"],
             )
 
+    @staticmethod
+    def dry_run(*arguments):
+        return subprocess.run(
+            ["make", "--no-print-directory", "-n", *arguments, "HOST=PadsP5560"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_run_variables_become_playbook_options(self):
+        result = self.dry_run(
+            "check",
+            "TAGS=dotfiles,gpu",
+            "SKIP_TAGS=obs",
+            "BECOME_PASS=1",
+            "ANSIBLE_ARGS=-e x=1",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # ANSIBLE_ARGS comes last so it can add to or override the rest.
+        self.assertRegex(
+            result.stdout,
+            r'ansible/site\.yml" --limit "PadsP5560" --tags "dotfiles,gpu" '
+            r'--skip-tags "obs" --ask-become-pass --check -e x=1\s*$',
+        )
+
+    def test_targets_add_their_own_option(self):
+        for target, option in [
+            ("deploy", None),
+            ("install", None),
+            ("plan", "-e packages_action=plan"),
+            ("tags", "--list-tags"),
+            ("tasks", "--list-tasks"),
+        ]:
+            with self.subTest(target=target):
+                result = self.dry_run(target)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('ansible/site.yml" --limit "PadsP5560"', result.stdout)
+                self.assertNotIn("--tags", result.stdout)
+                self.assertNotIn("--check", result.stdout)
+                if option:
+                    self.assertIn(option, result.stdout)
+
+    def test_listing_targets_never_ask_for_the_sudo_password(self):
+        for target in ["tags", "tasks"]:
+            with self.subTest(target=target):
+                result = self.dry_run(target, "TAGS=dotfiles", "BECOME_PASS=1")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('--tags "dotfiles"', result.stdout)
+                self.assertNotIn("--ask-become-pass", result.stdout)
+
+    def test_install_obs_always_runs_the_obs_playbook(self):
+        for arguments in [("install-obs",), ("install-obs", "PLAYBOOK=site")]:
+            with self.subTest(arguments=arguments):
+                result = self.dry_run(*arguments)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('ansible/obs.yml" --limit', result.stdout)
+
+    def test_install_obs_runs_after_another_playbook_run(self):
+        for first in ["deploy", "install"]:
+            with self.subTest(first=first):
+                result = self.dry_run(first, "install-obs")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('ansible/site.yml" --limit', result.stdout)
+                self.assertIn('ansible/obs.yml" --limit', result.stdout)
+
+    def test_galaxy_installs_pinned_collections_with_or_without_force(self):
+        for target, forced in [("galaxy", False), ("galaxy-force", True)]:
+            with self.subTest(target=target):
+                result = self.dry_run(target)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(
+                    f'collection install -r "{ROOT}/ansible/requirements.yml" '
+                    f'-p "{ROOT}/.ansible/collections"',
+                    result.stdout,
+                )
+                self.assertEqual("--force" in result.stdout, forced)
+
+    def test_unknown_playbook_is_refused(self):
+        result = self.dry_run("deploy", "PLAYBOOK=backup")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PLAYBOOK=backup is not one of: site obs", result.stderr)
+        # Several playbooks at once would build a path such as "site obs.yml".
+        for playbook in ["site obs", ""]:
+            with self.subTest(playbook=playbook):
+                result = self.dry_run("deploy", f"PLAYBOOK={playbook}")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("is not one of: site obs", result.stderr)
+        # Targets that do not run a playbook stay usable.
+        self.assertEqual(self.dry_run("help", "PLAYBOOK=backup").returncode, 0)
+
     # tasks/target.yml compares the short hostname fact with the host name.
     def test_default_host_is_the_short_hostname(self):
         with tempfile.TemporaryDirectory() as temporary:

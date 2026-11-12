@@ -155,10 +155,10 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 check=True,
             ).stdout
 
-        for target in ["install", "ansible-backup-ls", "ansible-backup-rm"]:
+        for target in ["deploy", "check", "ansible-backup-ls", "ansible-backup-rm"]:
             self.assertNotIn("ANSIBLE_VAULT_PASSWORD_FILE", dry_run(target))
         (self.work / ".vault").write_text("secret\n")
-        for target in ["install", "ansible-backup-ls", "ansible-backup-rm"]:
+        for target in ["deploy", "check", "ansible-backup-ls", "ansible-backup-rm"]:
             self.assertIn(
                 f'ANSIBLE_VAULT_PASSWORD_FILE="{self.work}/.vault"', dry_run(target)
             )

@@ -90,6 +90,25 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Makefile**:
+  - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
+    run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and
+    `BECOME_PASS=1` replace the `--tags`, `--check` and `--ask-become-pass`
+    options written in `ANSIBLE_ARGS`, which still passes any other option.
+  - Add `make plan` (package plan only), `make tags` and `make tasks` (what a
+    `TAGS` selection runs) and `make verify` (lint, then tests). `make help`
+    also lists the variables. `make tags` and `make tasks` ignore
+    `BECOME_PASS`, as listing needs no sudo password.
+  - `make galaxy` installs the collections pinned in `ansible/requirements.yml`
+    that are missing or at another version, into `.ansible/collections`.
+    `make galaxy-force` reinstalls them with `--force`.
+  - `make install` and `make install-obs` remain as aliases, and
+    `make install install-obs` runs both playbooks. A `PLAYBOOK` that is not
+    exactly one of `site` and `obs` stops with the list of valid ones, and the
+    backup targets now also use the repository `ansible.cfg` explicitly.
+- **CI**:
+  - The unit test and Ansible lint jobs install their collections with
+    `make galaxy`, so both use `.ansible/collections` and the Makefile command.
 - **Ansible roles**:
   - Split the `system` role into one role per function: `lact`, `gaming`,
     `package_services`, `docker`, `hardening`, `dns`, `vpn`, `gpu` and
