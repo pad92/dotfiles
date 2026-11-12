@@ -554,11 +554,12 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             self.assertEqual((vim / "config/plugins.vim").read_text(), "new\n")
             self.assertFalse((vim / "backup/controller~").exists())
             self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
+            # A plugin Vundle had installed is not copied: the role would
+            # only remove it. It stays in the clone, which is left alone.
+            self.assertFalse((vim / "bundle").exists())
             self.assertEqual(
-                (vim / "bundle/gruvbox/colors.vim").read_text(), "gruvbox\n"
+                (linked / "bundle/gruvbox/colors.vim").read_text(), "gruvbox\n"
             )
-            # A plugin Vundle had installed is copied, and left unused.
-            self.assertTrue((vim / "bundle/gruvbox/.git").is_dir())
             pack = vim / "pack/dotfiles/start/vim-plugin"
             self.assertEqual(git(pack, "rev-parse", "HEAD"), vim_pinned)
             self.assertEqual((pack / "plugin.vim").read_text(), "pinned\n")
@@ -769,155 +770,257 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 @unittest.skipUnless(shutil.which("vim"), "vim is not installed")
 class DotfilesVimPackTests(unittest.TestCase):
-    """Vim plugins are pinned clones in a Vim package, without Vundle or tpm."""
+    """Vim plugins are pinned clones in a Vim package; Vundle and tpm go."""
 
-    def test_upgrade_from_vundle_and_tpm_clones_keeps_them_and_loads_the_pack(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            work = Path(temporary)
-            role = work / "dotfiles"
-            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
-            (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.work = Path(temporary.name)
+        self.role = self.work / "dotfiles"
+        shutil.copytree(ROOT / "ansible/roles/dotfiles", self.role, symlinks=True)
+        (self.role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+        self.home = self.work / "home"
+        self.home.mkdir()
+        self.playbook = self.work / "play.yml"
+        self.dest = ".vim/pack/dotfiles/start/fixture"
 
-            plugin = work / "plugin"
-            repository(plugin)
-            (plugin / "colors").mkdir()
-            (plugin / "colors/gruvbox.vim").write_text(
-                "let g:colors_name = 'gruvbox'\n"
-            )
-            (plugin / "plugin").mkdir()
-            (plugin / "plugin/fixture.vim").write_text("let g:fixture = 'v1'\n")
-            (plugin / "plugin/dropped.vim").write_text("let g:dropped = 1\n")
-            git(plugin, "add", ".")
-            git(plugin, "commit", "-q", "-m", "v1")
-            first = git(plugin, "rev-parse", "HEAD")
-            git(plugin, "rm", "-q", "plugin/dropped.vim")
-            (plugin / "plugin/fixture.vim").write_text("let g:fixture = 'v2'\n")
-            git(plugin, "commit", "-q", "-am", "v2")
-            second = git(plugin, "rev-parse", "HEAD")
+        self.plugin = self.work / "plugin"
+        repository(self.plugin)
+        (self.plugin / "colors").mkdir()
+        (self.plugin / "colors/gruvbox.vim").write_text(
+            "let g:colors_name = 'gruvbox'\n"
+        )
+        (self.plugin / "plugin").mkdir()
+        (self.plugin / "plugin/fixture.vim").write_text("let g:fixture = 'v1'\n")
+        (self.plugin / "plugin/dropped.vim").write_text("let g:dropped = 1\n")
+        git(self.plugin, "add", ".")
+        git(self.plugin, "commit", "-q", "-m", "v1")
+        self.first = git(self.plugin, "rev-parse", "HEAD")
+        git(self.plugin, "rm", "-q", "plugin/dropped.vim")
+        (self.plugin / "plugin/fixture.vim").write_text("let g:fixture = 'v2'\n")
+        git(self.plugin, "commit", "-q", "-am", "v2")
+        self.second = git(self.plugin, "rev-parse", "HEAD")
+        self.write_play(self.first)
 
-            # A home deployed by the previous version: Vundle and tpm cloned
-            # by the role, a plugin Vundle installed, and the same tmux
-            # directory the role created.
-            home = work / "home"
-            managers = {}
-            for path, script in (
-                (".vim/bundle/Vundle.vim", "autoload/vundle.vim"),
-                (".tmux/plugins/tpm", "tpm"),
-            ):
-                repository(home / path)
-                (home / path / script).parent.mkdir(parents=True, exist_ok=True)
-                (home / path / script).write_text("echoerr 'loaded'\n")
-                git(home / path, "add", ".")
-                git(home / path, "commit", "-q", "-m", "manager")
-                managers[path] = git(home / path, "rev-parse", "HEAD")
-            (home / ".vim/bundle/gruvbox/colors").mkdir(parents=True)
-            (home / ".vim/bundle/gruvbox/colors/gruvbox.vim").write_text(
-                "echoerr 'the Vundle gruvbox was loaded'\n"
-            )
-
-            dest = ".vim/pack/dotfiles/start/fixture"
-            playbook = work / "play.yml"
-
-            def write_play(version):
-                play = [
-                    {
-                        "hosts": "localhost",
-                        "connection": "local",
-                        "gather_facts": False,
-                        "vars": {
-                            "ansible_facts": USER_FACTS,
-                            "dotfiles_home": str(home),
-                            # The real .vim tree and .vimrc, as Git tracks them.
-                            "dotfiles_source_repository": str(ROOT),
-                            "dotfiles_source_root": str(
-                                ROOT / "ansible/roles/dotfiles/files/home"
-                            ),
-                            "dotfiles_legacy_link_root": str(work / "no-clone"),
-                            "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
-                            "dotfiles_zsh_plugins": [],
-                            "dotfiles_vim_pack_plugins": [
-                                {
-                                    "repo": f"file://{plugin}",
-                                    "dest": dest,
-                                    "version": version,
-                                }
-                            ],
-                            "dotfiles_directories": [],
-                            "dotfiles_files": [".vimrc", ".tmux.conf"],
-                            "dotfiles_templates": [],
-                            "dotfiles_systemd_graphical_units": [],
-                            "dotfiles_systemd_directory": ".config/test-systemd",
-                        },
-                        "tasks": [
-                            {
-                                "ansible.builtin.import_role": {
-                                    "name": str(role),
-                                    "tasks_from": "deploy",
-                                },
-                                "tags": ["dotfiles_deploy"],
-                            }
-                        ],
-                    }
-                ]
-                playbook.write_text(yaml.safe_dump(play))
-
-            def run(*arguments):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "dotfiles_deploy",
-                        "--skip-tags",
-                        "systemd",
-                        *arguments,
+    def write_play(self, version):
+        play = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "vars": {
+                    "ansible_facts": USER_FACTS,
+                    "dotfiles_home": str(self.home),
+                    # The real .vim tree and .vimrc, as Git tracks them.
+                    "dotfiles_source_repository": str(ROOT),
+                    "dotfiles_source_root": str(
+                        ROOT / "ansible/roles/dotfiles/files/home"
+                    ),
+                    "dotfiles_legacy_link_root": str(self.work / "no-clone"),
+                    "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+                    "dotfiles_zsh_plugins": [],
+                    "dotfiles_vim_pack_plugins": [
+                        {
+                            "repo": f"file://{self.plugin}",
+                            "dest": self.dest,
+                            "version": version,
+                        }
                     ],
-                    cwd=ROOT,
-                    env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=180,
-                    check=False,
-                )
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                return result.stdout
+                    "dotfiles_directories": [],
+                    "dotfiles_files": [".vimrc", ".tmux.conf"],
+                    "dotfiles_templates": [],
+                    "dotfiles_systemd_graphical_units": [],
+                    "dotfiles_systemd_directory": ".config/test-systemd",
+                },
+                "tasks": [
+                    {
+                        "ansible.builtin.import_role": {
+                            "name": str(self.role),
+                            "tasks_from": "deploy",
+                        },
+                        "tags": ["dotfiles_deploy"],
+                    }
+                ],
+            }
+        ]
+        self.playbook.write_text(yaml.safe_dump(play))
 
-            def vim(*commands):
-                messages = start_vim(home, "scriptnames", *commands)
-                self.assertIsNone(VIM_ERROR.search(messages), messages)
-                self.assertNotRegex(messages.lower(), r"vundle|/bundle/")
-                return messages
+    def run_play(self, *arguments, succeed=True):
+        result = subprocess.run(
+            [
+                "ansible-playbook",
+                "-i",
+                "localhost,",
+                str(self.playbook),
+                "--tags",
+                "dotfiles_deploy",
+                "--skip-tags",
+                "systemd",
+                *arguments,
+            ],
+            cwd=ROOT,
+            env=ansible_test_environment(self.work),
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode == 0, succeed, output)
+        return output
 
-            write_play(first)
-            run()
-            pack = home / dest
-            self.assertEqual(git(pack, "rev-parse", "HEAD"), first)
-            # The old clones stay where they were, untouched.
-            for path, head in managers.items():
-                self.assertEqual(git(home / path, "rev-parse", "HEAD"), head)
-                self.assertEqual(git(home / path, "status", "--porcelain"), "")
-            self.assertTrue((home / ".vim/bundle/gruvbox/colors/gruvbox.vim").exists())
-            self.assertNotRegex((home / ".tmux.conf").read_text(), r"tpm|@plugin")
-            self.assertRegex(run(), r"changed=0\b")
+    def clone(self, path):
+        """Clone a plugin as Vundle and tpm did: a branch tracking a remote."""
+        upstream = self.work / "upstream" / path
+        repository(upstream)
+        (upstream / "plugin.vim").write_text(f'" {path}\n')
+        git(upstream, "add", ".")
+        git(upstream, "commit", "-q", "-m", path)
+        target = self.home / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "clone", "-q", f"file://{upstream}", str(target)],
+            check=True,
+            capture_output=True,
+        )
+        return target
 
-            messages = vim(
-                "echo 'colors=' . g:colors_name", "echo 'fixture=' . g:fixture"
-            )
-            self.assertIn(f"{dest}/plugin/fixture.vim", messages)
-            self.assertIn("colors=gruvbox", messages)
-            self.assertIn("fixture=v1", messages)
-            self.assertIn(f"{dest}/plugin/dropped.vim", messages)
+    def home_from_vundle_and_tpm(self):
+        """A home as the previous version left it: Vundle, tpm, and plugins."""
+        clones = [
+            self.clone(".vim/bundle/Vundle.vim"),
+            self.clone(".vim/bundle/gruvbox"),
+            self.clone(".tmux/plugins/tpm"),
+        ]
+        # What Vundle writes besides its clones.
+        (self.home / ".vim/bundle/.netrwhist").write_text("let g:netrw_dirhistmax\n")
+        return clones
 
-            # A new pin moves the clone, and the file upstream dropped goes.
-            write_play(second)
-            run("--check")
-            self.assertEqual(git(pack, "rev-parse", "HEAD"), first)
-            run()
-            self.assertEqual(git(pack, "rev-parse", "HEAD"), second)
-            self.assertFalse((pack / "plugin/dropped.vim").exists())
-            messages = vim("echo 'fixture=' . g:fixture")
-            self.assertIn("fixture=v2", messages)
-            self.assertNotIn("dropped.vim", messages)
-            self.assertRegex(run(), r"changed=0\b")
+    def snapshot(self, path):
+        return sorted(
+            (str(item.relative_to(path)), item.read_bytes() if item.is_file() else b"")
+            for item in path.rglob("*")
+        )
+
+    def vim(self, *commands):
+        messages = start_vim(self.home, "scriptnames", *commands)
+        self.assertIsNone(VIM_ERROR.search(messages), messages)
+        self.assertNotRegex(messages.lower(), r"vundle|/bundle/")
+        return messages
+
+    def test_upgrade_removes_vundle_and_tpm_and_loads_the_pack(self):
+        self.home_from_vundle_and_tpm()
+
+        output = self.run_play("--check")
+        self.assertIn("Would remove:", output)
+        for path in (".vim/bundle", ".tmux/plugins", ".tmux"):
+            self.assertIn(str(self.home / path), output)
+        self.assertTrue((self.home / ".vim/bundle/gruvbox/.git").is_dir())
+        self.assertTrue((self.home / ".tmux/plugins/tpm/.git").is_dir())
+
+        self.run_play()
+        self.assertFalse((self.home / ".vim/bundle").exists())
+        self.assertFalse((self.home / ".tmux").exists())
+        pack = self.home / self.dest
+        self.assertEqual(git(pack, "rev-parse", "HEAD"), self.first)
+        self.assertNotRegex((self.home / ".tmux.conf").read_text(), r"tpm|@plugin")
+        self.assertRegex(self.run_play(), r"changed=0\b")
+        self.assertRegex(self.run_play("--check"), r"changed=0\b")
+
+        messages = self.vim(
+            "echo 'colors=' . g:colors_name", "echo 'fixture=' . g:fixture"
+        )
+        self.assertIn(f"{self.dest}/plugin/fixture.vim", messages)
+        self.assertIn("colors=gruvbox", messages)
+        self.assertIn("fixture=v1", messages)
+        self.assertIn(f"{self.dest}/plugin/dropped.vim", messages)
+
+        # A new pin moves the clone, and the file upstream dropped goes.
+        self.write_play(self.second)
+        self.run_play("--check")
+        self.assertEqual(git(pack, "rev-parse", "HEAD"), self.first)
+        self.run_play()
+        self.assertEqual(git(pack, "rev-parse", "HEAD"), self.second)
+        self.assertFalse((pack / "plugin/dropped.vim").exists())
+        messages = self.vim("echo 'fixture=' . g:fixture")
+        self.assertIn("fixture=v2", messages)
+        self.assertNotIn("dropped.vim", messages)
+        self.assertRegex(self.run_play(), r"changed=0\b")
+
+    def test_local_work_in_a_clone_stops_the_deployment(self):
+        cases = {
+            "uncommitted": lambda clone: (clone / "plugin.vim").write_text("edit\n"),
+            "untracked": lambda clone: (clone / "notes.vim").write_text("new\n"),
+            "unpushed": lambda clone: (
+                (clone / "plugin.vim").write_text("local\n"),
+                git(
+                    clone,
+                    "-c",
+                    "user.name=T",
+                    "-c",
+                    "user.email=t@t.invalid",
+                    "-c",
+                    "commit.gpgsign=false",
+                    "commit",
+                    "-q",
+                    "-am",
+                    "local",
+                ),
+            ),
+        }
+        for name, change in cases.items():
+            with self.subTest(name):
+                if self.home.exists():
+                    shutil.rmtree(self.home)
+                self.home.mkdir()
+                shutil.rmtree(self.work / "upstream", ignore_errors=True)
+                clones = self.home_from_vundle_and_tpm()
+                changed = clones[1]
+                change(changed)
+                before = {clone: self.snapshot(clone) for clone in clones}
+
+                for arguments in (("--check",), ()):
+                    output = self.run_play(*arguments, succeed=False)
+                    self.assertIn("Refusing to remove the Vundle and tpm", output)
+                    self.assertIn(str(changed), output)
+                    # The clean clones are not named, and nothing moved.
+                    self.assertNotIn(f"{clones[0]} (", output)
+                    for clone in clones:
+                        self.assertEqual(self.snapshot(clone), before[clone])
+                    # The run stopped before deploying anything.
+                    self.assertFalse((self.home / self.dest).exists())
+                    self.assertFalse((self.home / ".vimrc").exists())
+
+    def test_a_tmux_link_into_the_clone_loses_the_link_only(self):
+        dotfiles = self.home / ".dotfiles/ansible/roles/dotfiles/files/home/.tmux"
+        tpm = dotfiles / "plugins/tpm"
+        repository(tpm)
+        (tpm / "tpm").write_text("#!/bin/sh\n")
+        (dotfiles / "resurrect").mkdir()
+        (dotfiles / "resurrect/last").write_text("session\n")
+        before = self.snapshot(dotfiles)
+        (self.home / ".tmux").symlink_to(dotfiles)
+
+        output = self.run_play("--check")
+        self.assertIn(f"Would remove: {self.home / '.tmux'}", output)
+        self.assertTrue((self.home / ".tmux").is_symlink())
+
+        self.run_play()
+        self.assertFalse(os.path.lexists(self.home / ".tmux"))
+        # The target is neither followed nor checked: tpm has no remote
+        # there, which would otherwise stop the run.
+        self.assertEqual(self.snapshot(dotfiles), before)
+        self.assertRegex(self.run_play(), r"changed=0\b")
+
+    def test_a_tmux_directory_with_other_files_is_kept(self):
+        self.clone(".tmux/plugins/tpm")
+        (self.home / ".tmux/resurrect").mkdir()
+        (self.home / ".tmux/resurrect/last").write_text("session\n")
+
+        output = self.run_play()
+        self.assertFalse((self.home / ".tmux/plugins").exists())
+        self.assertEqual((self.home / ".tmux/resurrect/last").read_text(), "session\n")
+        self.assertIn(
+            f"Kept {self.home / '.tmux'}, which still holds resurrect", output
+        )
+        self.assertRegex(self.run_play(), r"changed=0\b")

@@ -34,10 +34,22 @@ reports an error on every Markdown buffer when the `instant-markdown-d`
 server is not installed. Run `:InstantMarkdownPreview` to start it.
 
 Vundle and tpm are gone, along with tmux-sensible, whose settings are now in
-`.tmux.conf`. The role does not delete what they left on a machine:
-`~/.vim/bundle/` and `~/.tmux/` stay, unused, and can be removed by hand. So
-can a `~/.tmux` link into `~/.dotfiles` left by an older version. `dotfiles_tree` refuses a submodule in a copied tree,
-since its files would not be copied.
+`.tmux.conf`. A deployment removes what they left in the home
+(`dotfiles_retired_plugin_paths`): `~/.vim/bundle/` and `~/.tmux/plugins/`.
+Before anything else, it checks every Git repository under them. If one has
+uncommitted or untracked changes, a stash, or commits that no remote branch
+holds, the deployment stops, names it, and removes nothing. `~/.tmux` goes
+too once it is empty. If it still holds something, such as tmux-resurrect
+sessions, it is kept and the run reports it. A `~/.tmux` link into
+`~/.dotfiles`, left by an older version, loses only the link: its target is
+not followed or changed. Check mode lists what would be removed.
+
+What Vundle and tpm wrote through a link stays in the clone, under
+`files/home/.vim/bundle/` and `files/home/.tmux/plugins/`. The role never
+deletes inside the clone, so remove those by hand, or delete the clone.
+
+`dotfiles_tree` refuses a submodule in a copied tree, since its files would
+not be copied.
 
 Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
 (`dotfiles_manifest_directory`) that lists the files deployed there with their
@@ -51,12 +63,13 @@ making them.
 Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
 link there (`dotfiles_legacy_link_root`), the deployment removes the link,
 copies the tree, then copies what Git does not track behind the link: Vim
-backups and swap files, and the plugins Vundle installed under
-`.vim/bundle/` with their Git metadata. The pinned plugins are cloned rather
-than copied: the Zsh plugins, which older versions shipped as submodules,
-have a `.git` file that points into the clone. The clone itself is left untouched. Check mode lists
-the files it will bring over and stops before the replacement. A link that points anywhere else is backed up to
-`<path>.bak` like any other conflict.
+backups and swap files. It leaves out `.vim/bundle/`, which it would only
+remove again, and the pinned plugins, which are cloned rather than copied:
+the Zsh plugins, which older versions shipped as submodules, have a `.git`
+file that points into the clone. The clone itself is left untouched. Check
+mode lists the files it will bring over and stops before the replacement. A
+link that points anywhere else is backed up to `<path>.bak` like any other
+conflict.
 
 The Hyprlock background is copied to
 `~/.local/share/dotfiles/wallpapers/` (`dotfiles_hyprlock_wallpaper`).

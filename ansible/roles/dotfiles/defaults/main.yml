@@ -71,6 +71,15 @@ dotfiles_vim_pack_plugins:
   - repo: https://github.com/editorconfig/editorconfig-vim.git
     dest: .vim/pack/dotfiles/start/editorconfig-vim
     version: c0227885a06b155d5aa5465e08b9800e8c939f70 # pragma: allowlist secret
+# What Vundle and tpm left in the home before the Vim package and the tmux
+# settings replaced them. A deployment removes these paths, but stops first
+# if a Git repository under them holds work found nowhere else. A parent goes
+# too once it is empty, or loses only the link if it is one.
+dotfiles_retired_plugin_paths:
+  - .vim/bundle
+  - .tmux/plugins
+dotfiles_retired_plugin_parents:
+  - .tmux
 # Hyprlock background, copied from the repository into the home directory.
 dotfiles_hyprlock_wallpaper_source: >-
   assets/wallpapers/wallpaper_arch_perfection_simplicity_by_icetremens-dbjspqh.png

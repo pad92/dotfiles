@@ -106,8 +106,8 @@ Release history and changes planned for the next version.
     directory no longer uses `~/.dotfiles`, which can be deleted. Only the
     files Git tracks are copied. A deployment replaces an old link into
     `~/.dotfiles` with a copy and brings over what programs had added there
-    (Vim backups, swap files, plugins installed by Vundle). Check mode lists
-    those files and stops before the replacement.
+    (Vim backups, swap files). Check mode lists those files and stops before
+    the replacement.
   - Drop Vundle and tpm. The Vim plugins are cloned on the target at the
     commits pinned in `dotfiles_vim_pack_plugins`, into the Vim package
     `~/.vim/pack/dotfiles/start/`, which Vim loads at startup. Deployment
@@ -118,8 +118,14 @@ Release history and changes planned for the next version.
     (`:InstantMarkdownPreview`), because it reports an error on every
     Markdown buffer without the `instant-markdown-d` server. The settings
     `.tmux.conf` took from tmux-sensible, which tpm never installed, are
-    written in the file. `~/.vim/bundle/` and `~/.tmux/` are left in place,
-    unused.
+    written in the file.
+  - Remove what Vundle and tpm left in the home: `~/.vim/bundle/`,
+    `~/.tmux/plugins/`, and `~/.tmux` once it is empty (a `~/.tmux` link
+    into `~/.dotfiles` loses only the link). A Git repository there with
+    uncommitted changes, a stash, or commits that no remote branch holds
+    stops the deployment before anything changes. Check mode lists what
+    would be removed. What they wrote into the clone through a link stays
+    there.
   - `vim.tar.gz` ships the pinned plugins, without their Git metadata, so
     `scripts/vim.sh` no longer needs Git: it only downloads and extracts the
     archive. The package jobs read the plugin list from the role defaults
@@ -138,7 +144,8 @@ Release history and changes planned for the next version.
     removed. `dotfiles_vim_pack_plugins` replaces `dotfiles_vim_plugins`;
     `dotfiles_update_vim_plugins`, the `dotfiles_runtime` and `vim` tags and
     `dotfiles_plugin_managers` are removed, as is `copy: false` in
-    `dotfiles_trees`.
+    `dotfiles_trees`. `dotfiles_retired_plugin_paths` and
+    `dotfiles_retired_plugin_parents` list what the deployment removes.
   - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
     so Zsh skipped it.
 - **Makefile**:

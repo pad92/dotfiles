@@ -35,6 +35,8 @@ tree = load("tree_module", "ansible/library/dotfiles_tree.py")
 
 aur = load("aur_module", "ansible/library/dotfiles_aur.py")
 
+retired = load("retired_module", "ansible/library/dotfiles_retired_plugins.py")
+
 
 class Result(Exception):
     def __init__(self, failed=False, **data):
@@ -432,3 +434,74 @@ class ModuleTests(unittest.TestCase):
             result = self.invoke(makepkg, {"path": str(self.root)})
         self.assertFalse(result.failed)
         self.assertIn(str(self.root / "yay.pkg.tar.zst"), result.data["changed_files"])
+
+
+class RetiredPluginsTests(unittest.TestCase):
+    """Only work that exists nowhere else stops the removal of a clone."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.upstream = self.root / "upstream"
+        repository(self.upstream)
+        (self.upstream / "plugin.vim").write_text("v1\n")
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-q", "-m", "v1")
+
+    def clone(self, name):
+        path = self.root / name
+        git(self.root, "clone", "-q", f"file://{self.upstream}", str(path))
+        for key, value in (
+            ("user.name", "Test"),
+            ("user.email", "test@example.invalid"),
+            ("commit.gpgsign", "false"),
+        ):
+            git(path, "config", key, value)
+        return path
+
+    def test_clean_and_detached_clones_hold_no_local_work(self):
+        self.assertEqual(retired.local_work(str(self.clone("clean"))), [])
+        detached = self.clone("detached")
+        git(detached, "checkout", "-q", "--detach", "HEAD")
+        self.assertEqual(retired.local_work(str(detached)), [])
+
+    def test_stash_and_commits_without_a_remote_are_local_work(self):
+        stashed = self.clone("stashed")
+        (stashed / "plugin.vim").write_text("edit\n")
+        git(stashed, "stash", "push", "-q", "-m", "test")
+        self.assertEqual(git(stashed, "status", "--porcelain"), "")
+        self.assertEqual(retired.local_work(str(stashed)), ["a stash"])
+
+        # A branch other than the one checked out counts too.
+        branched = self.clone("branched")
+        git(branched, "checkout", "-q", "-b", "local")
+        git(branched, "commit", "-q", "--allow-empty", "-m", "local")
+        git(branched, "checkout", "-q", "-")
+        self.assertEqual(
+            retired.local_work(str(branched)), ["commits that no remote branch holds"]
+        )
+        self.assertEqual(
+            retired.local_work(str(self.upstream)),
+            ["commits that no remote branch holds"],
+        )
+
+    def test_unreadable_repository_is_reported_rather_than_removed(self):
+        broken = self.clone("broken")
+        (broken / ".git/HEAD").write_text("garbage\n")
+        with self.assertRaises(retired.LocalWork):
+            retired.local_work(str(broken))
+
+    def test_nested_repositories_are_found_without_entering_git_directories(self):
+        outer = self.clone("bundle/outer")
+        inner = outer / "deps/inner"
+        repository(inner)
+        (self.root / "bundle/plain").mkdir()
+        self.assertEqual(
+            retired.repositories(str(self.root / "bundle")), [str(outer), str(inner)]
+        )
+
+    def test_paths_must_stay_under_the_home(self):
+        for path in ("../escape", "/etc", ".vim/../../escape"):
+            with self.subTest(path), self.assertRaises(ValueError):
+                retired.plan(str(self.root), [path], [])

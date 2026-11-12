@@ -31,6 +31,8 @@ ansible/roles/dotfiles/files/home/.vim/session
 ansible/roles/dotfiles/files/home/.vim/tags
 ansible/roles/dotfiles/files/home/.vim/undo
 ansible/roles/dotfiles/files/home/.vim/autoload/plug.vim
+# Vundle and tpm are gone, but in a clone that ~/.vim or ~/.tmux used to
+# link to, they left these directories, which the role does not delete.
 ansible/roles/dotfiles/files/home/.vim/bundle/*
 ansible/roles/dotfiles/files/home/.tmux/plugins/*
 
