@@ -94,17 +94,18 @@ zstyle ':completion::*:(-command-|export):*' fake-parameters ${${${_comps[(I)-va
 # zsh only reads ~/.ssh/config for ssh, scp and sftp, so the `hosts` style
 # gathers all sources, read again on each completion:
 # - /etc/hosts (getent), names and IP addresses;
-# - /etc/ssh/ssh_known_hosts and ~/.ssh/known_hosts: comma lists, [host]:port
+# - /etc/ssh/ssh_known_hosts(2) and ~/.ssh/known_hosts(2): comma lists, [host]:port
 #   and @cert-authority lines; @revoked lines and hashed entries are skipped;
 # - ~/.ssh/config and the files it Includes (relative to ~/.ssh), Host and
 #   Match host lines, keyword case and `=` as in ssh_config.
 # Patterns (*, ?, %) and negations (!) are skipped.
 _dotfiles_hosts() {
   emulate -L zsh -o extendedglob
-  local -a hosts files names
+  local -a hosts files
+  local -A seen
   local file line key value name
   hosts=(${=${(f)"$(getent hosts 2>/dev/null)"}})
-  for file in /etc/ssh/ssh_known_hosts(N) ~/.ssh/known_hosts(N); do
+  for file in /etc/ssh/ssh_known_hosts(|2)(N) ~/.ssh/known_hosts(|2)(N); do
     for line in ${(f)"$(<$file)"}; do
       [[ $line == @revoked[[:space:]]* ]] && continue
       [[ $line == @* ]] && line=${line#* }
@@ -116,15 +117,18 @@ _dotfiles_hosts() {
     done
   done
   files=(~/.ssh/config(N))
-  local -i depth=0
-  while (( $#files && depth++ < 16 )); do
+  while (( $#files )); do
     file=$files[1]; shift files
+    # Each file is read once, which also stops Include loops.
+    (( ${+seen[${file:A}]} )) && continue
+    seen[${file:A}]=1
     for line in ${(f)"$(<$file)"}; do
       line=${line##[[:space:]]#}
       key=${line%%[[:space:]=]*} value=${${line#$key}##[[:space:]=]#}
       case ${(L)key} in
         include)
-          files+=(${~${(z)value}/#(#m)[^\/~]*/$HOME/.ssh/$MATCH}(N.)) ;;
+          # ^ gives every pattern of the line its own (N.) qualifier.
+          files+=(${^~${(z)value}/#(#m)[^\/~]*/$HOME/.ssh/$MATCH}(N.)) ;;
         host)
           hosts+=(${(z)value}) ;;
         match)
@@ -242,7 +246,8 @@ _dotfiles_bash_completion() {
   [[ -d $dir ]] || return 0
   if [[ ! -s $list || $dir -nt $list || $ZSH/init/completion.zsh -nt $list ]]; then
     local -a usable
-    for file in $dir/*(N.); do
+    # -. follows symlinks: several commands share one file (pscap, runuser).
+    for file in $dir/*(N-.); do
       [[ $(<$file) =~ $skip ]] || usable+=(${file:t})
     done
     print -rl -- $usable >| $list

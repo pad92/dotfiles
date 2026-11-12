@@ -47,11 +47,14 @@ printf '#compdef sops\n_dottest_sops() { compadd encrypt; }\ncompdef _dottest_so
 EOF
 print -r -- '#!/bin/sh' > "$TEST_DIR/bin/dottest-bash"
 cp "$TEST_DIR/bin/dottest-bash" "$TEST_DIR/bin/dottest-helper"
+cp "$TEST_DIR/bin/dottest-bash" "$TEST_DIR/bin/dottest-link"
 chmod +x "$TEST_DIR"/bin/*
 cat > "$TEST_DIR/bash-completions/dottest-bash" <<'EOF'
 _dottest_bash() { COMPREPLY=($(compgen -W 'alpha beta' -- "${COMP_WORDS[COMP_CWORD]}")); }
 complete -F _dottest_bash dottest-bash
 EOF
+# Packages share one file between several commands through symlinks (pscap).
+ln -s dottest-bash "$TEST_DIR/bash-completions/dottest-link"
 cat > "$TEST_DIR/bash-completions/dottest-helper" <<'EOF'
 _dottest_helper() { local cur prev words cword; _init_completion || return; }
 complete -F _dottest_helper dottest-helper
@@ -61,7 +64,8 @@ start_zsh() {
   HOME=$TEST_DIR ZDOTDIR=$TEST_DIR PATH="$TEST_DIR/bin:$PATH" \
     DOTFILES_BASH_COMPLETION_DIR=$TEST_DIR/bash-completions zsh -i -c '
     print -r -- "${_comps[http]:-NONE} ${fpath[(i)$ZSH/plugins/httpie]} ${fpath[(i)'"${default_fpath[1]}"']}" \
-      "${_comps[sops]:-NONE} ${_comps[dottest-bash]:-NONE} ${_comps[dottest-helper]:-NONE}"' \
+      "${_comps[sops]:-NONE} ${_comps[dottest-bash]:-NONE} ${_comps[dottest-helper]:-NONE}" \
+      "${_comps[dottest-link]:-NONE}"' \
     2>/dev/null | tail -n 1
 }
 
@@ -77,6 +81,8 @@ for run in first cached; do
     || fail "$run start: a bash-only completion is not loaded through bashcompinit (got: $result)"
   [[ ${result[6]} == NONE ]] \
     || fail "$run start: a bash completion that needs bash-completion helpers was loaded"
+  [[ ${result[7]} == _dotfiles_bash_completion ]] \
+    || fail "$run start: a symlinked bash completion is not loaded (got: $result)"
 done
 [[ -s $TEST_DIR/.zcache/bash-completions ]] \
   || fail 'the list of usable bash completions was not cached'
@@ -93,7 +99,13 @@ Host=equal-host
 Match originalhost match-host user foo
 Include conf.d/*
 Include ~/.ssh/abs.conf
+Include nomatch/* many/*
 EOF
+# More included files than a file cap would allow, after a pattern that
+# matches nothing on the same line.
+mkdir -p "$SSH_HOME/.ssh/many"
+for i in {1..20}; do print -r -- "Host many-$i" > "$SSH_HOME/.ssh/many/$i"; done
+print -r -- 'kh2-host ssh-ed25519 AAAA' > "$SSH_HOME/.ssh/known_hosts2"
 printf 'Host included-host\nInclude conf.d/loop\n' > "$SSH_HOME/.ssh/conf.d/loop"
 printf 'HOST abs-host\n' > "$SSH_HOME/.ssh/abs.conf"
 cat > "$SSH_HOME/.ssh/known_hosts" <<'EOF'
@@ -106,7 +118,7 @@ EOF
 hosts=(${(f)"$(HOME=$SSH_HOME zsh -fc '
   source <(sed -n "/^_dotfiles_hosts() {/,/^}/p" "$1"); _dotfiles_hosts; print -rl -- $reply' \
   _ "$ZSH_TREE/init/completion.zsh")"})
-for name in lower-host equal-host indented-host multi-a match-host included-host abs-host kh-a kh-b kh-port; do
+for name in lower-host equal-host indented-host multi-a match-host included-host abs-host kh-a kh-b kh-port kh2-host many-{1..20}; do
   (( ${hosts[(Ie)$name]} )) || fail "host completion misses $name"
 done
 for name in '!negated' 'wild-*' 'q?' negated '*.example.test' kh-revoked '[kh-port]:2222'; do

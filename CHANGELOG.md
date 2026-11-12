@@ -258,7 +258,8 @@ Release history and changes planned for the next version.
     rsync, ping and the other commands that complete hosts. It now follows
     every `Include` of `~/.ssh/config` (it only read `config.d/*`), reads
     `Host` lines in any case or with `=`, and `Match host` lines. It reads
-    `/etc/ssh/ssh_known_hosts` (the path was wrong) and skips `@revoked`
+    `/etc/ssh/ssh_known_hosts` (the path was wrong), still reads the
+    `known_hosts2` files and skips `@revoked`
     entries. Without `~/.ssh/config.d`, each TAB printed `no matches found`.
   - Rebuild the completion dump once a day as intended. The `(#q)` glob
     qualifier needs `extended_glob`, which is off there, so every shell ran a
