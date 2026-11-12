@@ -287,6 +287,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **tmux**: true color works again. The `terminal-overrides` line for mouse
+  scrolling replaced the list instead of appending to it, which dropped the
+  `RGB` override set at the top of `.tmux.conf`.
 - **Hyprland**:
   - The cursor can move between every monitor again on PadsP5560. The laptop
     panel was fixed at `0x1440`. The Dell and ASUS rules were dropped without

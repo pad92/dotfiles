@@ -81,6 +81,14 @@ class TmuxConfTests(unittest.TestCase):
         self.assertIn("last-window", self.binding("C-a"))
         self.assertIn("send-prefix", self.binding("a"))
 
+    def test_keeps_every_terminal_override(self):
+        # The second override once replaced the list, dropping true color.
+        self.load()
+        result = self.tmux("show-options", "-g", "-v", "terminal-overrides")
+        overrides = result.stdout.splitlines()
+        self.assertIn("*:RGB", overrides)
+        self.assertIn("xterm*:smcup@:rmcup@", overrides)
+
 
 if __name__ == "__main__":
     unittest.main()
