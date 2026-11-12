@@ -4,27 +4,44 @@
 dotfiles_home: "{{ ansible_facts['user_dir'] }}"
 dotfiles_owner: "{{ ansible_facts['user_id'] }}"
 dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
-# Files are copied and rendered from the controller's copy of the role.
+# Everything is copied and rendered from the controller's copy of the
+# repository: the target keeps no link into a clone, which can be deleted
+# once deployed. The submodules are initialized there, on the controller.
+dotfiles_source_repository: '{{ role_path | dirname | dirname | dirname }}'
 dotfiles_source_root: '{{ role_path }}/files/home'
-# Clone of this repository on the target. The submodules are initialized
-# there and dotfiles_links point into it, so it must exist on every target.
-dotfiles_repository: '{{ dotfiles_home }}/.dotfiles'
-dotfiles_link_root: '{{ dotfiles_repository }}/ansible/roles/dotfiles/files/home'
+# Where earlier versions linked .vim, .tmux and the Zsh tree. A link that
+# still points there is replaced by a copy, and the files the programs had
+# added to the clone (plugins, backups) are copied next to it.
+dotfiles_legacy_link_root: '{{ dotfiles_home }}/.dotfiles/ansible/roles/dotfiles/files/home'
 # Icon theme written into the GTK 2/3, hyprtoolkit and Mako configurations.
 dotfiles_icon_theme: Papirus-Dark
 # Mako does not follow theme inheritance, so it also searches the parent theme.
 # The default only strips a -Dark suffix; set it to the Inherits= theme of the
 # chosen theme's index.theme when that does not hold.
 dotfiles_icon_theme_parent: "{{ dotfiles_icon_theme | regex_replace('-Dark$', '') }}"
-dotfiles_zsh_link_dest: .local/share/dotfiles/zsh
-dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_link_dest }}'
-dotfiles_links:
+dotfiles_zsh_dest: .local/share/dotfiles/zsh
+dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_dest }}'
+# Trees copied with only the files Git tracks, submodules included. Files a
+# program adds there later (Vim and tmux plugins, Vim backups) stay in place.
+dotfiles_trees:
   - src: .tmux
     dest: .tmux
   - src: .vim
     dest: .vim
   - src: zsh
-    dest: '{{ dotfiles_zsh_link_dest }}'
+    dest: '{{ dotfiles_zsh_dest }}'
+# Plugin managers that update themselves with Git, so they are cloned on the
+# target rather than copied. An existing checkout is left as it is.
+dotfiles_plugin_managers:
+  - repo: https://github.com/VundleVim/Vundle.vim.git
+    dest: .vim/bundle/Vundle.vim
+  - repo: https://github.com/tmux-plugins/tpm.git
+    dest: .tmux/plugins/tpm
+# Hyprlock background, copied from the repository into the home directory.
+dotfiles_hyprlock_wallpaper_source: >-
+  assets/wallpapers/wallpaper_arch_perfection_simplicity_by_icetremens-dbjspqh.png
+dotfiles_hyprlock_wallpaper: >-
+  .local/share/dotfiles/wallpapers/{{ dotfiles_hyprlock_wallpaper_source | basename }}
 dotfiles_directories:
   - .bin
   - .config/alacritty

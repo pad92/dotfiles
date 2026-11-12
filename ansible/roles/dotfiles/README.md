@@ -1,16 +1,43 @@
 # Dotfile role
 
 `files/home/` mirrors paths under a user's home directory. The role copies
-static configuration and user scripts, renders templates, and links the
-Git-backed Vim, tmux, and Zsh trees. `templates/home/` contains files that use
-Ansible variables.
+static configuration, user scripts and the Vim, tmux and Zsh trees, and
+renders templates. `templates/home/` contains files that use Ansible
+variables.
 
-The playbook reaches the target over SSH. Copies and templates come from the
-controller's copy of the role. The Vim, tmux and Zsh links point into the
-target's own clone of the repository, `dotfiles_repository` (`~/.dotfiles`),
-where the role also initializes the submodules; deployment stops when that
-clone is missing. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
+The playbook reaches the target over SSH. Every file comes from the
+controller's copy of the repository: nothing in the home directory points
+into a clone, so the target needs none, and a clone there can be deleted
+once deployed. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
 from the facts of the SSH user.
+
+## Vim, tmux and Zsh trees
+
+`dotfiles_trees` lists `.vim`, `.tmux` and `zsh`, which deploys to
+`~/.local/share/dotfiles/zsh` (`dotfiles_zsh_dest`). Only the files Git
+tracks are copied, including those of the Zsh plugin submodules, which the
+role checks out on the controller first (`dotfiles_submodules`, also run by
+`dotfiles_deploy`). The controller's own Vim backups or installed plugins
+are never copied, and a submodule that is not checked out stops the
+deployment instead of being copied empty. Files that programs add to a tree
+on the target (plugins, backups, swap files) stay in place.
+
+Vundle and tpm update themselves with Git, so they are cloned on the target
+(`dotfiles_plugin_managers`) rather than copied. An existing checkout is left
+alone; update it from Vim or tmux, or with `dotfiles_update_vim_plugins`.
+
+Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
+link there (`dotfiles_legacy_link_root`), the deployment removes the link,
+copies the tree, then copies what Git does not track behind the link: Vim
+backups and swap files, and plugins installed by Vundle with their Git
+metadata. The old Vundle and tpm submodules are cloned again rather than
+copied, since their `.git` file points into the clone. The clone itself is
+left untouched. Check mode lists the files it will bring over and stops
+before the replacement. A link that points anywhere else is backed up to
+`<path>.bak` like any other conflict.
+
+The Hyprlock background is copied to
+`~/.local/share/dotfiles/wallpapers/` (`dotfiles_hyprlock_wallpaper`).
 
 Keep static files in their home-relative layout. For example,
 `files/home/.config/hypr/` deploys to `~/.config/hypr/`. Add variable-aware

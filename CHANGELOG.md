@@ -99,6 +99,22 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Dotfiles**:
+  - Copy `~/.vim`, `~/.tmux` and the Zsh tree
+    (`~/.local/share/dotfiles/zsh`) instead of linking them into the
+    target's clone, and copy the Hyprlock background as well. Once deployed,
+    the home directory no longer uses `~/.dotfiles`, which can be deleted.
+    Only the files Git tracks are copied, with the submodules, which the
+    controller now initializes. A deployment replaces an old link into
+    `~/.dotfiles` with a copy and brings over what programs had added there
+    (Vim backups, swap files, plugins installed by Vundle). Check mode lists
+    those files and stops before the replacement.
+  - Clone Vundle and tpm on the target instead of shipping them as
+    submodules: a copy has no Git metadata, so neither could update itself.
+    An existing checkout is left alone. `scripts/vim.sh` clones Vundle too,
+    since the `vim.tar.gz` archive no longer contains it.
+  - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
+    `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone.
 - **Makefile**:
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and

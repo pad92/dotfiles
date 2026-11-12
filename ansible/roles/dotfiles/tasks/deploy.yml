@@ -24,21 +24,19 @@
 
 - name: Build managed path lists
   ansible.builtin.set_fact:
-    dotfiles_link_destinations: >-
-      {{ dotfiles_links | map(attribute='dest') | map('normpath') | list }}
     dotfiles_directory_paths: >-
-      {{ (dotfiles_directories + [dotfiles_systemd_directory,
-         dotfiles_systemd_directory + '/user']) | map('normpath') | list }}
+      {{ (dotfiles_directories + (dotfiles_trees | map(attribute='dest') | list)
+         + [dotfiles_systemd_directory, dotfiles_systemd_directory + '/user'])
+         | map('normpath') | list }}
     dotfiles_file_paths: >-
       {{ (dotfiles_files + (dotfiles_templates | map(attribute='dest') | list)
-         + ['.config/hypr/hyprlock/carousel-image.sh'])
+         + ['.config/hypr/hyprlock/carousel-image.sh', dotfiles_hyprlock_wallpaper])
          | map('normpath') | list }}
 
 - name: Combine managed paths
   ansible.builtin.set_fact:
     dotfiles_managed_paths: >-
-      {{ (dotfiles_link_destinations + dotfiles_directory_paths +
-          dotfiles_file_paths) | unique | list }}
+      {{ (dotfiles_directory_paths + dotfiles_file_paths) | unique | list }}
 
 - name: Build parent path list
   ansible.builtin.set_fact:
@@ -58,6 +56,29 @@
   loop_control:
     label: '{{ item }}'
 
+# Earlier versions linked each tree into the target's clone. Such a link is
+# replaced by a copy rather than backed up, since a backup would still point
+# into the clone, and what programs added there is copied over (see below).
+- name: Start the list of legacy tree links
+  ansible.builtin.set_fact:
+    dotfiles_legacy_tree_links: []
+
+- name: Recognize legacy links of the trees into a clone
+  ansible.builtin.set_fact:
+    dotfiles_legacy_tree_links: '{{ dotfiles_legacy_tree_links + [item] }}'
+  vars:
+    dotfiles_tree_stat: >-
+      {{ dotfiles_target_stats.results
+         | selectattr('item', 'equalto', item.dest | normpath) | first }}
+  loop: '{{ dotfiles_trees }}'
+  loop_control:
+    label: '{{ item.dest }}'
+  when:
+    - dotfiles_tree_stat.stat.islnk | default(false)
+    - >-
+      dotfiles_tree_stat.stat.lnk_source | normpath ==
+      (dotfiles_legacy_link_root ~ '/' ~ item.src) | normpath
+
 - name: Inspect backup paths for conflicts
   ansible.builtin.stat:
     path: '{{ dotfiles_home }}/{{ item.item }}.bak'
@@ -72,16 +93,12 @@
     - >-
       (not item.stat.islnk and
        ((item.item in dotfiles_directory_paths and not item.stat.isdir) or
-        item.item in dotfiles_link_destinations or
         (item.item in dotfiles_file_paths and item.stat.isdir))) or
       (item.stat.islnk and
-       ((item.item in dotfiles_link_destinations and
-         item.stat.lnk_source != dotfiles_link_root + '/' +
-         (dotfiles_links | selectattr('dest', 'equalto', item.item) |
-          map(attribute='src') | first)) or
-        (item.item not in dotfiles_link_destinations and
-         not (item.item == '.config/waybar/config' and
-              dotfiles_waybar_legacy_link | bool))))
+       not (item.item == '.config/waybar/config' and
+            dotfiles_waybar_legacy_link | bool) and
+       item.item not in dotfiles_legacy_tree_links | map(attribute='dest')
+                        | map('normpath'))
   register: dotfiles_backup_stats
 
 - name: Refuse to replace existing backup paths
@@ -115,6 +132,26 @@
     label: '{{ item.item.item }}'
   when: item.changed
 
+# Git lists, under each legacy link's target, what it does not track:
+# files the programs wrote there, such as Vim backups. A nested
+# repository, such as a plugin Vundle cloned, comes as one entry.
+- name: List the files programs added behind legacy tree links
+  ansible.builtin.command:
+    argv:
+      - git
+      - -c
+      - core.quotePath=false
+      - -C
+      - '{{ dotfiles_legacy_link_root }}/{{ item.src }}'
+      - ls-files
+      - --others
+  loop: '{{ dotfiles_legacy_tree_links }}'
+  loop_control:
+    label: '{{ item.dest }}'
+  register: dotfiles_legacy_tree_files
+  changed_when: false
+  check_mode: false
+
 - name: Explain deferred replacement during conflict simulation
   ansible.builtin.debug:
     msg: >-
@@ -122,8 +159,22 @@
       because the original paths still exist; no files have been moved.
   when: ansible_check_mode and dotfiles_conflict_backups.changed
 
+# Until a legacy link is removed, the copy would read and write through it
+# into the clone, so check mode stops here too.
+- name: Explain deferred replacement of legacy tree links
+  ansible.builtin.debug:
+    msg: >-
+      Check mode stops before replacing the links to the clone
+      ({{ dotfiles_legacy_tree_links | map(attribute='dest') | join(', ') }})
+      with copies. Kept from the clone: {{ dotfiles_legacy_tree_files.results
+      | map(attribute='stdout_lines') | flatten | join(', ') or 'nothing' }}.
+  when: ansible_check_mode and dotfiles_legacy_tree_links | length > 0
+
 - name: Deploy paths after conflict backups
-  when: not ansible_check_mode or not dotfiles_conflict_backups.changed
+  when: >-
+    not ansible_check_mode or
+    (not dotfiles_conflict_backups.changed and
+     dotfiles_legacy_tree_links | length == 0)
   block:
     # Before the template, which would otherwise write through the link.
     - name: Remove the legacy Waybar host selection link
@@ -141,46 +192,71 @@
       loop_control:
         label: '{{ item }}'
 
-    # The links point into the target's clone, not into the controller's.
-    - name: Inspect the repository clone the links point into
-      ansible.builtin.stat:
-        path: '{{ dotfiles_link_root }}'
-        get_checksum: false
-        get_mime: false
-        get_attributes: false
-      register: dotfiles_link_root_stat
-      when: dotfiles_links | length > 0
-
-    - name: Require the repository clone on the target
-      ansible.builtin.assert:
-        that:
-          - dotfiles_link_root_stat.stat.isdir | default(false)
-        fail_msg: >-
-          {{ dotfiles_link_root }} is missing on {{ inventory_hostname }}.
-          Clone the repository to {{ dotfiles_repository }} there, or set
-          dotfiles_repository to its clone.
-        quiet: true
-      when: dotfiles_links | length > 0
-
-    - name: Link managed directories into the home directory
+    - name: Remove legacy tree links into a clone
       ansible.builtin.file:
-        src: '{{ dotfiles_link_root }}/{{ item.src }}'
-        dest: '{{ dotfiles_home }}/{{ item.dest }}'
-        state: link
-        force: false
-      loop: '{{ dotfiles_links }}'
+        path: '{{ dotfiles_home }}/{{ item.dest }}'
+        state: absent
+      loop: '{{ dotfiles_legacy_tree_links }}'
       loop_control:
         label: '{{ item.dest }}'
 
-    - name: Copy changed static dotfile directories
+    - name: Copy changed static dotfile directories and trees
       ansible.builtin.include_tasks:
         file: copy-directory.yml
         apply:
           tags: [dotfiles, dotfiles_deploy]
-      loop: "{{ dotfiles_directories | map('normpath') | unique | list }}"
+      vars:
+        dotfiles_copy: >-
+          {{ dotfiles_copy_item | combine({'tracked': true})
+             if dotfiles_copy_item is mapping else
+             {'src': dotfiles_copy_item, 'dest': dotfiles_copy_item} }}
+      loop: "{{ (dotfiles_directories | map('normpath') | unique | list) + dotfiles_trees }}"
       loop_control:
-        loop_var: dotfiles_directory
-        label: '{{ dotfiles_directory }}'
+        loop_var: dotfiles_copy_item
+        label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'
+
+    # cp creates the missing parents of each path and keeps its modes, links
+    # and nested Git checkouts; an existing path is left alone. A plugin
+    # manager that an older version shipped as a submodule is skipped: its
+    # .git file points into the clone, so it is cloned again below instead.
+    # Git quotes a name with a newline or a quote, which then fails here
+    # rather than copying another path.
+    - name: Copy the files programs added behind legacy tree links
+      ansible.builtin.command:
+        argv:
+          - cp
+          - -a
+          - --parents
+          - --
+          - '{{ item.1 | regex_replace("/$", "") }}'
+          - '{{ dotfiles_home }}/{{ item.0.item.dest }}/'
+        chdir: '{{ dotfiles_legacy_link_root }}/{{ item.0.item.src }}'
+        creates: '{{ dotfiles_home }}/{{ item.0.item.dest }}/{{ item.1 | regex_replace("/$", "") }}'
+      loop: >-
+        {{ dotfiles_legacy_tree_files.results | default([])
+           | subelements('stdout_lines', skip_missing=true) }}
+      loop_control:
+        label: '{{ item.0.item.dest }}/{{ item.1 }}'
+      when: >-
+        (item.0.item.dest ~ '/' ~ item.1) | normpath not in
+        dotfiles_plugin_managers | map(attribute='dest') | map('normpath')
+
+    - name: Clone the plugin managers
+      ansible.builtin.git:
+        repo: '{{ item.repo }}'
+        dest: '{{ dotfiles_home }}/{{ item.dest }}'
+        version: '{{ item.version | default("HEAD") }}'
+        update: false
+      loop: '{{ dotfiles_plugin_managers }}'
+      loop_control:
+        label: '{{ item.dest }}'
+
+    - name: Copy the Hyprlock background
+      ansible.builtin.copy:
+        src: '{{ dotfiles_source_repository }}/{{ dotfiles_hyprlock_wallpaper_source }}'
+        dest: '{{ dotfiles_home }}/{{ dotfiles_hyprlock_wallpaper }}'
+        mode: '0644'
+        backup: true
 
     - name: Copy static dotfiles
       ansible.builtin.copy:

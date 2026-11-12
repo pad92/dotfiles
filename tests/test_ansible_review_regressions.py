@@ -463,10 +463,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         "user_gid": os.getgid(),
                     },
                     "dotfiles_home": str(home),
-                    "dotfiles_repository": str(ROOT),
+                    "dotfiles_source_repository": str(ROOT),
+                    # The trees are copied with what Git tracks, so they
+                    # come from the repository rather than the role copy.
+                    "dotfiles_source_root": str(ROLES / "dotfiles/files/home"),
                     "dotfiles_directories": [],
                     "dotfiles_files": [".gitconfig"],
-                    "dotfiles_links": [{"src": ".vim", "dest": ".vim"}],
+                    "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+                    "dotfiles_plugin_managers": [],
                     "dotfiles_templates": [
                         {
                             "src": "home/.config/waybar/config.j2",
@@ -497,11 +501,12 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             (home / ".gitconfig").read_text(),
             (role / "files/home/.gitconfig").read_text(),
         )
+        # A link elsewhere than the old clone is someone's own: backed up.
         self.assertEqual(os.readlink(home / ".vim.bak"), str(elsewhere))
-        # The link points into the target's clone, not the controller's role.
+        self.assertFalse((home / ".vim").is_symlink())
         self.assertEqual(
-            os.readlink(home / ".vim"),
-            str(ROOT / "ansible/roles/dotfiles/files/home/.vim"),
+            (home / ".vim/config/plugins.vim").read_text(),
+            (ROLES / "dotfiles/files/home/.vim/config/plugins.vim").read_text(),
         )
         self.assertEqual((elsewhere / "gitconfig").read_text(), "local\n")
         self.assertFalse((waybar / "config").is_symlink())
@@ -538,10 +543,11 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                         "user_gid": os.getgid(),
                     },
                     "dotfiles_home": str(home),
-                    "dotfiles_repository": str(ROOT),
+                    "dotfiles_source_repository": str(ROOT),
                     "dotfiles_directories": [],
                     "dotfiles_files": [".gitconfig"],
-                    "dotfiles_links": [],
+                    "dotfiles_trees": [],
+                    "dotfiles_plugin_managers": [],
                     "dotfiles_templates": [
                         {
                             "src": "home/.config/waybar/config.j2",
@@ -687,11 +693,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                             "file": str(role / "tasks/copy-directory.yml"),
                         },
                         "loop": [
-                            ".config/hypr",
-                            ".config/xdg-desktop-portal",
-                            ".config/uwsm",
+                            {"src": path, "dest": path}
+                            for path in [
+                                ".config/hypr",
+                                ".config/xdg-desktop-portal",
+                                ".config/uwsm",
+                            ]
                         ],
-                        "loop_control": {"loop_var": "dotfiles_directory"},
+                        "loop_control": {"loop_var": "dotfiles_copy"},
                     }
                 ],
                 "handlers": yaml.safe_load((role / "handlers/main.yml").read_text()),

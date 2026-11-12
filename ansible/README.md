@@ -12,8 +12,8 @@ make deploy BECOME_PASS=1
 
 The playbook supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora. It
 installs selected package groups, copies static dotfiles, renders host-aware
-templates, links the Vim, tmux, and Zsh source trees, initializes Git submodules
-at the revisions recorded by the repository, renders the Waybar, hypridle and
+templates, copies the Vim, tmux, and Zsh trees with the Git submodules checked
+out at the revisions recorded by the repository, renders the Waybar, hypridle and
 Hyprland monitor settings from each host's variables, reloads live
 configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS without generating separate debug
@@ -136,10 +136,9 @@ Each target needs:
 
 - an SSH server that accepts the user's key; the `hardening` role never
   configures `sshd`;
-- a clone of this repository in `~/.dotfiles`, or wherever
-  `dotfiles_repository` points. The Vim, tmux and Zsh links and the Git
-  submodules live in that clone. The other files are copied from the
-  controller.
+- network access to GitHub on the first deployment, to clone Vundle and
+  tpm. Everything else is copied from the controller, so the target needs
+  no clone of this repository.
 
 SSH resolves the inventory name through `~/.ssh/config` or DNS. Set
 `ansible_host` in the host file when it cannot.

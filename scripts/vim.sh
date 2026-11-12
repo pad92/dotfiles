@@ -6,6 +6,8 @@
 set -euo pipefail
 
 PACKAGE_URL="https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim"
+# Vundle is not in the archive: it updates itself with Git, so it is cloned.
+VUNDLE_URL="https://github.com/VundleVim/Vundle.vim.git"
 
 # Print an error message to stderr and exit
 die() {
@@ -56,6 +58,9 @@ main() {
     else
         die "curl or wget is required to download the package."
     fi
+
+    echo "Cloning Vundle..."
+    git clone --quiet --depth 1 "$VUNDLE_URL" ~/.vim/bundle/Vundle.vim
 
     echo "Installing vim plugins via Vundle..."
     vim +PluginInstall! +qall

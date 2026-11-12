@@ -92,7 +92,6 @@ ansible_lint:
 package_vim:
   extends: .package_config
   variables:
-    GIT_SUBMODULE_STRATEGY: recursive
     PACKAGE_ARCHIVE: vim.tar.gz
     PACKAGE_PATHS: .vim .vimrc
   rules:

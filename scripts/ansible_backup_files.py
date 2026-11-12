@@ -22,7 +22,8 @@ PATH_VARIABLES = (
     "dotfiles_directories",
     "dotfiles_files",
     "dotfiles_templates",
-    "dotfiles_links",
+    "dotfiles_trees",
+    "dotfiles_hyprlock_wallpaper",
     "dotfiles_systemd_directory",
 )
 
@@ -79,7 +80,6 @@ def load_configuration(root: Path, extra_vars: list[str]) -> dict:
             **defaults,
             **trust_inventory_templates(inventory),
             "dotfiles_home": str(root),
-            "dotfiles_repository": str(REPOSITORY_ROOT),
         }
         templar = Templar(loader=loader, variables=variables)
         return {name: templar.template(variables[name]) for name in PATH_VARIABLES}
@@ -124,7 +124,7 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     """Return the exact managed paths whose Ansible tasks can back up."""
     directories = (
         defaults["dotfiles_directories"]
-        + [link["dest"] for link in defaults["dotfiles_links"]]
+        + [tree["dest"] for tree in defaults["dotfiles_trees"]]
         + [
             defaults["dotfiles_systemd_directory"],
             defaults["dotfiles_systemd_directory"] + "/user",
@@ -133,7 +133,10 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
     files = set(
         defaults["dotfiles_files"]
         + [template["dest"] for template in defaults["dotfiles_templates"]]
-        + [".config/hypr/hyprlock/carousel-image.sh"]
+        + [
+            ".config/hypr/hyprlock/carousel-image.sh",
+            defaults["dotfiles_hyprlock_wallpaper"],
+        ]
     )
 
     source_root = REPOSITORY_ROOT / "ansible/roles/dotfiles/files/home"
@@ -143,9 +146,9 @@ def managed_paths(defaults: dict) -> tuple[list[str], list[str]]:
             for relative_path in defaults["dotfiles_directories"]
         ]
         + [
-            (link["src"], link["dest"])
-            for link in defaults["dotfiles_links"]
-            if (source_root / validate_relative_path(link["src"])).is_dir()
+            (tree["src"], tree["dest"])
+            for tree in defaults["dotfiles_trees"]
+            if (source_root / validate_relative_path(tree["src"])).is_dir()
         ]
         + [
             (

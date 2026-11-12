@@ -1,57 +1,78 @@
 ---
-- name: Collect directory contents including source links for {{ dotfiles_directory }}
+# Copies one directory of files/home, given as dotfiles_copy:
+#   src      path under files/home;
+#   dest     path under the home directory;
+#   tracked  true to copy only what Git tracks (see the dotfiles_tree module).
+# dotfiles_copy_path is the destination of the looped source entry.
+- name: Resolve the source and destination of {{ dotfiles_copy.dest }}
+  ansible.builtin.set_fact:
+    dotfiles_copy_source: "{{ (dotfiles_source_root ~ '/' ~ dotfiles_copy.src) | normpath }}"
+    dotfiles_copy_target: "{{ (dotfiles_home ~ '/' ~ dotfiles_copy.dest) | normpath }}"
+
+- name: Collect directory contents including source links for {{ dotfiles_copy.dest }}
   dotfiles_tree:
-    path: '{{ dotfiles_source_root }}/{{ dotfiles_directory }}'
+    path: '{{ dotfiles_copy_source }}'
+    tracked: '{{ dotfiles_copy.tracked | default(false) }}'
   delegate_to: localhost
   become: false
   register: dotfiles_directory_contents
 
 - name: Inspect destination directory permissions
   ansible.builtin.stat:
-    path: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+    path: '{{ dotfiles_copy_path }}'
     get_checksum: false
     get_mime: false
     get_attributes: false
   loop: '{{ dotfiles_directory_contents.files | selectattr("isdir") | list }}'
   loop_control:
-    label: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+    label: '{{ dotfiles_copy_path }}'
   register: dotfiles_directory_stats
+  vars:
+    dotfiles_copy_path: >-
+      {{ (dotfiles_copy_target ~ '/' ~ item.path | relpath(dotfiles_copy_source))
+         | normpath }}
 
-- name: Create destination subdirectories for {{ dotfiles_directory }}
+- name: Create destination subdirectories for {{ dotfiles_copy.dest }}
   ansible.builtin.file:
-    path: '{{ dotfiles_home }}/{{ item.item.path | relpath(dotfiles_source_root) }}'
+    path: '{{ dotfiles_copy_path }}'
     state: directory
     mode: '{{ item.stat.mode | default(item.item.mode) }}'
   loop: '{{ dotfiles_directory_stats.results }}'
   loop_control:
-    label: '{{ dotfiles_home }}/{{ item.item.path | relpath(dotfiles_source_root) }}'
-  notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+    label: '{{ dotfiles_copy_path }}'
+  notify: '{{ dotfiles_directory_handlers.get(dotfiles_copy.dest, []) }}'
+  vars:
+    dotfiles_copy_path: >-
+      {{ (dotfiles_copy_target ~ '/' ~ item.item.path | relpath(dotfiles_copy_source))
+         | normpath }}
 
-- name: Copy files individually from {{ dotfiles_directory }}
+- name: Copy files individually from {{ dotfiles_copy.dest }}
   ansible.builtin.copy:
     src: '{{ item.path }}'
-    dest: >-
-      {{ dotfiles_home }}/{{ item.path |
-         relpath(dotfiles_source_root) }}
+    dest: '{{ dotfiles_copy_path }}'
     mode: preserve
     backup: true
   loop: '{{ dotfiles_directory_contents.files | selectattr("isreg") | list }}'
   loop_control:
-    label: >-
-      {{ dotfiles_home }}/{{ item.path |
-         relpath(dotfiles_source_root) }}
+    label: '{{ dotfiles_copy_path }}'
   register: dotfiles_directory_copies
-  notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+  notify: '{{ dotfiles_directory_handlers.get(dotfiles_copy.dest, []) }}'
+  vars:
+    dotfiles_copy_path: >-
+      {{ (dotfiles_copy_target ~ '/' ~ item.path | relpath(dotfiles_copy_source))
+         | normpath }}
 
 # A looped task notifies the union of its handlers once any item changes, so
-# file-specific handlers are selected from the changed items here.
-- name: Notify handlers for changed files in {{ dotfiles_directory }}
+# file-specific handlers are selected from the changed items here. Their keys
+# are paths under the home directory.
+- name: Notify handlers for changed files in {{ dotfiles_copy.dest }}
   ansible.builtin.debug:
     msg: '{{ dotfiles_changed_file_handlers }}'
   vars:
     dotfiles_changed_files: >-
       {{ dotfiles_directory_copies.results | default([]) | selectattr('changed')
-         | map(attribute='item.path') | map('relpath', dotfiles_source_root)
+         | map(attribute='item.path') | map('relpath', dotfiles_copy_source)
+         | map('regex_replace', '^', dotfiles_copy.dest ~ '/') | map('normpath')
          | list }}
     dotfiles_changed_file_handlers: >-
       {{ dotfiles_file_handlers | dict2items
@@ -61,14 +82,18 @@
   when: dotfiles_changed_file_handlers | length > 0
   notify: '{{ dotfiles_changed_file_handlers }}'
 
-- name: Preserve dangling and cyclic source links in {{ dotfiles_directory }}
+- name: Preserve dangling and cyclic source links in {{ dotfiles_copy.dest }}
   ansible.builtin.file:
     src: '{{ item.lnk_target }}'
-    path: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
+    path: '{{ dotfiles_copy_path }}'
     state: link
     follow: false
     force: false
   loop: '{{ dotfiles_directory_contents.files | selectattr("islnk") | list }}'
   loop_control:
-    label: '{{ dotfiles_home }}/{{ item.path | relpath(dotfiles_source_root) }}'
-  notify: '{{ dotfiles_directory_handlers.get(dotfiles_directory, []) }}'
+    label: '{{ dotfiles_copy_path }}'
+  notify: '{{ dotfiles_directory_handlers.get(dotfiles_copy.dest, []) }}'
+  vars:
+    dotfiles_copy_path: >-
+      {{ (dotfiles_copy_target ~ '/' ~ item.path | relpath(dotfiles_copy_source))
+         | normpath }}

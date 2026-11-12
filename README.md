@@ -52,7 +52,8 @@ unmanaged.
 Ansible reaches the machine over SSH, even when it is the one you type on.
 `HOST` selects a host of `ansible/inventory.yml` and defaults to the short
 hostname (`uname -n` up to the first dot).
-The target needs an SSH server and the repository cloned in `~/.dotfiles`:
+The target needs an SSH server; the repository only has to be cloned on the
+machine you run `make` from, and that clone can be deleted once deployed:
 `make deploy HOST=PadsP5560` configures the laptop from the desktop. A new
 machine first gets an inventory entry; see
 [Per-host settings](./ansible/README.md#per-host-settings).
@@ -139,7 +140,7 @@ variables, package ownership, and system settings.
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
 | `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
-| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules or deploy the configuration.                            |
+| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules on the controller; deploy the configuration.            |
 | `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
@@ -326,9 +327,9 @@ tar -xzf "$archive" -C "$HOME"
 <details>
 <summary>Install the Vim configuration on its own</summary>
 
-The archive installs `~/.vim` and `~/.vimrc`. To install the plugins as well,
-run [`scripts/vim.sh`](./scripts/vim.sh), which downloads the archive and runs
-Vundle.
+The archive installs `~/.vim` and `~/.vimrc`, without Vundle. To install the
+plugins as well, run [`scripts/vim.sh`](./scripts/vim.sh), which downloads the
+archive, clones Vundle and runs it.
 
 ```sh
 set -eu

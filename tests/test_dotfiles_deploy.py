@@ -51,7 +51,9 @@ class DotfilesDeployTests(unittest.TestCase):
                         "dotfiles_home": str(home),
                         "dotfiles_directories": [],
                         "dotfiles_files": [],
-                        "dotfiles_links": [],
+                        "dotfiles_source_repository": str(ROOT),
+                        "dotfiles_trees": [],
+                        "dotfiles_plugin_managers": [],
                         "dotfiles_templates": [
                             {"src": "home/.gtkrc-2.0.j2", "dest": ".gtkrc-2.0"},
                             {
@@ -207,7 +209,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     "vars": {
                         "ansible_facts": USER_FACTS,
                         "dotfiles_home": str(home),
-                        "dotfiles_repository": str(ROOT),
+                        "dotfiles_source_repository": str(ROOT),
                         "dotfiles_directories": [
                             "./.config/sample-app/",
                             ".config/waybar",
@@ -218,7 +220,8 @@ class DotfilesDeployTests(unittest.TestCase):
                             ".config/waybar": ["Reload Waybar"],
                         },
                         "dotfiles_files": [".gitconfig"],
-                        "dotfiles_links": [{"src": ".vim", "dest": ".vim"}],
+                        "dotfiles_trees": [],
+                        "dotfiles_plugin_managers": [],
                         "dotfiles_templates": [],
                         "dotfiles_systemd_graphical_units": [],
                         "dotfiles_systemd_directory": ".config/test-systemd",
@@ -260,15 +263,16 @@ class DotfilesDeployTests(unittest.TestCase):
 
             run("--check")
             self.assertFalse(home.exists())
-            conflict = home / ".vim"
+            # A directory where a file is managed is moved aside whole.
+            conflict = home / ".gitconfig"
             conflict.mkdir(parents=True, mode=0o700)
             (conflict / "local").write_text("preserve me")
             inode = conflict.stat().st_ino
             self.assertIn("Replacement tasks are deferred", run("--check"))
-            self.assertFalse((home / ".vim.bak").exists())
+            self.assertFalse((home / ".gitconfig.bak").exists())
             output = run()
-            self.assertEqual((home / ".vim.bak").stat().st_ino, inode)
-            self.assertEqual((home / ".vim.bak/local").read_text(), "preserve me")
+            self.assertEqual((home / ".gitconfig.bak").stat().st_ino, inode)
+            self.assertEqual((home / ".gitconfig.bak/local").read_text(), "preserve me")
 
             self.assertEqual(
                 (home / ".config/sample-app/.hidden").read_text(), "hidden\n"
@@ -328,4 +332,175 @@ class DotfilesDeployTests(unittest.TestCase):
             output = run()
             self.assertIn(str(target), output)
             self.assertEqual(target.read_text(), "updated\n")
+            self.assertRegex(run(), r"changed=0\b")
+
+
+def git(path, *args):
+    return subprocess.run(
+        ["git", "-C", str(path), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def repository(path):
+    path.mkdir(parents=True)
+    git(path, "init", "-q")
+    git(path, "config", "commit.gpgsign", "false")
+    git(path, "config", "user.name", "Test")
+    git(path, "config", "user.email", "test@example.invalid")
+
+
+@unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
+class DotfilesTreeCopyTests(unittest.TestCase):
+    """The home must keep working once the repository clone is deleted."""
+
+    def test_legacy_link_becomes_a_copy_that_outlives_the_clone(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            role = work / "dotfiles"
+            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+
+            # The controller's repository: what Git tracks is deployed, not
+            # the Vim backups lying in its own working copy.
+            source = work / "source"
+            repository(source)
+            (source / "home/.vim/config").mkdir(parents=True)
+            (source / "home/.vim/config/plugins.vim").write_text("new\n")
+            (source / ".gitignore").write_text("backup/\n")
+            (source / "wallpaper.png").write_text("png\n")
+            git(source, "add", ".")
+            git(source, "commit", "-q", "-m", "source")
+            (source / "home/.vim/backup").mkdir()
+            (source / "home/.vim/backup/controller~").write_text("controller\n")
+
+            # The target's clone, which an earlier version linked ~/.vim to,
+            # with what Vim and Vundle wrote there.
+            clone = work / "clone"
+            repository(clone)
+            linked = clone / "files/home/.vim"
+            (linked / "config").mkdir(parents=True)
+            (linked / "config/plugins.vim").write_text("old\n")
+            git(clone, "add", ".")
+            git(clone, "commit", "-q", "-m", "clone")
+            (linked / "backup").mkdir()
+            (linked / "backup/notes.txt~").write_text("edited\n")
+            gruvbox = linked / "bundle/gruvbox"
+            repository(gruvbox)
+            (gruvbox / "colors.vim").write_text("gruvbox\n")
+            # An older version's Vundle submodule: its .git file points into
+            # the clone, so it must be cloned again rather than copied.
+            (linked / "bundle/Vundle.vim").mkdir()
+            (linked / "bundle/Vundle.vim/.git").write_text(
+                "gitdir: ../../../../.git/modules/vundle\n"
+            )
+
+            vundle = work / "vundle"
+            repository(vundle)
+            (vundle / "autoload.vim").write_text("vundle\n")
+            git(vundle, "add", ".")
+            git(vundle, "commit", "-q", "-m", "vundle")
+
+            home = work / "home"
+            home.mkdir()
+            (home / ".vim").symlink_to(linked)
+            play = [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "ansible_facts": USER_FACTS,
+                        "dotfiles_home": str(home),
+                        "dotfiles_source_repository": str(source),
+                        "dotfiles_source_root": str(source / "home"),
+                        "dotfiles_legacy_link_root": str(clone / "files/home"),
+                        "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+                        "dotfiles_plugin_managers": [
+                            {
+                                "repo": f"file://{vundle}",
+                                "dest": ".vim/bundle/Vundle.vim",
+                            }
+                        ],
+                        "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
+                        "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
+                        "dotfiles_directories": [],
+                        "dotfiles_files": [],
+                        "dotfiles_templates": [],
+                        "dotfiles_systemd_graphical_units": [],
+                        "dotfiles_systemd_directory": ".config/test-systemd",
+                    },
+                    "tasks": [
+                        {
+                            "ansible.builtin.import_role": {
+                                "name": str(role),
+                                "tasks_from": "deploy",
+                            },
+                            "tags": ["dotfiles_deploy"],
+                        }
+                    ],
+                }
+            ]
+            (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+            playbook = work / "play.yml"
+            playbook.write_text(yaml.safe_dump(play))
+
+            def run(*arguments):
+                result = subprocess.run(
+                    [
+                        "ansible-playbook",
+                        "-i",
+                        "localhost,",
+                        str(playbook),
+                        "--tags",
+                        "dotfiles_deploy",
+                        "--skip-tags",
+                        "systemd",
+                        *arguments,
+                    ],
+                    cwd=ROOT,
+                    env=ansible_test_environment(work),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                return result.stdout
+
+            output = run("--check")
+            self.assertIn("Check mode stops before replacing the links", output)
+            self.assertIn("backup/notes.txt~", output)
+            self.assertTrue((home / ".vim").is_symlink())
+            self.assertEqual((linked / "config/plugins.vim").read_text(), "old\n")
+
+            output = run()
+            self.assertRegex(
+                output, r"changed: \[localhost\] => \(item=\.vim/backup/notes"
+            )
+            vim = home / ".vim"
+            self.assertFalse(vim.is_symlink())
+            self.assertFalse((home / ".vim.bak").exists())
+            self.assertEqual((vim / "config/plugins.vim").read_text(), "new\n")
+            self.assertFalse((vim / "backup/controller~").exists())
+            self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
+            self.assertEqual(
+                (vim / "bundle/gruvbox/colors.vim").read_text(), "gruvbox\n"
+            )
+            self.assertTrue((vim / "bundle/gruvbox/.git").is_dir())
+            self.assertEqual(
+                git(vim / "bundle/Vundle.vim", "rev-parse", "HEAD"),
+                git(vundle, "rev-parse", "HEAD"),
+            )
+            self.assertEqual((home / ".local/share/wallpaper.png").read_text(), "png\n")
+            # The clone is left as it was.
+            self.assertEqual((linked / "config/plugins.vim").read_text(), "old\n")
+            self.assertTrue((linked / "backup/notes.txt~").exists())
+
+            shutil.rmtree(clone)
+            for path in home.rglob("*"):
+                if path.is_symlink():
+                    self.assertFalse(os.readlink(path).startswith(str(clone)), path)
+            self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
             self.assertRegex(run(), r"changed=0\b")

@@ -219,6 +219,88 @@ class ModuleTests(unittest.TestCase):
         self.assertTrue(entries["cycle"]["islnk"])
         self.assertEqual(entries["broken"]["lnk_target"], "missing")
 
+    def test_tree_tracked_copies_git_files_and_submodules_only(self):
+        def git(path, *args):
+            return subprocess.run(
+                ["git", "-C", str(path), *args],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+        def repository(path):
+            path.mkdir(parents=True)
+            git(path, "init")
+            git(path, "config", "commit.gpgsign", "false")
+            git(path, "config", "user.name", "Test")
+            git(path, "config", "user.email", "test@example.invalid")
+
+        plugin, parent = self.root / "plugin", self.root / "parent"
+        repository(plugin)
+        (plugin / "plugin.zsh").write_text("plugin")
+        git(plugin, "add", ".")
+        git(plugin, "commit", "-m", "plugin")
+        repository(parent)
+        source = parent / "home/.vim"
+        (source / "config").mkdir(parents=True)
+        (source / "config/plugins.vim").write_text("tracked")
+        (parent / ".gitignore").write_text("backup/\n")
+        git(parent, "add", ".")
+        git(parent, "commit", "-m", "tree")
+        git(
+            parent,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            str(plugin),
+            "home/.vim/plugins/one",
+        )
+        # What a program writes into the tree, as Vim did into the old clone.
+        (source / "backup").mkdir()
+        (source / "backup/file~").write_text("ignored")
+        (source / "untracked").write_text("untracked")
+        (source / "bundle/gruvbox").mkdir(parents=True)
+        git(source / "bundle/gruvbox", "init")
+
+        entries = {
+            os.path.relpath(entry["path"], source): entry
+            for entry in tree.collect(str(source), tracked=True)
+        }
+        self.assertEqual(
+            set(entries),
+            {
+                ".",
+                "config",
+                "config/plugins.vim",
+                "plugins",
+                "plugins/one",
+                "plugins/one/plugin.zsh",
+            },
+        )
+        self.assertTrue(entries["plugins/one/plugin.zsh"]["isreg"])
+        # Without the option, the same tree lists everything on disk.
+        everything = {
+            os.path.relpath(entry["path"], source)
+            for entry in tree.collect(str(source))
+        }
+        self.assertIn("plugins/one/.git", everything)
+        self.assertIn("backup/file~", everything)
+
+        # A submodule that is not checked out would be copied empty.
+        git(parent, "submodule", "deinit", "--force", "home/.vim/plugins/one")
+        failed = self.invoke(tree, {"path": str(source), "tracked": True})
+        self.assertTrue(failed.failed)
+        self.assertIn("Submodule not initialized", failed.data["msg"])
+        self.assertIn("plugins/one", failed.data["msg"])
+        # Outside a Git repository the module fails instead of copying nothing.
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "file").write_text("file")
+        failed = self.invoke(tree, {"path": str(outside), "tracked": True})
+        self.assertTrue(failed.failed)
+        self.assertIn("cannot list Git-tracked files", failed.data["msg"])
+
     def test_backup_preserves_inode_modes_hardlinks_and_broken_links(self):
         src, dest = self.root / "source", self.root / "backup"
         src.mkdir(mode=0o700)

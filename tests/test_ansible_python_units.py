@@ -431,10 +431,11 @@ class ModuleErrorPathTests(ModuleCase):
 
     def test_tree_rejects_special_files_and_non_directories(self):
         os.mkfifo(self.root / "fifo")
-        result = self.invoke(tree, {"path": str(self.root)})
+        # AnsibleModule fills in the default of the option.
+        result = self.invoke(tree, {"path": str(self.root), "tracked": False})
         self.assertTrue(result.failed)
         self.assertIn("Unsupported", result.data["msg"])
-        result = self.invoke(tree, {"path": str(self.root / "fifo")})
+        result = self.invoke(tree, {"path": str(self.root / "fifo"), "tracked": False})
         self.assertTrue(result.failed)
 
     def test_backup_check_mode_and_missing_source(self):
@@ -582,8 +583,9 @@ class BackupScriptTests(unittest.TestCase):
             backups.validate_relative_path("{{ unresolved }}")
         configuration = {
             "dotfiles_directories": ["does-not-exist"],
-            "dotfiles_links": [],
+            "dotfiles_trees": [],
             "dotfiles_files": [],
+            "dotfiles_hyprlock_wallpaper": ".local/share/dotfiles/wallpaper.png",
             "dotfiles_templates": [],
             "dotfiles_systemd_directory": ".config/systemd",
         }
