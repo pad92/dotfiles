@@ -364,7 +364,10 @@ class DotfilesTreeDefaultsTests(unittest.TestCase):
             (ROOT / "ansible/roles/dotfiles/defaults/main.yml").read_text()
         )
         zshrc = (ROOT / "ansible/roles/dotfiles/templates/home/.zshrc.j2").read_text()
-        loaded = re.search(r"^plugins=\((.*?)\)", zshrc, re.M | re.S).group(1).split()
+        block = re.search(r"^plugins=\((.*?)\)", zshrc, re.M | re.S).group(1)
+        loaded = [
+            word for line in block.splitlines() for word in line.split("#")[0].split()
+        ]
         plugins = Path("ansible/roles/dotfiles/files/home/zsh/plugins")
         self.assertTrue(defaults["dotfiles_zsh_plugins"])
         for plugin in defaults["dotfiles_zsh_plugins"]:
@@ -378,6 +381,16 @@ class DotfilesTreeDefaultsTests(unittest.TestCase):
                 self.assertIn(name, loaded)
                 # The copy would land in the clone's working tree.
                 self.assertFalse(git(ROOT, "ls-files", "--", str(plugins / name)))
+
+        # init.zsh skips a plugin it cannot find, so a missing one goes unseen.
+        shipped = {
+            Path(path).relative_to(plugins).parts[0]
+            for path in git(ROOT, "ls-files", "--", str(plugins)).splitlines()
+        }
+        cloned = {
+            Path(plugin["dest"]).name for plugin in defaults["dotfiles_zsh_plugins"]
+        }
+        self.assertEqual(sorted(set(loaded) - shipped - cloned), [])
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")

@@ -126,6 +126,8 @@ Release history and changes planned for the next version.
     `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone. The
     `dotfiles_submodules` tag and the `dotfiles_submodule_update` module are
     removed.
+  - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
+    so Zsh skipped it.
 - **Makefile**:
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and
