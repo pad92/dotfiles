@@ -27,8 +27,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Package Neovim configuration
         run: tar -czf nvim.tar.gz -C ansible/roles/dotfiles/files/home .config/nvim

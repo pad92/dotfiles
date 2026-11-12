@@ -13,7 +13,7 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 | File                                   | Trigger                                    | Purpose                                                     |
 | -------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
 | [`deploy-pages.yml`](deploy-pages.yml) | Push or PR to `main` (documentation paths) | Build the documentation site and deploy it to GitHub Pages. |
-| [`package-vim.yml`](package-vim.yml)   | Push or PR to `main` (Vim paths)           | Package the Vim configuration as `vim.tar.gz`.              |
+| [`package-vim.yml`](package-vim.yml)   | Push or PR to `main` (Vim paths)           | Package the Vim configuration and plugins as `vim.tar.gz`.  |
 | [`package-nvim.yml`](package-nvim.yml) | Push or PR to `main` (Neovim paths)        | Package `.config/nvim` as `nvim.tar.gz`.                    |
 | [`release.yml`](release.yml)           | Push a `v*` tag                            | Publish a release with notes from `CHANGELOG.md`.           |
 
@@ -52,8 +52,10 @@ script.
 
 ### `package-vim.yml`
 
-Checks out submodules recursively, then packages the Vim configuration as a
-`vim-package` artifact.
+Packages the Vim configuration as a `vim-package` artifact, with the plugins
+pinned in `dotfiles_vim_pack_plugins`. `scripts/ci/fetch_vim_plugins.py` reads
+that list from the role defaults and clones each plugin under
+`.vim/pack/dotfiles/start/` without its `.git` directory.
 
 ### `package-nvim.yml`
 

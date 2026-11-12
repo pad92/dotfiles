@@ -4,27 +4,89 @@
 dotfiles_home: "{{ ansible_facts['user_dir'] }}"
 dotfiles_owner: "{{ ansible_facts['user_id'] }}"
 dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
-# Files are copied and rendered from the controller's copy of the role.
+# Everything is copied and rendered from the controller's copy of the
+# repository: the target keeps no link into a clone, which can be deleted
+# once deployed.
+dotfiles_source_repository: '{{ role_path | dirname | dirname | dirname }}'
 dotfiles_source_root: '{{ role_path }}/files/home'
-# Clone of this repository on the target. The submodules are initialized
-# there and dotfiles_links point into it, so it must exist on every target.
-dotfiles_repository: '{{ dotfiles_home }}/.dotfiles'
-dotfiles_link_root: '{{ dotfiles_repository }}/ansible/roles/dotfiles/files/home'
+# Where earlier versions linked .vim and the Zsh tree. A link that
+# still points there is replaced by a copy, and the files the programs had
+# added to the clone (plugins, backups) are copied next to it. An inventory
+# that still sets the variables of those versions, dotfiles_link_root or
+# dotfiles_repository (the clone), is followed.
+dotfiles_legacy_link_root: >-
+  {{ dotfiles_link_root
+     | default((dotfiles_repository | default(dotfiles_home ~ '/.dotfiles'))
+               ~ '/ansible/roles/dotfiles/files/home') }}
 # Icon theme written into the GTK 2/3, hyprtoolkit and Mako configurations.
 dotfiles_icon_theme: Papirus-Dark
 # Mako does not follow theme inheritance, so it also searches the parent theme.
 # The default only strips a -Dark suffix; set it to the Inherits= theme of the
 # chosen theme's index.theme when that does not hold.
 dotfiles_icon_theme_parent: "{{ dotfiles_icon_theme | regex_replace('-Dark$', '') }}"
-dotfiles_zsh_link_dest: .local/share/dotfiles/zsh
-dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_link_dest }}'
-dotfiles_links:
-  - src: .tmux
-    dest: .tmux
+dotfiles_zsh_dest: .local/share/dotfiles/zsh
+dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_dest }}'
+# Trees copied with only the files Git tracks. Files a program adds there
+# later (plugins, Vim backups) stay in place, and a file that a later version
+# no longer ships is deleted unless it was changed
+# (see dotfiles_manifest_directory).
+dotfiles_trees:
   - src: .vim
     dest: .vim
   - src: zsh
-    dest: '{{ dotfiles_zsh_link_dest }}'
+    dest: '{{ dotfiles_zsh_dest }}'
+# One manifest per copied directory lists the files deployed there with their
+# SHA-1. The next deployment deletes the listed files that the repository no
+# longer has, if they are still regular files with that checksum.
+dotfiles_manifest_directory: '{{ dotfiles_home }}/.local/state/dotfiles/manifests'
+# Zsh plugins, cloned on the target at a pinned commit. A deployment moves an
+# existing clone to that commit; change version to update a plugin. The
+# pragma tells detect-secrets that a commit hash is not a secret.
+dotfiles_zsh_plugins:
+  - repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-syntax-highlighting'
+    version: 1d85c692615a25fe2293bdd44b34c217d5d2bf04 # pragma: allowlist secret
+  - repo: https://github.com/zsh-users/zsh-autosuggestions.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-autosuggestions'
+    version: 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5 # pragma: allowlist secret
+  - repo: https://github.com/zsh-users/zsh-completions.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-completions'
+    version: f954400c72530daccb38868ebc8da42dace56bb0 # pragma: allowlist secret
+# Vim plugins, cloned on the target at a pinned commit into a Vim package,
+# which Vim loads at startup (:help packages). Like the Zsh plugins, a
+# deployment moves an existing clone to its pinned commit. The package jobs
+# read this list with scripts/ci/fetch_vim_plugins.py to put the same plugins
+# in vim.tar.gz, so dest stays a plain path under .vim/pack/.
+dotfiles_vim_pack_plugins:
+  - repo: https://github.com/morhetz/gruvbox.git
+    dest: .vim/pack/dotfiles/start/gruvbox
+    version: ef8864bb42bf244f0295d1c5a403b27e3d139695 # pragma: allowlist secret
+  - repo: https://github.com/airblade/vim-gitgutter.git
+    dest: .vim/pack/dotfiles/start/vim-gitgutter
+    version: 90b75207bd9b55d8ac4af15f72b4e935462014d0 # pragma: allowlist secret
+  - repo: https://github.com/tpope/vim-fugitive.git
+    dest: .vim/pack/dotfiles/start/vim-fugitive
+    version: 3b753cf8c6a4dcde6edee8827d464ba9b8c4a6f0 # pragma: allowlist secret
+  - repo: https://github.com/chrisbra/colorizer.git
+    dest: .vim/pack/dotfiles/start/colorizer
+    version: f5d69c0dea9f36e2eb025c7d86cc62b5a0d8af62 # pragma: allowlist secret
+  - repo: https://github.com/editorconfig/editorconfig-vim.git
+    dest: .vim/pack/dotfiles/start/editorconfig-vim
+    version: c0227885a06b155d5aa5465e08b9800e8c939f70 # pragma: allowlist secret
+# What Vundle and tpm left in the home before the Vim package and the tmux
+# settings replaced them. A deployment removes these paths, but stops first
+# if a Git repository under them holds work found nowhere else. A parent goes
+# too once it is empty, or loses only the link if it is one.
+dotfiles_retired_plugin_paths:
+  - .vim/bundle
+  - .tmux/plugins
+dotfiles_retired_plugin_parents:
+  - .tmux
+# Hyprlock background, copied from the repository into the home directory.
+dotfiles_hyprlock_wallpaper_source: >-
+  assets/wallpapers/wallpaper_arch_perfection_simplicity_by_icetremens-dbjspqh.png
+dotfiles_hyprlock_wallpaper: >-
+  .local/share/dotfiles/wallpapers/{{ dotfiles_hyprlock_wallpaper_source | basename }}
 dotfiles_directories:
   - .bin
   - .config/alacritty
@@ -195,19 +257,3 @@ dotfiles_waybar_includes:
   - ~/.config/waybar/conf/audio.json
   - ~/.config/waybar/conf/workspaces.json
   - ~/.config/waybar/conf/temperature.json
-dotfiles_update_vim_plugins: false
-dotfiles_vim_plugins:
-  - repo: https://github.com/VundleVim/Vundle.vim.git
-    dest: Vundle.vim
-  - repo: https://github.com/morhetz/gruvbox.git
-    dest: gruvbox
-  - repo: https://github.com/airblade/vim-gitgutter.git
-    dest: vim-gitgutter
-  - repo: https://github.com/tpope/vim-fugitive.git
-    dest: vim-fugitive
-  - repo: https://github.com/suan/vim-instant-markdown.git
-    dest: vim-instant-markdown
-  - repo: https://github.com/chrisbra/colorizer.git
-    dest: colorizer
-  - repo: https://github.com/editorconfig/editorconfig-vim.git
-    dest: editorconfig-vim

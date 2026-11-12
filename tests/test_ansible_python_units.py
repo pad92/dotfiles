@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ansible.errors import AnsibleFilterError
+from git_fixtures import git, repository
 from test_ansible_modules import (
     Module,
     Result,
@@ -20,7 +21,6 @@ from test_ansible_modules import (
     files,
     initramfs,
     makepkg,
-    submodules,
     sysfs,
     tree,
 )
@@ -431,10 +431,15 @@ class ModuleErrorPathTests(ModuleCase):
 
     def test_tree_rejects_special_files_and_non_directories(self):
         os.mkfifo(self.root / "fifo")
-        result = self.invoke(tree, {"path": str(self.root)})
+        # AnsibleModule fills in the defaults of the options.
+        result = self.invoke(
+            tree, {"path": str(self.root), "tracked": False, "dest": None}
+        )
         self.assertTrue(result.failed)
         self.assertIn("Unsupported", result.data["msg"])
-        result = self.invoke(tree, {"path": str(self.root / "fifo")})
+        result = self.invoke(
+            tree, {"path": str(self.root / "fifo"), "tracked": False, "dest": None}
+        )
         self.assertTrue(result.failed)
 
     def test_backup_check_mode_and_missing_source(self):
@@ -462,9 +467,9 @@ class ModuleErrorPathTests(ModuleCase):
         self.assertTrue(source.exists())
 
     def test_backup_requires_renameat2(self):
-        with patch.object(backup.ctypes, "CDLL", return_value=object()):
+        with patch.object(files.ctypes, "CDLL", return_value=object()):
             with self.assertRaises(OSError):
-                backup.move_without_replace("a", "b")
+                files.move_without_replace("a", "b")
 
     def test_sysfs_unreadable_control_fails(self):
         with patch("builtins.open", side_effect=OSError("denied")):
@@ -480,57 +485,6 @@ class ModuleErrorPathTests(ModuleCase):
             result = self.invoke(sysfs, {"path": "/sys/test/control", "value": "new"})
         self.assertTrue(result.failed)
         self.assertIn("cannot verify", result.data["msg"])
-
-    def test_submodule_failures_are_reported(self):
-        error = subprocess.CalledProcessError(1, ["git"])
-        with patch.object(submodules, "submodule_revisions", side_effect=error):
-            self.assertTrue(
-                self.invoke(submodules, {"path": str(self.root)}, check=True).failed
-            )
-            self.assertTrue(self.invoke(submodules, {"path": str(self.root)}).failed)
-        with (
-            patch.object(submodules, "submodule_revisions", return_value={}),
-            patch.object(submodules.subprocess, "run", side_effect=error),
-        ):
-            result = self.invoke(submodules, {"path": str(self.root)})
-        self.assertTrue(result.failed)
-        self.assertFalse(result.data["changed"])
-        with (
-            patch.object(
-                submodules, "submodule_revisions", side_effect=[{}, error, error]
-            ),
-            patch.object(submodules.subprocess, "run"),
-        ):
-            result = self.invoke(submodules, {"path": str(self.root)})
-        self.assertTrue(result.failed)
-        self.assertFalse(result.data["report_complete"])
-
-    def test_unmerged_submodule_is_rejected(self):
-        listing = "160000 " + "a" * 40 + " 1\tsub\0"
-        with (
-            patch.object(
-                submodules.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess([], 0, stdout=listing),
-            ),
-            self.assertRaises(ValueError),
-        ):
-            submodules.submodule_revisions(str(self.root))
-
-    def test_changed_submodule_files_for_new_and_removed_checkouts(self):
-        with patch.object(
-            submodules.subprocess,
-            "run",
-            return_value=subprocess.CompletedProcess([], 0, stdout="a\0b\0"),
-        ):
-            added = submodules.changed_submodule_files(
-                "/repo", {"sub": ("x", False)}, {"sub": ("x", True)}
-            )
-        self.assertEqual(added, ["/repo/sub/a", "/repo/sub/b"])
-        removed = submodules.changed_submodule_files(
-            "/repo", {"sub": ("x", True)}, {"sub": ("x", False)}
-        )
-        self.assertEqual(removed, ["/repo/sub"])
 
 
 class BackupScriptTests(unittest.TestCase):
@@ -582,13 +536,43 @@ class BackupScriptTests(unittest.TestCase):
             backups.validate_relative_path("{{ unresolved }}")
         configuration = {
             "dotfiles_directories": ["does-not-exist"],
-            "dotfiles_links": [],
+            "dotfiles_trees": [],
             "dotfiles_files": [],
+            "dotfiles_hyprlock_wallpaper": ".local/share/dotfiles/wallpaper.png",
             "dotfiles_templates": [],
             "dotfiles_systemd_directory": ".config/systemd",
         }
         with self.assertRaises(RuntimeError):
             backups.managed_paths(configuration)
+
+    def test_trees_list_only_the_files_the_role_copies(self):
+        repository_root = self.home / "repository"
+        repository(repository_root)
+        source = repository_root / "ansible/roles/dotfiles/files/home"
+        (source / ".vim/config").mkdir(parents=True)
+        (source / ".vim/config/plugins.vim").write_text("tracked\n")
+        git(repository_root, "add", ".")
+        git(repository_root, "commit", "-q", "-m", "tree")
+        # What the working copy holds without Git: never deployed.
+        (source / ".vim/bundle/gruvbox").mkdir(parents=True)
+        (source / ".vim/bundle/gruvbox/colors.vim").write_text("plugin\n")
+        configuration = {
+            "dotfiles_directories": [],
+            "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+            "dotfiles_files": [],
+            "dotfiles_hyprlock_wallpaper": ".local/share/dotfiles/wallpaper.png",
+            "dotfiles_templates": [],
+            "dotfiles_systemd_directory": ".config/systemd",
+        }
+        (source / ".config/systemd").mkdir(parents=True)
+        with patch.object(backups, "REPOSITORY_ROOT", repository_root):
+            directories, files = backups.managed_paths(configuration)
+        self.assertIn(".vim/config", files)
+        self.assertIn(".vim/config/plugins.vim", files)
+        self.assertFalse(
+            [path for path in files if path.startswith(".vim/bundle")],
+            files,
+        )
 
     def test_main_lists_backups_as_text_and_json(self):
         backup = self.home / ".zshrc.bak"

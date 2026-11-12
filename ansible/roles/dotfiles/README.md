@@ -1,16 +1,85 @@
 # Dotfile role
 
 `files/home/` mirrors paths under a user's home directory. The role copies
-static configuration and user scripts, renders templates, and links the
-Git-backed Vim, tmux, and Zsh trees. `templates/home/` contains files that use
-Ansible variables.
+static configuration, user scripts and the Vim and Zsh trees, and renders
+templates. `templates/home/` contains files that use Ansible
+variables.
 
-The playbook reaches the target over SSH. Copies and templates come from the
-controller's copy of the role. The Vim, tmux and Zsh links point into the
-target's own clone of the repository, `dotfiles_repository` (`~/.dotfiles`),
-where the role also initializes the submodules; deployment stops when that
-clone is missing. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
+The playbook reaches the target over SSH. Every file comes from the
+controller's copy of the repository: nothing in the home directory points
+into a clone, so the target needs none, and a clone there can be deleted
+once deployed. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
 from the facts of the SSH user.
+
+## Vim and Zsh trees
+
+`dotfiles_trees` lists `.vim` and `zsh`, which deploys to
+`~/.local/share/dotfiles/zsh` (`dotfiles_zsh_dest`). Only the files Git
+tracks are copied. The controller's own Vim backups or installed plugins are
+never copied. Files that programs add to a tree on the target (plugins,
+backups, swap files) stay in place.
+
+The repository has no submodules and no plugin manager. The Zsh plugins
+(`dotfiles_zsh_plugins`) and the Vim plugins (`dotfiles_vim_pack_plugins`)
+are cloned on the target at the commit pinned for each one. The Vim plugins
+go to `~/.vim/pack/dotfiles/start/`, a Vim package that Vim loads at startup
+(`:help packages`). To update a plugin, change its `version` to the new
+commit and deploy: the clone moves to that commit, and the files removed
+upstream go with it. A clone with local changes stops the deployment. The
+`package_vim` jobs read the same list to build `vim.tar.gz`.
+
+Vundle and tpm are gone, along with tmux-sensible, whose settings are now in
+`.tmux.conf`. A deployment removes what they left in the home
+(`dotfiles_retired_plugin_paths`): `~/.vim/bundle/` and `~/.tmux/plugins/`.
+Before anything else, it checks every Git repository under them. If one has
+uncommitted or untracked changes, a stash, or commits that no remote branch
+holds, the deployment stops, names it, and removes nothing. A path that
+holds anything besides Git repositories (a file, a link, such as a
+`.netrwhist` or a plugin copied by hand) is not deleted: it moves, whole, to
+`<path>.bak`, and so does a path that is a plain file. Empty directories do
+not count. If that `.bak` already exists, the deployment stops before
+anything changes, as for any other backup. `~/.tmux` goes
+too once it is empty. If it still holds something, such as tmux-resurrect
+sessions, it is kept and the run reports it. A `~/.tmux` link into
+`~/.dotfiles`, left by an older version, loses only the link: its target is
+not followed or changed. Check mode lists what would be removed and what
+would move to `.bak`.
+
+What Vundle and tpm wrote through a link stays in the clone, under
+`files/home/.vim/bundle/` and `files/home/.tmux/plugins/`. The role never
+deletes inside the clone, so remove those by hand, or delete the clone.
+
+`dotfiles_tree` refuses a submodule in a copied tree, since its files would
+not be copied.
+
+Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
+(`dotfiles_manifest_directory`) that lists the files deployed there with their
+SHA-1. The next deployment deletes the files of the old manifest that the
+repository no longer ships, as long as they are still regular files with the
+same checksum. A file you changed is kept and reported, and a file you added
+is never listed, so it stays. The first deployment with this version has no
+manifest yet, so it deletes nothing. Check mode reports the deletions without
+making them.
+
+Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
+link there (`dotfiles_legacy_link_root`, which follows `dotfiles_link_root` or
+`dotfiles_repository` when an older inventory still sets them), the
+deployment first copies into `<path>.migrating` what the link holds beyond the
+shipped files: what Git does not track (Vim backups and swap files) and the
+tracked files edited through the link. It leaves out `.vim/bundle/`, which it
+would only remove again, and the pinned plugins, which are cloned rather than
+copied: the Zsh plugins, which older versions shipped as submodules, have a
+`.git` file that points into the clone. It then removes the link, renames
+`<path>.migrating` into place and copies the tree, so an edited file is
+replaced by the shipped one and kept as a timestamped backup. A run stopped
+after removing the link leaves `<path>.migrating`, which the next run renames.
+The clone itself is left untouched. A link whose clone was already deleted is
+replaced as well, with nothing to bring over. Check mode lists the files it
+will bring over and stops before the replacement. A link that points anywhere
+else is backed up to `<path>.bak` like any other conflict.
+
+The Hyprlock background is copied to
+`~/.local/share/dotfiles/wallpapers/` (`dotfiles_hyprlock_wallpaper`).
 
 Keep static files in their home-relative layout. For example,
 `files/home/.config/hypr/` deploys to `~/.config/hypr/`. Add variable-aware
@@ -22,7 +91,9 @@ The read-only `dotfiles_tree` module includes hidden files, empty directories,
 and source symlinks while detecting cycles. File writes use `copy` and `file`.
 Each changed path appears in the task output and notifies the directory's
 reload handlers. Existing file contents are backed up before replacement.
-Existing directory permissions and extra local files remain untouched. Templates,
+Existing directory permissions and extra local files remain untouched; only
+files that an earlier deployment copied and the repository dropped are
+deleted (see the manifests above). Templates,
 individual dotfiles and systemd units use their own Ansible tasks as well.
 
 Before deployment, the role backs up conflicting regular files, directories and
@@ -133,7 +204,8 @@ when their configuration directories change. A change under `.config/uwsm`
 prints a reminder to log in again, because UWSM reads it at session start.
 `dotfiles_file_handlers` maps single files to handlers when the program does not
 watch its configuration: a changed `.config/hypr/hypridle.conf` runs
-`try-restart hypridle.service`, which leaves a stopped or disabled service alone. A changed Waybar
+`try-restart hypridle.service`, which leaves a stopped or disabled service alone. A file
+handler also runs when a deployment deletes its file from a copied tree. A changed Waybar
 configuration or temperature file reloads Waybar, and a changed
 `hosts/settings.lua` reloads a running Hyprland. The role reloads the user systemd manager after unit
 changes and before starting the configured services. A user systemd manager
@@ -161,10 +233,6 @@ A `true` value keeps the normal graphical-unit activation; `hypridle.service`
 must remain in `dotfiles_systemd_graphical_units`. Hosts without the setting
 use the role default, `true`.
 A running user systemd manager is required to apply either state.
-
-Set `dotfiles_update_vim_plugins=true` to update the declared Vim plugin
-checkouts with `ansible.builtin.git`. Each checkout path appears in Ansible's
-output. By default, plugin updates are skipped.
 
 Both Waybar layouts include the LACT indicator. Its tooltip shows the active
 LACT profile, the power-profiles-daemon profile and service state, and the

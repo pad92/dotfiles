@@ -23,16 +23,16 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 ## Jobs
 
-| Job                  | Stage    | Runs when                                                                                             | Purpose                                                                       |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Security scanners    | test     | Scanner template rules match                                                                          | Scan source, infrastructure configuration, and commits for security issues.   |
-| `unit_tests`         | test     | Every pipeline                                                                                        | Run the Python suite under coverage (floor in `.coveragerc`) and shell tests. |
-| `ansible_lint`       | validate | Branch and tag pipelines                                                                              | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.    |
-| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/` or `.vimrc` in pushes and merge requests | Package Vim configuration as `vim.tar.gz`, fetching submodules recursively.   |
-| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests     | Package Neovim configuration as `nvim.tar.gz`.                                |
-| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag          | Build and deploy the documentation site to `public/`.                         |
-| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                             | Build the documentation site for review without deploying it.                 |
-| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                    | Publish a release with notes from `CHANGELOG.md`.                             |
+| Job                  | Stage    | Runs when                                                                                                           | Purpose                                                                       |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues.   |
+| `unit_tests`         | test     | Every pipeline                                                                                                      | Run the Python suite under coverage (floor in `.coveragerc`) and shell tests. |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.    |
+| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.                 |
+| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests                   | Package Neovim configuration as `nvim.tar.gz`.                                |
+| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag                        | Build and deploy the documentation site to `public/`.                         |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                                           | Build the documentation site for review without deploying it.                 |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                                  | Publish a release with notes from `CHANGELOG.md`.                             |
 
 ### `unit_tests`
 
