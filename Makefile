@@ -62,9 +62,10 @@ ANSIBLE_ENV = ANSIBLE_CONFIG="$(CURDIR)/ansible.cfg" $(ANSIBLE_VAULT_ENV)
 
 # $(call run_playbook,<extra options>): run PLAYBOOK on HOST. The selection
 # options come first, so ANSIBLE_ARGS can still add to or override them.
-# PLAYBOOK must be exactly one of PLAYBOOKS. $(error) is expanded when the
-# recipe runs, so an unknown PLAYBOOK only stops the targets that use it.
-run_playbook = $(if $(and $(filter 1,$(words $(PLAYBOOK))),$(filter $(PLAYBOOK),$(PLAYBOOKS))),,$(error PLAYBOOK=$(PLAYBOOK) is not one of: $(PLAYBOOKS)))$(ANSIBLE_ENV) \
+# PLAYBOOK must be exactly one of PLAYBOOKS: filter-out takes PLAYBOOK as text,
+# so a % in it is not a wildcard. $(error) is expanded when the recipe runs, so
+# an unknown PLAYBOOK only stops the targets that use it.
+run_playbook = $(if $(and $(filter 1,$(words $(PLAYBOOK))),$(if $(filter-out $(PLAYBOOKS),$(PLAYBOOK)),,valid)),,$(error PLAYBOOK=$(PLAYBOOK) is not one of: $(PLAYBOOKS)))$(ANSIBLE_ENV) \
 	$(ANSIBLE_PLAYBOOK) "$(CURDIR)/ansible/$(PLAYBOOK).yml" --limit "$(HOST)" \
 	$(if $(TAGS),--tags "$(TAGS)") $(if $(SKIP_TAGS),--skip-tags "$(SKIP_TAGS)") \
 	$(if $(BECOME_PASS),--ask-become-pass) $(1) $(ANSIBLE_ARGS)
@@ -94,7 +95,10 @@ deploy: ## Apply PLAYBOOK to HOST (TAGS, SKIP_TAGS, BECOME_PASS, ANSIBLE_ARGS)
 check: ## Preview deploy without changing HOST (--check, diffs shown)
 	$(call run_playbook,--check)
 
-plan: ## Print the package plan of HOST and change nothing
+# The plan stops the play at a task of the packages role. A tag selection that
+# skips this task would let the next roles, such as dotfiles, change HOST.
+plan: ## Print the package plan of HOST and change nothing (no TAGS or SKIP_TAGS)
+	$(if $(TAGS)$(SKIP_TAGS),$(error make plan takes no TAGS or SKIP_TAGS: they could skip the stop after the package plan and change HOST))
 	$(call run_playbook,-e packages_action=plan)
 
 # Listing runs no task, so it never needs the sudo password.

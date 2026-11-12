@@ -107,13 +107,16 @@ Release history and changes planned for the next version.
   - Add `make plan` (package plan only), `make tags` and `make tasks` (what a
     `TAGS` selection runs) and `make verify` (lint, then tests). `make help`
     also lists the variables. `make tags` and `make tasks` ignore
-    `BECOME_PASS`, as listing needs no sudo password.
+    `BECOME_PASS`, as listing needs no sudo password. `make plan` refuses
+    `TAGS` and `SKIP_TAGS`: the plan stops at a task of the `packages` role,
+    and a selection that skips it would let the `dotfiles` role deploy.
   - `make galaxy` installs the collections pinned in `ansible/requirements.yml`
     that are missing or at another version, into `.ansible/collections`.
     `make galaxy-force` reinstalls them with `--force`.
   - `make install` and `make install-obs` remain as aliases, and
     `make install install-obs` runs both playbooks. A `PLAYBOOK` that is not
-    exactly one of `site` and `obs` stops with the list of valid ones, and the
+    exactly one of `site` and `obs` stops with the list of valid ones (a `%`
+    in it is not a wildcard), and the
     backup targets now also use the repository `ansible.cfg` explicitly.
 - **CI**:
   - The unit test and Ansible lint jobs install their collections with
