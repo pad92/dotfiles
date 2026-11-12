@@ -466,9 +466,9 @@ class ModuleErrorPathTests(ModuleCase):
         self.assertTrue(source.exists())
 
     def test_backup_requires_renameat2(self):
-        with patch.object(backup.ctypes, "CDLL", return_value=object()):
+        with patch.object(files.ctypes, "CDLL", return_value=object()):
             with self.assertRaises(OSError):
-                backup.move_without_replace("a", "b")
+                files.move_without_replace("a", "b")
 
     def test_sysfs_unreadable_control_fails(self):
         with patch("builtins.open", side_effect=OSError("denied")):

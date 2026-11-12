@@ -91,19 +91,28 @@ ansible_lint:
 # leur configuration change.
 package_vim:
   extends: .package_config
+  image: python:3.13-alpine
   variables:
     PACKAGE_ARCHIVE: vim.tar.gz
-    PACKAGE_PATHS: .vim .vimrc
+  before_script:
+    - apk add --no-cache git tar
+    - python3 -m pip install --no-cache-dir PyYAML==6.0.3
+  # Les plugins épinglés dans le rôle dotfiles, sans leur dossier .git.
+  script:
+    - mkdir package
+    - cp -a ansible/roles/dotfiles/files/home/.vim ansible/roles/dotfiles/files/home/.vimrc package/
+    - python3 scripts/ci/fetch_vim_plugins.py package
+    - tar -czf "$PACKAGE_ARCHIVE" -C package .vim .vimrc
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
+      changes: &package_vim_changes
         - 'ansible/roles/dotfiles/files/home/.vim/**/*'
         - 'ansible/roles/dotfiles/files/home/.vimrc'
+        - 'ansible/roles/dotfiles/defaults/main.yml'
+        - 'scripts/ci/fetch_vim_plugins.py'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
-      changes:
-        - 'ansible/roles/dotfiles/files/home/.vim/**/*'
-        - 'ansible/roles/dotfiles/files/home/.vimrc'
+      changes: *package_vim_changes
 
 package_nvim:
   extends: .package_config

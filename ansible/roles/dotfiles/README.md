@@ -1,8 +1,8 @@
 # Dotfile role
 
 `files/home/` mirrors paths under a user's home directory. The role copies
-static configuration, user scripts and the Vim, tmux and Zsh trees, and
-renders templates. `templates/home/` contains files that use Ansible
+static configuration, user scripts and the Vim and Zsh trees, and renders
+templates. `templates/home/` contains files that use Ansible
 variables.
 
 The playbook reaches the target over SSH. Every file comes from the
@@ -11,22 +11,60 @@ into a clone, so the target needs none, and a clone there can be deleted
 once deployed. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
 from the facts of the SSH user.
 
-## Vim, tmux and Zsh trees
+## Vim and Zsh trees
 
-`dotfiles_trees` lists `.vim`, `.tmux` and `zsh`, which deploys to
+`dotfiles_trees` lists `.vim` and `zsh`, which deploys to
 `~/.local/share/dotfiles/zsh` (`dotfiles_zsh_dest`). Only the files Git
 tracks are copied. The controller's own Vim backups or installed plugins are
 never copied. Files that programs add to a tree on the target (plugins,
-backups, swap files) stay in place. The repository tracks nothing under
-`.tmux`, so that entry has `copy: false`: the role only creates the
-directory, for tpm and the plugins it installs.
+backups, swap files) stay in place.
 
-The repository has no submodules. The Zsh plugins are cloned on the target
-at the commit `dotfiles_zsh_plugins` pins for each one. To update a plugin,
-change its `version` to the new commit and deploy: the clone moves to that
-commit, and the files removed upstream go with it. A clone with local changes
-stops the deployment. `dotfiles_tree` refuses a submodule in a copied tree,
-since its files would not be copied.
+The repository has no submodules and no plugin manager. The Zsh plugins
+(`dotfiles_zsh_plugins`) and the Vim plugins (`dotfiles_vim_pack_plugins`)
+are cloned on the target at the commit pinned for each one. The Vim plugins
+go to `~/.vim/pack/dotfiles/start/`, a Vim package that Vim loads at startup
+(`:help packages`). To update a plugin, change its `version` to the new
+commit and deploy: the clone moves to that commit, and the files removed
+upstream go with it. A clone with local changes stops the deployment. The
+`package_vim` jobs read the same list to build `vim.tar.gz`.
+
+vim-instant-markdown does not start its preview on its own:
+`plugins.vim` sets `g:instant_markdown_autostart` to 0, since the plugin
+reports an error on every Markdown buffer when the `instant-markdown-d`
+server is not installed. Run `:InstantMarkdownPreview` to start it.
+
+The packages role installs that server on Arch: `nodejs-instant-markdown-d`
+from the AUR, in the `01_base` group. `dotfiles_vim_preview_packages` maps
+`ansible_facts['os_family']` to the package that provides it. On a listed
+family, the deployment reads `package_facts` and stops before copying
+anything if the package is missing; check mode only warns, since the
+packages role installs nothing then. Debian and Fedora package no such
+server and npm is not used, so those families are not listed and the
+preview is unavailable there.
+
+Vundle and tpm are gone, along with tmux-sensible, whose settings are now in
+`.tmux.conf`. A deployment removes what they left in the home
+(`dotfiles_retired_plugin_paths`): `~/.vim/bundle/` and `~/.tmux/plugins/`.
+Before anything else, it checks every Git repository under them. If one has
+uncommitted or untracked changes, a stash, or commits that no remote branch
+holds, the deployment stops, names it, and removes nothing. A path that
+holds anything besides Git repositories (a file, a link, such as a
+`.netrwhist` or a plugin copied by hand) is not deleted: it moves, whole, to
+`<path>.bak`, and so does a path that is a plain file. Empty directories do
+not count. If that `.bak` already exists, the deployment stops before
+anything changes, as for any other backup. `~/.tmux` goes
+too once it is empty. If it still holds something, such as tmux-resurrect
+sessions, it is kept and the run reports it. A `~/.tmux` link into
+`~/.dotfiles`, left by an older version, loses only the link: its target is
+not followed or changed. Check mode lists what would be removed and what
+would move to `.bak`.
+
+What Vundle and tpm wrote through a link stays in the clone, under
+`files/home/.vim/bundle/` and `files/home/.tmux/plugins/`. The role never
+deletes inside the clone, so remove those by hand, or delete the clone.
+
+`dotfiles_tree` refuses a submodule in a copied tree, since its files would
+not be copied.
 
 Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
 (`dotfiles_manifest_directory`) that lists the files deployed there with their
@@ -37,19 +75,16 @@ is never listed, so it stays. The first deployment with this version has no
 manifest yet, so it deletes nothing. Check mode reports the deletions without
 making them.
 
-Vundle and tpm update themselves with Git, so they are cloned on the target
-(`dotfiles_plugin_managers`) rather than copied. An existing checkout is left
-alone; update it from Vim or tmux, or with `dotfiles_update_vim_plugins`.
-
 Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
 link there (`dotfiles_legacy_link_root`), the deployment removes the link,
 copies the tree, then copies what Git does not track behind the link: Vim
-backups and swap files, and plugins installed by Vundle with their Git
-metadata. Vundle, tpm and the Zsh plugins, which older versions shipped as
-submodules, are cloned again rather than copied, since their `.git` file
-points into the clone. The clone itself is left untouched. Check mode lists
-the files it will bring over and stops before the replacement. A link that points anywhere else is backed up to
-`<path>.bak` like any other conflict.
+backups and swap files. It leaves out `.vim/bundle/`, which it would only
+remove again, and the pinned plugins, which are cloned rather than copied:
+the Zsh plugins, which older versions shipped as submodules, have a `.git`
+file that points into the clone. The clone itself is left untouched. Check
+mode lists the files it will bring over and stops before the replacement. A
+link that points anywhere else is backed up to `<path>.bak` like any other
+conflict.
 
 The Hyprlock background is copied to
 `~/.local/share/dotfiles/wallpapers/` (`dotfiles_hyprlock_wallpaper`).
@@ -205,10 +240,6 @@ A `true` value keeps the normal graphical-unit activation; `hypridle.service`
 must remain in `dotfiles_systemd_graphical_units`. Hosts without the setting
 use the role default, `true`.
 A running user systemd manager is required to apply either state.
-
-Set `dotfiles_update_vim_plugins=true` to update the declared Vim plugin
-checkouts with `ansible.builtin.git`. Each checkout path appears in Ansible's
-output. By default, plugin updates are skipped.
 
 Both Waybar layouts include the LACT indicator. Its tooltip shows the active
 LACT profile, the power-profiles-daemon profile and service state, and the

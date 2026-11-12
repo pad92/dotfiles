@@ -8,7 +8,6 @@ from pathlib import Path
 
 import yaml
 from ansible_test_environment import ansible_test_environment
-from git_fixtures import git, repository
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -102,38 +101,6 @@ class FileContractTests(unittest.TestCase):
         self.assertIn("RUNNING HANDLER [Report regenerated initramfs files]", output)
         self.assertIn(str(image), output)
         self.assertEqual(image.read_text(), "image")
-
-    def test_first_vim_clone_reports_paths_and_second_run_is_unchanged(self):
-        repo = self.work / "plugin"
-        repository(repo)
-        (repo / "plugin.vim").write_text('" test\n')
-        git(repo, "add", ".")
-        git(repo, "commit", "-m", "fixture")
-        home = self.work / "home"
-        play = [
-            {
-                "hosts": "localhost",
-                "connection": "local",
-                "gather_facts": False,
-                "vars": {
-                    "dotfiles_home": str(home),
-                    "dotfiles_update_vim_plugins": True,
-                    "dotfiles_vim_plugins": [{"repo": str(repo), "dest": "plugin"}],
-                },
-                "tasks": [
-                    {
-                        "ansible.builtin.import_tasks": str(
-                            ROOT / "ansible/roles/dotfiles/tasks/runtime.yml"
-                        )
-                    }
-                ],
-            }
-        ]
-        output = self.run_play(play)
-        self.assertIn(str(home / ".vim/bundle/plugin/plugin.vim"), output)
-        self.assertRegex(self.run_play(play), r"changed=0\b")
-        play[0]["vars"]["dotfiles_update_vim_plugins"] = False
-        self.assertRegex(self.run_play(play), r"changed=0\b")
 
     def test_sysctl_plan_uses_template_without_existing_target(self):
         # Only parse the intended configuration: never invoke sysctl in this fixture.

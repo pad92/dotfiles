@@ -1,0 +1,36 @@
+---
+# vim-instant-markdown is useless without instant-markdown-d. The packages
+# role installs it where the distribution family packages it; this stops the
+# deployment if it is still missing, before anything is copied.
+- name: Select the Markdown preview server package
+  ansible.builtin.set_fact:
+    dotfiles_vim_preview_package: >-
+      {{ dotfiles_vim_preview_packages.get(ansible_facts['os_family'] | default(''), '') }}
+
+- name: Read the installed packages
+  ansible.builtin.package_facts:
+  register: dotfiles_vim_preview_package_facts
+  when: dotfiles_vim_preview_package | length > 0
+
+- name: Report the missing Markdown preview server
+  vars:
+    dotfiles_vim_preview_missing_msg: >-
+      {{ dotfiles_vim_preview_package }} is not installed, so
+      :InstantMarkdownPreview cannot start instant-markdown-d. Install it with
+      the packages role (group 01_base), or set dotfiles_vim_preview_packages
+      to leave it out.
+  when:
+    - dotfiles_vim_preview_package | length > 0
+    - >-
+      dotfiles_vim_preview_package not in
+      dotfiles_vim_preview_package_facts.ansible_facts.packages
+  block:
+    - name: Fail on a missing Markdown preview server
+      ansible.builtin.fail:
+        msg: '{{ dotfiles_vim_preview_missing_msg }}'
+      when: not ansible_check_mode
+
+    - name: Warn about a missing Markdown preview server in check mode
+      ansible.builtin.debug:
+        msg: '{{ dotfiles_vim_preview_missing_msg }}'
+      when: ansible_check_mode

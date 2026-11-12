@@ -101,19 +101,44 @@ Release history and changes planned for the next version.
 
 - **Dotfiles**:
   - Copy `~/.vim` and the Zsh tree (`~/.local/share/dotfiles/zsh`) instead
-    of linking them into the target's clone, create `~/.tmux` as a directory,
-    and copy the Hyprlock background as well. Once deployed, the home
+    of linking them into the target's clone, and copy the Hyprlock background
+    as well. Once deployed, the home
     directory no longer uses `~/.dotfiles`, which can be deleted. Only the
     files Git tracks are copied. A deployment replaces an old link into
     `~/.dotfiles` with a copy and brings over what programs had added there
-    (Vim backups, swap files, plugins installed by Vundle). Check mode lists
-    those files and stops before the replacement.
-  - Clone Vundle and tpm on the target instead of shipping them as
-    submodules: a copy has no Git metadata, so neither could update itself.
-    An existing checkout is left alone. `scripts/vim.sh` clones Vundle too,
-    since the `vim.tar.gz` archive no longer contains it. Without Vundle,
-    Vim starts without plugins instead of reporting errors, and the gruvbox
-    color scheme applies once Vundle has installed it.
+    (Vim backups, swap files). Check mode lists those files and stops before
+    the replacement.
+  - Drop Vundle and tpm. The Vim plugins are cloned on the target at the
+    commits pinned in `dotfiles_vim_pack_plugins`, into the Vim package
+    `~/.vim/pack/dotfiles/start/`, which Vim loads at startup. Deployment
+    never ran `:PluginInstall`, so most declared plugins were missing; they
+    are all there now. vim-instant-markdown is actually loaded for the first
+    time since 2021, when it moved out of the `after/` directory that Vundle
+    was told to load. Its preview no longer starts on its own
+    (`:InstantMarkdownPreview`), because it reports an error on every
+    Markdown buffer without the `instant-markdown-d` server. The settings
+    `.tmux.conf` took from tmux-sensible, which tpm never installed, are
+    written in the file.
+  - Remove what Vundle and tpm left in the home: `~/.vim/bundle/`,
+    `~/.tmux/plugins/`, and `~/.tmux` once it is empty (a `~/.tmux` link
+    into `~/.dotfiles` loses only the link). A Git repository there with
+    uncommitted changes, a stash, or commits that no remote branch holds
+    stops the deployment before anything changes. Anything else there that
+    is not in a Git repository (a file, a link) is never deleted: the whole
+    path moves to `<path>.bak`, and the deployment stops if that backup
+    already exists. Check mode lists what would be removed or backed up.
+    What they wrote into the clone through a link stays there.
+  - Install `instant-markdown-d`, the server behind
+    `:InstantMarkdownPreview`, on Arch with the AUR package
+    `nodejs-instant-markdown-d` in `01_base`. The deployment now stops when
+    the package for the host's OS family (`dotfiles_vim_preview_packages`,
+    read through `package_facts`) is missing; check mode only warns. Debian
+    and Fedora package no such server, so nothing is installed or checked
+    there and the preview stays unavailable.
+  - `vim.tar.gz` ships the pinned plugins, without their Git metadata, so
+    `scripts/vim.sh` no longer needs Git: it only downloads and extracts the
+    archive. The package jobs read the plugin list from the role defaults
+    with `scripts/ci/fetch_vim_plugins.py`.
   - Replace the Zsh plugin submodules with clones on the target, pinned in
     `dotfiles_zsh_plugins`. The repository has no submodules left. To update
     a plugin, change its commit there; the next deployment moves the clone
@@ -125,7 +150,11 @@ Release history and changes planned for the next version.
   - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
     `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone. The
     `dotfiles_submodules` tag and the `dotfiles_submodule_update` module are
-    removed.
+    removed. `dotfiles_vim_pack_plugins` replaces `dotfiles_vim_plugins`;
+    `dotfiles_update_vim_plugins`, the `dotfiles_runtime` and `vim` tags and
+    `dotfiles_plugin_managers` are removed, as is `copy: false` in
+    `dotfiles_trees`. `dotfiles_retired_plugin_paths` and
+    `dotfiles_retired_plugin_parents` list what the deployment removes.
   - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
     so Zsh skipped it.
 - **Makefile**:
@@ -274,6 +303,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **tmux**: true color works again. The `terminal-overrides` line for mouse
+  scrolling replaced the list instead of appending to it, which dropped the
+  `RGB` override set at the top of `.tmux.conf`.
 - **Hyprland**:
   - The cursor can move between every monitor again on PadsP5560. The laptop
     panel was fixed at `0x1440`. The Dell and ASUS rules were dropped without
