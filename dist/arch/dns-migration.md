@@ -46,7 +46,7 @@ cp /etc/docker/daemon.json ~/docker-daemon-before.json 2>/dev/null ||
 ## 2. Preview the changes
 
 ```sh
-make install ANSIBLE_ARGS="--tags dns --ask-become-pass --check --diff"
+make check TAGS=dns BECOME_PASS=1
 ```
 
 Check mode changes nothing and creates no backup. Read these messages if they
@@ -72,7 +72,7 @@ status of `make` despite `tee`:
 
 ```sh
 set -o pipefail
-make install ANSIBLE_ARGS="--tags dns --ask-become-pass" 2>&1 | tee ~/dns-migration.log
+make deploy TAGS=dns BECOME_PASS=1 2>&1 | tee ~/dns-migration.log
 ```
 
 With the relay, DNS lookups may fail for a few seconds between the dnsmasq stop

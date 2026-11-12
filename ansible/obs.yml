@@ -1,7 +1,7 @@
 ---
 # OBS-only installation profile: OBS, its PipeWire/portal runtime, the
 # detected GPU drivers for hardware encoding and the browser virtual camera.
-# It skips the system and dotfiles roles. Run it with `make install-obs`.
+# It skips the system and dotfiles roles. Run it with `make deploy PLAYBOOK=obs`.
 - name: Install and configure OBS Studio for application demos
   hosts: all
   become: true
@@ -22,7 +22,7 @@
           - packages_action | default('install') != 'reconcile'
         fail_msg: >-
           packages_action=reconcile would treat every package outside 22_obs as
-          obsolete. Reconcile with the full playbook (make install) instead.
+          obsolete. Reconcile with the full playbook (make deploy) instead.
       tags: [always]
 
     - name: Gather the facts of the target

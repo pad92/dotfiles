@@ -40,12 +40,12 @@ into the repository after cloning.
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 # Only with ansible-core:
-ansible-galaxy collection install -r ansible/requirements.yml -p .ansible/collections
-make install ANSIBLE_ARGS=--check   # preview
-make install
+make galaxy
+make check   # preview
+make deploy
 ```
 
-`make install` installs packages and deploys the configuration to your home
+`make deploy` installs packages and deploys the configuration to your home
 directory. Installation is additive: packages that were already installed stay
 unmanaged.
 
@@ -53,25 +53,40 @@ Ansible reaches the machine over SSH, even when it is the one you type on.
 `HOST` selects a host of `ansible/inventory.yml` and defaults to the short
 hostname (`uname -n` up to the first dot).
 The target needs an SSH server and the repository cloned in `~/.dotfiles`:
-`make install HOST=PadsP5560` configures the laptop from the desktop. A new
+`make deploy HOST=PadsP5560` configures the laptop from the desktop. A new
 machine first gets an inventory entry; see
 [Per-host settings](./ansible/README.md#per-host-settings).
 
 ## Common tasks
 
-Options in `ANSIBLE_ARGS` go straight to `ansible-playbook`.
+`make help` lists the targets and their variables. `deploy`, `check`, `plan`,
+`tags` and `tasks` share these variables:
 
-| Goal                                 | Command                                                                |
-| :----------------------------------- | :--------------------------------------------------------------------- |
-| Preview a full run                   | `make install ANSIBLE_ARGS=--check`                                    |
-| Print only the package plan          | `make install ANSIBLE_ARGS="-e packages_action=plan"`                  |
-| Deploy the dotfiles only             | `make install ANSIBLE_ARGS="--tags dotfiles_deploy"`                   |
-| Preview the dotfiles only            | `make install ANSIBLE_ARGS="--check --tags dotfiles"`                  |
-| Remove packages this installer added | `make install ANSIBLE_ARGS="-e packages_action=reconcile"`             |
-| Set up the Steam group               | `make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"` |
-| Install only OBS and its demo scenes | `make install-obs ANSIBLE_ARGS=--ask-become-pass`                      |
-| Upgrade the whole system on Arch     | `make install ANSIBLE_ARGS="-e packages_upgrade_system=true"`          |
-| List or remove dotfile backups       | `make ansible-backup-ls` / `make ansible-backup-rm`                    |
+| Variable       | Effect                                                      |
+| :------------- | :---------------------------------------------------------- |
+| `PLAYBOOK`     | `site` (default, the workstation) or `obs` (OBS only).      |
+| `HOST`         | Inventory host or pattern; defaults to this machine.        |
+| `TAGS`         | Run only these comma-separated tags (`--tags`).             |
+| `SKIP_TAGS`    | Skip these comma-separated tags (`--skip-tags`).            |
+| `BECOME_PASS`  | Any value asks for the sudo password (`--ask-become-pass`). |
+| `ANSIBLE_ARGS` | Any other option, passed last to `ansible-playbook`.        |
+
+| Goal                                 | Command                                                      |
+| :----------------------------------- | :----------------------------------------------------------- |
+| Preview a full run                   | `make check`                                                 |
+| Print only the package plan          | `make plan`                                                  |
+| List the tags, or the tasks they run | `make tags` / `make tasks TAGS=dotfiles`                     |
+| Deploy the dotfiles only             | `make deploy TAGS=dotfiles_deploy`                           |
+| Preview the dotfiles only            | `make check TAGS=dotfiles`                                   |
+| Remove packages this installer added | `make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`    |
+| Set up the Steam group               | `make deploy TAGS=packages,gaming BECOME_PASS=1`             |
+| Install only OBS and its demo scenes | `make deploy PLAYBOOK=obs BECOME_PASS=1`                     |
+| Upgrade the whole system on Arch     | `make deploy ANSIBLE_ARGS="-e packages_upgrade_system=true"` |
+| Install the pinned collections       | `make galaxy`, or `make galaxy-force` to reinstall them      |
+| List or remove dotfile backups       | `make ansible-backup-ls` / `make ansible-backup-rm`          |
+
+`make install` and `make install-obs` remain as aliases of `make deploy` and
+`make deploy PLAYBOOK=obs`.
 
 Reconciliation previews the removals and asks for confirmation. The backup
 targets use `$HOME`; set `ANSIBLE_BACKUP_ROOT=/path` to select another root.
@@ -96,7 +111,7 @@ makepkg builds disable debug packages and may not run on a different CPU.
 
 ## Ansible tags
 
-Run a subset with `make install ANSIBLE_ARGS="--tags <tag>"`. The
+Run a subset with `make deploy TAGS=<tag>`. The
 supported-distribution check and the read-only package group selection always
 run. The [Ansible guide](./ansible/README.md) lists the roles and covers
 variables, package ownership, and system settings.
@@ -204,7 +219,7 @@ the AWWW sources; see the
 ## Gaming and GPUs
 
 Select the `21_steam` group, then run
-`make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"`. The
+`make deploy TAGS=packages,gaming BECOME_PASS=1`. The
 group installs `ananicy-cpp` and `power-profiles-daemon` instead of GameMode.
 Ansible enables both services and stops if another known CPU power manager is
 active or enabled. On CachyOS it also adds the CachyOS Ananicy rules, Proton,
@@ -346,6 +361,7 @@ then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
 
 | Command             | What it does                                                                |
 | :------------------ | :-------------------------------------------------------------------------- |
+| `make verify`       | Run `make lint`, then `make test`.                                          |
 | `make test`         | Run the Python and shell test suites. Set `JOBS=N` to limit parallelism.    |
 | `make coverage`     | Run the Python tests under coverage.py and enforce the `.coveragerc` floor. |
 | `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |

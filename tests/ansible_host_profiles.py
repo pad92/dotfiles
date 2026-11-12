@@ -27,7 +27,7 @@ def inventory_arguments(hostname):
     """Inventory options that reach hostname locally, with its host_vars.
 
     The repository inventory is used as is, so Ansible loads group_vars and
-    host_vars exactly as it does for `make install`. A host outside it is added
+    host_vars exactly as it does for `make deploy`. A host outside it is added
     by a second inventory source, like a machine without host_vars.
     """
     arguments = ["-i", str(INVENTORY)]

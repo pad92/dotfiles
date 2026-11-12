@@ -1,11 +1,13 @@
 # Ansible setup
 
-Install `ansible-playbook` before using this setup. The `make install` target
+Install `ansible-playbook` before using this setup. The `make deploy` target
 runs the playbook over SSH on `HOST`, this machine by default (see
-[Per-host settings](#per-host-settings)). Pass options through `ANSIBLE_ARGS`:
+[Per-host settings](#per-host-settings)). `make check` previews the same run,
+`TAGS` and `SKIP_TAGS` select tags, `BECOME_PASS=1` asks for the sudo password,
+and `ANSIBLE_ARGS` passes any other option (`make help` lists them all):
 
 ```sh
-make install ANSIBLE_ARGS=--ask-become-pass
+make deploy BECOME_PASS=1
 ```
 
 The playbook supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora. It
@@ -60,7 +62,7 @@ Unreadable inventory paths fail the task instead of producing a partial success.
 Package transaction internals and arbitrary external hooks are not a complete
 filesystem audit; the reported paths cover the declared output trees.
 
-Run `make install ANSIBLE_ARGS="--tags makepkg --ask-become-pass"` to configure makepkg without
+Run `make deploy TAGS=makepkg BECOME_PASS=1` to configure makepkg without
 running the other setup tasks. The existing `makepkg_config` tag remains
 available as an alias.
 
@@ -109,18 +111,18 @@ It also drops interface-specific IPv6 overrides, which did not apply safely to
 all desktop hosts. Reboot once after the migration to clear these old runtime
 settings. Ansible does not reboot the workstation.
 
-Run either tag with `make install ANSIBLE_ARGS="--tags ssh_client_hardening --ask-become-pass"`
-or `make install ANSIBLE_ARGS="--tags kernel_hardening --ask-become-pass"`.
+Run either tag with `make deploy TAGS=ssh_client_hardening BECOME_PASS=1`
+or `make deploy TAGS=kernel_hardening BECOME_PASS=1`.
 
 ### Per-host settings
 
 `ansible/inventory.yml` lists the workstations by hostname, and Ansible
-reaches each one over SSH, the machine that runs `make install` included.
-`make install` targets `HOST`, which defaults to the short hostname of this
+reaches each one over SSH, the machine that runs `make deploy` included.
+`make deploy` targets `HOST`, which defaults to the short hostname of this
 machine (`uname -n` up to the first dot):
 
 ```sh
-make install HOST=PadsP5560 ANSIBLE_ARGS="--check --ask-become-pass"
+make check HOST=PadsP5560 BECOME_PASS=1
 ```
 
 Ansible loads `ansible/host_vars/<hostname>.yml` on top of
@@ -324,7 +326,7 @@ Check mode reads profiles and files but changes nothing and creates no backup.
 The play reports the profiles it moves to DHCP DNS in both modes, because
 `ansible.cfg` hides the skipped `nmcli connection modify` items in check mode.
 
-Run `make install ANSIBLE_ARGS="--tags dns --ask-become-pass"` to apply it
+Run `make deploy TAGS=dns BECOME_PASS=1` to apply it
 alone.
 
 ### AMD CPU performance
@@ -348,7 +350,7 @@ Boost or the kernel boot parameters.
 Apply the runtime settings with:
 
 ```sh
-make install ANSIBLE_ARGS="--tags amd_cpu_performance --ask-become-pass"
+make deploy TAGS=amd_cpu_performance BECOME_PASS=1
 ```
 
 Ansible also writes the settings it applied to
@@ -386,7 +388,7 @@ configuration.
 To install the selected groups and configure gaming services, run:
 
 ```sh
-make install ANSIBLE_ARGS="--tags packages,gaming --ask-become-pass"
+make deploy TAGS=packages,gaming BECOME_PASS=1
 ```
 
 The `gaming` tag alone configures services after checking that their packages
@@ -414,7 +416,7 @@ deployment before the configuration is written. A symlink or directory at
 `lactd`.
 
 ```sh
-make install ANSIBLE_ARGS="--tags lact --ask-become-pass"
+make deploy TAGS=lact BECOME_PASS=1
 ```
 
 `--check` requires an already running LACT daemon for discovery. The legacy
@@ -459,7 +461,7 @@ clones its AUR recipe, builds it as the current user, then installs the package
 with Ansible privilege escalation. Set `-e packages_aur_action=ask` to confirm
 AUR builds and installations, or `-e packages_aur_action=skip` to leave AUR
 packages uninstalled.
-Run `make install ANSIBLE_ARGS="--tags yay --ask-become-pass"` to run the package selection and
+Run `make deploy TAGS=yay BECOME_PASS=1` to run the package selection and
 AUR installation flow without installing the selected official repository
 packages.
 
@@ -473,7 +475,7 @@ file. A fresh clone without `.vault` runs without Vault. Example of a one-run pa
 override:
 
 ```sh
-make install ANSIBLE_ARGS="--ask-become-pass -e '{\"packages_group_selection\":[\"01_base\",\"03_gtk\"]}'"
+make deploy BECOME_PASS=1 ANSIBLE_ARGS="-e '{\"packages_group_selection\":[\"01_base\",\"03_gtk\"]}'"
 ```
 
 On Arch Linux, selecting an NVIDIA profile makes the `gpu` role manage
@@ -555,7 +557,7 @@ Bluetooth controller (no `hci*` entry in `/sys/class/bluetooth`); other units
 can require a device through `package_services_device_requirements`. A unit
 that is already enabled stays enabled. With
 `12_containers_docker`, the users in `docker_group_users` (default: the
-user running `make install`) join the `docker` group, which grants
+user running `make deploy`) join the `docker` group, which grants
 root-equivalent access to the Docker daemon; log in again to use it. When the
 playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
 so the new rules load.
@@ -578,13 +580,13 @@ already installed (CPU, CUDA or ROCm); the filter itself runs on the CPU. Both w
 nothing else, use the standalone profile:
 
 ```sh
-make install-obs ANSIBLE_ARGS=--ask-become-pass
+make deploy PLAYBOOK=obs BECOME_PASS=1
 ```
 
 `ansible/obs.yml` runs the `packages` role with `22_obs` plus the GPU groups
 detected by `lspci`, then the `obs` role. It skips every other role
 and refuses `packages_action=reconcile`, which would treat every other
-managed package as obsolete. Run a reconcile with `make install` instead. Any
+managed package as obsolete. Run a reconcile with `make deploy` instead. Any
 selected `*-dkms` package also brings the headers of the running kernel; the
 package that owns `/usr/lib/modules/<kernel>/vmlinuz` names them (for example
 `linux-zen-headers`).

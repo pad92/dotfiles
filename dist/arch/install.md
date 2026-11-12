@@ -420,8 +420,8 @@ helper: the lists contain optional and hardware-specific groups that should not
 all be installed together.
 
 ```sh
-sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make install ANSIBLE_ARGS=--check'
-sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make install'
+sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make check'
+sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make deploy'
 ```
 
 ```sh
