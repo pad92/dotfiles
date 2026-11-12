@@ -200,6 +200,15 @@
       loop_control:
         label: '{{ item.dest }}'
 
+    - name: Create the trees that have no files of their own
+      ansible.builtin.file:
+        path: '{{ dotfiles_home }}/{{ item.dest }}'
+        state: directory
+        mode: '0755'
+      loop: "{{ dotfiles_trees | selectattr('copy', 'false') | list }}"
+      loop_control:
+        label: '{{ item.dest }}'
+
     - name: Copy changed static dotfile directories and trees
       ansible.builtin.include_tasks:
         file: copy-directory.yml
@@ -210,7 +219,9 @@
           {{ dotfiles_copy_item | combine({'tracked': true})
              if dotfiles_copy_item is mapping else
              {'src': dotfiles_copy_item, 'dest': dotfiles_copy_item} }}
-      loop: "{{ (dotfiles_directories | map('normpath') | unique | list) + dotfiles_trees }}"
+      loop: >-
+        {{ (dotfiles_directories | map('normpath') | unique | list)
+           + (dotfiles_trees | rejectattr('copy', 'false') | list) }}
       loop_control:
         loop_var: dotfiles_copy_item
         label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'

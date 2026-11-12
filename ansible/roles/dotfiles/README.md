@@ -15,12 +15,29 @@ from the facts of the SSH user.
 
 `dotfiles_trees` lists `.vim`, `.tmux` and `zsh`, which deploys to
 `~/.local/share/dotfiles/zsh` (`dotfiles_zsh_dest`). Only the files Git
-tracks are copied, including those of the Zsh plugin submodules, which the
-role checks out on the controller first (`dotfiles_submodules`, also run by
-`dotfiles_deploy`). The controller's own Vim backups or installed plugins
-are never copied, and a submodule that is not checked out stops the
-deployment instead of being copied empty. Files that programs add to a tree
-on the target (plugins, backups, swap files) stay in place.
+tracks are copied. The controller's own Vim backups or installed plugins are
+never copied. Files that programs add to a tree on the target (plugins,
+backups, swap files) stay in place. The repository tracks nothing under
+`.tmux`, so that entry has `copy: false`: the role only creates the
+directory, for tpm and the plugins it installs.
+
+The Zsh plugins are submodules. They are cloned on the target from the URL in
+`.gitmodules`, at the commit the controller's index records, so the
+controller does not need them checked out. A deployment after a submodule
+update moves the clone to the new commit, and the files removed upstream go
+with it. A clone with local changes stops the deployment. If the plugin's
+path holds a directory without `.git`, such as a copy made by an earlier
+version of this role, it is moved to `<path>.bak` before the clone, and an
+existing `<path>.bak` stops the run.
+
+Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
+(`dotfiles_manifest_directory`) that lists the files deployed there with their
+SHA-1. The next deployment deletes the files of the old manifest that the
+repository no longer ships, as long as they are still regular files with the
+same checksum. A file you changed is kept and reported, and a file you added
+is never listed, so it stays. The first deployment with this version has no
+manifest yet, so it deletes nothing. Check mode reports the deletions without
+making them.
 
 Vundle and tpm update themselves with Git, so they are cloned on the target
 (`dotfiles_plugin_managers`) rather than copied. An existing checkout is left
@@ -49,7 +66,9 @@ The read-only `dotfiles_tree` module includes hidden files, empty directories,
 and source symlinks while detecting cycles. File writes use `copy` and `file`.
 Each changed path appears in the task output and notifies the directory's
 reload handlers. Existing file contents are backed up before replacement.
-Existing directory permissions and extra local files remain untouched. Templates,
+Existing directory permissions and extra local files remain untouched; only
+files that an earlier deployment copied and the repository dropped are
+deleted (see the manifests above). Templates,
 individual dotfiles and systemd units use their own Ansible tasks as well.
 
 Before deployment, the role backs up conflicting regular files, directories and

@@ -21,15 +21,24 @@ dotfiles_icon_theme: Papirus-Dark
 dotfiles_icon_theme_parent: "{{ dotfiles_icon_theme | regex_replace('-Dark$', '') }}"
 dotfiles_zsh_dest: .local/share/dotfiles/zsh
 dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_dest }}'
-# Trees copied with only the files Git tracks, submodules included. Files a
-# program adds there later (Vim and tmux plugins, Vim backups) stay in place.
+# Trees copied with only the files Git tracks. Their submodules are cloned on
+# the target at the commit the controller's index records. Files a program
+# adds there later (Vim and tmux plugins, Vim backups) stay in place, and a
+# file that a later version no longer ships is deleted unless it was changed
+# (see dotfiles_manifest_directory). A tree with copy: false has no files of
+# its own: its directory is created, and a legacy link to it replaced.
 dotfiles_trees:
   - src: .tmux
     dest: .tmux
+    copy: false
   - src: .vim
     dest: .vim
   - src: zsh
     dest: '{{ dotfiles_zsh_dest }}'
+# One manifest per copied directory lists the files deployed there with their
+# SHA-1. The next deployment deletes the listed files that the repository no
+# longer has, if they are still regular files with that checksum.
+dotfiles_manifest_directory: '{{ dotfiles_home }}/.local/state/dotfiles/manifests'
 # Plugin managers that update themselves with Git, so they are cloned on the
 # target rather than copied. An existing checkout is left as it is.
 dotfiles_plugin_managers:

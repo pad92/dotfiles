@@ -1,6 +1,8 @@
 """Exercise individual file deployment, backups and reloads in a temporary home."""
 
 import getpass
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -336,6 +338,25 @@ class DotfilesDeployTests(unittest.TestCase):
             self.assertRegex(run(), r"changed=0\b")
 
 
+class DotfilesTreeDefaultsTests(unittest.TestCase):
+    """A clone has only what Git tracks, so each copied tree must have some."""
+
+    def test_each_copied_tree_has_tracked_files_on_a_fresh_clone(self):
+        defaults = yaml.safe_load(
+            (ROOT / "ansible/roles/dotfiles/defaults/main.yml").read_text()
+        )
+        home = Path("ansible/roles/dotfiles/files/home")
+        for tree in defaults["dotfiles_trees"]:
+            with self.subTest(tree=tree["src"]):
+                tracked = git(ROOT, "ls-files", "--", str(home / tree["src"]))
+                if tree.get("copy", True):
+                    # dotfiles_tree raises NotADirectoryError on a fresh clone.
+                    self.assertTrue(tracked, f"nothing tracked under {tree['src']}")
+                else:
+                    # Only a destination: tracked files would never be copied.
+                    self.assertFalse(tracked, tracked)
+
+
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 class DotfilesTreeCopyTests(unittest.TestCase):
     """The home must keep working once the repository clone is deleted."""
@@ -488,3 +509,212 @@ class DotfilesTreeCopyTests(unittest.TestCase):
                     self.assertFalse(os.readlink(path).startswith(str(clone)), path)
             self.assertEqual((vim / "backup/notes.txt~").read_text(), "edited\n")
             self.assertRegex(run(), r"changed=0\b")
+
+
+@unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
+class DotfilesTreeUpdateTests(unittest.TestCase):
+    """Later deployments follow the repository: pinned clones and removed files."""
+
+    def test_submodules_are_cloned_and_removed_files_deleted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            role = work / "dotfiles"
+            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+            (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+
+            plugin = work / "plugin"
+            repository(plugin)
+            (plugin / "plugin.zsh").write_text("v1\n")
+            (plugin / "dropped.zsh").write_text("dropped\n")
+            git(plugin, "add", ".")
+            git(plugin, "commit", "-q", "-m", "v1")
+            first = git(plugin, "rev-parse", "HEAD")
+
+            source = work / "source"
+            repository(source)
+            zsh = source / "home/zsh"
+            (zsh / "completions").mkdir(parents=True)
+            (zsh / "completions/_kept").write_text("kept\n")
+            (zsh / "completions/_removed").write_text("removed\n")
+            (zsh / "completions/_edited").write_text("shipped\n")
+            (source / "wallpaper.png").write_text("png\n")
+            git(source, "add", ".")
+            git(source, "commit", "-q", "-m", "source")
+            git(
+                source,
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-q",
+                f"file://{plugin}",
+                "home/zsh/plugins/plugin",
+            )
+            git(source, "commit", "-q", "-m", "plugin")
+            # Upstream moves on; the repository still records the first commit.
+            (plugin / "unrecorded.zsh").write_text("unrecorded\n")
+            git(plugin, "add", ".")
+            git(plugin, "commit", "-q", "-m", "unrecorded")
+            # The controller does not need the submodule checked out.
+            git(
+                source,
+                "submodule",
+                "deinit",
+                "-q",
+                "--force",
+                "home/zsh/plugins/plugin",
+            )
+
+            home = work / "home"
+            target = home / ".local/share/dotfiles/zsh"
+            # An earlier version copied the plugin, without its .git.
+            (target / "plugins/plugin").mkdir(parents=True)
+            (target / "plugins/plugin/plugin.zsh").write_text("copied\n")
+            play = [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "ansible_facts": USER_FACTS,
+                        "dotfiles_home": str(home),
+                        "dotfiles_source_repository": str(source),
+                        "dotfiles_source_root": str(source / "home"),
+                        "dotfiles_legacy_link_root": str(work / "no-clone"),
+                        "dotfiles_trees": [
+                            {"src": ".tmux", "dest": ".tmux", "copy": False},
+                            {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
+                        ],
+                        "dotfiles_plugin_managers": [],
+                        "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
+                        "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
+                        "dotfiles_directories": [],
+                        "dotfiles_files": [],
+                        "dotfiles_templates": [],
+                        "dotfiles_systemd_graphical_units": [],
+                        "dotfiles_systemd_directory": ".config/test-systemd",
+                    },
+                    "tasks": [
+                        {
+                            "ansible.builtin.import_role": {
+                                "name": str(role),
+                                "tasks_from": "deploy",
+                            },
+                            "tags": ["dotfiles_deploy"],
+                        }
+                    ],
+                }
+            ]
+            playbook = work / "play.yml"
+            playbook.write_text(yaml.safe_dump(play))
+
+            def run(*arguments):
+                result = subprocess.run(
+                    [
+                        "ansible-playbook",
+                        "-i",
+                        "localhost,",
+                        str(playbook),
+                        "--tags",
+                        "dotfiles_deploy",
+                        "--skip-tags",
+                        "systemd",
+                        *arguments,
+                    ],
+                    cwd=ROOT,
+                    env=ansible_test_environment(work),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                return result.stdout
+
+            manifest = (
+                home
+                / ".local/state/dotfiles/manifests/.local%2Fshare%2Fdotfiles%2Fzsh.json"
+            )
+            clone = target / "plugins/plugin"
+
+            # Check mode plans the backup and changes nothing.
+            output = run("--check")
+            self.assertIn(f"{clone} -> {clone}.bak", output)
+            self.assertFalse((target / "plugins/plugin.bak").exists())
+            self.assertFalse((clone / ".git").exists())
+            self.assertFalse(manifest.exists())
+
+            run()
+            self.assertTrue((home / ".tmux").is_dir())
+            # The copy is kept as a backup, and the clone is at the recorded
+            # commit, with its own metadata.
+            self.assertEqual(
+                (target / "plugins/plugin.bak/plugin.zsh").read_text(), "copied\n"
+            )
+            self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
+            self.assertEqual((clone / "plugin.zsh").read_text(), "v1\n")
+            self.assertFalse((clone / "unrecorded.zsh").exists())
+            recorded = json.loads(manifest.read_text())["files"]
+            self.assertEqual(
+                sorted(recorded),
+                [
+                    str(target / "completions/_edited"),
+                    str(target / "completions/_kept"),
+                    str(target / "completions/_removed"),
+                ],
+            )
+            self.assertRegex(run(), r"changed=0\b")
+
+            # Upstream drops a file and the repository records the new commit.
+            git(plugin, "rm", "-q", "dropped.zsh", "unrecorded.zsh")
+            (plugin / "plugin.zsh").write_text("v2\n")
+            git(plugin, "commit", "-q", "-am", "v2")
+            second = git(plugin, "rev-parse", "HEAD")
+            git(
+                source,
+                "update-index",
+                "--cacheinfo",
+                f"160000,{second},home/zsh/plugins/plugin",
+            )
+            # The repository drops two completions, one of them edited on the
+            # target, and the user adds one of their own.
+            git(
+                source,
+                "rm",
+                "-q",
+                "home/zsh/completions/_removed",
+                "home/zsh/completions/_edited",
+            )
+            git(source, "commit", "-q", "-m", "update")
+            (target / "completions/_edited").write_text("edited\n")
+            (target / "completions/_local").write_text("local\n")
+
+            output = run("--check")
+            self.assertTrue((target / "completions/_removed").exists())
+            self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
+
+            output = run()
+            self.assertEqual(git(clone, "rev-parse", "HEAD"), second)
+            self.assertFalse((clone / "dropped.zsh").exists())
+            self.assertFalse((target / "completions/_removed").exists())
+            self.assertEqual((target / "completions/_edited").read_text(), "edited\n")
+            self.assertIn("_edited was changed by hand, so it is kept", output)
+            self.assertEqual((target / "completions/_local").read_text(), "local\n")
+            self.assertEqual((target / "completions/_kept").read_text(), "kept\n")
+            self.assertEqual(
+                sorted(json.loads(manifest.read_text())["files"]),
+                [str(target / "completions/_kept")],
+            )
+            self.assertRegex(run(), r"changed=0\b")
+
+            # A hand-edited manifest that names a file outside the tree, with
+            # its current checksum, must not delete it.
+            outside = target.parent / "outside"
+            outside.write_text("outside\n")
+            edited = json.loads(manifest.read_text())
+            edited["files"][f"{target}/../outside"] = hashlib.sha1(
+                outside.read_bytes(), usedforsecurity=False
+            ).hexdigest()
+            manifest.write_text(json.dumps(edited))
+            run()
+            self.assertEqual(outside.read_text(), "outside\n")

@@ -1,15 +1,13 @@
 ---
-# The trees are copied from the controller's repository, so its submodules
-# must be checked out there; the target needs no clone. This changes only the
-# controller's working copy, which check mode must also read: it runs there
-# too, so that a check lists the files a deployment would copy.
+# Checks out the submodules of the controller's repository, for a local Zsh or
+# the tests. The deployment does not need them: it clones each submodule on
+# the target at the commit the index records.
 - name: Initialize Git submodules at their recorded revisions
   dotfiles_submodule_update:
     path: '{{ dotfiles_source_repository }}'
   delegate_to: localhost
   become: false
   run_once: true
-  check_mode: false
   register: dotfiles_submodule_update
 
 - name: Report changed submodule paths # noqa: no-handler -- report results immediately.

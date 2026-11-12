@@ -3,16 +3,21 @@
 #   src      path under files/home;
 #   dest     path under the home directory;
 #   tracked  true to copy only what Git tracks (see the dotfiles_tree module).
-# The dotfiles_tree module gives each entry the path of its copy (dest).
+# The dotfiles_tree module gives each entry the path of its copy (dest) and
+# the SHA-1 of each file, and lists the submodules to clone.
 - name: Resolve the source and handlers of {{ dotfiles_copy.dest }}
   ansible.builtin.set_fact:
     dotfiles_copy_source: "{{ (dotfiles_source_root ~ '/' ~ dotfiles_copy.src) | normpath }}"
     dotfiles_copy_handlers: '{{ dotfiles_directory_handlers.get(dotfiles_copy.dest, []) }}'
+    dotfiles_copy_root: "{{ (dotfiles_home ~ '/' ~ dotfiles_copy.dest) | normpath }}"
+    dotfiles_copy_manifest: >-
+      {{ dotfiles_manifest_directory }}/{{ dotfiles_copy.dest | normpath
+         | replace('/', '%2F') }}.json
 
 - name: Collect directory contents including source links for {{ dotfiles_copy.dest }}
   dotfiles_tree:
     path: '{{ dotfiles_copy_source }}'
-    dest: '{{ dotfiles_home }}/{{ dotfiles_copy.dest }}'
+    dest: '{{ dotfiles_copy_root }}'
     tracked: '{{ dotfiles_copy.tracked | default(false) }}'
   delegate_to: localhost
   become: false
@@ -80,3 +85,147 @@
   loop_control:
     label: '{{ item.dest }}'
   notify: '{{ dotfiles_copy_handlers }}'
+
+# A submodule is cloned at the commit the controller's index records, so the
+# plugin keeps its Git metadata and loses the files removed upstream. A path
+# that holds something else, such as a copy without .git made by an earlier
+# version, is moved to <path>.bak first; an existing backup stops the run.
+- name: Inspect the submodule paths in {{ dotfiles_copy.dest }}
+  ansible.builtin.stat:
+    path: '{{ item.0.dest }}{{ item.1 }}'
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: "{{ dotfiles_directory_contents.submodules | product(['', '/.git', '.bak']) | list }}"
+  loop_control:
+    label: '{{ item.0.dest }}{{ item.1 }}'
+  register: dotfiles_submodule_stats
+
+- name: Find the submodule paths that are not checkouts in {{ dotfiles_copy.dest }}
+  ansible.builtin.set_fact:
+    dotfiles_submodule_conflicts: >-
+      {{ dotfiles_submodule_stats.results | selectattr('item.1', 'equalto', '')
+         | selectattr('stat.exists') | map(attribute='item.0.dest')
+         | difference(dotfiles_submodule_stats.results
+                      | selectattr('item.1', 'equalto', '/.git')
+                      | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir')
+                      | map(attribute='item.0.dest')) | list }}
+    dotfiles_submodule_backups: >-
+      {{ dotfiles_submodule_stats.results | selectattr('item.1', 'equalto', '.bak')
+         | selectattr('stat.exists') | map(attribute='item.0.dest') | list }}
+
+- name: Refuse to replace existing submodule backups in {{ dotfiles_copy.dest }}
+  ansible.builtin.assert:
+    that:
+      - item not in dotfiles_submodule_backups
+    fail_msg: >-
+      Refusing to replace {{ item }} with a clone because {{ item }}.bak
+      already exists.
+  loop: '{{ dotfiles_submodule_conflicts }}'
+
+- name: Back up the submodule paths that are not checkouts in {{ dotfiles_copy.dest }}
+  dotfiles_backup:
+    src: '{{ item }}'
+    dest: '{{ item }}.bak'
+  loop: '{{ dotfiles_submodule_conflicts }}'
+  loop_control:
+    label: '{{ item }} -> {{ item }}.bak'
+  register: dotfiles_submodule_conflict_backups
+
+- name: Clone the submodules at their recorded commits in {{ dotfiles_copy.dest }}
+  ansible.builtin.git:
+    repo: '{{ item.url }}'
+    dest: '{{ item.dest }}'
+    version: '{{ item.version }}'
+  loop: '{{ dotfiles_directory_contents.submodules }}'
+  loop_control:
+    label: '{{ item.dest }} at {{ item.version }}'
+  # A backup is only planned in check mode, so the path still holds the copy.
+  when: not (ansible_check_mode and item.dest in dotfiles_submodule_conflicts)
+  notify: '{{ dotfiles_copy_handlers }}'
+
+# Only the files the previous deployment listed are deleted, and only when
+# they still match what it copied: a file added or changed by hand stays.
+- name: Inspect the manifest of {{ dotfiles_copy.dest }}
+  ansible.builtin.stat:
+    path: '{{ dotfiles_copy_manifest }}'
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: dotfiles_copy_manifest_stat
+
+- name: Read the manifest of {{ dotfiles_copy.dest }}
+  ansible.builtin.slurp:
+    src: '{{ dotfiles_copy_manifest }}'
+  when: dotfiles_copy_manifest_stat.stat.exists
+  register: dotfiles_copy_manifest_content
+
+- name: List the files no longer shipped in {{ dotfiles_copy.dest }}
+  ansible.builtin.set_fact:
+    dotfiles_copy_files: >-
+      {{ dict(dotfiles_directory_contents.files | selectattr('isreg')
+              | map(attribute='dest')
+              | zip(dotfiles_directory_contents.files | selectattr('isreg')
+                    | map(attribute='checksum'))) }}
+    dotfiles_copy_previous_manifest: >-
+      {{ (dotfiles_copy_manifest_content.content | b64decode | from_json).files
+         if dotfiles_copy_manifest_stat.stat.exists else {} }}
+
+# Normalizing turns <root>/../x into a path outside the tree, which the next
+# task then ignores.
+- name: Normalize the paths of the manifest of {{ dotfiles_copy.dest }}
+  ansible.builtin.set_fact:
+    dotfiles_copy_previous_files: >-
+      {{ dict(dotfiles_copy_previous_manifest.keys() | map('normpath')
+              | zip(dotfiles_copy_previous_manifest.values())) }}
+
+- name: Inspect the files no longer shipped in {{ dotfiles_copy.dest }}
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+    get_checksum: true
+    checksum_algorithm: sha1
+    get_mime: false
+    get_attributes: false
+  # Normalized paths outside the tree, from a hand-edited manifest, are ignored.
+  loop: >-
+    {{ dotfiles_copy_previous_files.keys()
+       | difference(dotfiles_copy_files.keys())
+       | select('match', (dotfiles_copy_root ~ '/') | regex_escape)
+       | sort }}
+  register: dotfiles_copy_obsolete_stats
+
+- name: Delete the unchanged files no longer shipped in {{ dotfiles_copy.dest }}
+  ansible.builtin.file:
+    path: '{{ item.item }}'
+    state: absent
+  loop: >-
+    {{ dotfiles_copy_obsolete_stats.results | selectattr('stat.isreg', 'defined')
+       | selectattr('stat.isreg') | list }}
+  loop_control:
+    label: '{{ item.item }}'
+  when: item.stat.checksum == dotfiles_copy_previous_files[item.item]
+  notify: '{{ dotfiles_copy_handlers }}'
+
+- name: Report the changed files no longer shipped in {{ dotfiles_copy.dest }}
+  ansible.builtin.debug:
+    msg: '{{ item.item }} was changed by hand, so it is kept.'
+  loop: >-
+    {{ dotfiles_copy_obsolete_stats.results | selectattr('stat.isreg', 'defined')
+       | selectattr('stat.isreg') | list }}
+  loop_control:
+    label: '{{ item.item }}'
+  when: item.stat.checksum != dotfiles_copy_previous_files[item.item]
+
+- name: Create the manifest directory for {{ dotfiles_copy.dest }}
+  ansible.builtin.file:
+    path: '{{ dotfiles_manifest_directory }}'
+    state: directory
+    mode: '0755'
+
+- name: Record the files deployed in {{ dotfiles_copy.dest }}
+  ansible.builtin.copy:
+    content: "{{ {'dest': dotfiles_copy_root, 'files': dotfiles_copy_files} | to_nice_json }}\n"
+    dest: '{{ dotfiles_copy_manifest }}'
+    mode: '0644'

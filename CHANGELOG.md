@@ -100,12 +100,11 @@ Release history and changes planned for the next version.
 ### Changed
 
 - **Dotfiles**:
-  - Copy `~/.vim`, `~/.tmux` and the Zsh tree
-    (`~/.local/share/dotfiles/zsh`) instead of linking them into the
-    target's clone, and copy the Hyprlock background as well. Once deployed,
-    the home directory no longer uses `~/.dotfiles`, which can be deleted.
-    Only the files Git tracks are copied, with the submodules, which the
-    controller now initializes. A deployment replaces an old link into
+  - Copy `~/.vim` and the Zsh tree (`~/.local/share/dotfiles/zsh`) instead
+    of linking them into the target's clone, create `~/.tmux` as a directory,
+    and copy the Hyprlock background as well. Once deployed, the home
+    directory no longer uses `~/.dotfiles`, which can be deleted. Only the
+    files Git tracks are copied. A deployment replaces an old link into
     `~/.dotfiles` with a copy and brings over what programs had added there
     (Vim backups, swap files, plugins installed by Vundle). Check mode lists
     those files and stops before the replacement.
@@ -115,6 +114,15 @@ Release history and changes planned for the next version.
     since the `vim.tar.gz` archive no longer contains it. Without Vundle,
     Vim starts without plugins instead of reporting errors, and the gruvbox
     color scheme applies once Vundle has installed it.
+  - Clone the Zsh plugin submodules on the target, at the commit the
+    repository records, instead of copying them. A plugin update then removes
+    the files dropped upstream, and the controller does not need the
+    submodules checked out. A plugin directory without `.git` is moved to
+    `<path>.bak` first.
+  - Record the files copied into each directory in
+    `~/.local/state/dotfiles/manifests/`. The next deployment deletes those
+    the repository no longer ships, such as `_fwupdmgr`, unless they were
+    changed on the target; files added by hand stay.
   - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
     `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone.
 - **Makefile**:

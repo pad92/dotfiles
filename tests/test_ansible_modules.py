@@ -1,5 +1,6 @@
 """Exercise production modules against temporary files and mocked system boundaries."""
 
+import hashlib
 import importlib.util
 import os
 import subprocess
@@ -212,7 +213,7 @@ class ModuleTests(unittest.TestCase):
         (self.root / "cycle").symlink_to(".")
         (self.root / "broken").symlink_to("missing")
         entries = {
-            Path(entry["path"]).name: entry for entry in tree.collect(str(self.root))
+            Path(entry["path"]).name: entry for entry in tree.collect(str(self.root))[0]
         }
         self.assertEqual(len(entries), 6)
         self.assertTrue(entries[".hidden"]["isreg"])
@@ -227,7 +228,7 @@ class ModuleTests(unittest.TestCase):
         (self.root / "sub/file").write_text("file")
         entries = {
             os.path.relpath(entry["path"], self.root): entry["dest"]
-            for entry in tree.collect(str(self.root), dest="/home/user/./.vim/")
+            for entry in tree.collect(str(self.root), dest="/home/user/./.vim/")[0]
         }
         self.assertEqual(
             entries,
@@ -238,7 +239,7 @@ class ModuleTests(unittest.TestCase):
             },
         )
 
-    def test_tree_tracked_copies_git_files_and_submodules_only(self):
+    def test_tree_tracked_copies_git_files_and_lists_submodules_to_clone(self):
         plugin, parent = self.root / "plugin", self.root / "parent"
         repository(plugin)
         (plugin / "plugin.zsh").write_text("plugin")
@@ -260,6 +261,11 @@ class ModuleTests(unittest.TestCase):
             str(plugin),
             "home/.vim/plugins/one",
         )
+        # A later commit of the plugin that the index does not record.
+        recorded = git(plugin, "rev-parse", "HEAD")
+        (plugin / "later.zsh").write_text("later")
+        git(plugin, "add", ".")
+        git(plugin, "commit", "-m", "later")
         # What a program writes into the tree, as Vim did into the old clone.
         (source / "backup").mkdir()
         (source / "backup/file~").write_text("ignored")
@@ -267,36 +273,51 @@ class ModuleTests(unittest.TestCase):
         (source / "bundle/gruvbox").mkdir(parents=True)
         git(source / "bundle/gruvbox", "init")
 
-        entries = {
-            os.path.relpath(entry["path"], source): entry
-            for entry in tree.collect(str(source), tracked=True)
-        }
+        files, submodules = tree.collect(str(source), tracked=True, dest="/h/.vim")
+        entries = {os.path.relpath(entry["path"], source): entry for entry in files}
+        # The submodule is cloned on the target, so none of its files is copied.
+        self.assertEqual(set(entries), {".", "config", "config/plugins.vim", "plugins"})
         self.assertEqual(
-            set(entries),
-            {
-                ".",
-                "config",
-                "config/plugins.vim",
-                "plugins",
-                "plugins/one",
-                "plugins/one/plugin.zsh",
-            },
+            entries["config/plugins.vim"]["checksum"],
+            hashlib.sha1(b"tracked").hexdigest(),
         )
-        self.assertTrue(entries["plugins/one/plugin.zsh"]["isreg"])
+        self.assertNotIn("checksum", entries["config"])
+        self.assertEqual(
+            submodules,
+            [
+                {
+                    "path": "plugins/one",
+                    "url": str(plugin),
+                    "version": recorded,
+                    "dest": "/h/.vim/plugins/one",
+                }
+            ],
+        )
         # Without the option, the same tree lists everything on disk.
         everything = {
             os.path.relpath(entry["path"], source)
-            for entry in tree.collect(str(source))
+            for entry in tree.collect(str(source))[0]
         }
         self.assertIn("plugins/one/.git", everything)
         self.assertIn("backup/file~", everything)
 
-        # A submodule that is not checked out would be copied empty.
+        # The controller no longer needs the submodule checked out.
         git(parent, "submodule", "deinit", "--force", "home/.vim/plugins/one")
+        result = self.invoke(tree, {"path": str(source), "tracked": True, "dest": None})
+        self.assertFalse(result.failed)
+        self.assertEqual(result.data["submodules"][0]["version"], recorded)
+        # A gitlink that .gitmodules does not describe cannot be cloned.
+        git(
+            parent,
+            "config",
+            "--file",
+            ".gitmodules",
+            "--remove-section",
+            "submodule.home/.vim/plugins/one",
+        )
         failed = self.invoke(tree, {"path": str(source), "tracked": True, "dest": None})
         self.assertTrue(failed.failed)
-        self.assertIn("Submodule not initialized", failed.data["msg"])
-        self.assertIn("plugins/one", failed.data["msg"])
+        self.assertIn("Submodule without a URL", failed.data["msg"])
         # Outside a Git repository the module fails instead of copying nothing.
         outside = self.root / "outside"
         outside.mkdir()

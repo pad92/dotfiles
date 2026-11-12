@@ -3,10 +3,11 @@
   ansible.builtin.import_tasks: validate.yml
   tags: [dotfiles_submodules, dotfiles_deploy, dotfiles_runtime]
 
-# The deployment copies the submodules, so it initializes them first.
+# The deployment clones the submodules on the target and does not need them
+# checked out on the controller.
 - name: Initialize Git submodules
   ansible.builtin.import_tasks: submodules.yml
-  tags: [dotfiles_submodules, dotfiles_deploy]
+  tags: [dotfiles_submodules]
 
 - name: Deploy dotfiles
   ansible.builtin.import_tasks: deploy.yml
