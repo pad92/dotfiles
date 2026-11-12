@@ -272,6 +272,12 @@ follows log files across rotation; quote globs to include files created later:
 mtail '*.log' '/var/log/app/*.log'
 ```
 
+Completion comes from zsh, the packages and the plugins, in that order.
+Commands that only ship a bash completion are completed through
+`bashcompinit` when their file works without the bash-completion helpers;
+otherwise zsh completes file names. The caches live in `~/.zcache`: delete
+`~/.zcache/bash-completions` or `~/.zcache/generated/` to rebuild them.
+
 Neovim uses Lua, Telescope, Treesitter, Mason, and native LSP. Neovim 0.8+
 loads plugins with lazy.nvim; Neovim 0.7.2 uses a compatibility loader with
 older plugin releases. Vim uses Vundle.

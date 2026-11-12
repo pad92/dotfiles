@@ -7,27 +7,25 @@ ZSH_CACHE_DIR="${HOME}/.zcache"
 # add a function path for completion
 fpath=($ZSH_CACHE_DIR/completions $ZSH/completions $fpath)
 
+# Append the plugin directories (and their src/, as in zsh-completions) to
+# fpath, including completion-only plugins such as httpie. init/completion.zsh
+# runs compinit, so this must come before the init files: compinit only
+# registers the completion functions already on fpath. They go last so that
+# the completions shipped by zsh and by the packages (docker, age, ...) win
+# over older plugin copies.
+for plugin ($plugins); do
+  if [[ -d $ZSH/plugins/$plugin ]]; then
+    fpath+=($ZSH/plugins/$plugin)
+    [[ -d $ZSH/plugins/$plugin/src ]] && fpath+=($ZSH/plugins/$plugin/src)
+  fi
+done
+unset plugin
+
 # Load all of the config init files that end in .zsh
 for config_file ($ZSH/init/*.zsh); do
   source $config_file
 done
 unset config_file
-
-
-is_plugin() {
-  local base_dir=$1
-  local name=$2
-  test -f $base_dir/plugins/$name/$name.plugin.zsh
-}
-# Add all defined plugins to fpath. This must be done
-# before running compinit.
-for plugin ($plugins); do
-  if is_plugin $ZSH $plugin; then
-    fpath=($ZSH/plugins/$plugin $fpath)
-  fi
-done
-unset plugin
-unset -f is_plugin
 
 # Load all functions script
 for funcfiles ($ZSH/functions/*.zsh); do

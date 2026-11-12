@@ -6,6 +6,15 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Zsh**:
+  - Complete the commands that only ship a bash completion (`wg`,
+    `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
+    through `bashcompinit`. The bash file is sourced on the first TAB. Files
+    that need the bash-completion helpers or load only in bash are skipped,
+    and a bash function that offers nothing falls back to file names.
+  - Complete `sops` and `git-lfs` from the script each tool generates, cached
+    in `~/.zcache/generated` until the tool is updated. Arch's `_sops` starts
+    with a blank line, so compinit skips it, and `_git-lfs` is empty.
 - **Hyprland**:
   - Add screen recording with `hypr-record.sh` and wf-recorder. `CTRL + Print`
     records a window or a region and `CTRL + SHIFT + Print` the focused screen;
@@ -234,6 +243,27 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Zsh**:
+  - Append the plugin directories and the `zsh-completions` sources to
+    `fpath` before `compinit`. They were added after it, so the plugin
+    completions (`httpie`, `docker-compose`, `hub`) and every
+    `zsh-completions` function were never registered. They go last, so the
+    completions shipped by zsh and the packages (`docker`, `age`) win.
+  - Drop the bundled completions that hid the ones from zsh or the packages.
+    `_ansible` only knew `ansible` 2.0 and hid zsh's, which covers every
+    Ansible CLI (`ansible-playbook`, `ansible-galaxy`, ...). `_hugo` held a
+    bare `$(...)` line, so `hugo` had no completion. `_yay`, `_gsettings`,
+    `_logger` and `_shutdown` were older or identical copies.
+  - Rewrite the host name completion as `_dotfiles_hosts`, used by ssh, scp,
+    rsync, ping and the other commands that complete hosts. It now follows
+    every `Include` of `~/.ssh/config` (it only read `config.d/*`), reads
+    `Host` lines in any case or with `=`, and `Match host` lines. It reads
+    `/etc/ssh/ssh_known_hosts` (the path was wrong), still reads the
+    `known_hosts2` files and skips `@revoked`
+    entries. Without `~/.ssh/config.d`, each TAB printed `no matches found`.
+  - Rebuild the completion dump once a day as intended. The `(#q)` glob
+    qualifier needs `extended_glob`, which is off there, so every shell ran a
+    full `compinit` scan.
 - **Docs**:
   - List every Hyprland shortcut in the README. The table claimed Vim keys
     that are not bound and left out window closing, `ALT + Tab`, the password
