@@ -187,6 +187,16 @@ class InstallerTargetTests(unittest.TestCase):
                 self.assertIn('--tags "dotfiles"', result.stdout)
                 self.assertNotIn("--ask-become-pass", result.stdout)
 
+    # The plan stops at a packages task: a tag selection that skips it would
+    # let the following roles, such as dotfiles, change the host.
+    def test_plan_refuses_a_tag_selection(self):
+        for variable in ["TAGS=dotfiles", "SKIP_TAGS=packages"]:
+            with self.subTest(variable=variable):
+                result = self.dry_run("plan", variable)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("ansible-playbook", result.stdout)
+                self.assertIn("make plan takes no TAGS or SKIP_TAGS", result.stderr)
+
     def test_install_obs_always_runs_the_obs_playbook(self):
         for arguments in [("install-obs",), ("install-obs", "PLAYBOOK=site")]:
             with self.subTest(arguments=arguments):
@@ -218,8 +228,9 @@ class InstallerTargetTests(unittest.TestCase):
         result = self.dry_run("deploy", "PLAYBOOK=backup")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("PLAYBOOK=backup is not one of: site obs", result.stderr)
-        # Several playbooks at once would build a path such as "site obs.yml".
-        for playbook in ["site obs", ""]:
+        # Several playbooks at once would build a path such as "site obs.yml",
+        # and % is a wildcard for $(filter), not a playbook name.
+        for playbook in ["site obs", "", "%", "s%"]:
             with self.subTest(playbook=playbook):
                 result = self.dry_run("deploy", f"PLAYBOOK={playbook}")
                 self.assertNotEqual(result.returncode, 0)

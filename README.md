@@ -60,7 +60,9 @@ machine first gets an inventory entry; see
 ## Common tasks
 
 `make help` lists the targets and their variables. `deploy`, `check`, `plan`,
-`tags` and `tasks` share these variables:
+`tags` and `tasks` share these variables, except that `plan` refuses `TAGS` and
+`SKIP_TAGS`: a selection could skip the stop after the package plan and let
+the next roles change the host.
 
 | Variable       | Effect                                                      |
 | :------------- | :---------------------------------------------------------- |
