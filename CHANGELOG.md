@@ -256,7 +256,9 @@ Release history and changes planned for the next version.
     `_ansible` only knew `ansible` 2.0 and hid zsh's, which covers every
     Ansible CLI (`ansible-playbook`, `ansible-galaxy`, ...). `_hugo` held a
     bare `$(...)` line, so `hugo` had no completion. `_yay`, `_gsettings`,
-    `_logger` and `_shutdown` were older or identical copies.
+    `_logger` and `_shutdown` were older or identical copies. `_fwupdmgr`
+    lacked twenty commands of the `zsh-completions` one (`security`,
+    `sync`, `inhibit`, `get-bios-settings`, ...).
   - Rewrite the host name completion as `_dotfiles_hosts`, used by ssh, scp,
     rsync, ping and the other commands that complete hosts. It now follows
     every `Include` of `~/.ssh/config` (it only read `config.d/*`), reads
