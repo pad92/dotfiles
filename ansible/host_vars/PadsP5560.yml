@@ -4,23 +4,14 @@ packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
 hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
 
-# The external ASUS monitor stays at 60 Hz on the laptop.
-dotfiles_monitor_asus_mode: 2560x1440@60
-dotfiles_monitor_laptop_panel:
-  output: desc:Sharp Corporation 0x1516
-  mode: 3840x2400
-  position: '0x1440'
-  scale: 2
-dotfiles_hypr_monitors:
-  - '{{ dotfiles_monitor_laptop_panel }}'
-  - '{{ dotfiles_monitor_asus }}'
-  - '{{ dotfiles_monitor_dell }}'
+# The laptop panel sits under the Dell.
+dotfiles_hypr_monitors: >-
+  {{ dotfiles_hypr_shared_monitors +
+     [{'name': 'laptop', 'internal': true, 'below': 'dell'}] }}
 dotfiles_hypr_workspace_rules: >-
   {{ dotfiles_hypr_shared_workspace_rules +
-     [{'workspace': 8, 'monitor': dotfiles_monitor_laptop_panel.output,
-       'default': true}] }}
-dotfiles_hypr_touch_output: eDP-1
-
+     [{'workspace': 8, 'monitor': 'laptop', 'default': true}] }}
+dotfiles_hypr_touch_monitor: laptop
 dotfiles_waybar_temperature_sensors:
   - name: cpu
     label: CPU

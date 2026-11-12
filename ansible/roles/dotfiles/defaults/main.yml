@@ -134,19 +134,35 @@ dotfiles_hypridle_dpms_timeout: 900
 dotfiles_hypridle_suspend_timeout: 0
 
 # Hyprland host settings, rendered into ~/.config/hypr/hosts/settings.lua.
-# Each monitor is a hl.monitor() table: output, mode, position, scale. A
-# monitor whose output is empty (for example a Vault value that is not
-# defined) is left out, with the workspace and window rules that use it; the
-# generic rule of conf/monitors.lua then handles the display.
+# No resolution, scale or coordinate is set here: Hyprland picks the mode and
+# the scale, and include/layout.lua computes the positions at run time from
+# the size each connected monitor reports.
+#
+# Each monitor names one physical display and where it sits:
+#   name: unique layout name, used by the relations and the rules below;
+#   match: prefix of the EDID description that `hyprctl monitors all` prints
+#     (Hyprland's "desc:" selector). Identical monitors get one entry each
+#     with the same match and pair in connector order; add the serial number
+#     to pin one. Or
+#   internal: true for the built-in panel of a laptop;
+#   right_of, left_of, above or below: at most one, the name of the
+#     neighbour it shares an edge with. The first monitor without a relation
+#     is the origin.
+# A monitor that is not connected is skipped. A monitor whose neighbour is
+# missing, or that no entry matches, joins the right edge of the layout, so
+# the cursor can always reach every monitor.
 dotfiles_hypr_monitors: []
-# hl.workspace_rule() tables: workspace, monitor, default.
+# Mode policy for every monitor: preferred (the EDID's own mode), highrr
+# (the highest refresh rate) or highres (the highest resolution).
+dotfiles_hypr_monitor_mode: preferred
+# hl.workspace_rule() tables: workspace, monitor (a layout name), default.
 dotfiles_hypr_workspace_rules: []
-# hl.window_rule() tables: match, monitor.
+# hl.window_rule() tables: match, monitor (a layout name).
 dotfiles_hypr_window_rules: []
 # Blur and shadows cost battery, so portable machines turn them off.
 dotfiles_hypr_effects_enabled: '{{ not dotfiles_is_portable | bool }}'
-# Output that a touchscreen maps to, such as eDP-1. Empty leaves it unset.
-dotfiles_hypr_touch_output: ''
+# Layout name of the monitor a touchscreen maps to. Empty leaves it unset.
+dotfiles_hypr_touch_monitor: ''
 
 # Waybar. A temperature#<name> module is shown only when a sensor of that name
 # is listed in dotfiles_waybar_temperature_sensors; the portable modules only

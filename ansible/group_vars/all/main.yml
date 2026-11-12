@@ -2,32 +2,21 @@
 # Settings shared by the workstations. host_vars/<hostname>.yml
 # overrides any of them for one machine.
 
-# Both workstations drive the same external Dell and ASUS monitors. Hyprland
-# matches them by EDID description, which ends with the serial number, so the
-# outputs live in the Vault (vault.yml, see vault.yml-example). Without the
-# Vault these monitors are left to the generic rule of conf/monitors.lua.
-dotfiles_monitor_outputs: '{{ vault_dotfiles_monitor_outputs | default({}) }}'
-dotfiles_monitor_dell:
-  output: "{{ dotfiles_monitor_outputs.dell | default('') }}"
-  mode: 2560x1440
-  position: '0x0'
-  scale: 1
-# Each host sets its refresh rate in dotfiles_monitor_asus_mode.
-dotfiles_monitor_asus_mode: 2560x1440@60
-dotfiles_monitor_asus:
-  output: "{{ dotfiles_monitor_outputs.asus | default('') }}"
-  mode: '{{ dotfiles_monitor_asus_mode }}'
-  position: '2560x0'
-  scale: 1
-
-dotfiles_hypr_monitors:
-  - '{{ dotfiles_monitor_asus }}'
-  - '{{ dotfiles_monitor_dell }}'
+# Both workstations drive the same external monitors: the ASUS stands to the
+# right of the Dell. Positions, modes and scales are computed at run time
+# (see the dotfiles role README); only the relation is set here.
+dotfiles_hypr_shared_monitors:
+  - name: dell
+    match: Dell Inc. DELL P2423DE
+  - name: asus
+    match: ASUSTek COMPUTER INC XG32WCS
+    right_of: dell
+dotfiles_hypr_monitors: '{{ dotfiles_hypr_shared_monitors }}'
 dotfiles_hypr_shared_workspace_rules:
   - workspace: 1
-    monitor: '{{ dotfiles_monitor_asus.output }}'
+    monitor: asus
     default: true
   - workspace: 2
-    monitor: '{{ dotfiles_monitor_dell.output }}'
+    monitor: dell
     default: true
 dotfiles_hypr_workspace_rules: '{{ dotfiles_hypr_shared_workspace_rules }}'

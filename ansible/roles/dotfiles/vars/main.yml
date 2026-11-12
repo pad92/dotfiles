@@ -2,25 +2,15 @@
 # Values derived from the settings in defaults/main.yml and group_vars. The
 # templates read only these resolved values, so they need no host logic.
 
-# A monitor without an output (an undefined Vault value) is dropped, and so
-# are the rules that target it.
-dotfiles_hypr_active_monitors: >-
-  {{ dotfiles_hypr_monitors | selectattr('output') | list }}
-dotfiles_hypr_active_outputs: >-
-  {{ dotfiles_hypr_active_monitors | map(attribute='output') | list }}
-dotfiles_hypr_active_workspace_rules: >-
-  {{ dotfiles_hypr_workspace_rules
-     | selectattr('monitor', 'in', dotfiles_hypr_active_outputs) | list }}
-dotfiles_hypr_active_window_rules: >-
-  {{ dotfiles_hypr_window_rules
-     | selectattr('monitor', 'in', dotfiles_hypr_active_outputs) | list }}
 dotfiles_hypr_config: >-
-  {{ {}
-     | combine({} if dotfiles_hypr_effects_enabled | bool else
-               {'decoration': {'blur': {'enabled': false},
-                               'shadow': {'enabled': false}}})
-     | combine({'input': {'touchdevice': {'output': dotfiles_hypr_touch_output}}}
-               if dotfiles_hypr_touch_output else {}) }}
+  {{ {} if dotfiles_hypr_effects_enabled | bool else
+     {'decoration': {'blur': {'enabled': false},
+                     'shadow': {'enabled': false}}} }}
+# Layout names, which the workspace and window rules and the touchscreen use.
+dotfiles_hypr_monitor_names: >-
+  {{ dotfiles_hypr_monitors | map(attribute='name', default='') | list }}
+# Keys of a monitor that name its neighbour, as include/layout.lua reads them.
+dotfiles_hypr_monitor_relations: [right_of, left_of, above, below]
 
 dotfiles_waybar_sensor_modules: >-
   {{ dotfiles_waybar_temperature_sensors | map(attribute='name')
