@@ -164,6 +164,7 @@ test-shell: ## Run the shell integration tests
 	bash tests/vault-toggle.sh
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
+	zsh tests/zsh-completion.zsh
 
 screenshot: ## Render the Hyprland showcase still and animated demo next to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \

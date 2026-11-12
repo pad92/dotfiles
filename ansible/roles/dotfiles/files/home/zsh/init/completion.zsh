@@ -3,11 +3,16 @@
 # reuse the cached dump with -C to skip the slow per-startup scan.
 zmodload zsh/complist
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR:-${HOME}}/.zcompdump(#qN.mh+24) ]]; then
-  compinit -i
+# The (#q) glob qualifier needs extended_glob, which is off at this point.
+# compinit only rewrites a changed dump, so touch it to restart the day.
+_zcompdump=${ZDOTDIR:-${HOME}}/.zcompdump
+if () { setopt localoptions extendedglob; [[ ! -s $_zcompdump || -n $_zcompdump(#qN.mh+24) ]] }; then
+  compinit -i -d $_zcompdump
+  touch $_zcompdump
 else
-  compinit -C -i
+  compinit -C -i -d $_zcompdump
 fi
+unset _zcompdump
 
 setopt COMPLETE_IN_WORD # Complete from both ends of a word.
 setopt ALWAYS_TO_END # Move cursor to the end of a completed word.
@@ -85,14 +90,53 @@ zstyle ':completion:*:history-words' menu yes
 # Environmental Variables
 zstyle ':completion::*:(-command-|export):*' fake-parameters ${${${_comps[(I)-value-*]#*,}%%,*}:#-*-}
 
-# Populate hostname completion.
-zstyle -e ':completion:*:hosts' hosts 'reply=(
-${=${=${=${${(f)"$(cat {/etc/ssh_,~/.ssh/known_}hosts(|2)(N) 2>/dev/null)"}%%[#| ]*}//\]:[0-9]*/ }//,/ }//\[/ }
-${=${(f)"$(cat /etc/hosts(|)(N) <<(ypcat hosts 2>/dev/null))"}%%\#*}
-${=${${${${(@M)${(f)"$(cat ~/.ssh/config; cat ~/.ssh/config.d/* 2>/dev/null)"}:#Host *}#Host }:#*\**}:#*\?*}}
-)'
-users=(${${(f)"$(cat /etc/passwd 2>/dev/null)"}%%[#:]*})
-zstyle ':completion:*' users $users disaster
+# Host names for every command that completes hosts (ssh, scp, rsync, ping...).
+# zsh only reads ~/.ssh/config for ssh, scp and sftp, so the `hosts` style
+# gathers all sources, read again on each completion:
+# - /etc/hosts (getent), names and IP addresses;
+# - /etc/ssh/ssh_known_hosts and ~/.ssh/known_hosts: comma lists, [host]:port
+#   and @cert-authority lines; @revoked lines and hashed entries are skipped;
+# - ~/.ssh/config and the files it Includes (relative to ~/.ssh), Host and
+#   Match host lines, keyword case and `=` as in ssh_config.
+# Patterns (*, ?, %) and negations (!) are skipped.
+_dotfiles_hosts() {
+  emulate -L zsh -o extendedglob
+  local -a hosts files names
+  local file line key value name
+  hosts=(${=${(f)"$(getent hosts 2>/dev/null)"}})
+  for file in /etc/ssh/ssh_known_hosts(N) ~/.ssh/known_hosts(N); do
+    for line in ${(f)"$(<$file)"}; do
+      [[ $line == @revoked[[:space:]]* ]] && continue
+      [[ $line == @* ]] && line=${line#* }
+      [[ $line == (\#|\|)* ]] && continue
+      for name in ${(s:,:)line%%[[:space:]]*}; do
+        [[ $name == \[(#b)([^\]]#)\]:<-> ]] && name=$match[1]
+        hosts+=($name)
+      done
+    done
+  done
+  files=(~/.ssh/config(N))
+  local -i depth=0
+  while (( $#files && depth++ < 16 )); do
+    file=$files[1]; shift files
+    for line in ${(f)"$(<$file)"}; do
+      line=${line##[[:space:]]#}
+      key=${line%%[[:space:]=]*} value=${${line#$key}##[[:space:]=]#}
+      case ${(L)key} in
+        include)
+          files+=(${~${(z)value}/#(#m)[^\/~]*/$HOME/.ssh/$MATCH}(N.)) ;;
+        host)
+          hosts+=(${(z)value}) ;;
+        match)
+          [[ $value == (#i)(|*[[:space:]])(|original)host[[:space:]]##(#b)([^[:space:]]##)* ]] \
+            && hosts+=(${(s:,:)match[1]}) ;;
+      esac
+    done
+  done
+  reply=(${(u)${hosts:#*[*?%!]*}})
+}
+zstyle -e ':completion:*:hosts' hosts '_dotfiles_hosts'
+zstyle ':completion:*' users ${${(f)"$(</etc/passwd)"}%%[#:]*} disaster
 zstyle ':completion:*:(ssh|scp|rsync):*:users' ignored-patterns \
         adm amanda apache at avahi avahi-autoipd backup beaglidx bin cacti canna \
         clamav colord daemon dbus debian-spamd distcache dnsmasq dovecot fax ftp games gdm \
@@ -140,3 +184,71 @@ zstyle ':completion:*:telnet:*:hosts-ipaddr' ignored-patterns '^(<->.<->.<->.<->
 # Ping/Traceroute
 compdef ping6=ping
 compdef traceroute6=traceroute
+
+# Tools whose packaged zsh completion is unusable: Arch's sops file starts
+# with a blank line, so compinit skips its #compdef, and git-lfs ships an empty
+# file. Source the script the tool generates instead, cached until the tool
+# is updated. A tool is skipped once compinit has a completion for it.
+() {
+  local dir=$ZSH_CACHE_DIR/generated cmd bin out
+  local -A generators=(
+    git-lfs 'completion zsh'
+    sops    'completion zsh'
+  )
+  for cmd in ${(k)generators}; do
+    bin=${commands[$cmd]}
+    [[ -n $bin && -z ${_comps[$cmd]} ]] || continue
+    out=$dir/_$cmd
+    if [[ ! -s $out || ${bin:A} -nt $out ]]; then
+      [[ -d $dir ]] || mkdir -p $dir
+      if ! { $bin ${=generators[$cmd]} >| $out.tmp 2>/dev/null && [[ -s $out.tmp ]] }; then
+        rm -f $out.tmp
+        continue
+      fi
+      mv -f $out.tmp $out
+    fi
+    source $out
+  done
+}
+
+# Commands that only ship a bash completion: complete them through
+# bashcompinit. The bash file is sourced on the first TAB. Files that need the
+# bash-completion helpers (_init_completion, _filedir, ...), refuse to load
+# outside bash (BASH_VERSION) or source other files (BASH_SOURCE) are left
+# out. The list of usable files is cached until a package changes the
+# completions directory or this file changes.
+# bashcompinit does not emulate bash exactly (compgen -W does not expand
+# variables, for one), so when the bash function offers nothing the files are
+# completed as before.
+_dotfiles_bash_completion_dir=${DOTFILES_BASH_COMPLETION_DIR:-/usr/share/bash-completion/completions}
+typeset -gA _dotfiles_bash_specs
+_dotfiles_bash_completion() {
+  local cmd=$service
+  if [[ -z ${_dotfiles_bash_specs[$cmd]} ]]; then
+    source $_dotfiles_bash_completion_dir/$cmd 2>/dev/null
+    # `complete -F func cmd` in the bash file replaced this loader.
+    if [[ ${_comps[$cmd]} == _bash_complete\ * ]]; then
+      _dotfiles_bash_specs[$cmd]=${_comps[$cmd]}
+    else
+      _dotfiles_bash_specs[$cmd]=_default
+    fi
+    _comps[$cmd]=_dotfiles_bash_completion
+  fi
+  ${=_dotfiles_bash_specs[$cmd]} "$@" 2>/dev/null || _default "$@"
+}
+() {
+  local dir=$_dotfiles_bash_completion_dir list=$ZSH_CACHE_DIR/bash-completions
+  local file cmd skip='(_init_completion|_comp_[a-z]|_filedir|_get_comp_words_by_ref|__ltrim_colon|_split_longopt|_known_hosts|_parse_help|_parse_usage|_command_offset|_longopt|_count_args|_have |_usergroup|_pids|_pnames|_services|_modules|_kernel_versions|_available_interfaces|_ip_addresses|_mac_addresses|_xfunc|_tilde|_quote_readline|_expand|_cd |_root_command|_allowed_users|_allowed_groups|_cd_devices|_dvd_devices|_terms|_fstypes|_signals|_uids|_gids|_shells|_realcommand|_upvars|_variables|BASH_VERSION|BASH_SOURCE)'
+  [[ -d $dir ]] || return 0
+  if [[ ! -s $list || $dir -nt $list || $ZSH/init/completion.zsh -nt $list ]]; then
+    local -a usable
+    for file in $dir/*(N.); do
+      [[ $(<$file) =~ $skip ]] || usable+=(${file:t})
+    done
+    print -rl -- $usable >| $list
+  fi
+  autoload -Uz bashcompinit && bashcompinit
+  for cmd in ${(f)"$(<$list)"}; do
+    [[ -n ${commands[$cmd]} && -z ${_comps[$cmd]} ]] && compdef _dotfiles_bash_completion $cmd
+  done
+}

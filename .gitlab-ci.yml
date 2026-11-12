@@ -56,6 +56,7 @@ unit_tests:
     - bash tests/vault-toggle.sh
     - zsh tests/arch-clean-no-orphans.zsh
     - zsh tests/git-pull-recursive.zsh
+    - zsh tests/zsh-completion.zsh
   coverage: '/^TOTAL.+?(\d+(?:\.\d+)?)%$/'
   artifacts:
     when: always
