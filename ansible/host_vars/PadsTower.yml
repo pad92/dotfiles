@@ -5,16 +5,17 @@ dotfiles_hypridle_enabled: false
 # Suspend after 1 h without input. The laptop leaves suspend to logind.
 dotfiles_hypridle_suspend_timeout: 3600
 
-dotfiles_monitor_asus_mode: 2560x1440@144
-# Steam and games open on the 144 Hz ASUS monitor.
+# Highest refresh rate, for the ASUS gaming monitor.
+dotfiles_hypr_monitor_mode: highrr
+# Steam and games open on the ASUS gaming monitor.
 dotfiles_hypr_window_rules:
   - match:
       class: ^(?i)(steam)$
       title: ^(?i)(Steam Big Picture Mode)$
-    monitor: '{{ dotfiles_monitor_asus.output }}'
+    monitor: asus
   - match:
       class: ^(?i)(gamescope|steam_app_.*)$
-    monitor: '{{ dotfiles_monitor_asus.output }}'
+    monitor: asus
 
 dotfiles_waybar_temperature_sensors:
   - name: cpu

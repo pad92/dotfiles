@@ -207,11 +207,10 @@ Release history and changes planned for the next version.
   - The role validates its settings before changing anything and has a
     `meta/main.yml`. Rendered files get an explicit owner, group and mode
     (`dotfiles_template_mode`, default `0644`).
-  - Upgrade: the monitor outputs, whose descriptions contain serial numbers,
-    move to the Vault as `vault_dotfiles_monitor_outputs`
-    (`group_vars/all/vault.yml`, see `vault.yml-example`). Without it the Dell
-    and ASUS monitors and their workspace and window rules fall back to the
-    generic monitor rule. The `~/.config/waybar/config` link to
+  - Upgrade: monitors are described by relations instead of `hl.monitor()`
+    tables (see the Hyprland entry under Fixed), and
+    `vault_dotfiles_monitor_outputs` and `vault.yml-example` are gone. The
+    `~/.config/waybar/config` link to
     `config.<hostname>` is replaced by a rendered file, and
     `dotfiles_waybar_host_config` is gone.
   - `hypr-screenshot.sh` renders a generic Waybar config and empty Hyprland
@@ -246,6 +245,26 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Hyprland**:
+  - The cursor can move between every monitor again on PadsP5560. The laptop
+    panel was fixed at `0x1440`. The Dell and ASUS rules were dropped without
+    `vault_dotfiles_monitor_outputs`, so Hyprland placed those monitors to the
+    right of the panel, and the panel touched the Dell only at a corner.
+    `include/layout.lua` now computes the positions from relations
+    (`right_of`, `left_of`, `above`, `below`) and from the size each connected
+    monitor reports, and computes them again on hotplug and once Hyprland
+    has applied the mode and scale. A monitor that is
+    not described, or whose neighbour is missing, joins the right edge of the
+    layout, so every monitor stays reachable. `dotfiles_hypr_monitors` gives
+    each monitor a unique name and finds it by the start of its EDID
+    description (`match`) or as the built-in panel (`internal: true`).
+    Identical models pair in connector order unless `match` includes the
+    serial number, and their rules follow their connector. Mode
+    and scale are no longer written anywhere: `dotfiles_hypr_monitor_mode`
+    chooses `preferred` (the default), `highrr` (PadsTower) or `highres`, and
+    the scale is `auto`, as in the generic rule of `conf/monitors.lua`.
+    `dotfiles_hypr_touch_output` becomes `dotfiles_hypr_touch_monitor`, a
+    monitor name.
 - **Zsh**:
   - Append the plugin directories and the `zsh-completions` sources to
     `fpath` before `compinit`. They were added after it, so the plugin

@@ -20,30 +20,54 @@
       - >-
         dotfiles_hypr_monitors | reject('mapping') | list | length == 0
       - >-
-        dotfiles_hypr_monitors | rejectattr('output', 'defined')
+        dotfiles_hypr_monitor_names | map('string')
+        | reject('match', '^[a-z0-9_-]+$') | list | length == 0
+      - >-
+        dotfiles_hypr_monitor_names | unique | list | length
+        == dotfiles_hypr_monitors | length
+      # Each monitor is found either by its EDID description or as the
+      # built-in panel, never both.
+      - >-
+        dotfiles_hypr_monitors | rejectattr('match', 'defined')
+        | rejectattr('internal', 'defined') | list | length == 0
+      - >-
+        dotfiles_hypr_monitors | selectattr('match', 'defined')
+        | selectattr('internal', 'defined') | list | length == 0
+      - >-
+        dotfiles_hypr_monitors | selectattr('match', 'defined')
+        | map(attribute='match') | reject('string') | list | length == 0
+      - >-
+        dotfiles_hypr_monitors | selectattr('match', 'defined')
+        | map(attribute='match') | select('string') | reject('search', '\S')
+        | list | length == 0
+      # An unknown key would be ignored and the monitor silently misplaced.
+      - >-
+        dotfiles_hypr_monitors | map('dict2items') | flatten
+        | map(attribute='key')
+        | reject('in', ['name', 'match', 'internal'] + dotfiles_hypr_monitor_relations)
         | list | length == 0
       - >-
-        dotfiles_hypr_active_monitors | rejectattr('mode', 'defined')
-        | list | length == 0
+        dotfiles_hypr_monitors | selectattr('internal', 'defined')
+        | map(attribute='internal') | reject('sameas', true) | list | length == 0
+      # At most one neighbour, and it must be a known monitor.
       - >-
-        dotfiles_hypr_active_monitors | rejectattr('position', 'defined')
-        | list | length == 0
-      # YAML reads an unquoted 0x1440 position as a hexadecimal number.
+        dotfiles_hypr_monitors | map('dict2items')
+        | map('selectattr', 'key', 'in', dotfiles_hypr_monitor_relations)
+        | map('list') | map('length') | select('gt', 1) | list | length == 0
       - >-
-        dotfiles_hypr_active_monitors | map(attribute='mode')
-        | reject('string') | list | length == 0
+        dotfiles_hypr_monitors | map('dict2items')
+        | map('selectattr', 'key', 'in', dotfiles_hypr_monitor_relations)
+        | map('list') | flatten | map(attribute='value')
+        | reject('in', dotfiles_hypr_monitor_names) | list | length == 0
+      # ...and not the monitor itself: each entry's neighbour, paired with its
+      # name, must not be one and the same value.
       - >-
-        dotfiles_hypr_active_monitors | map(attribute='position')
-        | reject('string') | list | length == 0
-      - >-
-        dotfiles_hypr_active_monitors | rejectattr('scale', 'defined')
-        | list | length == 0
-      - >-
-        dotfiles_hypr_active_monitors | map(attribute='scale')
-        | reject('number') | list | length == 0
-      - >-
-        dotfiles_hypr_active_monitors | map(attribute='scale')
-        | select('boolean') | list | length == 0
+        dotfiles_hypr_monitors | map('dict2items')
+        | map('selectattr', 'key', 'in', dotfiles_hypr_monitor_relations)
+        | map('map', attribute='value') | map('join')
+        | zip(dotfiles_hypr_monitor_names) | map('unique') | map('list')
+        | map('length') | select('eq', 1) | list | length == 0
+      - dotfiles_hypr_monitor_mode in ['preferred', 'highrr', 'highres']
       - >-
         dotfiles_hypr_workspace_rules | rejectattr('workspace', 'defined')
         | list | length == 0
@@ -51,9 +75,14 @@
         (dotfiles_hypr_workspace_rules + dotfiles_hypr_window_rules)
         | rejectattr('monitor', 'defined') | list | length == 0
       - >-
+        (dotfiles_hypr_workspace_rules + dotfiles_hypr_window_rules)
+        | map(attribute='monitor') | reject('in', dotfiles_hypr_monitor_names)
+        | list | length == 0
+      - >-
         dotfiles_hypr_window_rules | rejectattr('match', 'mapping')
         | list | length == 0
-      - dotfiles_hypr_touch_output is string
+      - >-
+        dotfiles_hypr_touch_monitor in [''] + dotfiles_hypr_monitor_names
       - dotfiles_hypr_effects_enabled | string | lower in ['true', 'false']
       - dotfiles_waybar_temperature_sensors | reject('mapping') | list | length == 0
       - >-
@@ -89,10 +118,13 @@
     fail_msg: >-
       Invalid dotfiles settings. Check dotfiles_home (an absolute path other
       than /), dotfiles_template_mode (an octal string such as '0644'), the
-      hypridle timeouts (whole seconds), dotfiles_hypr_monitors (output, and
-      quoted mode and position strings plus a numeric scale for each
-      monitor), the workspace and window rules (each with a monitor; window
-      rules with a match mapping), and every entry
+      hypridle timeouts (whole seconds), dotfiles_hypr_monitors (a unique
+      name, a non-blank match or internal: true, at most one right_of,
+      left_of, above or below naming another monitor, no other key),
+      dotfiles_hypr_monitor_mode
+      (preferred, highrr or highres), the workspace and window rules and
+      dotfiles_hypr_touch_monitor (each naming a monitor; window rules with a
+      match mapping), and every entry
       of dotfiles_waybar_temperature_sensors (unique name, label, hwmon_path
       under /sys and input_filename tempN_input). See
       ansible/roles/dotfiles/README.md.

@@ -39,12 +39,12 @@ have actually been moved.
 The role ships one template per file, never a copy per hostname. Templates
 read variables only; the host decisions are made in Ansible:
 
-| File                                     | Variables                                                                                          |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `~/.config/waybar/config`                | `dotfiles_waybar_modules_right`, `dotfiles_waybar_portable_modules`, `dotfiles_waybar_includes`    |
-| `~/.config/waybar/conf/temperature.json` | `dotfiles_waybar_temperature_sensors`                                                              |
-| `~/.config/hypr/hypridle.conf`           | `dotfiles_hypridle_lock_timeout`, `_dpms_timeout`, `_suspend_timeout`                              |
-| `~/.config/hypr/hosts/settings.lua`      | `dotfiles_hypr_monitors`, `_workspace_rules`, `_window_rules`, `_touch_output`, `_effects_enabled` |
+| File                                     | Variables                                                                                                            |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `~/.config/waybar/config`                | `dotfiles_waybar_modules_right`, `dotfiles_waybar_portable_modules`, `dotfiles_waybar_includes`                      |
+| `~/.config/waybar/conf/temperature.json` | `dotfiles_waybar_temperature_sensors`                                                                                |
+| `~/.config/hypr/hypridle.conf`           | `dotfiles_hypridle_lock_timeout`, `_dpms_timeout`, `_suspend_timeout`                                                |
+| `~/.config/hypr/hosts/settings.lua`      | `dotfiles_hypr_monitors`, `_monitor_mode`, `_workspace_rules`, `_window_rules`, `_touch_monitor`, `_effects_enabled` |
 
 `dotfiles_is_portable` is true when the `form_factor` fact, read from the DMI
 chassis type, names a laptop or another portable chassis. Set it in
@@ -67,12 +67,48 @@ Use the device path that contains the `hwmonN` directory: the number changes
 between boots.
 
 Hyprland's `include/host.lua` applies `hosts/settings.lua` and no longer looks
-at the hostname. A monitor is a `hl.monitor()` table; quote `mode` and
-`position`, because YAML reads `0x1440` as a hexadecimal number. A monitor
-whose `output` is empty is left out, together with the workspace and window
-rules that target it, and the generic rule of `conf/monitors.lua` handles the
-display. That is what happens to the shared Dell and ASUS monitors when
-`vault_dotfiles_monitor_outputs` is not defined (see `ansible/README.md`).
+at the hostname. No resolution, refresh rate, scale or position is written
+anywhere. Hyprland picks the mode (`dotfiles_hypr_monitor_mode`: `preferred`,
+`highrr` or `highres`) and derives the scale from the panel's density.
+`include/layout.lua` then positions the monitors from the size each one
+reports, at start-up and again whenever a monitor is plugged in or
+unplugged. Each entry of `dotfiles_hypr_monitors` names one display and says
+where it sits:
+
+```yaml
+dotfiles_hypr_monitors:
+  - name: dell
+    match: Dell Inc. DELL P2423DE # start of the description, no serial
+  - name: asus
+    match: ASUSTek COMPUTER INC XG32WCS
+    right_of: dell
+  - name: laptop
+    internal: true # the built-in eDP, LVDS or DSI panel
+    below: dell
+```
+
+`match` is the start of the `description:` line of `hyprctl monitors all`,
+which is also what Hyprland's `desc:` selector matches. A neighbour placed
+with `right_of`, `left_of`, `above` or `below` shares an edge with it, so
+the cursor can cross. A monitor that would overlap another one slides
+along its neighbour's edge to the nearest free place; only when there is
+none does it move further in the same direction, next to the monitor in
+the way. The first monitor without a relation sits at 0,0.
+The relations only describe where you want the displays: the layout stays
+connected whatever is plugged in. A monitor whose neighbour is not
+connected, or that no entry matches, joins the right edge of the rightmost
+monitor. With an empty list, every monitor is lined up that way, in
+connector order.
+
+Names must be unique. Several identical monitors need one entry each, all
+with the same `match`. They pair with the monitors in connector-name order,
+so a given cabling always gives the same layout. To pin an entry to one
+physical monitor, add its serial number to `match`
+(`Dell Inc. DELL P2423DE 0000000`). The longest match chooses first. Keep a
+serial number in the Vault if it must stay out of Git. Workspace and window
+rules and `dotfiles_hypr_touch_monitor` refer to these names. A rule on one
+of several identical monitors, or on the built-in panel, follows the
+connector the monitor is plugged into.
 
 `hypridle.conf` gets a suspend listener only when
 `dotfiles_hypridle_suspend_timeout` is above 0; PadsTower sets 3600.

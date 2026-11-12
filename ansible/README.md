@@ -155,20 +155,12 @@ dotfiles_hypridle_enabled: false
 ```
 
 `group_vars/all/main.yml` holds the desktop settings both workstations share:
-the external Dell and ASUS monitors and the workspaces they open. A host file
-then sets what differs, such as the ASUS refresh rate, the laptop panel or the
-Waybar temperature sensors. The `dotfiles` role README lists these variables.
-
-The monitor outputs come from the Vault, because their EDID descriptions end
-with the serial number. Copy `group_vars/all/vault.yml-example` and fill in the
-descriptions printed by `hyprctl monitors all`:
-
-```sh
-ansible-vault create --vault-password-file .vault ansible/group_vars/all/vault.yml
-```
-
-Git ignores this file. Without it, the playbook still runs and Hyprland
-handles these monitors with its generic `preferred, auto` rule.
+the external Dell and ASUS monitors, where they sit relative to each other,
+and the workspaces they open. A host file then sets what differs, such as
+the laptop panel under the Dell, the refresh-rate policy or the Waybar
+temperature sensors. The `dotfiles` role README lists these variables.
+Monitors are identified by make and model, not by serial number, so they need
+no Vault.
 
 To add a machine, add its short hostname (`hostname -s`) to `ansible/inventory.yml` and
 create `ansible/host_vars/<hostname>.yml`, even an empty one. `packages_host_groups` is a list; the packages role
