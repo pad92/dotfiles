@@ -58,8 +58,10 @@
 
 # Vundle and tpm are gone. Before anything moves, check that their leftovers
 # can be removed: the module fails, removing nothing, if a repository there
-# holds local work. Forced check mode keeps this a read; the removal itself
-# runs below, once the legacy links are gone.
+# holds local work or a backup it would write already exists. What is not a
+# Git repository goes to <path>.bak instead of being deleted. Forced check
+# mode keeps this a read; the removal itself runs below, once the legacy
+# links are gone.
 - name: Check that the Vundle and tpm leftovers can be removed
   dotfiles_retired_plugins:
     home: '{{ dotfiles_home }}'
@@ -73,6 +75,14 @@
   ansible.builtin.debug:
     msg: 'Would remove: {{ dotfiles_retired_plugins_plan.removed | join(", ") }}'
   when: ansible_check_mode and dotfiles_retired_plugins_plan.removed | length > 0
+
+- name: List the Vundle and tpm leftovers to back up
+  ansible.builtin.debug:
+    msg: >-
+      Would move to .bak: {{ dotfiles_retired_plugins_plan.backed_up | join(", ") }}
+  when:
+    - ansible_check_mode
+    - dotfiles_retired_plugins_plan.backed_up | length > 0
 
 # Earlier versions linked each tree into the target's clone. Such a link is
 # replaced by a copy rather than backed up, since a backup would still point

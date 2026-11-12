@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import ctypes
-import errno
 import os
 
 from ansible.module_utils.basic import AnsibleModule
@@ -39,24 +37,6 @@ def tree_paths(path: str) -> list[str]:
     return sorted(paths)
 
 
-def move_without_replace(src: str, dest: str) -> None:
-    libc = ctypes.CDLL(None, use_errno=True)
-    rename = getattr(libc, "renameat2", None)
-    if rename is None:
-        raise OSError(errno.ENOSYS, "renameat2 is required; source left untouched")
-    rename.argtypes = [
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_uint,
-    ]
-    rename.restype = ctypes.c_int
-    if rename(-100, os.fsencode(src), -100, os.fsencode(dest), 1):
-        code = ctypes.get_errno()
-        raise OSError(code, os.strerror(code), dest)
-
-
 def main() -> None:
     module = AnsibleModule(
         argument_spec={
@@ -65,6 +45,9 @@ def main() -> None:
         },
         supports_check_mode=True,
     )
+    # Defer custom utilities until after argument discovery by ansible-lint.
+    from ansible.module_utils.dotfiles_files import move_without_replace
+
     src, dest = module.params["src"], module.params["dest"]
     try:
         if os.path.lexists(dest):

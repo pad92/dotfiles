@@ -912,14 +912,22 @@ class DotfilesVimPackTests(unittest.TestCase):
         self.home_from_vundle_and_tpm()
 
         output = self.run_play("--check")
-        self.assertIn("Would remove:", output)
-        for path in (".vim/bundle", ".tmux/plugins", ".tmux"):
-            self.assertIn(str(self.home / path), output)
+        # tpm's directory holds only its clone; Vundle's holds .netrwhist too,
+        # which no remote keeps, so it is moved aside rather than deleted.
+        self.assertIn(
+            f"Would remove: {self.home / '.tmux/plugins'}, {self.home / '.tmux'}",
+            output,
+        )
+        self.assertIn(f"Would move to .bak: {self.home / '.vim/bundle'}", output)
         self.assertTrue((self.home / ".vim/bundle/gruvbox/.git").is_dir())
         self.assertTrue((self.home / ".tmux/plugins/tpm/.git").is_dir())
 
         self.run_play()
         self.assertFalse((self.home / ".vim/bundle").exists())
+        self.assertEqual(
+            (self.home / ".vim/bundle.bak/.netrwhist").read_text(),
+            "let g:netrw_dirhistmax\n",
+        )
         self.assertFalse((self.home / ".tmux").exists())
         pack = self.home / self.dest
         self.assertEqual(git(pack, "rev-parse", "HEAD"), self.first)

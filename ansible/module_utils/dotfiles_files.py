@@ -1,7 +1,9 @@
-"""Inventory explicitly managed trees without hiding unreadable paths."""
+"""Inventory managed trees and move paths without replacing anything."""
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import hashlib
 import os
 import stat
@@ -45,3 +47,22 @@ def changed_paths(before: dict, after: dict) -> list[str]:
         for path in before.keys() | after.keys()
         if before.get(path) != after.get(path)
     )
+
+
+def move_without_replace(src: str, dest: str) -> None:
+    """Rename src to dest atomically, failing if dest exists (renameat2)."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename = getattr(libc, "renameat2", None)
+    if rename is None:
+        raise OSError(errno.ENOSYS, "renameat2 is required; source left untouched")
+    rename.argtypes = [
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    rename.restype = ctypes.c_int
+    if rename(-100, os.fsencode(src), -100, os.fsencode(dest), 1):
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), dest)

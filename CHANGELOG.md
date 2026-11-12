@@ -123,9 +123,11 @@ Release history and changes planned for the next version.
     `~/.tmux/plugins/`, and `~/.tmux` once it is empty (a `~/.tmux` link
     into `~/.dotfiles` loses only the link). A Git repository there with
     uncommitted changes, a stash, or commits that no remote branch holds
-    stops the deployment before anything changes. Check mode lists what
-    would be removed. What they wrote into the clone through a link stays
-    there.
+    stops the deployment before anything changes. Anything else there that
+    is not in a Git repository (a file, a link) is never deleted: the whole
+    path moves to `<path>.bak`, and the deployment stops if that backup
+    already exists. Check mode lists what would be removed or backed up.
+    What they wrote into the clone through a link stays there.
   - Install `instant-markdown-d`, the server behind
     `:InstantMarkdownPreview`, on Arch with the AUR package
     `nodejs-instant-markdown-d` in `01_base`. The deployment now stops when

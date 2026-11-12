@@ -9,6 +9,8 @@ import subprocess
 
 from ansible.module_utils.basic import AnsibleModule
 
+BACKUP_SUFFIX = ".bak"
+
 DOCUMENTATION = r"""
 ---
 module: dotfiles_retired_plugins
@@ -16,6 +18,11 @@ short_description: Remove retired plugin directories, keeping local work
 description:
   - Each path in C(paths) is removed with everything under it. A path that
     is a symbolic link loses the link only.
+  - A path that holds anything besides Git repositories (a file, a link or
+    a special file outside every repository) is not removed but moved, whole,
+    to C(<path>.bak); so is a path that is a regular file. Empty directories
+    do not count. When a C(.bak) already exists, the module fails, names it,
+    and changes nothing, as dotfiles_backup does.
   - Every Git repository found under a path is checked first. When one has
     uncommitted or untracked changes, a stash, or commits that no
     remote-tracking branch holds, the module fails, names it, and removes
@@ -27,7 +34,7 @@ description:
   - A directory of C(parents) that is a real directory is removed once one
     of its paths was removed and it is left empty. If it still holds
     something, it is kept and reported as a warning.
-  - In check mode, the result lists what would be removed.
+  - In check mode, the result lists what would be removed or backed up.
 options:
   home:
     description: Home directory the paths are relative to.
@@ -108,9 +115,30 @@ def repositories(path: str) -> list[str]:
     return found
 
 
+def foreign_entries(path: str) -> list[str]:
+    """List what under a directory lies outside every Git repository.
+
+    Directories are walked without following links. A repository is not
+    entered: its own content is checked by local_work. Empty directories
+    hold nothing to lose and are not listed.
+    """
+    found = []
+    for directory, directories, files in os.walk(path, followlinks=False):
+        if ".git" in directories or ".git" in files:
+            directories.clear()
+            continue
+        for name in sorted(directories):
+            if os.path.islink(os.path.join(directory, name)):
+                found.append(os.path.join(directory, name))
+                directories.remove(name)
+        found.extend(os.path.join(directory, name) for name in sorted(files))
+        directories.sort()
+    return found
+
+
 def plan(home: str, paths: list[str], parents: list[str]) -> dict:
     """Decide what goes, without changing anything."""
-    remove, unlink, emptied, skipped = [], [], [], []
+    remove, unlink, backup, emptied, skipped = [], [], [], [], []
     for relative in paths:
         parts = os.path.normpath(relative).split(os.sep)
         if relative.startswith("/") or ".." in parts:
@@ -131,16 +159,25 @@ def plan(home: str, paths: list[str], parents: list[str]) -> dict:
         absolute = os.path.join(home, relative)
         if through_link or not os.path.lexists(absolute):
             continue
-        if os.path.islink(absolute) or not os.path.isdir(absolute):
+        if os.path.islink(absolute):
             unlink.append(absolute)
             continue
-        remove.append(absolute)
+        if not os.path.isdir(absolute) or foreign_entries(absolute):
+            backup.append(absolute)
+        else:
+            remove.append(absolute)
         for parent in parents:
             if relative.startswith(parent.rstrip("/") + "/"):
                 directory = os.path.join(home, parent)
                 if directory not in emptied:
                     emptied.append(directory)
-    return {"remove": remove, "unlink": unlink, "emptied": emptied, "skipped": skipped}
+    return {
+        "remove": remove,
+        "unlink": unlink,
+        "backup": backup,
+        "emptied": emptied,
+        "skipped": skipped,
+    }
 
 
 def main() -> None:
@@ -152,6 +189,9 @@ def main() -> None:
         },
         supports_check_mode=True,
     )
+    # Defer custom utilities until after argument discovery by ansible-lint.
+    from ansible.module_utils.dotfiles_files import move_without_replace
+
     home = module.params["home"]
     parents = [os.path.normpath(parent) for parent in module.params["parents"]]
     try:
@@ -160,7 +200,7 @@ def main() -> None:
         module.fail_json(msg=str(error), changed=False)
 
     blocked = []
-    for path in decided["remove"]:
+    for path in decided["remove"] + decided["backup"]:
         for repository in repositories(path):
             try:
                 found = local_work(repository)
@@ -180,15 +220,34 @@ def main() -> None:
             blocked=blocked,
             changed=False,
         )
+    existing = [
+        path + BACKUP_SUFFIX
+        for path in decided["backup"]
+        if os.path.lexists(path + BACKUP_SUFFIX)
+    ]
+    if existing:
+        module.fail_json(
+            msg=(
+                "Refusing to back up the Vundle and tpm leftovers, since these "
+                "backups already exist: "
+                + ", ".join(existing)
+                + ". Move or delete them, then deploy again."
+            ),
+            changed=False,
+        )
 
     removed = decided["unlink"] + decided["remove"]
     kept = []
     for directory in decided["emptied"]:
         with os.scandir(directory) as entries:
             left = sorted(
-                entry.name
+                (
+                    entry.name + BACKUP_SUFFIX
+                    if entry.path in decided["backup"]
+                    else entry.name
+                )
                 for entry in entries
-                if os.path.join(directory, entry.name) not in removed
+                if entry.path not in removed
             )
         if left:
             kept.append(directory)
@@ -204,12 +263,18 @@ def main() -> None:
             os.unlink(path)
         for path in decided["remove"]:
             shutil.rmtree(path)
+        for path in decided["backup"]:
+            try:
+                move_without_replace(path, path + BACKUP_SUFFIX)
+            except OSError as error:
+                module.fail_json(msg=f"Cannot back up {path}: {error}", changed=True)
         for directory in decided["emptied"]:
             if directory not in kept:
                 os.rmdir(directory)
     module.exit_json(
-        changed=bool(removed),
+        changed=bool(removed or decided["backup"]),
         removed=removed,
+        backed_up=decided["backup"],
         kept=kept,
         skipped=decided["skipped"],
     )

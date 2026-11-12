@@ -47,11 +47,17 @@ Vundle and tpm are gone, along with tmux-sensible, whose settings are now in
 (`dotfiles_retired_plugin_paths`): `~/.vim/bundle/` and `~/.tmux/plugins/`.
 Before anything else, it checks every Git repository under them. If one has
 uncommitted or untracked changes, a stash, or commits that no remote branch
-holds, the deployment stops, names it, and removes nothing. `~/.tmux` goes
+holds, the deployment stops, names it, and removes nothing. A path that
+holds anything besides Git repositories (a file, a link, such as a
+`.netrwhist` or a plugin copied by hand) is not deleted: it moves, whole, to
+`<path>.bak`, and so does a path that is a plain file. Empty directories do
+not count. If that `.bak` already exists, the deployment stops before
+anything changes, as for any other backup. `~/.tmux` goes
 too once it is empty. If it still holds something, such as tmux-resurrect
 sessions, it is kept and the run reports it. A `~/.tmux` link into
 `~/.dotfiles`, left by an older version, loses only the link: its target is
-not followed or changed. Check mode lists what would be removed.
+not followed or changed. Check mode lists what would be removed and what
+would move to `.bak`.
 
 What Vundle and tpm wrote through a link stays in the clone, under
 `files/home/.vim/bundle/` and `files/home/.tmux/plugins/`. The role never

@@ -330,7 +330,7 @@ class ModuleTests(unittest.TestCase):
         src.write_text("source")
         dest.write_text("backup")
         with self.assertRaises(FileExistsError):
-            backup.move_without_replace(str(src), str(dest))
+            files.move_without_replace(str(src), str(dest))
         self.assertEqual(src.read_text(), "source")
         self.assertEqual(dest.read_text(), "backup")
 
@@ -505,3 +505,171 @@ class RetiredPluginsTests(unittest.TestCase):
         for path in ("../escape", "/etc", ".vim/../../escape"):
             with self.subTest(path), self.assertRaises(ValueError):
                 retired.plan(str(self.root), [path], [])
+
+
+class RetiredPluginsBackupTests(unittest.TestCase):
+    """What is not a Git clone is never deleted: it moves to <path>.bak."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.upstream = self.root / "upstream"
+        repository(self.upstream)
+        (self.upstream / "plugin.vim").write_text("v1\n")
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-q", "-m", "v1")
+
+    def clone(self, relative):
+        path = self.home / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        git(self.root, "clone", "-q", f"file://{self.upstream}", str(path))
+        return path
+
+    def run_module(self, paths, parents=(), check=False):
+        params = {
+            "home": str(self.home),
+            "paths": list(paths),
+            "parents": list(parents),
+        }
+        with (
+            patch.object(retired, "AnsibleModule", return_value=Module(params, check)),
+            self.assertRaises(Result) as caught,
+        ):
+            retired.main()
+        return caught.exception
+
+    def tree(self):
+        return sorted(
+            (str(item.relative_to(self.home)), item.is_symlink())
+            for item in self.home.rglob("*")
+        )
+
+    def test_a_file_beside_the_clones_moves_the_whole_path_to_a_backup(self):
+        bundle = self.home / ".vim/bundle"
+        self.clone(".vim/bundle/gruvbox")
+        (bundle / ".netrwhist").write_text("history\n")
+        before = self.tree()
+
+        planned = self.run_module([".vim/bundle"], check=True)
+        self.assertFalse(planned.failed, planned.data)
+        self.assertEqual(planned.data["backed_up"], [str(bundle)])
+        self.assertEqual(planned.data["removed"], [])
+        self.assertTrue(planned.data["changed"])
+        self.assertEqual(self.tree(), before)
+
+        done = self.run_module([".vim/bundle"])
+        self.assertFalse(done.failed, done.data)
+        self.assertFalse(bundle.exists())
+        backup = self.home / ".vim/bundle.bak"
+        self.assertEqual((backup / ".netrwhist").read_text(), "history\n")
+        self.assertEqual((backup / "gruvbox/plugin.vim").read_text(), "v1\n")
+
+        # Nothing left to do: the backup itself is not a listed path.
+        again = self.run_module([".vim/bundle"])
+        self.assertFalse(again.data["changed"])
+
+    def test_a_file_inside_a_plain_directory_is_backed_up(self):
+        (self.home / ".vim/bundle/handmade/plugin").mkdir(parents=True)
+        (self.home / ".vim/bundle/handmade/plugin/mine.vim").write_text("mine\n")
+        self.run_module([".vim/bundle"])
+        self.assertEqual(
+            (self.home / ".vim/bundle.bak/handmade/plugin/mine.vim").read_text(),
+            "mine\n",
+        )
+
+    def test_a_regular_file_at_the_path_is_backed_up(self):
+        (self.home / ".vim").mkdir()
+        (self.home / ".vim/bundle").write_text("not a directory\n")
+        result = self.run_module([".vim/bundle"])
+        self.assertEqual(result.data["backed_up"], [str(self.home / ".vim/bundle")])
+        self.assertEqual(
+            (self.home / ".vim/bundle.bak").read_text(), "not a directory\n"
+        )
+
+    def test_a_link_beside_the_clones_is_backed_up_and_not_followed(self):
+        target = self.root / "elsewhere"
+        target.mkdir()
+        (target / "keep").write_text("keep\n")
+        self.clone(".vim/bundle/gruvbox")
+        (self.home / ".vim/bundle/linked").symlink_to(target)
+        self.run_module([".vim/bundle"])
+        self.assertTrue((self.home / ".vim/bundle.bak/linked").is_symlink())
+        self.assertEqual((target / "keep").read_text(), "keep\n")
+
+    def test_clean_clones_and_empty_directories_are_removed_without_backup(self):
+        self.clone(".vim/bundle/gruvbox")
+        (self.home / ".vim/bundle/empty/nested").mkdir(parents=True)
+        result = self.run_module([".vim/bundle"])
+        self.assertFalse(result.failed, result.data)
+        self.assertEqual(result.data["removed"], [str(self.home / ".vim/bundle")])
+        self.assertEqual(result.data["backed_up"], [])
+        self.assertFalse(os.path.lexists(self.home / ".vim/bundle"))
+        self.assertFalse(os.path.lexists(self.home / ".vim/bundle.bak"))
+
+    def test_an_existing_backup_stops_everything(self):
+        (self.home / ".vim/bundle").mkdir(parents=True)
+        (self.home / ".vim/bundle/.netrwhist").write_text("history\n")
+        (self.home / ".vim/bundle.bak").mkdir()
+        (self.home / ".vim/bundle.bak/old").write_text("old\n")
+        self.clone(".tmux/plugins/tpm")
+        before = self.tree()
+        for check in (True, False):
+            with self.subTest(check=check):
+                result = self.run_module(
+                    [".vim/bundle", ".tmux/plugins"], [".tmux"], check=check
+                )
+                self.assertTrue(result.failed)
+                self.assertIn(str(self.home / ".vim/bundle.bak"), result.data["msg"])
+                self.assertEqual(self.tree(), before)
+
+    def test_local_work_still_stops_a_path_that_would_be_backed_up(self):
+        clone = self.clone(".vim/bundle/gruvbox")
+        (clone / "plugin.vim").write_text("edited\n")
+        (self.home / ".vim/bundle/.netrwhist").write_text("history\n")
+        before = self.tree()
+        result = self.run_module([".vim/bundle"])
+        self.assertTrue(result.failed)
+        self.assertIn("uncommitted changes", result.data["msg"])
+        self.assertEqual(self.tree(), before)
+
+    def test_a_parent_keeping_a_backup_is_reported_with_it(self):
+        self.clone(".tmux/plugins/tpm")
+        (self.home / ".tmux/plugins/notes").write_text("notes\n")
+        warnings = []
+        with patch.object(Module, "warn", warnings.append, create=True):
+            result = self.run_module([".tmux/plugins"], [".tmux"])
+        self.assertEqual(result.data["kept"], [str(self.home / ".tmux")])
+        self.assertIn("plugins.bak", warnings[0])
+        self.assertTrue((self.home / ".tmux/plugins.bak/notes").exists())
+
+    def test_an_emptied_parent_is_removed(self):
+        self.clone(".tmux/plugins/tpm")
+        result = self.run_module([".tmux/plugins"], [".tmux"])
+        self.assertFalse(os.path.lexists(self.home / ".tmux"))
+        self.assertIn(str(self.home / ".tmux"), result.data["removed"])
+
+    def test_a_link_at_the_path_loses_the_link_only(self):
+        target = self.root / "clone-tmux"
+        target.mkdir()
+        (target / "resurrect").write_text("session\n")
+        (self.home / ".tmux").symlink_to(target)
+        result = self.run_module([".tmux/plugins"], [".tmux"])
+        self.assertEqual(result.data["removed"], [str(self.home / ".tmux")])
+        self.assertFalse(os.path.lexists(self.home / ".tmux"))
+        self.assertEqual((target / "resurrect").read_text(), "session\n")
+
+    def test_a_path_below_an_unlisted_link_is_skipped(self):
+        target = self.root / "vim"
+        (target / "bundle").mkdir(parents=True)
+        (self.home / ".vim").symlink_to(target)
+        result = self.run_module([".vim/bundle"])
+        self.assertFalse(result.data["changed"])
+        self.assertEqual(len(result.data["skipped"]), 1)
+        self.assertTrue((target / "bundle").is_dir())
+
+    def test_a_path_outside_the_home_fails(self):
+        result = self.run_module(["../escape"])
+        self.assertTrue(result.failed)
