@@ -52,8 +52,7 @@ script.
 
 ### `package-vim.yml`
 
-Checks out submodules recursively, then packages the Vim configuration as a
-`vim-package` artifact.
+Packages the Vim configuration as a `vim-package` artifact.
 
 ### `package-nvim.yml`
 

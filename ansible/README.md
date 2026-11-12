@@ -12,8 +12,8 @@ make deploy BECOME_PASS=1
 
 The playbook supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora. It
 installs selected package groups, copies static dotfiles, renders host-aware
-templates, copies the Vim, tmux, and Zsh trees with the Git submodules checked
-out at the revisions recorded by the repository, renders the Waybar, hypridle and
+templates, copies the Vim, tmux, and Zsh trees, clones the Zsh plugins at the
+commits pinned in the role defaults, renders the Waybar, hypridle and
 Hyprland monitor settings from each host's variables, reloads live
 configuration, and configures makepkg for
 local CPU builds on Arch Linux and CachyOS without generating separate debug
@@ -21,7 +21,7 @@ packages. Packages built with native CPU flags may not run on a different CPU.
 Vim plugin updates are opt-in with `-e dotfiles_update_vim_plugins=true`.
 Dotfile copies, templates, backups, and removals use Ansible file modules.
 Directory deployments show each changed file. Custom modules report files
-written by sysfs controls, submodule updates, package builds, and initramfs
+written by sysfs controls, package builds, and initramfs
 generation. Conflict backups use an atomic move that refuses existing targets.
 AUR installation uses a dedicated module for yay/paru, without Pacman's
 unsupported `--print-format` calls.

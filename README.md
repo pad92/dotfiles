@@ -140,7 +140,7 @@ variables, package ownership, and system settings.
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
 | `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
-| `dotfiles_submodules`, `dotfiles_deploy`   | Initialize submodules on the controller; deploy the configuration.            |
+| `dotfiles_deploy`                          | Deploy the configuration; clone the Vim, tmux and Zsh plugins.                |
 | `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |

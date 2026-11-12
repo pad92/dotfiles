@@ -227,9 +227,10 @@
         label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'
 
     # cp creates the missing parents of each path and keeps its modes, links
-    # and nested Git checkouts; an existing path is left alone. A plugin
-    # manager that an older version shipped as a submodule is skipped: its
-    # .git file points into the clone, so it is cloned again below instead.
+    # and nested Git checkouts; an existing path is left alone. The plugin
+    # managers and Zsh plugins, which older versions shipped as submodules,
+    # are skipped with everything under them: their .git file points into the
+    # clone, so they are cloned again below instead.
     # Git quotes a name with a newline or a quote, which then fails here
     # rather than copying another path.
     - name: Copy the files programs added behind legacy tree links
@@ -247,14 +248,19 @@
         # Relative to the tree; a nested repository comes with a final slash.
         dotfiles_added_path: "{{ item.1 | regex_replace('/$', '') }}"
         dotfiles_added_dest: '{{ (item.0.item.dest ~ "/" ~ dotfiles_added_path) | normpath }}'
+        dotfiles_cloned_paths: >-
+          {{ (dotfiles_plugin_managers + dotfiles_zsh_plugins)
+             | map(attribute='dest') | map('normpath') | list }}
       loop: >-
         {{ dotfiles_legacy_tree_files.results | default([])
            | subelements('stdout_lines', skip_missing=true) }}
       loop_control:
         label: '{{ dotfiles_added_dest }}'
       when: >-
-        dotfiles_added_dest not in
-        dotfiles_plugin_managers | map(attribute='dest') | map('normpath')
+        dotfiles_cloned_paths | length == 0 or
+        dotfiles_added_dest is not match('(' ~ dotfiles_cloned_paths
+                                         | map('regex_escape') | join('|')
+                                         ~ ')(/|$)')
 
     - name: Clone the plugin managers
       ansible.builtin.git:
@@ -265,6 +271,18 @@
       loop: '{{ dotfiles_plugin_managers }}'
       loop_control:
         label: '{{ item.dest }}'
+
+    # Unlike the plugin managers, which update themselves, a Zsh plugin
+    # follows the commit pinned in dotfiles_zsh_plugins.
+    - name: Clone the Zsh plugins at their pinned commits
+      ansible.builtin.git:
+        repo: '{{ item.repo }}'
+        dest: '{{ dotfiles_home }}/{{ item.dest }}'
+        version: '{{ item.version }}'
+        update: true
+      loop: '{{ dotfiles_zsh_plugins }}'
+      loop_control:
+        label: '{{ item.dest }} at {{ item.version }}'
 
     - name: Copy the Hyprlock background
       ansible.builtin.copy:

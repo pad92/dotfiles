@@ -4,7 +4,7 @@
 #   dest     path under the home directory;
 #   tracked  true to copy only what Git tracks (see the dotfiles_tree module).
 # The dotfiles_tree module gives each entry the path of its copy (dest) and
-# the SHA-1 of each file, and lists the submodules to clone.
+# the SHA-1 of each file.
 - name: Resolve the source and handlers of {{ dotfiles_copy.dest }}
   ansible.builtin.set_fact:
     dotfiles_copy_source: "{{ (dotfiles_source_root ~ '/' ~ dotfiles_copy.src) | normpath }}"
@@ -84,65 +84,6 @@
   loop: '{{ dotfiles_directory_contents.files | selectattr("islnk") | list }}'
   loop_control:
     label: '{{ item.dest }}'
-  notify: '{{ dotfiles_copy_handlers }}'
-
-# A submodule is cloned at the commit the controller's index records, so the
-# plugin keeps its Git metadata and loses the files removed upstream. A path
-# that holds something else, such as a copy without .git made by an earlier
-# version, is moved to <path>.bak first; an existing backup stops the run.
-- name: Inspect the submodule paths in {{ dotfiles_copy.dest }}
-  ansible.builtin.stat:
-    path: '{{ item.0.dest }}{{ item.1 }}'
-    follow: false
-    get_checksum: false
-    get_mime: false
-    get_attributes: false
-  loop: "{{ dotfiles_directory_contents.submodules | product(['', '/.git', '.bak']) | list }}"
-  loop_control:
-    label: '{{ item.0.dest }}{{ item.1 }}'
-  register: dotfiles_submodule_stats
-
-- name: Find the submodule paths that are not checkouts in {{ dotfiles_copy.dest }}
-  ansible.builtin.set_fact:
-    dotfiles_submodule_conflicts: >-
-      {{ dotfiles_submodule_stats.results | selectattr('item.1', 'equalto', '')
-         | selectattr('stat.exists') | map(attribute='item.0.dest')
-         | difference(dotfiles_submodule_stats.results
-                      | selectattr('item.1', 'equalto', '/.git')
-                      | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir')
-                      | map(attribute='item.0.dest')) | list }}
-    dotfiles_submodule_backups: >-
-      {{ dotfiles_submodule_stats.results | selectattr('item.1', 'equalto', '.bak')
-         | selectattr('stat.exists') | map(attribute='item.0.dest') | list }}
-
-- name: Refuse to replace existing submodule backups in {{ dotfiles_copy.dest }}
-  ansible.builtin.assert:
-    that:
-      - item not in dotfiles_submodule_backups
-    fail_msg: >-
-      Refusing to replace {{ item }} with a clone because {{ item }}.bak
-      already exists.
-  loop: '{{ dotfiles_submodule_conflicts }}'
-
-- name: Back up the submodule paths that are not checkouts in {{ dotfiles_copy.dest }}
-  dotfiles_backup:
-    src: '{{ item }}'
-    dest: '{{ item }}.bak'
-  loop: '{{ dotfiles_submodule_conflicts }}'
-  loop_control:
-    label: '{{ item }} -> {{ item }}.bak'
-  register: dotfiles_submodule_conflict_backups
-
-- name: Clone the submodules at their recorded commits in {{ dotfiles_copy.dest }}
-  ansible.builtin.git:
-    repo: '{{ item.url }}'
-    dest: '{{ item.dest }}'
-    version: '{{ item.version }}'
-  loop: '{{ dotfiles_directory_contents.submodules }}'
-  loop_control:
-    label: '{{ item.dest }} at {{ item.version }}'
-  # A backup is only planned in check mode, so the path still holds the copy.
-  when: not (ansible_check_mode and item.dest in dotfiles_submodule_conflicts)
   notify: '{{ dotfiles_copy_handlers }}'
 
 # Only the files the previous deployment listed are deleted, and only when

@@ -20,7 +20,6 @@ from test_ansible_modules import (
     files,
     initramfs,
     makepkg,
-    submodules,
     sysfs,
     tree,
 )
@@ -485,57 +484,6 @@ class ModuleErrorPathTests(ModuleCase):
             result = self.invoke(sysfs, {"path": "/sys/test/control", "value": "new"})
         self.assertTrue(result.failed)
         self.assertIn("cannot verify", result.data["msg"])
-
-    def test_submodule_failures_are_reported(self):
-        error = subprocess.CalledProcessError(1, ["git"])
-        with patch.object(submodules, "submodule_revisions", side_effect=error):
-            self.assertTrue(
-                self.invoke(submodules, {"path": str(self.root)}, check=True).failed
-            )
-            self.assertTrue(self.invoke(submodules, {"path": str(self.root)}).failed)
-        with (
-            patch.object(submodules, "submodule_revisions", return_value={}),
-            patch.object(submodules.subprocess, "run", side_effect=error),
-        ):
-            result = self.invoke(submodules, {"path": str(self.root)})
-        self.assertTrue(result.failed)
-        self.assertFalse(result.data["changed"])
-        with (
-            patch.object(
-                submodules, "submodule_revisions", side_effect=[{}, error, error]
-            ),
-            patch.object(submodules.subprocess, "run"),
-        ):
-            result = self.invoke(submodules, {"path": str(self.root)})
-        self.assertTrue(result.failed)
-        self.assertFalse(result.data["report_complete"])
-
-    def test_unmerged_submodule_is_rejected(self):
-        listing = "160000 " + "a" * 40 + " 1\tsub\0"
-        with (
-            patch.object(
-                submodules.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess([], 0, stdout=listing),
-            ),
-            self.assertRaises(ValueError),
-        ):
-            submodules.submodule_revisions(str(self.root))
-
-    def test_changed_submodule_files_for_new_and_removed_checkouts(self):
-        with patch.object(
-            submodules.subprocess,
-            "run",
-            return_value=subprocess.CompletedProcess([], 0, stdout="a\0b\0"),
-        ):
-            added = submodules.changed_submodule_files(
-                "/repo", {"sub": ("x", False)}, {"sub": ("x", True)}
-            )
-        self.assertEqual(added, ["/repo/sub/a", "/repo/sub/b"])
-        removed = submodules.changed_submodule_files(
-            "/repo", {"sub": ("x", True)}, {"sub": ("x", False)}
-        )
-        self.assertEqual(removed, ["/repo/sub"])
 
 
 class BackupScriptTests(unittest.TestCase):

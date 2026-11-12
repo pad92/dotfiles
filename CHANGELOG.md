@@ -114,17 +114,18 @@ Release history and changes planned for the next version.
     since the `vim.tar.gz` archive no longer contains it. Without Vundle,
     Vim starts without plugins instead of reporting errors, and the gruvbox
     color scheme applies once Vundle has installed it.
-  - Clone the Zsh plugin submodules on the target, at the commit the
-    repository records, instead of copying them. A plugin update then removes
-    the files dropped upstream, and the controller does not need the
-    submodules checked out. A plugin directory without `.git` is moved to
-    `<path>.bak` first.
+  - Replace the Zsh plugin submodules with clones on the target, pinned in
+    `dotfiles_zsh_plugins`. The repository has no submodules left. To update
+    a plugin, change its commit there; the next deployment moves the clone
+    and removes the files dropped upstream.
   - Record the files copied into each directory in
     `~/.local/state/dotfiles/manifests/`. The next deployment deletes those
     the repository no longer ships, such as `_fwupdmgr`, unless they were
     changed on the target; files added by hand stay.
   - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
-    `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone.
+    `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone. The
+    `dotfiles_submodules` tag and the `dotfiles_submodule_update` module are
+    removed.
 - **Makefile**:
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and

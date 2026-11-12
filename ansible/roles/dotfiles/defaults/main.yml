@@ -6,7 +6,7 @@ dotfiles_owner: "{{ ansible_facts['user_id'] }}"
 dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
 # Everything is copied and rendered from the controller's copy of the
 # repository: the target keeps no link into a clone, which can be deleted
-# once deployed. The submodules are initialized there, on the controller.
+# once deployed.
 dotfiles_source_repository: '{{ role_path | dirname | dirname | dirname }}'
 dotfiles_source_root: '{{ role_path }}/files/home'
 # Where earlier versions linked .vim, .tmux and the Zsh tree. A link that
@@ -21,10 +21,9 @@ dotfiles_icon_theme: Papirus-Dark
 dotfiles_icon_theme_parent: "{{ dotfiles_icon_theme | regex_replace('-Dark$', '') }}"
 dotfiles_zsh_dest: .local/share/dotfiles/zsh
 dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_dest }}'
-# Trees copied with only the files Git tracks. Their submodules are cloned on
-# the target at the commit the controller's index records. Files a program
-# adds there later (Vim and tmux plugins, Vim backups) stay in place, and a
-# file that a later version no longer ships is deleted unless it was changed
+# Trees copied with only the files Git tracks. Files a program adds there
+# later (plugins, Vim backups) stay in place, and a file that a later version
+# no longer ships is deleted unless it was changed
 # (see dotfiles_manifest_directory). A tree with copy: false has no files of
 # its own: its directory is created, and a legacy link to it replaced.
 dotfiles_trees:
@@ -46,6 +45,19 @@ dotfiles_plugin_managers:
     dest: .vim/bundle/Vundle.vim
   - repo: https://github.com/tmux-plugins/tpm.git
     dest: .tmux/plugins/tpm
+# Zsh plugins, cloned on the target at a pinned commit. A deployment moves an
+# existing clone to that commit; change version to update a plugin. The
+# pragma tells detect-secrets that a commit hash is not a secret.
+dotfiles_zsh_plugins:
+  - repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-syntax-highlighting'
+    version: 1d85c692615a25fe2293bdd44b34c217d5d2bf04 # pragma: allowlist secret
+  - repo: https://github.com/zsh-users/zsh-autosuggestions.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-autosuggestions'
+    version: 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5 # pragma: allowlist secret
+  - repo: https://github.com/zsh-users/zsh-completions.git
+    dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-completions'
+    version: f954400c72530daccb38868ebc8da42dace56bb0 # pragma: allowlist secret
 # Hyprlock background, copied from the repository into the home directory.
 dotfiles_hyprlock_wallpaper_source: >-
   assets/wallpapers/wallpaper_arch_perfection_simplicity_by_icetremens-dbjspqh.png

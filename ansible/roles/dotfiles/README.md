@@ -21,14 +21,12 @@ backups, swap files) stay in place. The repository tracks nothing under
 `.tmux`, so that entry has `copy: false`: the role only creates the
 directory, for tpm and the plugins it installs.
 
-The Zsh plugins are submodules. They are cloned on the target from the URL in
-`.gitmodules`, at the commit the controller's index records, so the
-controller does not need them checked out. A deployment after a submodule
-update moves the clone to the new commit, and the files removed upstream go
-with it. A clone with local changes stops the deployment. If the plugin's
-path holds a directory without `.git`, such as a copy made by an earlier
-version of this role, it is moved to `<path>.bak` before the clone, and an
-existing `<path>.bak` stops the run.
+The repository has no submodules. The Zsh plugins are cloned on the target
+at the commit `dotfiles_zsh_plugins` pins for each one. To update a plugin,
+change its `version` to the new commit and deploy: the clone moves to that
+commit, and the files removed upstream go with it. A clone with local changes
+stops the deployment. `dotfiles_tree` refuses a submodule in a copied tree,
+since its files would not be copied.
 
 Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
 (`dotfiles_manifest_directory`) that lists the files deployed there with their
@@ -47,10 +45,10 @@ Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
 link there (`dotfiles_legacy_link_root`), the deployment removes the link,
 copies the tree, then copies what Git does not track behind the link: Vim
 backups and swap files, and plugins installed by Vundle with their Git
-metadata. The old Vundle and tpm submodules are cloned again rather than
-copied, since their `.git` file points into the clone. The clone itself is
-left untouched. Check mode lists the files it will bring over and stops
-before the replacement. A link that points anywhere else is backed up to
+metadata. Vundle, tpm and the Zsh plugins, which older versions shipped as
+submodules, are cloned again rather than copied, since their `.git` file
+points into the clone. The clone itself is left untouched. Check mode lists
+the files it will bring over and stops before the replacement. A link that points anywhere else is backed up to
 `<path>.bak` like any other conflict.
 
 The Hyprlock background is copied to

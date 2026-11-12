@@ -27,7 +27,6 @@ files = load(
 )
 sys.modules["ansible.module_utils.dotfiles_files"] = files
 backup = load("backup_module", "ansible/library/dotfiles_backup.py")
-submodules = load("submodules_module", "ansible/library/dotfiles_submodule_update.py")
 sysfs = load("sysfs_module", "ansible/library/dotfiles_sysfs.py")
 initramfs = load("initramfs_module", "ansible/library/dotfiles_initramfs.py")
 makepkg = load("makepkg_module", "ansible/library/dotfiles_makepkg.py")
@@ -213,7 +212,7 @@ class ModuleTests(unittest.TestCase):
         (self.root / "cycle").symlink_to(".")
         (self.root / "broken").symlink_to("missing")
         entries = {
-            Path(entry["path"]).name: entry for entry in tree.collect(str(self.root))[0]
+            Path(entry["path"]).name: entry for entry in tree.collect(str(self.root))
         }
         self.assertEqual(len(entries), 6)
         self.assertTrue(entries[".hidden"]["isreg"])
@@ -228,7 +227,7 @@ class ModuleTests(unittest.TestCase):
         (self.root / "sub/file").write_text("file")
         entries = {
             os.path.relpath(entry["path"], self.root): entry["dest"]
-            for entry in tree.collect(str(self.root), dest="/home/user/./.vim/")[0]
+            for entry in tree.collect(str(self.root), dest="/home/user/./.vim/")
         }
         self.assertEqual(
             entries,
@@ -239,12 +238,8 @@ class ModuleTests(unittest.TestCase):
             },
         )
 
-    def test_tree_tracked_copies_git_files_and_lists_submodules_to_clone(self):
-        plugin, parent = self.root / "plugin", self.root / "parent"
-        repository(plugin)
-        (plugin / "plugin.zsh").write_text("plugin")
-        git(plugin, "add", ".")
-        git(plugin, "commit", "-m", "plugin")
+    def test_tree_tracked_copies_git_files_and_refuses_submodules(self):
+        parent = self.root / "parent"
         repository(parent)
         source = parent / "home/.vim"
         (source / "config").mkdir(parents=True)
@@ -252,6 +247,36 @@ class ModuleTests(unittest.TestCase):
         (parent / ".gitignore").write_text("backup/\n")
         git(parent, "add", ".")
         git(parent, "commit", "-m", "tree")
+        # What a program writes into the tree, as Vim did into the old clone.
+        (source / "backup").mkdir()
+        (source / "backup/file~").write_text("ignored")
+        (source / "untracked").write_text("untracked")
+        (source / "bundle/gruvbox").mkdir(parents=True)
+        git(source / "bundle/gruvbox", "init")
+
+        files = tree.collect(str(source), tracked=True, dest="/h/.vim")
+        entries = {os.path.relpath(entry["path"], source): entry for entry in files}
+        self.assertEqual(set(entries), {".", "config", "config/plugins.vim"})
+        self.assertEqual(
+            entries["config/plugins.vim"]["checksum"],
+            hashlib.sha1(b"tracked").hexdigest(),
+        )
+        self.assertNotIn("checksum", entries["config"])
+        # Without the option, the same tree lists everything on disk.
+        everything = {
+            os.path.relpath(entry["path"], source)
+            for entry in tree.collect(str(source))
+        }
+        self.assertIn("backup/file~", everything)
+        self.assertIn("bundle/gruvbox/.git", everything)
+
+        # A submodule's files would not be copied, so the module refuses it
+        # even when it is not checked out.
+        plugin = self.root / "plugin"
+        repository(plugin)
+        (plugin / "plugin.zsh").write_text("plugin")
+        git(plugin, "add", ".")
+        git(plugin, "commit", "-m", "plugin")
         git(
             parent,
             "-c",
@@ -261,63 +286,12 @@ class ModuleTests(unittest.TestCase):
             str(plugin),
             "home/.vim/plugins/one",
         )
-        # A later commit of the plugin that the index does not record.
-        recorded = git(plugin, "rev-parse", "HEAD")
-        (plugin / "later.zsh").write_text("later")
-        git(plugin, "add", ".")
-        git(plugin, "commit", "-m", "later")
-        # What a program writes into the tree, as Vim did into the old clone.
-        (source / "backup").mkdir()
-        (source / "backup/file~").write_text("ignored")
-        (source / "untracked").write_text("untracked")
-        (source / "bundle/gruvbox").mkdir(parents=True)
-        git(source / "bundle/gruvbox", "init")
-
-        files, submodules = tree.collect(str(source), tracked=True, dest="/h/.vim")
-        entries = {os.path.relpath(entry["path"], source): entry for entry in files}
-        # The submodule is cloned on the target, so none of its files is copied.
-        self.assertEqual(set(entries), {".", "config", "config/plugins.vim", "plugins"})
-        self.assertEqual(
-            entries["config/plugins.vim"]["checksum"],
-            hashlib.sha1(b"tracked").hexdigest(),
-        )
-        self.assertNotIn("checksum", entries["config"])
-        self.assertEqual(
-            submodules,
-            [
-                {
-                    "path": "plugins/one",
-                    "url": str(plugin),
-                    "version": recorded,
-                    "dest": "/h/.vim/plugins/one",
-                }
-            ],
-        )
-        # Without the option, the same tree lists everything on disk.
-        everything = {
-            os.path.relpath(entry["path"], source)
-            for entry in tree.collect(str(source))[0]
-        }
-        self.assertIn("plugins/one/.git", everything)
-        self.assertIn("backup/file~", everything)
-
-        # The controller no longer needs the submodule checked out.
         git(parent, "submodule", "deinit", "--force", "home/.vim/plugins/one")
-        result = self.invoke(tree, {"path": str(source), "tracked": True, "dest": None})
-        self.assertFalse(result.failed)
-        self.assertEqual(result.data["submodules"][0]["version"], recorded)
-        # A gitlink that .gitmodules does not describe cannot be cloned.
-        git(
-            parent,
-            "config",
-            "--file",
-            ".gitmodules",
-            "--remove-section",
-            "submodule.home/.vim/plugins/one",
-        )
         failed = self.invoke(tree, {"path": str(source), "tracked": True, "dest": None})
         self.assertTrue(failed.failed)
-        self.assertIn("Submodule without a URL", failed.data["msg"])
+        self.assertIn(
+            f"Submodule in a copied tree: {source / 'plugins/one'}", failed.data["msg"]
+        )
         # Outside a Git repository the module fails instead of copying nothing.
         outside = self.root / "outside"
         outside.mkdir()
@@ -458,47 +432,3 @@ class ModuleTests(unittest.TestCase):
             result = self.invoke(makepkg, {"path": str(self.root)})
         self.assertFalse(result.failed)
         self.assertIn(str(self.root / "yay.pkg.tar.zst"), result.data["changed_files"])
-
-    def test_submodule_paths_with_spaces_initialization_and_update(self):
-        def git(path, *args):
-            return subprocess.run(
-                ["git", "-C", str(path), *args],
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-
-        child, parent = self.root / "child", self.root / "parent"
-        for path in [child, parent]:
-            path.mkdir()
-            git(path, "init")
-            git(path, "config", "commit.gpgsign", "false")
-            git(path, "config", "user.name", "Test")
-            git(path, "config", "user.email", "test@example.invalid")
-        (child / "file name").write_text("one")
-        git(child, "add", ".")
-        git(child, "commit", "-m", "first")
-        git(
-            parent,
-            "-c",
-            "protocol.file.allow=always",
-            "submodule",
-            "add",
-            str(child),
-            "sub module",
-        )
-        first = submodules.submodule_revisions(str(parent))
-        self.assertEqual(list(first), ["sub module"])
-        (child / "file name").write_text("two")
-        git(child, "commit", "-am", "second")
-        git(parent / "sub module", "fetch")
-        git(parent / "sub module", "checkout", git(child, "rev-parse", "HEAD"))
-        second = submodules.submodule_revisions(str(parent))
-        changed = submodules.changed_submodule_files(str(parent), first, second)
-        self.assertEqual(changed, [str(parent / "sub module/file name")])
-        planned = self.invoke(submodules, {"path": str(parent)}, check=True)
-        self.assertTrue(planned.data["changed"])
-        result = self.invoke(submodules, {"path": str(parent)})
-        self.assertFalse(result.failed)
-        self.assertEqual(result.data["changed_files"], changed)
-        self.assertFalse(self.invoke(submodules, {"path": str(parent)}).data["changed"])

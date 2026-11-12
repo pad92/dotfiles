@@ -4,6 +4,7 @@ import getpass
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -57,6 +58,7 @@ class DotfilesDeployTests(unittest.TestCase):
                         "dotfiles_source_repository": str(ROOT),
                         "dotfiles_trees": [],
                         "dotfiles_plugin_managers": [],
+                        "dotfiles_zsh_plugins": [],
                         "dotfiles_templates": [
                             {"src": "home/.gtkrc-2.0.j2", "dest": ".gtkrc-2.0"},
                             {
@@ -225,6 +227,7 @@ class DotfilesDeployTests(unittest.TestCase):
                         "dotfiles_files": [".gitconfig"],
                         "dotfiles_trees": [],
                         "dotfiles_plugin_managers": [],
+                        "dotfiles_zsh_plugins": [],
                         "dotfiles_templates": [],
                         "dotfiles_systemd_graphical_units": [],
                         "dotfiles_systemd_directory": ".config/test-systemd",
@@ -356,6 +359,26 @@ class DotfilesTreeDefaultsTests(unittest.TestCase):
                     # Only a destination: tracked files would never be copied.
                     self.assertFalse(tracked, tracked)
 
+    def test_zsh_plugins_are_pinned_and_loaded(self):
+        defaults = yaml.safe_load(
+            (ROOT / "ansible/roles/dotfiles/defaults/main.yml").read_text()
+        )
+        zshrc = (ROOT / "ansible/roles/dotfiles/templates/home/.zshrc.j2").read_text()
+        loaded = re.search(r"^plugins=\((.*?)\)", zshrc, re.M | re.S).group(1).split()
+        plugins = Path("ansible/roles/dotfiles/files/home/zsh/plugins")
+        self.assertTrue(defaults["dotfiles_zsh_plugins"])
+        for plugin in defaults["dotfiles_zsh_plugins"]:
+            name = Path(plugin["dest"]).name
+            with self.subTest(plugin=name):
+                # A branch or tag would move without a change to the repository.
+                self.assertRegex(plugin["version"], r"^[0-9a-f]{40}$")
+                self.assertEqual(
+                    plugin["dest"], f"{{{{ dotfiles_zsh_dest }}}}/plugins/{name}"
+                )
+                self.assertIn(name, loaded)
+                # The copy would land in the clone's working tree.
+                self.assertFalse(git(ROOT, "ls-files", "--", str(plugins / name)))
+
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 class DotfilesTreeCopyTests(unittest.TestCase):
@@ -373,6 +396,8 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             repository(source)
             (source / "home/.vim/config").mkdir(parents=True)
             (source / "home/.vim/config/plugins.vim").write_text("new\n")
+            (source / "home/zsh").mkdir()
+            (source / "home/zsh/init.zsh").write_text("new\n")
             (source / ".gitignore").write_text("backup/\n")
             (source / "wallpaper.png").write_text("png\n")
             git(source, "add", ".")
@@ -387,8 +412,18 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             linked = clone / "files/home/.vim"
             (linked / "config").mkdir(parents=True)
             (linked / "config/plugins.vim").write_text("old\n")
+            linked_zsh = clone / "files/home/zsh"
+            linked_zsh.mkdir()
+            (linked_zsh / "init.zsh").write_text("old\n")
             git(clone, "add", ".")
             git(clone, "commit", "-q", "-m", "clone")
+            # A Zsh plugin that an older version shipped as a submodule, left
+            # behind once the clone dropped its gitlink: the .git file points
+            # into the clone, and the files are those of an older commit.
+            stale = linked_zsh / "plugins/zsh-plugin"
+            stale.mkdir(parents=True)
+            (stale / ".git").write_text("gitdir: ../../../../../.git/modules/zsh\n")
+            (stale / "plugin.zsh").write_text("stale\n")
             (linked / "backup").mkdir()
             (linked / "backup/notes.txt~").write_text("edited\n")
             gruvbox = linked / "bundle/gruvbox"
@@ -407,9 +442,20 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             git(vundle, "add", ".")
             git(vundle, "commit", "-q", "-m", "vundle")
 
+            zsh_plugin = work / "zsh-plugin"
+            repository(zsh_plugin)
+            (zsh_plugin / "plugin.zsh").write_text("pinned\n")
+            git(zsh_plugin, "add", ".")
+            git(zsh_plugin, "commit", "-q", "-m", "pinned")
+            pinned = git(zsh_plugin, "rev-parse", "HEAD")
+            (zsh_plugin / "plugin.zsh").write_text("later\n")
+            git(zsh_plugin, "commit", "-q", "-am", "later")
+
             home = work / "home"
             home.mkdir()
             (home / ".vim").symlink_to(linked)
+            (home / ".local/share/dotfiles").mkdir(parents=True)
+            (home / ".local/share/dotfiles/zsh").symlink_to(linked_zsh)
             play = [
                 {
                     "hosts": "localhost",
@@ -421,11 +467,21 @@ class DotfilesTreeCopyTests(unittest.TestCase):
                         "dotfiles_source_repository": str(source),
                         "dotfiles_source_root": str(source / "home"),
                         "dotfiles_legacy_link_root": str(clone / "files/home"),
-                        "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
+                        "dotfiles_trees": [
+                            {"src": ".vim", "dest": ".vim"},
+                            {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
+                        ],
                         "dotfiles_plugin_managers": [
                             {
                                 "repo": f"file://{vundle}",
                                 "dest": ".vim/bundle/Vundle.vim",
+                            }
+                        ],
+                        "dotfiles_zsh_plugins": [
+                            {
+                                "repo": f"file://{zsh_plugin}",
+                                "dest": ".local/share/dotfiles/zsh/plugins/zsh-plugin",
+                                "version": pinned,
                             }
                         ],
                         "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
@@ -498,6 +554,18 @@ class DotfilesTreeCopyTests(unittest.TestCase):
                 git(vim / "bundle/Vundle.vim", "rev-parse", "HEAD"),
                 git(vundle, "rev-parse", "HEAD"),
             )
+            # The Zsh plugin is cloned at its pinned commit, not copied from
+            # the clone with its broken .git file.
+            zsh = home / ".local/share/dotfiles/zsh"
+            self.assertFalse(zsh.is_symlink())
+            self.assertEqual((zsh / "init.zsh").read_text(), "new\n")
+            self.assertTrue((zsh / "plugins/zsh-plugin/.git").is_dir())
+            self.assertEqual(
+                git(zsh / "plugins/zsh-plugin", "rev-parse", "HEAD"), pinned
+            )
+            self.assertEqual(
+                (zsh / "plugins/zsh-plugin/plugin.zsh").read_text(), "pinned\n"
+            )
             self.assertEqual((home / ".local/share/wallpaper.png").read_text(), "png\n")
             # The clone is left as it was.
             self.assertEqual((linked / "config/plugins.vim").read_text(), "old\n")
@@ -515,7 +583,7 @@ class DotfilesTreeCopyTests(unittest.TestCase):
 class DotfilesTreeUpdateTests(unittest.TestCase):
     """Later deployments follow the repository: pinned clones and removed files."""
 
-    def test_submodules_are_cloned_and_removed_files_deleted(self):
+    def test_zsh_plugins_follow_their_pin_and_removed_files_are_deleted(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
             role = work / "dotfiles"
@@ -529,6 +597,10 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             git(plugin, "add", ".")
             git(plugin, "commit", "-q", "-m", "v1")
             first = git(plugin, "rev-parse", "HEAD")
+            # Upstream moves on; the role still pins the first commit.
+            (plugin / "unpinned.zsh").write_text("unpinned\n")
+            git(plugin, "add", ".")
+            git(plugin, "commit", "-q", "-m", "unpinned")
 
             source = work / "source"
             repository(source)
@@ -540,73 +612,55 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             (source / "wallpaper.png").write_text("png\n")
             git(source, "add", ".")
             git(source, "commit", "-q", "-m", "source")
-            git(
-                source,
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                "-q",
-                f"file://{plugin}",
-                "home/zsh/plugins/plugin",
-            )
-            git(source, "commit", "-q", "-m", "plugin")
-            # Upstream moves on; the repository still records the first commit.
-            (plugin / "unrecorded.zsh").write_text("unrecorded\n")
-            git(plugin, "add", ".")
-            git(plugin, "commit", "-q", "-m", "unrecorded")
-            # The controller does not need the submodule checked out.
-            git(
-                source,
-                "submodule",
-                "deinit",
-                "-q",
-                "--force",
-                "home/zsh/plugins/plugin",
-            )
 
             home = work / "home"
             target = home / ".local/share/dotfiles/zsh"
-            # An earlier version copied the plugin, without its .git.
-            (target / "plugins/plugin").mkdir(parents=True)
-            (target / "plugins/plugin/plugin.zsh").write_text("copied\n")
-            play = [
-                {
-                    "hosts": "localhost",
-                    "connection": "local",
-                    "gather_facts": False,
-                    "vars": {
-                        "ansible_facts": USER_FACTS,
-                        "dotfiles_home": str(home),
-                        "dotfiles_source_repository": str(source),
-                        "dotfiles_source_root": str(source / "home"),
-                        "dotfiles_legacy_link_root": str(work / "no-clone"),
-                        "dotfiles_trees": [
-                            {"src": ".tmux", "dest": ".tmux", "copy": False},
-                            {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
-                        ],
-                        "dotfiles_plugin_managers": [],
-                        "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
-                        "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
-                        "dotfiles_directories": [],
-                        "dotfiles_files": [],
-                        "dotfiles_templates": [],
-                        "dotfiles_systemd_graphical_units": [],
-                        "dotfiles_systemd_directory": ".config/test-systemd",
-                    },
-                    "tasks": [
-                        {
-                            "ansible.builtin.import_role": {
-                                "name": str(role),
-                                "tasks_from": "deploy",
-                            },
-                            "tags": ["dotfiles_deploy"],
-                        }
-                    ],
-                }
-            ]
             playbook = work / "play.yml"
-            playbook.write_text(yaml.safe_dump(play))
+
+            def write_play(version):
+                play = [
+                    {
+                        "hosts": "localhost",
+                        "connection": "local",
+                        "gather_facts": False,
+                        "vars": {
+                            "ansible_facts": USER_FACTS,
+                            "dotfiles_home": str(home),
+                            "dotfiles_source_repository": str(source),
+                            "dotfiles_source_root": str(source / "home"),
+                            "dotfiles_legacy_link_root": str(work / "no-clone"),
+                            "dotfiles_trees": [
+                                {"src": ".tmux", "dest": ".tmux", "copy": False},
+                                {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
+                            ],
+                            "dotfiles_plugin_managers": [],
+                            "dotfiles_zsh_plugins": [
+                                {
+                                    "repo": f"file://{plugin}",
+                                    "dest": ".local/share/dotfiles/zsh/plugins/plugin",
+                                    "version": version,
+                                }
+                            ],
+                            "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
+                            "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
+                            "dotfiles_directories": [],
+                            "dotfiles_files": [],
+                            "dotfiles_templates": [],
+                            "dotfiles_systemd_graphical_units": [],
+                            "dotfiles_systemd_directory": ".config/test-systemd",
+                        },
+                        "tasks": [
+                            {
+                                "ansible.builtin.import_role": {
+                                    "name": str(role),
+                                    "tasks_from": "deploy",
+                                },
+                                "tags": ["dotfiles_deploy"],
+                            }
+                        ],
+                    }
+                ]
+                playbook.write_text(yaml.safe_dump(play))
 
             def run(*arguments):
                 result = subprocess.run(
@@ -637,23 +691,13 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             )
             clone = target / "plugins/plugin"
 
-            # Check mode plans the backup and changes nothing.
-            output = run("--check")
-            self.assertIn(f"{clone} -> {clone}.bak", output)
-            self.assertFalse((target / "plugins/plugin.bak").exists())
-            self.assertFalse((clone / ".git").exists())
-            self.assertFalse(manifest.exists())
-
+            write_play(first)
             run()
             self.assertTrue((home / ".tmux").is_dir())
-            # The copy is kept as a backup, and the clone is at the recorded
-            # commit, with its own metadata.
-            self.assertEqual(
-                (target / "plugins/plugin.bak/plugin.zsh").read_text(), "copied\n"
-            )
+            # The clone is at the pinned commit, with its own metadata.
             self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
             self.assertEqual((clone / "plugin.zsh").read_text(), "v1\n")
-            self.assertFalse((clone / "unrecorded.zsh").exists())
+            self.assertFalse((clone / "unpinned.zsh").exists())
             recorded = json.loads(manifest.read_text())["files"]
             self.assertEqual(
                 sorted(recorded),
@@ -665,17 +709,12 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             )
             self.assertRegex(run(), r"changed=0\b")
 
-            # Upstream drops a file and the repository records the new commit.
-            git(plugin, "rm", "-q", "dropped.zsh", "unrecorded.zsh")
+            # Upstream drops a file and the role pins the new commit.
+            git(plugin, "rm", "-q", "dropped.zsh", "unpinned.zsh")
             (plugin / "plugin.zsh").write_text("v2\n")
             git(plugin, "commit", "-q", "-am", "v2")
             second = git(plugin, "rev-parse", "HEAD")
-            git(
-                source,
-                "update-index",
-                "--cacheinfo",
-                f"160000,{second},home/zsh/plugins/plugin",
-            )
+            write_play(second)
             # The repository drops two completions, one of them edited on the
             # target, and the user adds one of their own.
             git(
@@ -689,12 +728,13 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             (target / "completions/_edited").write_text("edited\n")
             (target / "completions/_local").write_text("local\n")
 
-            output = run("--check")
+            run("--check")
             self.assertTrue((target / "completions/_removed").exists())
             self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
 
             output = run()
             self.assertEqual(git(clone, "rev-parse", "HEAD"), second)
+            self.assertEqual((clone / "plugin.zsh").read_text(), "v2\n")
             self.assertFalse((clone / "dropped.zsh").exists())
             self.assertFalse((target / "completions/_removed").exists())
             self.assertEqual((target / "completions/_edited").read_text(), "edited\n")
