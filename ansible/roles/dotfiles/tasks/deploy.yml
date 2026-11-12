@@ -134,7 +134,7 @@
 
 # Git lists, under each legacy link's target, what it does not track:
 # files the programs wrote there, such as Vim backups. A nested
-# repository, such as a plugin Vundle cloned, comes as one entry.
+# repository, such as a plugin clone under .vim/bundle, comes as one entry.
 - name: List the files programs added behind legacy tree links
   ansible.builtin.command:
     argv:
@@ -200,15 +200,6 @@
       loop_control:
         label: '{{ item.dest }}'
 
-    - name: Create the trees that have no files of their own
-      ansible.builtin.file:
-        path: '{{ dotfiles_home }}/{{ item.dest }}'
-        state: directory
-        mode: '0755'
-      loop: "{{ dotfiles_trees | selectattr('copy', 'false') | list }}"
-      loop_control:
-        label: '{{ item.dest }}'
-
     - name: Copy changed static dotfile directories and trees
       ansible.builtin.include_tasks:
         file: copy-directory.yml
@@ -221,16 +212,16 @@
              {'src': dotfiles_copy_item, 'dest': dotfiles_copy_item} }}
       loop: >-
         {{ (dotfiles_directories | map('normpath') | unique | list)
-           + (dotfiles_trees | rejectattr('copy', 'false') | list) }}
+           + dotfiles_trees }}
       loop_control:
         loop_var: dotfiles_copy_item
         label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'
 
     # cp creates the missing parents of each path and keeps its modes, links
-    # and nested Git checkouts; an existing path is left alone. The plugin
-    # managers and Zsh plugins, which older versions shipped as submodules,
-    # are skipped with everything under them: their .git file points into the
-    # clone, so they are cloned again below instead.
+    # and nested Git checkouts; an existing path is left alone. The pinned
+    # plugins are skipped with everything under them, since they are cloned
+    # below: the Zsh plugins, which older versions shipped as submodules,
+    # have a .git file that points into the clone.
     # Git quotes a name with a newline or a quote, which then fails here
     # rather than copying another path.
     - name: Copy the files programs added behind legacy tree links
@@ -249,7 +240,7 @@
         dotfiles_added_path: "{{ item.1 | regex_replace('/$', '') }}"
         dotfiles_added_dest: '{{ (item.0.item.dest ~ "/" ~ dotfiles_added_path) | normpath }}'
         dotfiles_cloned_paths: >-
-          {{ (dotfiles_plugin_managers + dotfiles_zsh_plugins)
+          {{ (dotfiles_zsh_plugins + dotfiles_vim_pack_plugins)
              | map(attribute='dest') | map('normpath') | list }}
       loop: >-
         {{ dotfiles_legacy_tree_files.results | default([])
@@ -262,25 +253,15 @@
                                          | map('regex_escape') | join('|')
                                          ~ ')(/|$)')
 
-    - name: Clone the plugin managers
-      ansible.builtin.git:
-        repo: '{{ item.repo }}'
-        dest: '{{ dotfiles_home }}/{{ item.dest }}'
-        version: '{{ item.version | default("HEAD") }}'
-        update: false
-      loop: '{{ dotfiles_plugin_managers }}'
-      loop_control:
-        label: '{{ item.dest }}'
-
-    # Unlike the plugin managers, which update themselves, a Zsh plugin
-    # follows the commit pinned in dotfiles_zsh_plugins.
-    - name: Clone the Zsh plugins at their pinned commits
+    # Each plugin follows the commit pinned in dotfiles_zsh_plugins or
+    # dotfiles_vim_pack_plugins: a new pin moves an existing clone there.
+    - name: Clone the Zsh and Vim plugins at their pinned commits
       ansible.builtin.git:
         repo: '{{ item.repo }}'
         dest: '{{ dotfiles_home }}/{{ item.dest }}'
         version: '{{ item.version }}'
         update: true
-      loop: '{{ dotfiles_zsh_plugins }}'
+      loop: '{{ dotfiles_zsh_plugins + dotfiles_vim_pack_plugins }}'
       loop_control:
         label: '{{ item.dest }} at {{ item.version }}'
 

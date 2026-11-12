@@ -470,7 +470,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "dotfiles_directories": [],
                     "dotfiles_files": [".gitconfig"],
                     "dotfiles_trees": [{"src": ".vim", "dest": ".vim"}],
-                    "dotfiles_plugin_managers": [],
+                    "dotfiles_vim_pack_plugins": [],
                     "dotfiles_zsh_plugins": [],
                     "dotfiles_templates": [
                         {
@@ -548,7 +548,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     "dotfiles_directories": [],
                     "dotfiles_files": [".gitconfig"],
                     "dotfiles_trees": [],
-                    "dotfiles_plugin_managers": [],
+                    "dotfiles_vim_pack_plugins": [],
                     "dotfiles_zsh_plugins": [],
                     "dotfiles_templates": [
                         {

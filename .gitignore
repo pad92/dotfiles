@@ -32,7 +32,6 @@ ansible/roles/dotfiles/files/home/.vim/tags
 ansible/roles/dotfiles/files/home/.vim/undo
 ansible/roles/dotfiles/files/home/.vim/autoload/plug.vim
 ansible/roles/dotfiles/files/home/.vim/bundle/*
-ansible/roles/dotfiles/files/home/.vim/bundle/.vundle
 ansible/roles/dotfiles/files/home/.tmux/plugins/*
 
 # Config files that may contain secrets or be system-specific

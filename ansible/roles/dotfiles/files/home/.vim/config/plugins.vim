@@ -1,22 +1,11 @@
-" Vundle is cloned by the dotfiles role or scripts/vim.sh. Without it, Vim
-" starts without plugins.
-if filereadable(expand('~/.vim/bundle/Vundle.vim/autoload/vundle.vim'))
-  filetype off    " required by vundle
+" The plugins are a Vim package in ~/.vim/pack/dotfiles/start, which Vim
+" loads after this file (:help packages). The dotfiles role clones them at the
+" commits pinned in dotfiles_vim_pack_plugins, and the vim.tar.gz archive
+" ships the same ones. Without them, Vim starts without plugins.
 
-  " set the runtime path to include Vundle and initialize
-  set rtp+=~/.vim/bundle/Vundle.vim
-  call vundle#begin()
+" vim-instant-markdown previews each Markdown buffer through the Node.js
+" instant-markdown-d server, which reports an error when it is not installed.
+" Start the preview by hand with :InstantMarkdownPreview.
+let g:instant_markdown_autostart = 0
 
-  " let Vundle manage Vundle, required
-  Plugin 'morhetz/gruvbox'
-  Plugin 'VundleVim/Vundle.vim'
-  Plugin 'airblade/vim-gitgutter'
-  Plugin 'tpope/vim-fugitive'
-  Plugin 'suan/vim-instant-markdown', {'rtp': 'after'}
-  Plugin 'chrisbra/colorizer'
-  Plugin 'editorconfig/editorconfig-vim'
-
-  " All of your Plugins must be added before the following line
-  call vundle#end()            " required
-endif
-filetype plugin indent on    " required
+filetype plugin indent on

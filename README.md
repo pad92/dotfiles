@@ -140,11 +140,10 @@ variables, package ownership, and system settings.
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
 | `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
-| `dotfiles_deploy`                          | Deploy the configuration; clone the Vim, tmux and Zsh plugins.                |
+| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.               |
 | `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
-| `dotfiles_runtime`, `vim`                  | Check Vim; update plugins with `dotfiles_update_vim_plugins=true`.            |
 | `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                       |
 
@@ -283,7 +282,8 @@ otherwise zsh completes file names. The caches live in `~/.zcache`: delete
 
 Neovim uses Lua, Telescope, Treesitter, Mason, and native LSP. Neovim 0.8+
 loads plugins with lazy.nvim; Neovim 0.7.2 uses a compatibility loader with
-older plugin releases. Vim uses Vundle.
+older plugin releases. Vim loads its plugins as a Vim package from
+`~/.vim/pack/dotfiles/start/`, cloned at the commits the role pins.
 
 Zed is installed on Arch with the `10_sre_devops` package group. In Zed,
 `CTRL + ALT + V` saves the active file and runs
@@ -327,10 +327,11 @@ tar -xzf "$archive" -C "$HOME"
 <details>
 <summary>Install the Vim configuration on its own</summary>
 
-The archive installs `~/.vim` and `~/.vimrc`, without Vundle. Vim then starts
-without plugins and without errors. To install the plugins as well, run
-[`scripts/vim.sh`](./scripts/vim.sh), which downloads the archive, clones
-Vundle and runs it.
+The archive installs `~/.vim` and `~/.vimrc` with the plugins, at the
+commits the role pins, under `~/.vim/pack/dotfiles/start/`. Vim loads them at
+startup, so there is nothing else to install.
+[`scripts/vim.sh`](./scripts/vim.sh) does the same download and extraction
+without the confirmation step.
 
 ```sh
 set -eu

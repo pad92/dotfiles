@@ -9,7 +9,7 @@ dotfiles_group: "{{ ansible_facts['user_gid'] | string }}"
 # once deployed.
 dotfiles_source_repository: '{{ role_path | dirname | dirname | dirname }}'
 dotfiles_source_root: '{{ role_path }}/files/home'
-# Where earlier versions linked .vim, .tmux and the Zsh tree. A link that
+# Where earlier versions linked .vim and the Zsh tree. A link that
 # still points there is replaced by a copy, and the files the programs had
 # added to the clone (plugins, backups) are copied next to it.
 dotfiles_legacy_link_root: '{{ dotfiles_home }}/.dotfiles/ansible/roles/dotfiles/files/home'
@@ -24,12 +24,8 @@ dotfiles_zsh_home: '{{ dotfiles_home }}/{{ dotfiles_zsh_dest }}'
 # Trees copied with only the files Git tracks. Files a program adds there
 # later (plugins, Vim backups) stay in place, and a file that a later version
 # no longer ships is deleted unless it was changed
-# (see dotfiles_manifest_directory). A tree with copy: false has no files of
-# its own: its directory is created, and a legacy link to it replaced.
+# (see dotfiles_manifest_directory).
 dotfiles_trees:
-  - src: .tmux
-    dest: .tmux
-    copy: false
   - src: .vim
     dest: .vim
   - src: zsh
@@ -38,13 +34,6 @@ dotfiles_trees:
 # SHA-1. The next deployment deletes the listed files that the repository no
 # longer has, if they are still regular files with that checksum.
 dotfiles_manifest_directory: '{{ dotfiles_home }}/.local/state/dotfiles/manifests'
-# Plugin managers that update themselves with Git, so they are cloned on the
-# target rather than copied. An existing checkout is left as it is.
-dotfiles_plugin_managers:
-  - repo: https://github.com/VundleVim/Vundle.vim.git
-    dest: .vim/bundle/Vundle.vim
-  - repo: https://github.com/tmux-plugins/tpm.git
-    dest: .tmux/plugins/tpm
 # Zsh plugins, cloned on the target at a pinned commit. A deployment moves an
 # existing clone to that commit; change version to update a plugin. The
 # pragma tells detect-secrets that a commit hash is not a secret.
@@ -58,6 +47,30 @@ dotfiles_zsh_plugins:
   - repo: https://github.com/zsh-users/zsh-completions.git
     dest: '{{ dotfiles_zsh_dest }}/plugins/zsh-completions'
     version: f954400c72530daccb38868ebc8da42dace56bb0 # pragma: allowlist secret
+# Vim plugins, cloned on the target at a pinned commit into a Vim package,
+# which Vim loads at startup (:help packages). Like the Zsh plugins, a
+# deployment moves an existing clone to its pinned commit. The package jobs
+# read this list with scripts/ci/fetch_vim_plugins.py to put the same plugins
+# in vim.tar.gz, so dest stays a plain path under .vim/pack/.
+dotfiles_vim_pack_plugins:
+  - repo: https://github.com/morhetz/gruvbox.git
+    dest: .vim/pack/dotfiles/start/gruvbox
+    version: ef8864bb42bf244f0295d1c5a403b27e3d139695 # pragma: allowlist secret
+  - repo: https://github.com/airblade/vim-gitgutter.git
+    dest: .vim/pack/dotfiles/start/vim-gitgutter
+    version: 90b75207bd9b55d8ac4af15f72b4e935462014d0 # pragma: allowlist secret
+  - repo: https://github.com/tpope/vim-fugitive.git
+    dest: .vim/pack/dotfiles/start/vim-fugitive
+    version: 3b753cf8c6a4dcde6edee8827d464ba9b8c4a6f0 # pragma: allowlist secret
+  - repo: https://github.com/suan/vim-instant-markdown.git
+    dest: .vim/pack/dotfiles/start/vim-instant-markdown
+    version: 00cf249fe59e70d16fd6e10c18132af09552ed2c # pragma: allowlist secret
+  - repo: https://github.com/chrisbra/colorizer.git
+    dest: .vim/pack/dotfiles/start/colorizer
+    version: f5d69c0dea9f36e2eb025c7d86cc62b5a0d8af62 # pragma: allowlist secret
+  - repo: https://github.com/editorconfig/editorconfig-vim.git
+    dest: .vim/pack/dotfiles/start/editorconfig-vim
+    version: c0227885a06b155d5aa5465e08b9800e8c939f70 # pragma: allowlist secret
 # Hyprlock background, copied from the repository into the home directory.
 dotfiles_hyprlock_wallpaper_source: >-
   assets/wallpapers/wallpaper_arch_perfection_simplicity_by_icetremens-dbjspqh.png
@@ -233,19 +246,3 @@ dotfiles_waybar_includes:
   - ~/.config/waybar/conf/audio.json
   - ~/.config/waybar/conf/workspaces.json
   - ~/.config/waybar/conf/temperature.json
-dotfiles_update_vim_plugins: false
-dotfiles_vim_plugins:
-  - repo: https://github.com/VundleVim/Vundle.vim.git
-    dest: Vundle.vim
-  - repo: https://github.com/morhetz/gruvbox.git
-    dest: gruvbox
-  - repo: https://github.com/airblade/vim-gitgutter.git
-    dest: vim-gitgutter
-  - repo: https://github.com/tpope/vim-fugitive.git
-    dest: vim-fugitive
-  - repo: https://github.com/suan/vim-instant-markdown.git
-    dest: vim-instant-markdown
-  - repo: https://github.com/chrisbra/colorizer.git
-    dest: colorizer
-  - repo: https://github.com/editorconfig/editorconfig-vim.git
-    dest: editorconfig-vim

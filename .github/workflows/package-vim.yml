@@ -6,14 +6,18 @@ on:
     paths:
       - 'ansible/roles/dotfiles/files/home/.vimrc'
       - 'ansible/roles/dotfiles/files/home/.vim/**'
+      - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/vim.sh'
+      - 'scripts/ci/fetch_vim_plugins.py'
       - '.github/workflows/package-vim.yml'
   pull_request:
     branches: ['main']
     paths:
       - 'ansible/roles/dotfiles/files/home/.vimrc'
       - 'ansible/roles/dotfiles/files/home/.vim/**'
+      - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/vim.sh'
+      - 'scripts/ci/fetch_vim_plugins.py'
 
 concurrency:
   group: vim-${{ github.workflow }}-${{ github.ref }}
@@ -31,8 +35,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Package Vim configuration
-        run: tar -czf vim.tar.gz -C ansible/roles/dotfiles/files/home .vim .vimrc
+      # The plugins pinned in the dotfiles role, without their .git directory.
+      - name: Package Vim configuration and plugins
+        run: |
+          pip install --quiet PyYAML==6.0.3
+          mkdir package
+          cp -a ansible/roles/dotfiles/files/home/.vim ansible/roles/dotfiles/files/home/.vimrc package/
+          python3 scripts/ci/fetch_vim_plugins.py package
+          tar -czf vim.tar.gz -C package .vim .vimrc
 
       - name: Upload package
         uses: actions/upload-artifact@v4
