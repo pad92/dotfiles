@@ -112,7 +112,9 @@ Release history and changes planned for the next version.
   - Clone Vundle and tpm on the target instead of shipping them as
     submodules: a copy has no Git metadata, so neither could update itself.
     An existing checkout is left alone. `scripts/vim.sh` clones Vundle too,
-    since the `vim.tar.gz` archive no longer contains it.
+    since the `vim.tar.gz` archive no longer contains it. Without Vundle,
+    Vim starts without plugins instead of reporting errors, and the gruvbox
+    color scheme applies once Vundle has installed it.
   - `dotfiles_trees` replaces `dotfiles_links`, `dotfiles_zsh_dest` replaces
     `dotfiles_zsh_link_dest`, and `dotfiles_repository` is gone.
 - **Makefile**:

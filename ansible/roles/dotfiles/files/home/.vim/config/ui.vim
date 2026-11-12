@@ -2,7 +2,7 @@
 " see https://github.com/morhetz/gruvbox
 set background=dark    " Setting dark mode
 let g:gruvbox_contrast_dark='hard'
-colorscheme gruvbox
+silent! colorscheme gruvbox
 
 " Vim5 and later versions support syntax highlighting. Uncommenting the next
 " line enables syntax highlighting by default.

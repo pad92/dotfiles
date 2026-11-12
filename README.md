@@ -327,9 +327,10 @@ tar -xzf "$archive" -C "$HOME"
 <details>
 <summary>Install the Vim configuration on its own</summary>
 
-The archive installs `~/.vim` and `~/.vimrc`, without Vundle. To install the
-plugins as well, run [`scripts/vim.sh`](./scripts/vim.sh), which downloads the
-archive, clones Vundle and runs it.
+The archive installs `~/.vim` and `~/.vimrc`, without Vundle. Vim then starts
+without plugins and without errors. To install the plugins as well, run
+[`scripts/vim.sh`](./scripts/vim.sh), which downloads the archive, clones
+Vundle and runs it.
 
 ```sh
 set -eu
