@@ -228,17 +228,21 @@
           - -a
           - --parents
           - --
-          - '{{ item.1 | regex_replace("/$", "") }}'
+          - '{{ dotfiles_added_path }}'
           - '{{ dotfiles_home }}/{{ item.0.item.dest }}/'
         chdir: '{{ dotfiles_legacy_link_root }}/{{ item.0.item.src }}'
-        creates: '{{ dotfiles_home }}/{{ item.0.item.dest }}/{{ item.1 | regex_replace("/$", "") }}'
+        creates: '{{ dotfiles_home }}/{{ dotfiles_added_dest }}'
+      vars:
+        # Relative to the tree; a nested repository comes with a final slash.
+        dotfiles_added_path: "{{ item.1 | regex_replace('/$', '') }}"
+        dotfiles_added_dest: '{{ (item.0.item.dest ~ "/" ~ dotfiles_added_path) | normpath }}'
       loop: >-
         {{ dotfiles_legacy_tree_files.results | default([])
            | subelements('stdout_lines', skip_missing=true) }}
       loop_control:
-        label: '{{ item.0.item.dest }}/{{ item.1 }}'
+        label: '{{ dotfiles_added_dest }}'
       when: >-
-        (item.0.item.dest ~ '/' ~ item.1) | normpath not in
+        dotfiles_added_dest not in
         dotfiles_plugin_managers | map(attribute='dest') | map('normpath')
 
     - name: Clone the plugin managers

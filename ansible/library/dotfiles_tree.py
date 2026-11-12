@@ -33,6 +33,12 @@ options:
         files would silently be missing.
     type: bool
     default: false
+  dest:
+    description:
+      - Directory the tree is copied to. Each entry then has a C(dest)
+        field, the normalized path of its copy under I(dest).
+      - Not expanded on the controller, since it names a path on the target.
+    type: str
 author: Dotfiles maintainers
 """
 
@@ -66,7 +72,7 @@ def tracked_paths(root: str) -> set[str]:
     return paths
 
 
-def collect(root: str, tracked: bool = False) -> list[dict]:
+def collect(root: str, tracked: bool = False, dest: str | None = None) -> list[dict]:
     result: list[dict] = []
     if not os.path.isdir(root):
         raise NotADirectoryError(root)
@@ -101,6 +107,8 @@ def collect(root: str, tracked: bool = False) -> list[dict]:
             "isreg": regular,
             "islnk": preserve_link,
         }
+        if dest is not None:
+            entry["dest"] = os.path.normpath(os.path.join(dest, relative))
         if preserve_link:
             entry["lnk_target"] = os.readlink(path)
         result.append(entry)
@@ -118,11 +126,14 @@ def main() -> None:
         argument_spec={
             "path": {"type": "path", "required": True},
             "tracked": {"type": "bool", "default": False},
+            "dest": {"type": "str"},
         },
         supports_check_mode=True,
     )
     try:
-        entries = collect(module.params["path"], module.params["tracked"])
+        entries = collect(
+            module.params["path"], module.params["tracked"], module.params["dest"]
+        )
     except OSError as error:
         module.fail_json(msg=str(error), changed=False)
     module.exit_json(changed=False, files=entries)

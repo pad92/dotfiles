@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 from ansible_test_environment import ansible_test_environment
+from git_fixtures import git, repository
 
 ROOT = Path(__file__).resolve().parents[1]
 # The role owns its files by the SSH user that tasks/target.yml describes.
@@ -333,23 +334,6 @@ class DotfilesDeployTests(unittest.TestCase):
             self.assertIn(str(target), output)
             self.assertEqual(target.read_text(), "updated\n")
             self.assertRegex(run(), r"changed=0\b")
-
-
-def git(path, *args):
-    return subprocess.run(
-        ["git", "-C", str(path), *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
-
-def repository(path):
-    path.mkdir(parents=True)
-    git(path, "init", "-q")
-    git(path, "config", "commit.gpgsign", "false")
-    git(path, "config", "user.name", "Test")
-    git(path, "config", "user.email", "test@example.invalid")
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")

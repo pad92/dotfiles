@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from git_fixtures import git, repository
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -218,23 +220,25 @@ class ModuleTests(unittest.TestCase):
         self.assertTrue(entries["alias"]["isreg"])
         self.assertTrue(entries["cycle"]["islnk"])
         self.assertEqual(entries["broken"]["lnk_target"], "missing")
+        self.assertNotIn("dest", entries[".hidden"])
+
+    def test_tree_dest_maps_each_entry_under_the_destination(self):
+        (self.root / "sub").mkdir()
+        (self.root / "sub/file").write_text("file")
+        entries = {
+            os.path.relpath(entry["path"], self.root): entry["dest"]
+            for entry in tree.collect(str(self.root), dest="/home/user/./.vim/")
+        }
+        self.assertEqual(
+            entries,
+            {
+                ".": "/home/user/.vim",
+                "sub": "/home/user/.vim/sub",
+                "sub/file": "/home/user/.vim/sub/file",
+            },
+        )
 
     def test_tree_tracked_copies_git_files_and_submodules_only(self):
-        def git(path, *args):
-            return subprocess.run(
-                ["git", "-C", str(path), *args],
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-
-        def repository(path):
-            path.mkdir(parents=True)
-            git(path, "init")
-            git(path, "config", "commit.gpgsign", "false")
-            git(path, "config", "user.name", "Test")
-            git(path, "config", "user.email", "test@example.invalid")
-
         plugin, parent = self.root / "plugin", self.root / "parent"
         repository(plugin)
         (plugin / "plugin.zsh").write_text("plugin")
@@ -289,7 +293,7 @@ class ModuleTests(unittest.TestCase):
 
         # A submodule that is not checked out would be copied empty.
         git(parent, "submodule", "deinit", "--force", "home/.vim/plugins/one")
-        failed = self.invoke(tree, {"path": str(source), "tracked": True})
+        failed = self.invoke(tree, {"path": str(source), "tracked": True, "dest": None})
         self.assertTrue(failed.failed)
         self.assertIn("Submodule not initialized", failed.data["msg"])
         self.assertIn("plugins/one", failed.data["msg"])
@@ -297,7 +301,9 @@ class ModuleTests(unittest.TestCase):
         outside = self.root / "outside"
         outside.mkdir()
         (outside / "file").write_text("file")
-        failed = self.invoke(tree, {"path": str(outside), "tracked": True})
+        failed = self.invoke(
+            tree, {"path": str(outside), "tracked": True, "dest": None}
+        )
         self.assertTrue(failed.failed)
         self.assertIn("cannot list Git-tracked files", failed.data["msg"])
 

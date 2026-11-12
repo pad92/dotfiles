@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 from ansible_test_environment import ansible_test_environment
+from git_fixtures import git, repository
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -104,20 +105,10 @@ class FileContractTests(unittest.TestCase):
 
     def test_first_vim_clone_reports_paths_and_second_run_is_unchanged(self):
         repo = self.work / "plugin"
-        repo.mkdir()
-
-        def git(*args):
-            subprocess.run(
-                ["git", "-C", str(repo), *args], check=True, capture_output=True
-            )
-
-        git("init")
-        git("config", "user.name", "Test")
-        git("config", "user.email", "test@example.invalid")
-        git("config", "commit.gpgsign", "false")
+        repository(repo)
         (repo / "plugin.vim").write_text('" test\n')
-        git("add", ".")
-        git("commit", "-m", "fixture")
+        git(repo, "add", ".")
+        git(repo, "commit", "-m", "fixture")
         home = self.work / "home"
         play = [
             {

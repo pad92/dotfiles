@@ -431,11 +431,15 @@ class ModuleErrorPathTests(ModuleCase):
 
     def test_tree_rejects_special_files_and_non_directories(self):
         os.mkfifo(self.root / "fifo")
-        # AnsibleModule fills in the default of the option.
-        result = self.invoke(tree, {"path": str(self.root), "tracked": False})
+        # AnsibleModule fills in the defaults of the options.
+        result = self.invoke(
+            tree, {"path": str(self.root), "tracked": False, "dest": None}
+        )
         self.assertTrue(result.failed)
         self.assertIn("Unsupported", result.data["msg"])
-        result = self.invoke(tree, {"path": str(self.root / "fifo"), "tracked": False})
+        result = self.invoke(
+            tree, {"path": str(self.root / "fifo"), "tracked": False, "dest": None}
+        )
         self.assertTrue(result.failed)
 
     def test_backup_check_mode_and_missing_source(self):
