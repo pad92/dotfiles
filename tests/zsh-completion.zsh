@@ -26,9 +26,13 @@ for file in $ZSH_TREE/completions/_*(N); do
   done
 done
 
-# Isolated HOME with the zsh tree linked as the dotfiles role deploys it.
+# Isolated HOME with a copy of the zsh tree. compinit -i drops fpath
+# directories that are group or world writable, as a CI checkout can be, so
+# the copy gets the permissions the dotfiles role deploys.
+umask 022
 mkdir -p "$TEST_DIR/.local/share/dotfiles"
-ln -s "$ZSH_TREE" "$TEST_DIR/.local/share/dotfiles/zsh"
+cp -R "$ZSH_TREE" "$TEST_DIR/.local/share/dotfiles/zsh"
+chmod -R go-w "$TEST_DIR/.local/share/dotfiles/zsh"
 cat > "$TEST_DIR/.zshrc" <<'EOF'
 ZSH="${HOME}/.local/share/dotfiles/zsh"
 ZSH_THEME="pad"
