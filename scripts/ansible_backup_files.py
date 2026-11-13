@@ -15,6 +15,7 @@ from ansible.template import Templar, trust_as_template
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 DOTFILES_DEFAULTS = REPOSITORY_ROOT / "ansible/roles/dotfiles/defaults/main.yml"
+AUDIO_DEFAULTS = REPOSITORY_ROOT / "ansible/roles/audio/defaults/main.yml"
 TIMESTAMP_SUFFIX = re.compile(
     r"^(?P<name>.+?)\.(?:\d+\.)?\d{4}-\d{2}-\d{2}@\d{2}:\d{2}:\d{2}~$"
 )
@@ -26,6 +27,8 @@ PATH_VARIABLES = (
     "dotfiles_hyprlock_wallpaper",
     "dotfiles_systemd_directory",
 )
+# Files the audio role no longer ships, relative to audio_config_home.
+OBSOLETE_FILE_VARIABLES = ("audio_config_home", "audio_obsolete_files")
 
 
 def trust_inventory_templates(value: object) -> object:
@@ -73,16 +76,28 @@ def load_configuration(root: Path, extra_vars: list[str]) -> dict:
         if not isinstance(inventory, dict):
             raise TypeError("Expected inventory variables")
         loader = DataLoader()
-        defaults = loader.load_from_file(
-            str(DOTFILES_DEFAULTS), trusted_as_template=True
-        )
+        defaults = {
+            **loader.load_from_file(str(AUDIO_DEFAULTS), trusted_as_template=True),
+            **loader.load_from_file(str(DOTFILES_DEFAULTS), trusted_as_template=True),
+        }
+        # The facts the audio role reads for audio_config_home. XDG_CONFIG_HOME
+        # applies only to the home of the user running clean.
+        environment = {}
+        if root.resolve() == Path.home().resolve() and os.environ.get(
+            "XDG_CONFIG_HOME"
+        ):
+            environment["XDG_CONFIG_HOME"] = os.environ["XDG_CONFIG_HOME"]
         variables = {
             **defaults,
             **trust_inventory_templates(inventory),
             "dotfiles_home": str(root),
+            "ansible_facts": {"env": environment, "user_dir": str(root)},
         }
         templar = Templar(loader=loader, variables=variables)
-        return {name: templar.template(variables[name]) for name in PATH_VARIABLES}
+        return {
+            name: templar.template(variables[name])
+            for name in PATH_VARIABLES + OBSOLETE_FILE_VARIABLES
+        }
     except (
         AnsibleError,
         KeyError,

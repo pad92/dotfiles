@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: hardening
+  author: pad
+  description: >-
+    Applies a desktop sysctl policy and SSH client defaults.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [security, sysctl, ssh]
+dependencies: []

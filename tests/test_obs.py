@@ -750,10 +750,10 @@ class SceneCollectionTests(unittest.TestCase):
         custom = obs.obs_scene_collection(
             self.video,
             None,
-            {"mic_device": "Mic_Clean", "noise_suppression": False},
+            {"mic_device": "voice.clean", "noise_suppression": False},
         )
         self.assertEqual(
-            custom["AuxAudioDevice1"]["settings"]["device_id"], "Mic_Clean"
+            custom["AuxAudioDevice1"]["settings"]["device_id"], "voice.clean"
         )
         self.assertNotIn("filters", custom["AuxAudioDevice1"])
 

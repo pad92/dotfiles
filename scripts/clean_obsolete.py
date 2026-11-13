@@ -12,20 +12,24 @@ These leftovers are removed:
   tpm, dotbot, the Zsh plugins): their submodule.<name> sections in
   .git/config and their clones under .git/modules, plus the records of
   worktrees whose directory is gone (git worktree prune);
+- the files a role no longer ships (audio_obsolete_files), while they
+  still hold the shipped content: a changed copy or a link is kept and
+  reported, like the deployment does;
 - in the repository, Python tool caches and untracked broken links, outside
   nested Git checkouts and Python virtual environments.
 
 Backups, submodule metadata and worktree records go only after REMOVE is
 typed on a terminal: a backup holds the previous content of a file, and a
-worktree record may name a checkout on a drive that is not mounted. Caches
-and broken links are regenerated or hold no content of their own, so they go
-without asking. A submodule clone is removed only when every commit its refs
+worktree record may name a checkout on a drive that is not mounted. Caches,
+broken links and unchanged obsolete files are regenerated or hold no content
+of their own, so they go without asking. A submodule clone is removed only when every commit its refs
 reach is also reachable from a remote-tracking branch or a tag, and when no
 checkout of it remains. Otherwise it is kept and reported. Everything is
 listed before anything changes, and --dry-run only lists.
 """
 
 import argparse
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -36,6 +40,13 @@ from pathlib import Path
 import ansible_backup_files as managed
 
 REPOSITORY_ROOT = managed.REPOSITORY_ROOT
+# The deployment's own rule decides which obsolete files may go.
+_OBSOLETE_SPEC = importlib.util.spec_from_file_location(
+    "dotfiles_obsolete_files",
+    REPOSITORY_ROOT / "ansible/library/dotfiles_obsolete_files.py",
+)
+obsolete_files_module = importlib.util.module_from_spec(_OBSOLETE_SPEC)
+_OBSOLETE_SPEC.loader.exec_module(obsolete_files_module)
 # Directories of the repository that hold other checkouts or installed
 # collections; clean never looks into them.
 REPOSITORY_SKIPPED_DIRECTORIES = frozenset(
@@ -51,6 +62,8 @@ class Plan:
     """What clean removes, and what it keeps with the reason."""
 
     paths: list[Path] = field(default_factory=list)
+    # Obsolete file mapped to the SHA-1 it was shipped with.
+    obsolete_files: dict[Path, str] = field(default_factory=dict)
     backups: list[Path] = field(default_factory=list)
     submodule_sections: list[str] = field(default_factory=list)
     submodule_directories: list[Path] = field(default_factory=list)
@@ -67,7 +80,7 @@ class Plan:
         )
 
     def is_empty(self) -> bool:
-        return not (self.paths or self.needs_confirmation())
+        return not (self.paths or self.obsolete_files or self.needs_confirmation())
 
 
 def run_git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -114,6 +127,28 @@ def home_broken_links(root: Path, configuration: dict) -> list[Path]:
         if not managed.has_symlink_component(path.parent) and is_broken_link(path):
             links.add(path)
     return sorted(links)
+
+
+def role_obsolete_files(configuration: dict, plan: Plan) -> None:
+    """Obsolete role files that still hold the content the role shipped."""
+    files = configuration.get("audio_obsolete_files") or {}
+    if not files:
+        return
+    config_home = Path(configuration["audio_config_home"])
+    if not config_home.is_absolute():
+        raise ValueError("audio_config_home must be an absolute path")
+    for relative_path, checksum in sorted(files.items()):
+        path = config_home / managed.validate_relative_path(relative_path)
+        if managed.has_symlink_component(path.parent):
+            plan.kept.append(f"{path}: a parent directory is a link")
+            continue
+        if not os.path.lexists(path):
+            continue
+        reason = obsolete_files_module.classify(str(path), str(checksum))
+        if reason is None:
+            plan.obsolete_files[path] = str(checksum)
+        else:
+            plan.kept.append(f"{path}: obsolete file that {reason}")
 
 
 def git_common_directory(repository: Path) -> Path:
@@ -324,6 +359,7 @@ def build_plan(root: Path, configuration: dict, repository: Path) -> Plan:
     plan = Plan()
     plan.backups.extend(managed.find_backups(root, configuration))
     plan.paths.extend(home_broken_links(root, configuration))
+    role_obsolete_files(configuration, plan)
     submodule_leftovers(repository, plan)
     plan.prunable_worktrees.extend(prunable_worktrees(repository))
     repository_files(repository, plan)
@@ -357,6 +393,12 @@ def apply(plan: Plan, repository: Path) -> None:
                 path.unlink()
         elif path.is_dir():
             shutil.rmtree(path)
+    for path, checksum in plan.obsolete_files.items():
+        # Checked again: the file may have been edited since it was listed.
+        if os.path.lexists(path) and (
+            obsolete_files_module.classify(str(path), checksum) is None
+        ):
+            path.unlink()
     common_directory = (
         git_common_directory(repository)
         if (plan.submodule_sections or plan.submodule_directories)
@@ -387,6 +429,8 @@ def report(plan: Plan, dry_run: bool) -> None:
         print(f"{verb} backup {path}")
     for path in plan.paths:
         print(f"{verb} {path}")
+    for path in plan.obsolete_files:
+        print(f"{verb} obsolete file {path}")
     for directory in plan.submodule_directories:
         print(f"{verb} {directory}")
     for name in plan.submodule_sections:

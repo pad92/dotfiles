@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: print3d
+  author: pad
+  description: >-
+    Installs PrusaSlicer and F3D, and enables F3D thumbnails of 3D files in
+    Nautilus.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [3dprinting, nautilus, thumbnails]
+dependencies: []

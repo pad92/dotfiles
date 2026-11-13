@@ -1,0 +1,100 @@
+# {{ ansible_managed }}
+# Clean source "{{ audio_clean_source }}": WebRTC echo cancellation on the
+# default microphone{{ ', then RNNoise' if audio_rnnoise_enabled | bool else '' }}.
+# monitor.mode captures the speaker output for the echo canceller without
+# adding a virtual sink.
+#
+# Each stage is a WirePlumber smart source filter (filter.smart). WirePlumber
+# never makes a smart filter the default source, chains the filters in the
+# order of filter.smart.before/after (an application, then the filter nearest
+# to it, down to the microphone), links the last one to the default
+# microphone, and gives the first one to every application that records from
+# the default source. The chain therefore never depends on the order in which
+# the nodes appear. filter.smart.targetable lets an application, such as a
+# voice effect, record from a stage by name.
+
+{# Strings are written as JSON strings, which SPA-JSON reads. #}
+{% macro spa(value) -%}
+{{ value | to_json(ensure_ascii=False) }}
+{%- endmacro %}
+{% set echo_cancel_name = audio_echo_cancel_source if audio_rnnoise_enabled | bool else audio_clean_source %}
+context.modules = [
+    { name = libpipewire-module-echo-cancel
+        args = {
+            library.name = aec/libspa-aec-webrtc
+            monitor.mode = true
+
+            aec.args = {
+{% for key, value in audio_echo_cancel_args | dictsort %}
+                webrtc.{{ key }} = {{ value | bool | lower }}
+{% endfor %}
+            }
+
+            capture.props = {
+                node.name    = {{ spa(echo_cancel_name ~ '.capture') }}
+                node.passive = true
+            }
+            # Records the speakers, the echo to remove (monitor.mode).
+            sink.props = {
+                node.name = {{ spa(echo_cancel_name ~ '.monitor') }}
+            }
+            source.props = {
+                node.name                = {{ spa(echo_cancel_name) }}
+{% if audio_rnnoise_enabled | bool %}
+                node.description         = {{ spa(audio_echo_cancel_source_description) }}
+{% else %}
+                node.description         = {{ spa(audio_clean_source_description) }}
+{% endif %}
+                audio.rate               = {{ audio_rate }}
+                filter.smart             = true
+                filter.smart.name        = {{ spa(echo_cancel_name) }}
+                filter.smart.targetable  = true
+{% if audio_rnnoise_enabled | bool %}
+                # Nearer the microphone than RNNoise.
+                filter.smart.after       = [ {{ spa(audio_clean_source) }} ]
+{% endif %}
+            }
+        }
+        flags = [ nofail ]
+    }
+{% if audio_rnnoise_enabled | bool %}
+
+    # RNNoise removes the non-voice sounds that WebRTC lets through
+    # (keyboard, fan, street). Its voice detector mutes the output between
+    # phrases. It reads the echo canceller, the next filter of the chain; if
+    # the echo canceller failed to load, it reads the microphone.
+    { name = libpipewire-module-filter-chain
+        args = {
+            node.description = {{ spa(audio_clean_source_description) }}
+            media.name       = {{ spa(audio_clean_source_description) }}
+            filter.graph = {
+                nodes = [
+                    { type = ladspa  name = rnnoise  plugin = librnnoise_ladspa  label = noise_suppressor_mono
+                        control = {
+{% for key, value in audio_rnnoise_controls | dictsort %}
+                            {{ spa(key) }} = {{ spa(value) }}
+{% endfor %}
+                        }
+                    }
+                ]
+            }
+            audio.rate     = {{ audio_rate }}
+            audio.position = [ MONO ]
+            capture.props  = {
+                node.name    = {{ spa(audio_clean_source ~ '.capture') }}
+                node.passive = true
+            }
+            playback.props = {
+                node.name               = {{ spa(audio_clean_source) }}
+                media.class             = "Audio/Source"
+                filter.smart            = true
+                filter.smart.name       = {{ spa(audio_clean_source) }}
+                filter.smart.targetable = true
+                # Nearer the applications than the echo canceller.
+                filter.smart.before     = [ {{ spa(audio_echo_cancel_source) }} ]
+            }
+        }
+        flags = [ nofail ]
+    }
+{% endif %}
+]

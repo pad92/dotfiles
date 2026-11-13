@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: gpu
+  author: pad
+  description: >-
+    Configures the NVIDIA and i915 kernel modules, hybrid runtime power
+    management and the initramfs.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [gpu, nvidia, intel]
+dependencies: []

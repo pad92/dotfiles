@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: dns
+  author: pad
+  description: >-
+    Makes systemd-resolved the only DNS resolver for the host and Docker, and
+    migrates the former dnsmasq relay.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [dns, networking, resolved]
+dependencies: []

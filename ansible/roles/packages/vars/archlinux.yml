@@ -54,7 +54,6 @@ packages_family_groups:
       - realtime-privileges
       - reflector
       - rkhunter
-      - swh-plugins
       - thefuck
       - traceroute
       - tumbler
@@ -318,3 +317,6 @@ packages_family_groups:
       - openrazer-daemon
       - openrazer-driver-dkms
       - python-openrazer
+    # LADSPA plugins of the voice effect microphones (audio role).
+    26_voice_effects:
+      - swh-plugins

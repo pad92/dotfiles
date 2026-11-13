@@ -130,7 +130,6 @@ local config = {
   },
 
   autostart = {
-    "/usr/bin/swayosd-server",
     "hyprlauncher -d",
   },
 

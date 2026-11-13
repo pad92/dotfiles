@@ -1,12 +1,28 @@
-# agent_cli role
+# agent_cli
 
 This role configures the status line of the AI coding agents installed on the
 host. It changes one setting in each tool's own configuration file and leaves
 the rest of that file as it is. The status line script is deployed by the
 `dotfiles` role.
 
-Both playbook tags, `dotfiles` and `agent_cli`, run the role. It runs as the
-user, without privilege escalation.
+Both playbook tags, `dotfiles` and `agent_cli`, run the role.
+
+## Requirements
+
+- Runs as the user, without privilege escalation.
+- The `dotfiles` role deploys `~/.bin/claude-statusline`.
+
+## Role Variables
+
+| Variable                      | Default                                           | Description                                               |
+| :---------------------------- | :------------------------------------------------ | :-------------------------------------------------------- |
+| `agent_cli_home`              | the SSH user's home                               | Home directory of the configured tools.                   |
+| `agent_cli_claude_binary`     | `claude`                                          | Claude Code is configured only when this binary is found. |
+| `agent_cli_claude_settings`   | `.claude/settings.json`                           | Settings file, relative to the home.                      |
+| `agent_cli_claude_statusline` | command `~/.bin/claude-statusline`                | Value of the `statusLine` key.                            |
+| `agent_cli_codex_binary`      | `codex`                                           | Codex is configured only when this binary is found.       |
+| `agent_cli_codex_config`      | `.codex/config.toml`                              | Codex configuration, relative to the home.                |
+| `agent_cli_codex_status_line` | model, directory, branch, context, tokens, limits | Items of `[tui] status_line`.                             |
 
 ## Claude Code status line
 
@@ -34,3 +50,25 @@ is left alone. A file that is not valid TOML stops the play unchanged. If the
 existing key cannot be edited in place (an array on several lines, or
 `tui.status_line` outside the table), the file is restored and the play fails.
 A new file is created with mode `0600`.
+
+## Dependencies
+
+None. The `dotfiles` role deploys the status line script.
+
+## Example Playbook
+
+```yaml
+- hosts: all
+  roles:
+    - role: agent_cli
+      become: false
+      tags: [agent_cli]
+```
+
+## License
+
+Unlicense
+
+## Author Information
+
+pad

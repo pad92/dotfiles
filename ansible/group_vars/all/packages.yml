@@ -13,3 +13,4 @@ packages_workstation_groups:
   - 20_apps
   - 22_obs
   - 24_3dprint
+  - 26_voice_effects

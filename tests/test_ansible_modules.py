@@ -37,6 +37,8 @@ aur = load("aur_module", "ansible/library/dotfiles_aur.py")
 
 retired = load("retired_module", "ansible/library/dotfiles_retired_plugins.py")
 
+obsolete = load("obsolete_module", "ansible/library/dotfiles_obsolete_files.py")
+
 
 class Result(Exception):
     def __init__(self, failed=False, **data):
@@ -321,6 +323,48 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(set(entries), {".", "lib", "lib/lib.zsh"})
         self.assertTrue(entries["lib"]["isdir"])
         self.assertEqual(entries["lib/lib.zsh"]["dest"], "/h/zsh/lib/lib.zsh")
+
+    def test_obsolete_files_deletes_only_unchanged_regular_files(self):
+        def sha1(data):
+            return hashlib.sha1(data, usedforsecurity=False).hexdigest()
+
+        shipped, edited = self.root / "shipped", self.root / "edited"
+        shipped.write_bytes(b"shipped\n")
+        edited.write_bytes(b"edited\n")
+        link = self.root / "link"
+        link.symlink_to(shipped)
+        dangling = self.root / "dangling"
+        dangling.symlink_to(self.root / "missing")
+        files = {
+            str(shipped): sha1(b"shipped\n"),
+            str(edited): sha1(b"shipped\n"),
+            str(link): sha1(b"shipped\n"),
+            str(dangling): sha1(b"shipped\n"),
+            str(self.root / "absent"): sha1(b"shipped\n"),
+        }
+        kept = [
+            {"path": str(dangling), "reason": "is not a regular file"},
+            {"path": str(edited), "reason": "was changed by hand"},
+            {"path": str(link), "reason": "is not a regular file"},
+        ]
+
+        result = self.invoke(obsolete, {"files": files}, check=True)
+        self.assertTrue(result.data["changed"])
+        self.assertEqual(result.data["deleted"], [str(shipped)])
+        self.assertEqual(result.data["kept"], kept)
+        self.assertTrue(shipped.exists())
+
+        result = self.invoke(obsolete, {"files": files})
+        self.assertEqual(result.data["deleted"], [str(shipped)])
+        self.assertFalse(shipped.exists())
+        self.assertTrue(edited.exists() and link.is_symlink() and dangling.is_symlink())
+
+        result = self.invoke(obsolete, {"files": files})
+        self.assertFalse(result.data["changed"])
+
+    def test_obsolete_files_refuses_relative_paths(self):
+        result = self.invoke(obsolete, {"files": {"relative": "0" * 40}})
+        self.assertTrue(result.failed)
 
     def test_backup_preserves_inode_modes_hardlinks_and_broken_links(self):
         src, dest = self.root / "source", self.root / "backup"

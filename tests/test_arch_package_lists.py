@@ -22,6 +22,7 @@ GRAPHICAL_UNIT_PACKAGES = {
     "awww_random.timer": "awww",
     "hypridle.service": "hypridle",
     "mako.service": "mako",
+    "swayosd-server.service": "swayosd",
     "waybar.service": "waybar",
 }
 FONT_FAMILY_PACKAGES = {"DejaVu Sans": "ttf-dejavu"}

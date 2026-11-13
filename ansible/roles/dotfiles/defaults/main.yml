@@ -97,20 +97,16 @@ dotfiles_directories:
   - .config/hypr
   - .config/nvim
   - .config/nwg-look
-  - .config/pipewire
   - .config/uwsm
   - .config/waybar
-  - .config/wireplumber
   - .config/wlogout
   - .config/xdg-desktop-portal
   - .config/yamllint
   - .config/yay
 dotfiles_directory_handlers:
   .config/hypr: [Restart Hyprlauncher]
-  .config/pipewire: [Apply changed user audio configuration]
   .config/uwsm: [Report session restart required]
   .config/waybar: [Reload Waybar]
-  .config/wireplumber: [Apply changed user audio configuration]
   .config/xdg-desktop-portal: [Restart XDG desktop portal]
 # Handlers for single files whose program does not watch its configuration.
 dotfiles_file_handlers:
@@ -145,6 +141,7 @@ dotfiles_systemd_graphical_units:
   - awww_random.timer
   - hypridle.service
   - mako.service
+  - swayosd-server.service
   - waybar.service
 dotfiles_files:
   - .gitconfig

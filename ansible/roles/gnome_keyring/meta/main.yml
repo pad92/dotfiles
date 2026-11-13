@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: gnome_keyring
+  author: pad
+  description: >-
+    Unlocks the GNOME keyring at a TTY login through PAM.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [gnome, keyring, pam]
+dependencies: []

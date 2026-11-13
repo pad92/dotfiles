@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: package_manager
+  author: pad
+  description: >-
+    Configures pacman (multilib, parallel downloads) and native makepkg
+    builds.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [pacman, makepkg, archlinux]
+dependencies: []

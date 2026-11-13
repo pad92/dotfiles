@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: cpu_power
+  author: pad
+  description: >-
+    Applies the AMD P-State energy preference and X3D mode, and restores them
+    at boot.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [cpu, amd, power]
+dependencies: []

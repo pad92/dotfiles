@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: obs
+  author: pad
+  description: >-
+    Configures OBS Studio profiles, demo scenes and a virtual camera from the
+    host's GPU, screens and webcam.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [obs, streaming, video]
+dependencies: []
