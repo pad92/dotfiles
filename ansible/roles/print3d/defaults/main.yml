@@ -1,0 +1,23 @@
+---
+# PrusaSlicer and F3D, whose thumbnailers give 3D files (STL, STEP, 3MF...)
+# a preview in Nautilus. The 24_3dprint group is the single list: the packages
+# role installs and reconciles it, this role only makes sure it is present.
+print3d_packages: "{{ packages_family_groups['Archlinux']['24_3dprint'] }}"
+
+# Nautilus runs thumbnailers in a bwrap sandbox, with no $HOME and no display.
+# F3D reads /etc/f3d before ~/.config/f3d, so the headless EGL backend set
+# there applies to every user whatever their home holds.
+print3d_f3d_config_dir: /etc/f3d
+print3d_f3d_config_owner: root
+print3d_f3d_config_group: root
+print3d_f3d_thumbnail_options:
+  rendering-backend: egl
+
+# GNOME thumbnail cache of the SSH user (ansible/tasks/target.yml gathers its
+# facts). Failed thumbnails are recorded under fail/ and never retried, so the
+# cache is cleared when the F3D configuration changes. x-large and xx-large
+# hold the previews of high zoom levels and HiDPI screens.
+print3d_thumbnail_cache_dir: >-
+  {{ ansible_facts['env'].get('XDG_CACHE_HOME')
+     or ansible_facts['user_dir'] ~ '/.cache' }}/thumbnails
+print3d_thumbnail_cache_subdirs: [fail, normal, large, x-large, xx-large]

@@ -306,3 +306,8 @@ packages_family_groups:
     # SAML VPN client; the gateway comes from the Ansible Vault.
     23_vpn:
       - openfortivpn
+    # 3D printing: the slicer and F3D, a viewer whose thumbnailers preview
+    # STL, STEP and 3MF files in Nautilus (configured by the print3d role).
+    24_3dprint:
+      - f3d
+      - prusa-slicer

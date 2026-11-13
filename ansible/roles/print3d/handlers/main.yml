@@ -1,0 +1,11 @@
+---
+# Nautilus never retries a file listed under fail/ and keeps old previews, so
+# the user's cache is cleared for the new F3D settings to take effect. GNOME
+# recreates the directories (mode 0700) on its next thumbnail. The cache
+# belongs to the SSH user, who removes it without root.
+- name: Clear the GNOME thumbnail cache
+  ansible.builtin.file:
+    path: '{{ print3d_thumbnail_cache_dir }}/{{ item }}'
+    state: absent
+  loop: '{{ print3d_thumbnail_cache_subdirs }}'
+  become: false

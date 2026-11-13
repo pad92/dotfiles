@@ -162,6 +162,7 @@ variables, package ownership, and system settings.
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
+| `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
 | `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                       |
 | `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
 | `agent_cli`                                | Set the Claude Code and Codex status lines.                                     |

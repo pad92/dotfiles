@@ -106,3 +106,10 @@
     - role: obs
       when: "'22_obs' in (packages_selected_groups | default([]))"
       tags: [obs]
+    # The tag names the section; role names cannot start with a digit.
+    - role: print3d
+      when:
+        - packages_action | default('install') != 'plan'
+        - ansible_facts["os_family"] == "Archlinux"
+        - "'24_3dprint' in (packages_selected_groups | default([]))"
+      tags: [3dprint]

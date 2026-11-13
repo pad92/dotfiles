@@ -126,6 +126,13 @@ Release history and changes planned for the next version.
     play unchanged; a layout the edit cannot handle is restored.
   - Install `claude-code`, `claude-desktop` (AUR) and `openai-codex` with the
     `10_sre_devops` group on Arch.
+- **3D printing**:
+  - Add the `24_3dprint` package group (PrusaSlicer, F3D), selected by both
+    workstations, and the `print3d` role under the `3dprint` tag.
+  - Write `/etc/f3d/thumbnail.json` so F3D thumbnails render with the
+    headless EGL backend inside Nautilus' bwrap sandbox. A change clears the
+    user's GNOME thumbnail cache, failed entries included, so previews are
+    drawn again.
 
 ### Changed
 
