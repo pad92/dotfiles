@@ -998,6 +998,20 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.assertIn("ANANICY RESTART", run(["cachyos-ananicy-rules"]))
         self.assertNotIn("ANANICY RESTART", run(["jq"]))
 
+    # Handlers share one namespace per play: a notify reaches only the last
+    # role's handler of that name, so another role's message would be shown.
+    def test_handler_names_are_unique_across_roles(self):
+        seen = {}
+        for path in sorted(ROLES.glob("*/handlers/main.yml")):
+            for handler in yaml.safe_load(path.read_text()) or []:
+                listen = handler.get("listen", [])
+                topics = [listen] if isinstance(listen, str) else listen
+                for name in [handler["name"], *topics]:
+                    role = path.parts[-3]
+                    if name in seen:
+                        self.fail(f"{name!r} is in {seen[name]} and {role}")
+                    seen[name] = role
+
     def test_sched_ext_units_are_stopped_only_when_installed(self):
         tasks = yaml.safe_load((ROLES / "gaming/tasks/main.yml").read_text())
         block = next(task for task in tasks if "block" in task)["block"]

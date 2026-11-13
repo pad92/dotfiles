@@ -110,4 +110,4 @@
     append: true
   loop: '{{ package_services_group_users }}'
   when: package_services_user_groups_present | length > 0
-  notify: Report group membership requires login
+  notify: Report package group membership requires login

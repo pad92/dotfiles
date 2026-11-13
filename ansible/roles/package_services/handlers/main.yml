@@ -1,5 +1,5 @@
 ---
-- name: Report group membership requires login
+- name: Report package group membership requires login
   ansible.builtin.debug:
     msg: >-
       Group membership changed ({{ package_services_user_groups_present

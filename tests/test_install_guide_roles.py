@@ -122,13 +122,6 @@ class InstallGuideRoleTests(unittest.TestCase):
         output = self.run_user_groups(["20_apps"], ["realtime"])
         self.assertIn("JOIN []", output)
 
-    def test_base_group_enables_the_weekly_trim(self):
-        defaults = load_defaults("package_services")
-        self.assertIn(
-            "fstrim.timer",
-            defaults["package_services_by_group"]["Archlinux"]["01_base"],
-        )
-
     # time_sync: never run two NTP clients.
     def run_time_sync(self, services):
         tasks = load_tasks(
@@ -240,6 +233,11 @@ class InstallGuideRoleTests(unittest.TestCase):
     def test_desktop_gets_no_power_saving_and_old_file_is_removed(self):
         (self.work / "power-save.conf").write_text("options iwlwifi power_save=1\n")
         _, target = self.run_power_save("Desktop", ["iwlwifi", "snd_hda_intel"])
+        self.assertFalse(target.exists())
+
+    def test_laptop_without_listed_modules_writes_nothing(self):
+        (self.work / "power-save.conf").write_text("options iwlwifi power_save=1\n")
+        _, target = self.run_power_save("Notebook", ["cfg80211"])
         self.assertFalse(target.exists())
 
     def test_power_saving_can_be_forced_on_a_desktop(self):

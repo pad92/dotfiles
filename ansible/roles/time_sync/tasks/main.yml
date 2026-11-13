@@ -5,20 +5,21 @@
 - name: Find the NTP clients in use
   ansible.builtin.set_fact:
     time_sync_others: >-
+      {{ (time_sync_candidates
+          | selectattr('value.status', 'defined')
+          | selectattr('value.status', 'in', ['enabled', 'enabled-runtime', 'alias'])
+          | list
+          + time_sync_candidates | selectattr('value.state', '==', 'running') | list)
+         | map(attribute='key') | unique | list }}
+  vars:
+    time_sync_candidates: >-
       {{ ansible_facts.services | dict2items
-         | selectattr('key', 'in', time_sync_alternatives)
-         | selectattr('value.status', 'defined')
-         | selectattr('value.status', 'in', ['enabled', 'enabled-runtime', 'alias'])
-         | map(attribute='key') | list
-         + ansible_facts.services | dict2items
-         | selectattr('key', 'in', time_sync_alternatives)
-         | selectattr('value.state', '==', 'running')
-         | map(attribute='key') | list }}
+         | selectattr('key', 'in', time_sync_alternatives) | list }}
 
 - name: Report the NTP client left in charge
   ansible.builtin.debug:
     msg: >-
-      {{ time_sync_others | unique | join(', ') }} already synchronizes the
+      {{ time_sync_others | join(', ') }} already synchronizes the
       clock; {{ time_sync_unit }} is left as it is.
   when: time_sync_others | length > 0
 
