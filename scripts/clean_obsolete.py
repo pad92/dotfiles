@@ -188,17 +188,20 @@ def nested_git_directories(directory: Path) -> list[Path]:
 def reason_to_keep_clone(git_directory: Path) -> str | None:
     """Why a retired submodule clone holds something found nowhere else."""
     for nested in nested_git_directories(git_directory):
-        worktree = run_git("--git-dir", str(nested), "config", "core.worktree")
+        worktree = run_git("config", "--file", str(nested / "config"), "core.worktree")
         if worktree.returncode == 0:
             checkout = (nested / worktree.stdout.strip()).resolve()
             if checkout.is_dir() and any(checkout.iterdir()):
                 return f"its checkout {checkout} still exists"
         # Every ref, stash included, must lead only to commits that a
-        # remote-tracking branch or a tag also reaches.
+        # remote-tracking branch or a tag also reaches. --work-tree points at
+        # a directory that exists: Git 2.54 (the CI image) still enters core.worktree
+        # with --bare, and the old checkout is usually gone.
         unique = run_git(
             "--git-dir",
             str(nested),
-            "--bare",
+            "--work-tree",
+            str(nested),
             "rev-list",
             "--all",
             "--not",
@@ -208,7 +211,8 @@ def reason_to_keep_clone(git_directory: Path) -> str | None:
             "1",
         )
         if unique.returncode != 0:
-            return f"Git cannot read {nested}"
+            error = unique.stderr.strip().splitlines()
+            return f"Git cannot read {nested}" + (f": {error[-1]}" if error else "")
         if unique.stdout.strip():
             return f"{nested} has commits that no remote branch or tag holds"
     return None
