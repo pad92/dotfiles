@@ -109,7 +109,11 @@ class HostTemplateTests(unittest.TestCase):
         ]
         playbook = self.work / f"play-{hostname}.yml"
         playbook.write_text(yaml.safe_dump(play))
-        command = ["ansible-playbook", *inventory_arguments(hostname), str(playbook)]
+        command = [
+            "ansible-playbook",
+            *inventory_arguments(hostname, self.work),
+            str(playbook),
+        ]
         if extra_vars:
             command += ["-e", json.dumps(extra_vars)]
         result = subprocess.run(

@@ -442,6 +442,10 @@ Release history and changes planned for the next version.
   - The monitor geometry check skips files encrypted whole with Ansible Vault.
     It read the ignored local `group_vars/all/vault.yml` as YAML, got a
     string, and failed, which blocked the pre-commit `test` hook.
+  - The tests that run a playbook with the inventory or `group_vars` read a
+    copy of `ansible/` without the ignored local `vault*.yml`. On a
+    workstation whose Vault is encrypted, Ansible stopped on it before the
+    first task, with ansible-core 2.21 as with 2.22, and 13 tests failed.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 
