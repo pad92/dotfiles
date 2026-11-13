@@ -6,6 +6,18 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Makefile**:
+  - Add `make clean`, which removes the dotfile backups and the leftovers of
+    earlier migrations: broken links under the paths the `dotfiles` role
+    deploys, the Git metadata of the retired submodules (`[submodule]` sections and clones
+    under `.git/modules`), the records of worktrees whose directory is gone,
+    Python tool caches and untracked broken links in the repository, outside
+    nested Git checkouts and virtual environments. A submodule clone
+    holding a commit that no remote branch or tag has is kept. The backups,
+    the submodule metadata and the worktree records go only after `REMOVE`
+    is typed on a terminal. `DRY_RUN=1` lists without changing anything
+    (`DRY_RUN` takes only `0` or `1`), and `CLEAN_ROOT` selects another
+    home. The script runs with the Python interpreter of `ansible-playbook`.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
@@ -88,6 +100,21 @@ Release history and changes planned for the next version.
     file. The playbook now manages `~/.config/zed/tasks.json` and
     `keymap.json`.
   - Install Zed on Arch with the `10_sre_devops` package group.
+- **Ansible roles** (steps of the Arch install guide that were manual):
+  - `time_sync` enables `systemd-timesyncd` when no other NTP client (chrony,
+    ntpd, ntpsec, openntpd) is enabled or running.
+  - `power_save` writes Wi-Fi (`iwlwifi`, `iwlmvm` or `iwldvm`) and audio
+    (`snd_hda_intel` or `snd_ac97_codec`) power-saving options for the loaded
+    modules, only on a portable machine unless `power_save_mode` forces it.
+  - `wireless_regdom` sets the Wi-Fi regulatory domain in
+    `/etc/conf.d/wireless-regdom`; the workstations use `FR`.
+  - `gnome_keyring` adds the `pam_gnome_keyring.so` rules to
+    `/etc/pam.d/login`, so a TTY login unlocks the keyring.
+  - `package_services` enables `fstrim.timer` and `paccache.timer` and adds
+    the regular user to the `realtime` group with `01_base`.
+  - `01_base` installs `libnewt` explicitly. The `uwsm select` menu in
+    `~/.zprofile` needs its `whiptail`, which only came in as a
+    NetworkManager dependency.
 - **AI coding agents**:
   - The Claude Code status line shows the tokens in the context window next
     to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
@@ -169,6 +196,9 @@ Release history and changes planned for the next version.
   - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
     so Zsh skipped it.
 - **Makefile**:
+  - `make ansible-backup-ls` and `make ansible-backup-rm` become aliases of
+    `make clean DRY_RUN=1` and `make clean`, so they also cover the other
+    leftovers. `ansible/backup.yml` is removed.
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and
     `BECOME_PASS=1` replace the `--tags`, `--check` and `--ask-become-pass`
@@ -190,6 +220,16 @@ Release history and changes planned for the next version.
 - **CI**:
   - The unit test and Ansible lint jobs install their collections with
     `make galaxy`, so both use `.ansible/collections` and the Makefile command.
+  - Pin ansible-core 2.22.0 (was 2.21.4) in `requirements-ansible.txt` and
+    `requirements-test.txt`, the version Arch ships.
+  - The pre-commit `test` hook runs `make coverage test-shell` instead of
+    `make test`, so a commit that drops the unit test coverage below the
+    `.coveragerc` floor fails locally rather than only in the `unit_tests`
+    job. `python-coverage` joins the `10_sre_devops` packages for it.
+  - Test the error and recovery paths of `scripts/clean_obsolete.py`
+    (unreadable clone, linked worktree, Git failures, paths gone before the
+    removal, the run without a terminal). Untested, they had dropped the
+    total coverage to 96 % and failed the job.
 - **Ansible roles**:
   - Split the `system` role into one role per function: `lact`, `gaming`,
     `package_services`, `docker`, `hardening`, `dns`, `vpn`, `gpu` and
@@ -211,6 +251,10 @@ Release history and changes planned for the next version.
     `gaming_power_manager_conflict_action` and `dotfiles_claude_statusline` to
     `agent_cli_claude_statusline`. A host override or `-e` option that uses an
     old name is ignored.
+  - With `21_steam`, the `gaming` tag stops, disables and masks
+    `scx_loader.service` (and the older `scx.service`) so that `ananicy-cpp`
+    no longer runs next to a sched-ext scheduler, which the CachyOS wiki
+    advises against. The kernel scheduler takes over again.
 
 - **Ansible hosts**:
   - The playbooks reach the workstations over SSH. `ansible/inventory.yml`
@@ -301,6 +345,24 @@ Release history and changes planned for the next version.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
+  - The Arch install guide no longer advises against `-march=native`. Its
+    "Build flags" section now describes the makepkg overrides that Ansible
+    writes to `/etc/makepkg.conf.d/zz-dotfiles.conf` and warns not to copy
+    those packages to another computer.
+  - The Arch install guide no longer lists the Wi-Fi, audio, NTP, TRIM,
+    `realtime` and GNOME keyring steps: it points to the Ansible tags that now
+    apply them.
+  - The Arch install guide follows the ArchWiki and CachyOS wiki: it checks
+    the UEFI boot mode, network and clock first, uses a 1 GiB EFI System
+    Partition, uncomments only the UTF-8 locales, leaves `/etc/hosts` to
+    `nss-myhostname` and drops the unused `irqbalance`. New sections cover
+    TRIM through LUKS (`--allow-discards`), zram instead of a swap volume,
+    adding the CachyOS repositories, `cachyos-rate-mirrors` instead of
+    `reflector`, and the firewall that CachyOS enables but Ansible does not.
+  - The Arch install guide no longer edits `/etc/pacman.conf` or installs
+    `uwsm` by hand, because Ansible already does both. It also drops the
+    `/tmp` fstab line, which removed the `nosuid,nodev` options of systemd's
+    `tmp.mount`, and the Xorg keyboard file, which Hyprland does not read.
   - The README opens with the animated demo.
 - **Scripts**:
   - `hypr-screenshot.sh` also records an animated WebP demo
@@ -436,6 +498,10 @@ Release history and changes planned for the next version.
   - The monitor geometry check skips files encrypted whole with Ansible Vault.
     It read the ignored local `group_vars/all/vault.yml` as YAML, got a
     string, and failed, which blocked the pre-commit `test` hook.
+  - The tests that run a playbook with the inventory or `group_vars` read a
+    copy of `ansible/` without the ignored local `vault*.yml`. On a
+    workstation whose Vault is encrypted, Ansible stopped on it before the
+    first task, with ansible-core 2.21 as with 2.22, and 13 tests failed.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

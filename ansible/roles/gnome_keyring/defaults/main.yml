@@ -1,0 +1,24 @@
+---
+# Unlock the GNOME keyring at a TTY login, then start it for the session.
+# Automatic unlock needs the keyring password to match the login password.
+gnome_keyring_pam_enabled: true
+gnome_keyring_pam_directory: /etc/pam.d
+gnome_keyring_pam_service: login
+gnome_keyring_pam_module: /usr/lib/security/pam_gnome_keyring.so
+# Each rule is added right after the `include system-local-login` rule of its
+# type. The leading dash makes PAM skip the rule when the module is missing,
+# so removing gnome-keyring cannot break the login.
+gnome_keyring_pam_rules:
+  - after_type: auth
+    type: -auth
+    control: optional
+    args: []
+  - after_type: session
+    type: -session
+    control: optional
+    args: [auto_start]
+  # Changes the keyring password along with the login password.
+  - after_type: password
+    type: -password
+    control: optional
+    args: [use_authtok]

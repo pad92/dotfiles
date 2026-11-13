@@ -86,13 +86,32 @@ the next roles change the host.
 | Install only OBS and its demo scenes | `make deploy PLAYBOOK=obs BECOME_PASS=1`                     |
 | Upgrade the whole system on Arch     | `make deploy ANSIBLE_ARGS="-e packages_upgrade_system=true"` |
 | Install the pinned collections       | `make galaxy`, or `make galaxy-force` to reinstall them      |
-| List or remove dotfile backups       | `make ansible-backup-ls` / `make ansible-backup-rm`          |
+| Remove backups and leftovers         | `make clean`, or `make clean DRY_RUN=1` to list them only    |
 
 `make install` and `make install-obs` remain as aliases of `make deploy` and
 `make deploy PLAYBOOK=obs`.
 
-Reconciliation previews the removals and asks for confirmation. The backup
-targets use `$HOME`; set `ANSIBLE_BACKUP_ROOT=/path` to select another root.
+Reconciliation previews the removals and asks for confirmation.
+
+`make clean` removes what deployments and earlier versions left behind. In the
+home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
+`dotfiles` role made next to the paths it manages (`<path>.bak` and
+`<path>.<pid>.<date>@<time>~`). It also deletes the broken links
+under the paths the role deploys, such as a link into a deleted `~/.dotfiles` clone
+or a `.wants` link to a unit that is gone, and leaves other broken links in
+the home alone. In the repository it removes the Git metadata of the retired
+submodules (Vundle, tpm, dotbot, the Zsh plugins: their `[submodule]` sections
+and their clones under `.git/modules`), the records of worktrees whose
+directory is gone, the Python tool caches and untracked broken links. It does
+not look into nested Git checkouts or Python virtual environments. A
+submodule clone with a commit that no remote branch or tag holds, or whose
+checkout still exists, is kept and reported. Everything is listed before
+anything changes. The backups, the submodule metadata and the worktree records
+go only after you type `REMOVE` on a terminal; without a terminal they stay.
+Caches and broken links go without asking. `DRY_RUN` accepts only `1` (list)
+and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
+as aliases of `make clean DRY_RUN=1` and `make clean`, and
+`ANSIBLE_BACKUP_ROOT` still selects the home.
 
 <details>
 <summary>Package selection and Arch specifics</summary>
@@ -119,34 +138,38 @@ supported-distribution check and the read-only package group selection always
 run. The [Ansible guide](./ansible/README.md) lists the roles and covers
 variables, package ownership, and system settings.
 
-| Tags                                       | Action                                                                        |
-| :----------------------------------------- | :---------------------------------------------------------------------------- |
-| `package_manager`                          | Configure pacman and makepkg.                                                 |
-| `packages`                                 | Configure pacman, then install and reconcile packages.                        |
-| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                        |
-| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                 |
-| `yay`                                      | Configure pacman and run the AUR flow only.                                   |
-| `system`                                   | Run every host role from `lact` to `cpu_power`, and makepkg.                  |
-| `package_services`                         | Enable the services of the selected package groups and the Docker group.      |
-| `docker`                                   | Add the Docker group users.                                                   |
-| `hardening`                                | Configure SSH client defaults and desktop sysctls.                            |
-| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                             |
-| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.             |
-| `vpn`                                      | Configure the openfortivpn SAML VPN.                                          |
-| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                   |
-| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                 |
-| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                             |
-| `gaming`                                   | Check dependencies and configure services for the Steam group.                |
-| `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
-| `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus. |
-| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
-| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.               |
-| `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
-| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
-| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
-| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
-| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                       |
+| Tags                                       | Action                                                                          |
+| :----------------------------------------- | :------------------------------------------------------------------------------ |
+| `package_manager`                          | Configure pacman and makepkg.                                                   |
+| `packages`                                 | Configure pacman, then install and reconcile packages.                          |
+| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                          |
+| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                   |
+| `yay`                                      | Configure pacman and run the AUR flow only.                                     |
+| `system`                                   | Run every host role from `lact` to `gnome_keyring`, and makepkg.                |
+| `package_services`                         | Enable the services and user groups of the selected package groups, and Docker. |
+| `docker`                                   | Add the Docker group users.                                                     |
+| `hardening`                                | Configure SSH client defaults and desktop sysctls.                              |
+| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                               |
+| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.               |
+| `vpn`                                      | Configure the openfortivpn SAML VPN.                                            |
+| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                     |
+| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                   |
+| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                               |
+| `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
+| `power_save`                               | Set Wi-Fi and audio power-saving module options on a portable machine.          |
+| `wireless_regdom`                          | Set the Wi-Fi regulatory domain (`wireless_regdom_country`).                    |
+| `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
+| `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
+| `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
+| `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
+| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                       |
+| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
+| `agent_cli`                                | Set the Claude Code and Codex status lines.                                     |
+| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
+| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
+| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |
+| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
 
 Changed files notify their handlers: Mako and Waybar reload, active audio
 services reload or restart, and active user units whose definitions changed
@@ -378,6 +401,11 @@ then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
 | `make coverage`     | Run the Python tests under coverage.py and enforce the `.coveragerc` floor. |
 | `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |
 | `make screenshot`   | Render the desktop showcase at the top of this page (`RES`, `SETTLE`, ...). |
+
+The pre-commit hook runs `make coverage` and the shell tests, as the CI does, so
+a commit that lowers the coverage below the `.coveragerc` floor is refused
+locally. It needs coverage.py (`python-coverage`, installed with the
+`10_sre_devops` packages).
 
 GitLab, GitHub, and Gitea share the scripts in [`scripts/ci/`](./scripts/ci/);
 see the [GitHub workflows](./.github/workflows/README.md) and

@@ -871,13 +871,19 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     def test_selected_groups_enable_their_installed_services(self):
         output = self.run_package_services(
             ["01_base", "04_printers", "12_containers_docker"],
-            ["bluetooth.service", "cups.socket", "docker.socket", "paccache.timer"],
+            [
+                "bluetooth.service",
+                "cups.socket",
+                "docker.socket",
+                "fstrim.timer",
+                "paccache.timer",
+            ],
         )
         self.assertIn(
-            "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket']", output
+            "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket',"
+            " 'fstrim.timer', 'paccache.timer']",
+            output,
         )
-        # paccache.timer is installed but deliberately not managed.
-        self.assertNotIn("paccache.timer", output)
         self.assertNotIn("fwupd-refresh.timer", output)
 
     def test_bluetooth_is_not_enabled_without_a_controller(self):
@@ -991,6 +997,61 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
 
         self.assertIn("ANANICY RESTART", run(["cachyos-ananicy-rules"]))
         self.assertNotIn("ANANICY RESTART", run(["jq"]))
+
+    # Handlers share one namespace per play: a notify reaches only the last
+    # role's handler of that name, so another role's message would be shown.
+    def test_handler_names_are_unique_across_roles(self):
+        seen = {}
+        for path in sorted(ROLES.glob("*/handlers/main.yml")):
+            for handler in yaml.safe_load(path.read_text()) or []:
+                listen = handler.get("listen", [])
+                topics = [listen] if isinstance(listen, str) else listen
+                for name in [handler["name"], *topics]:
+                    role = path.parts[-3]
+                    if name in seen:
+                        self.fail(f"{name!r} is in {seen[name]} and {role}")
+                    seen[name] = role
+
+    def test_sched_ext_units_are_stopped_only_when_installed(self):
+        tasks = yaml.safe_load((ROLES / "gaming/tasks/main.yml").read_text())
+        block = next(task for task in tasks if "block" in task)["block"]
+        task = next(t for t in block if t["name"].startswith("Stop the sched-ext"))
+        self.assertEqual(
+            {
+                key: task["ansible.builtin.systemd_service"][key]
+                for key in ("state", "enabled", "masked")
+            },
+            {"state": "stopped", "enabled": False, "masked": True},
+        )
+        defaults = yaml.safe_load((ROLES / "gaming/defaults/main.yml").read_text())
+        output = self.run_play(
+            [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "gaming_sched_ext_units": defaults["gaming_sched_ext_units"],
+                        "ansible_facts": {
+                            "services": {
+                                "scx_loader.service": {"status": "enabled"},
+                                "ananicy-cpp.service": {"status": "enabled"},
+                            }
+                        },
+                    },
+                    "tasks": [
+                        {
+                            "name": task["name"],
+                            "loop": task["loop"],
+                            "ansible.builtin.debug": {"msg": "STOP {{ item }}"},
+                        }
+                    ],
+                }
+            ]
+        )
+        self.assertIn("STOP scx_loader.service", output)
+        self.assertNotIn("STOP scx.service", output)
+        self.assertNotIn("STOP ananicy", output)
 
     # Without a before snapshot nothing may count as changed, or every run
     # would restart services that react to package changes.

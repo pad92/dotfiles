@@ -42,6 +42,10 @@ Each role has one function. `site.yml` runs them in this order:
 | `vpn`              | Configure the openfortivpn SAML VPN from the Ansible Vault.                                 |
 | `gpu`              | Configure the NVIDIA and i915 kernel modules and hybrid runtime PM.                         |
 | `cpu_power`        | Apply the AMD EPP and X3D settings and read which power manager runs.                       |
+| `time_sync`        | Enable systemd-timesyncd when no other NTP client is enabled or running.                    |
+| `power_save`       | Write Wi-Fi and audio power-saving module options on a portable machine.                    |
+| `wireless_regdom`  | Set the Wi-Fi regulatory domain in `/etc/conf.d/wireless-regdom`.                           |
+| `gnome_keyring`    | Add the `pam_gnome_keyring.so` rules to `/etc/pam.d/login`.                                 |
 | `dotfiles`         | Deploy the home directory files and the user units.                                         |
 | `agent_cli`        | Set the Claude Code and Codex status lines.                                                 |
 | `obs`              | Configure OBS Studio and its virtual camera for `22_obs`.                                   |
@@ -376,6 +380,17 @@ the check passes, Ansible removes any systemd mask from
 service is kept running. The selected packages provide the rules and daemon
 configuration.
 
+`ananicy-cpp` and a sched-ext scheduler both change how processes are
+scheduled, and the
+[CachyOS wiki](https://wiki.cachyos.org/configuration/sched-ext/) advises
+against running them together. The `gaming` tag therefore stops, disables and
+masks the units listed in `gaming_sched_ext_units` (`scx_loader.service` and
+the older `scx.service`) when they are installed, and the kernel scheduler
+takes over. `scx_loader` starts on D-Bus demand, so the mask also stops
+scx-manager from starting it again. To use a sched-ext scheduler instead,
+set `gaming_sched_ext_units: []` and run
+`sudo systemctl unmask scx_loader.service`.
+
 To install the selected groups and configure gaming services, run:
 
 ```sh
@@ -542,22 +557,51 @@ The `package_services` tag enables and starts the units of selected package
 groups on Arch Linux (`package_services_by_group`): `bluetooth.service` with
 `01_base`, `cups.socket` with `04_printers`,
 `docker.socket` with `12_containers_docker`, and `fwupd-refresh.timer` with
-`20_apps`. A unit whose file is missing is reported instead of enabled.
+`20_apps`. `01_base` also enables `fstrim.timer`, which trims the mounted
+filesystems once a week, and `paccache.timer`, which keeps the last three
+versions of each package in the pacman cache. A unit whose file is missing is reported instead of enabled.
 `bluetooth.service` is also skipped, with a message, when the host has no
 Bluetooth controller (no `hci*` entry in `/sys/class/bluetooth`); other units
 can require a device through `package_services_device_requirements`. A unit
 that is already enabled stays enabled. With
 `12_containers_docker`, the users in `docker_group_users` (default: the
 user running `make deploy`) join the `docker` group, which grants
-root-equivalent access to the Docker daemon; log in again to use it. When the
+root-equivalent access to the Docker daemon; log in again to use it. In the
+same way, the users in `package_services_group_users` join the groups that a
+selected package group creates (`package_services_user_groups_by_group`):
+`realtime` with `01_base`, for the real-time scheduling limits of
+`realtime-privileges`. A group that does not exist yet is reported. When the
 playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
 so the new rules load.
 
-Use `make ansible-backup-ls` to list backups created for Ansible-managed
-dotfiles, or `make ansible-backup-rm` to review and remove them through an
-Ansible file task after a confirmation prompt. The helper script only collects
-the candidate paths. Both targets use `$HOME` by default; set
-`ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.
+### Time, power saving, Wi-Fi and keyring
+
+- `time_sync` enables and starts `systemd-timesyncd.service`, unless an NTP
+  client from `time_sync_alternatives` (chronyd, ntpd, ntpsec, openntpd) is
+  already enabled or running. Two clients would fight over the clock.
+- `power_save` writes `/etc/modprobe.d/zz-dotfiles-power-save.conf` for the
+  loaded modules: `iwlwifi` power saving and U-APSD, `iwlmvm` power scheme 3
+  (or `iwldvm` without forced CAM), and `snd_hda_intel` (or `snd_ac97_codec`)
+  power saving. `power_save_mode: auto` applies it only when the DMI chassis
+  type is portable; `true` or `false` forces it. The file is removed otherwise.
+  The options apply at the next boot.
+- `wireless_regdom` uncomments `WIRELESS_REGDOM="<code>"` in
+  `/etc/conf.d/wireless-regdom` and comments out any other country. The
+  workstations set `wireless_regdom_country: FR` in `group_vars/all/main.yml`; `null`
+  leaves the file alone.
+- `gnome_keyring` adds `-auth`, `-session` (`auto_start`) and `-password`
+  (`use_authtok`) `pam_gnome_keyring.so` rules after the matching
+  `include system-local-login` rules of `/etc/pam.d/login`, when gnome-keyring
+  is installed. The dash makes PAM skip a rule whose module is missing. Set
+  `gnome_keyring_pam_enabled: false` for a host that logs in through a display
+  manager.
+
+Use `make clean DRY_RUN=1` to list the backups created for Ansible-managed
+dotfiles, and `make clean` to remove them after typing `REMOVE`, together with
+the other leftovers described in the main README. `make clean` runs with the
+Python interpreter of `ansible-playbook`; set `ANSIBLE_PYTHON` to use another.
+`scripts/ansible_backup_files.py` only collects the backup paths. The home is `$HOME` by default; set
+`CLEAN_ROOT=/path` on the `make` command line to select another one.
 
 ### OBS
 

@@ -25,3 +25,6 @@ dotfiles_hypr_shared_workspace_rules:
     monitor: dell
     default: true
 dotfiles_hypr_workspace_rules: '{{ dotfiles_hypr_shared_workspace_rules }}'
+
+# Both workstations are used in France.
+wireless_regdom_country: FR

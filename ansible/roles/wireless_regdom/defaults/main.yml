@@ -1,0 +1,5 @@
+---
+# Wi-Fi regulatory domain: an ISO 3166-1 alpha-2 country code, or null to
+# leave it alone. It sets the allowed channels and transmit power.
+wireless_regdom_country: null
+wireless_regdom_config: /etc/conf.d/wireless-regdom

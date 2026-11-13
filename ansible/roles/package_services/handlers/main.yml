@@ -1,0 +1,6 @@
+---
+- name: Report package group membership requires login
+  ansible.builtin.debug:
+    msg: >-
+      Group membership changed ({{ package_services_user_groups_present
+      | join(', ') }}). Log out and back in for it to take effect.

@@ -36,29 +36,6 @@ class FileContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result.stdout
 
-    def test_backup_check_mode_collects_and_preserves_files(self):
-        home = self.work / "home"
-        home.mkdir()
-        backup = home / ".zshrc.bak"
-        backup.write_text("keep")
-        play = yaml.safe_load((ROOT / "ansible/backup.yml").read_text())
-        play[0]["tasks"][0]["ansible.builtin.command"]["argv"][1] = str(
-            ROOT / "scripts/ansible_backup_files.py"
-        )
-        output = self.run_play(
-            play,
-            "--check",
-            "-e",
-            "dotfiles_backup_action=remove",
-            environment={
-                "ANSIBLE_BACKUP_ROOT": str(home),
-                # This check only exercises role defaults, not encrypted host vars.
-                "ANSIBLE_VARS_ENABLED": "",
-            },
-        )
-        self.assertIn(str(backup), output)
-        self.assertEqual(backup.read_text(), "keep")
-
     def test_initramfs_handler_reports_generated_file(self):
         bindir = self.work / "bin"
         bindir.mkdir()
