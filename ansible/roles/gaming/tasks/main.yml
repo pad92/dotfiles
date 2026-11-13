@@ -146,6 +146,19 @@
         name: power-profiles-daemon.service
         masked: false
 
+    # ananicy-cpp and a sched-ext scheduler both reorder processes, and the
+    # CachyOS wiki advises against running them together. scx_loader starts on
+    # D-Bus demand, so masking also keeps scx-manager from starting it again.
+    - name: Stop the sched-ext schedulers that conflict with ananicy-cpp
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        state: stopped
+        enabled: false
+        masked: true
+      loop: >-
+        {{ gaming_sched_ext_units
+           | intersect(ansible_facts.services.keys() | list) }}
+
     - name: Enable the gaming services
       ansible.builtin.systemd_service:
         name: '{{ item }}'

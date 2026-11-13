@@ -4,3 +4,6 @@
 gaming_power_manager_conflict_action: ask
 # Packages whose update requires ananicy-cpp to reload its rules.
 gaming_ananicy_rule_packages: [cachyos-ananicy-rules]
+# sched-ext scheduler units stopped, disabled and masked so that ananicy-cpp
+# is the only process scheduler tweak.
+gaming_sched_ext_units: [scx_loader.service, scx.service]

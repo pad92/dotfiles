@@ -98,8 +98,8 @@ Release history and changes planned for the next version.
     `/etc/conf.d/wireless-regdom`; the workstations use `FR`.
   - `gnome_keyring` adds the `pam_gnome_keyring.so` rules to
     `/etc/pam.d/login`, so a TTY login unlocks the keyring.
-  - `package_services` enables `fstrim.timer` and adds the regular user to the
-    `realtime` group with `01_base`.
+  - `package_services` enables `fstrim.timer` and `paccache.timer` and adds
+    the regular user to the `realtime` group with `01_base`.
 - **AI coding agents**:
   - The Claude Code status line shows the tokens in the context window next
     to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
@@ -216,6 +216,10 @@ Release history and changes planned for the next version.
     `gaming_power_manager_conflict_action` and `dotfiles_claude_statusline` to
     `agent_cli_claude_statusline`. A host override or `-e` option that uses an
     old name is ignored.
+  - With `21_steam`, the `gaming` tag stops, disables and masks
+    `scx_loader.service` (and the older `scx.service`) so that `ananicy-cpp`
+    no longer runs next to a sched-ext scheduler, which the CachyOS wiki
+    advises against. The kernel scheduler takes over again.
 
 - **Ansible hosts**:
   - The playbooks reach the workstations over SSH. `ansible/inventory.yml`
@@ -313,6 +317,13 @@ Release history and changes planned for the next version.
   - The Arch install guide no longer lists the Wi-Fi, audio, NTP, TRIM,
     `realtime` and GNOME keyring steps: it points to the Ansible tags that now
     apply them.
+  - The Arch install guide follows the ArchWiki and CachyOS wiki: it checks
+    the UEFI boot mode, network and clock first, uses a 1 GiB EFI System
+    Partition, uncomments only the UTF-8 locales, leaves `/etc/hosts` to
+    `nss-myhostname` and drops the unused `irqbalance`. New sections cover
+    TRIM through LUKS (`--allow-discards`), zram instead of a swap volume,
+    adding the CachyOS repositories, `cachyos-rate-mirrors` instead of
+    `reflector`, and the firewall that CachyOS enables but Ansible does not.
   - The README opens with the animated demo.
 - **Scripts**:
   - `hypr-screenshot.sh` also records an animated WebP demo

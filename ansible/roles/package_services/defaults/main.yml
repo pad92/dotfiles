@@ -2,10 +2,11 @@
 # Units enabled and started when their package group is selected, by OS family.
 # Debian and Fedora packages usually enable their own services.
 # fstrim.timer comes with util-linux; it trims mounted filesystems weekly and
-# skips those that do not support discard.
+# skips those that do not support discard. paccache.timer comes with
+# pacman-contrib; it keeps the last three versions of each cached package.
 package_services_by_group:
   Archlinux:
-    01_base: [bluetooth.service, fstrim.timer]
+    01_base: [bluetooth.service, fstrim.timer, paccache.timer]
     04_printers: [cups.socket]
     12_containers_docker: [docker.socket]
     20_apps: [fwupd-refresh.timer]

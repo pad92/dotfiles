@@ -379,6 +379,17 @@ the check passes, Ansible removes any systemd mask from
 service is kept running. The selected packages provide the rules and daemon
 configuration.
 
+`ananicy-cpp` and a sched-ext scheduler both change how processes are
+scheduled, and the
+[CachyOS wiki](https://wiki.cachyos.org/configuration/sched-ext/) advises
+against running them together. The `gaming` tag therefore stops, disables and
+masks the units listed in `gaming_sched_ext_units` (`scx_loader.service` and
+the older `scx.service`) when they are installed, and the kernel scheduler
+takes over. `scx_loader` starts on D-Bus demand, so the mask also stops
+scx-manager from starting it again. To use a sched-ext scheduler instead,
+set `gaming_sched_ext_units: []` and run
+`sudo systemctl unmask scx_loader.service`.
+
 To install the selected groups and configure gaming services, run:
 
 ```sh
@@ -546,7 +557,8 @@ groups on Arch Linux (`package_services_by_group`): `bluetooth.service` with
 `01_base`, `cups.socket` with `04_printers`,
 `docker.socket` with `12_containers_docker`, and `fwupd-refresh.timer` with
 `20_apps`. `01_base` also enables `fstrim.timer`, which trims the mounted
-filesystems once a week. A unit whose file is missing is reported instead of enabled.
+filesystems once a week, and `paccache.timer`, which keeps the last three
+versions of each package in the pacman cache. A unit whose file is missing is reported instead of enabled.
 `bluetooth.service` is also skipped, with a message, when the host has no
 Bluetooth controller (no `hci*` entry in `/sys/class/bluetooth`); other units
 can require a device through `package_services_device_requirements`. A unit

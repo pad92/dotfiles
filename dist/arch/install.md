@@ -14,6 +14,13 @@ modification. Consult the
 [Secure Boot guide](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot)
 if that threat matters.
 
+The workstations run CachyOS, which builds on Arch and adds CPU-optimized
+repositories, its own kernels and `cachyos-settings`. You can install it with
+the [CachyOS installer](https://wiki.cachyos.org/installation/installation_on_root/)
+and go straight to [Dotfiles](#dotfiles), or follow this guide and then add
+the [CachyOS repositories](#cachyos-repositories). In both cases, read the
+[CachyOS post-install setup](https://wiki.cachyos.org/configuration/post_install_setup/).
+
 ## Preface
 
 This page retains a GRUB-based example. [Huntrar's current guide](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268)
@@ -59,7 +66,16 @@ sudo dd bs=4M if=archlinux-YYYY.MM.DD-x86_64.iso of=/dev/disk/by-id/usb-REPLACE_
 
 # Boot into the live environment
 
-The example creates a 1 MiB BIOS boot partition, a 550 MiB EFI System
+Check that the machine booted in UEFI mode, that the network works and that
+the clock is synchronized:
+
+```sh
+cat /sys/firmware/efi/fw_platform_size   # 64 on a 64-bit UEFI; missing in BIOS mode
+ping -c 3 archlinux.org
+timedatectl
+```
+
+The example creates a 1 MiB BIOS boot partition, a 1 GiB EFI System
 Partition, and one LUKS partition using the remaining space. The BIOS boot
 partition is not needed for UEFI-only systems; omit it only if you also update
 the partition numbers used below.
@@ -82,7 +98,7 @@ ef02
 n
 [Enter]
 [Enter]
-+550M
++1G
 ef00
 n
 [Enter]
@@ -113,6 +129,21 @@ cryptsetup luksHeaderBackup /dev/nvme0n1p3 \
   --header-backup-file /path/on/offline-storage/cryptlvm-header.img
 ```
 
+#### TRIM through LUKS
+
+dm-crypt drops discard requests by default, so the weekly `fstrim.timer` that
+Ansible enables does nothing on the encrypted volumes. To allow discards, store
+the flag in the LUKS2 header once the system is installed, then reboot:
+
+```sh
+cryptsetup --allow-discards --persistent refresh cryptlvm
+lsblk --discard   # DISC-GRAN and DISC-MAX must not be 0 for cryptlvm
+```
+
+Discards show which blocks are free, which leaks the rough amount of data and
+the filesystem type. See the
+[ArchWiki dm-crypt TRIM notes](<https://wiki.archlinux.org/title/Dm-crypt/Specialties#Discard/TRIM_support_for_solid_state_drives_(SSD)>).
+
 ### LVM
 
 ```sh
@@ -127,6 +158,10 @@ lvcreate -L 10G archlvm -n var_lib_docker
 lvcreate -L "${RAM_SIZE}M" archlvm -n swap
 lvcreate -l 100%FREE archlvm -n home
 ```
+
+The swap volume matches the RAM size so the machine can hibernate. Without
+hibernation you can drop it: `cachyos-settings` sets up swap on zram, and
+`zram-generator` does the same on plain Arch.
 
 ### Format
 
@@ -182,7 +217,6 @@ pacstrap -K /mnt \
   efibootmgr \
   git \
   grub \
-  irqbalance \
   linux-firmware \
   lvm2 \
   fastfetch \
@@ -199,6 +233,10 @@ pacstrap -K /mnt \
   wpa_supplicant \
   zsh
 ```
+
+Add `sof-firmware` on laptops whose built-in audio needs Sound Open Firmware,
+which covers most recent Intel laptops. `os-prober` is only needed when
+another operating system shares the machine.
 
 ### Configure resolv.conf
 
@@ -239,7 +277,7 @@ output illustrates the example commands above.
 | ---------------------------- | ------- | --- | ------ | --- | ----- | --------------- |
 | nvme0n1                      | 259:0   | 0   | 953.9G | 0   | disk  |                 |
 | ├─nvme0n1p1                  | 259:1   | 0   | 1M     | 0   | part  |                 |
-| ├─nvme0n1p2                  | 259:2   | 0   | 550M   | 0   | part  | /efi            |
+| ├─nvme0n1p2                  | 259:2   | 0   | 1G     | 0   | part  | /efi            |
 | ├─nvme0n1p3                  | 259:3   | 0   | 953.3G | 0   | part  |                 |
 | ..└─cryptlvm                 | 254:0   | 0   | 953.3G | 0   | crypt |                 |
 | ....├─archlvm-swap           | 254:1   | 0   | 31.1G  | 0   | lvm   | [SWAP]          |
@@ -267,8 +305,8 @@ hwclock --systohc
 ## Locales
 
 ```sh
-sed -i 's/^#fr_FR/fr_FR/g' /etc/locale.gen
-sed -i 's/^#en_US/en_US/g' /etc/locale.gen
+sed -i 's/^#\(fr_FR.UTF-8 UTF-8\)/\1/' /etc/locale.gen
+sed -i 's/^#\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen
 locale-gen
 echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 ```
@@ -296,14 +334,10 @@ EOF
 ```sh
 myhostname='MyArch'
 echo "${myhostname}" > /etc/hostname
-cat <<EOF>> /etc/hosts
-127.0.0.1  localhost
-127.0.1.1  ${myhostname} ${myhostname}.localdomain
-::1        localhost ip6-localhost ip6-loopback
-ff02::1    ip6-allnodes
-ff02::2    ip6-allrouters
-EOF
 ```
+
+Leave `/etc/hosts` as installed: systemd's `nss-myhostname` resolves the host
+name and `localhost`.
 
 ## Boot
 
@@ -360,6 +394,8 @@ passwd "${MYUSER}"
 
 In `visudo`, add `%wheel ALL=(ALL:ALL) ALL` to require the user's password for
 administrative commands. Do not edit sudoers files with a plain text editor.
+Once `sudo` works for this user, you can lock the root account with
+`passwd -l root`. Otherwise, set a root password with `passwd`.
 
 ### Package manager
 
@@ -377,6 +413,27 @@ The Ansible installer enables `Color`, `CheckSpace`, and `multilib` in
 installed packages. Run `pacman -Syu` separately when you want a full system
 upgrade and `multilib` is already enabled. The base and Steam groups include
 `lib32-*` packages from `multilib`.
+
+### CachyOS repositories
+
+Skip this on a system installed with the CachyOS installer. On Arch, the
+CachyOS script detects the CPU level, backs up `/etc/pacman.conf` and adds the
+matching repositories above the Arch ones:
+
+```sh
+curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
+tar xvf cachyos-repo.tar.xz && cd cachyos-repo
+sudo ./cachyos-repo.sh
+```
+
+`sudo ./cachyos-repo.sh --remove` undoes it. Check the CPU level with
+`/lib/ld-linux-x86-64.so.2 --help | grep supported`. Intel 12th generation and
+later CPUs may list x86-64-v4, but AVX-512 is disabled on them, so use v3. The
+`[cachyos]` repository replaces pacman with the CachyOS build. See
+[CachyOS optimized repositories](https://wiki.cachyos.org/features/optimized_repos/).
+
+CachyOS ranks its mirrors with `cachyos-rate-mirrors.timer`. Do not also
+enable `reflector.timer`, because both rewrite the mirror lists.
 
 ### Dotfiles
 
@@ -428,9 +485,26 @@ reboot
 sudo systemctl enable --now auto-cpufreq
 ```
 
+auto-cpufreq conflicts with `power-profiles-daemon`. With the `21_steam`
+group, the `gaming` tag offers to remove it
+(`gaming_power_manager_conflict_action`).
+
+## Firewall
+
+The CachyOS installer enables `ufw`, which denies incoming and allows outgoing
+connections. A system installed from this guide has no firewall, and Ansible
+does not configure one. See the
+[ArchWiki security guide](https://wiki.archlinux.org/title/Security#Firewalls)
+and the [CachyOS post-install setup](https://wiki.cachyos.org/configuration/post_install_setup/).
+
 ## SSD Trim
 
 The `package_services` tag enables `fstrim.timer` with the `01_base` group.
+
+## Package cache
+
+The `package_services` tag also enables `paccache.timer` with the `01_base`
+group. It keeps the last three versions of each package in the pacman cache.
 
 ## USBGuard
 

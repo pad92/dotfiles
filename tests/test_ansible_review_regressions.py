@@ -881,11 +881,9 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         )
         self.assertIn(
             "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket',"
-            " 'fstrim.timer']",
+            " 'fstrim.timer', 'paccache.timer']",
             output,
         )
-        # paccache.timer is installed but deliberately not managed.
-        self.assertNotIn("paccache.timer", output)
         self.assertNotIn("fwupd-refresh.timer", output)
 
     def test_bluetooth_is_not_enabled_without_a_controller(self):
@@ -999,6 +997,47 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
 
         self.assertIn("ANANICY RESTART", run(["cachyos-ananicy-rules"]))
         self.assertNotIn("ANANICY RESTART", run(["jq"]))
+
+    def test_sched_ext_units_are_stopped_only_when_installed(self):
+        tasks = yaml.safe_load((ROLES / "gaming/tasks/main.yml").read_text())
+        block = next(task for task in tasks if "block" in task)["block"]
+        task = next(t for t in block if t["name"].startswith("Stop the sched-ext"))
+        self.assertEqual(
+            {
+                key: task["ansible.builtin.systemd_service"][key]
+                for key in ("state", "enabled", "masked")
+            },
+            {"state": "stopped", "enabled": False, "masked": True},
+        )
+        defaults = yaml.safe_load((ROLES / "gaming/defaults/main.yml").read_text())
+        output = self.run_play(
+            [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "gaming_sched_ext_units": defaults["gaming_sched_ext_units"],
+                        "ansible_facts": {
+                            "services": {
+                                "scx_loader.service": {"status": "enabled"},
+                                "ananicy-cpp.service": {"status": "enabled"},
+                            }
+                        },
+                    },
+                    "tasks": [
+                        {
+                            "name": task["name"],
+                            "loop": task["loop"],
+                            "ansible.builtin.debug": {"msg": "STOP {{ item }}"},
+                        }
+                    ],
+                }
+            ]
+        )
+        self.assertIn("STOP scx_loader.service", output)
+        self.assertNotIn("STOP scx.service", output)
+        self.assertNotIn("STOP ananicy", output)
 
     # Without a before snapshot nothing may count as changed, or every run
     # would restart services that react to package changes.
