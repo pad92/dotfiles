@@ -44,12 +44,16 @@
       - >-
         dotfiles_hypr_monitors | map('dict2items') | flatten
         | map(attribute='key')
-        | reject('in', ['name', 'match', 'internal', 'mode'] + dotfiles_hypr_monitor_relations)
+        | reject('in', ['name', 'match', 'internal', 'mode', 'bitdepth']
+                       + dotfiles_hypr_monitor_relations)
         | list | length == 0
       - >-
         dotfiles_hypr_monitors | selectattr('mode', 'defined')
         | map(attribute='mode')
         | reject('in', ['preferred', 'highrr', 'highres']) | list | length == 0
+      - >-
+        dotfiles_hypr_monitors | selectattr('bitdepth', 'defined')
+        | map(attribute='bitdepth') | reject('in', [8, 10]) | list | length == 0
       - >-
         dotfiles_hypr_monitors | selectattr('internal', 'defined')
         | map(attribute='internal') | reject('sameas', true) | list | length == 0
@@ -124,8 +128,8 @@
       than /), dotfiles_template_mode (an octal string such as '0644'), the
       hypridle timeouts (whole seconds), dotfiles_hypr_monitors (a unique
       name, a non-blank match or internal: true, at most one right_of,
-      left_of, above or below naming another monitor, an optional mode, no
-      other key), dotfiles_hypr_monitor_mode and each monitor mode
+      left_of, above or below naming another monitor, an optional mode, an
+      optional bitdepth of 8 or 10, no other key), dotfiles_hypr_monitor_mode and each monitor mode
       (preferred, highrr or highres), the workspace and window rules and
       dotfiles_hypr_touch_monitor (each naming a monitor; window rules with a
       match mapping), and every entry

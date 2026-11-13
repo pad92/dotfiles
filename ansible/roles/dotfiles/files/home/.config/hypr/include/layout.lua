@@ -17,7 +17,9 @@
 --   right_of, left_of, above, below
 --             at most one, the layout name of the neighbour;
 --   mode      optional mode policy for this monitor only (preferred, highrr
---             or highres), overriding the host-wide one.
+--             or highres), overriding the host-wide one;
+--   bitdepth  optional 10 for a 10-bit framebuffer (HDR or wide-gamut
+--             panels); Hyprland's 8 bits otherwise.
 local M = {}
 
 -- DRM connector types of a built-in panel. They name the kind of link, not a
@@ -404,15 +406,14 @@ end
 -- a monitor that grows once its rule applies would otherwise overlap the
 -- neighbour placed against its old edge until the next pass.
 function M.rules(specs, monitors, mode)
-  local modes = {}
+  local by_name = {}
   for _, spec in ipairs(specs or {}) do
-    if spec.mode then
-      modes[spec.name] = spec.mode
-    end
+    by_name[spec.name] = spec
   end
-  local mode_of = {}
+  local mode_of, bitdepth_of = {}, {}
   for name, monitor in pairs(M.assign(specs, monitors)) do
-    mode_of[monitor.name] = modes[name]
+    mode_of[monitor.name] = by_name[name].mode
+    bitdepth_of[monitor.name] = by_name[name].bitdepth
   end
   for _, monitor in ipairs(monitors or {}) do
     mode_of[monitor.name] = mode_of[monitor.name] or mode or "preferred"
@@ -439,6 +440,7 @@ function M.rules(specs, monitors, mode)
       mode = mode_of[monitor.name],
       position = positions[monitor.name],
       scale = "auto",
+      bitdepth = bitdepth_of[monitor.name],
     })
   end
   return rules

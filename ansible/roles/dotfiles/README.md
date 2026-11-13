@@ -143,6 +143,8 @@ anywhere. Hyprland picks the mode (`dotfiles_hypr_monitor_mode`: `preferred`,
 `highrr` or `highres`) and derives the scale from the panel's density. An
 entry's own `mode` overrides that policy for its monitor: `highrr` would put
 a 60 Hz monitor that also offers 75 Hz at a low resolution in that mode.
+An entry's `bitdepth: 10` gives its monitor a 10-bit framebuffer, which HDR
+games and films need; Hyprland's default is 8 bits.
 `include/layout.lua` then positions the monitors from the size each one
 reports, at start-up and again whenever a monitor is plugged in or
 unplugged. Each entry of `dotfiles_hypr_monitors` names one display and says
@@ -156,6 +158,7 @@ dotfiles_hypr_monitors:
   - name: asus
     match: ASUSTek COMPUTER INC XG32WCS
     right_of: dell
+    bitdepth: 10 # optional, 8 or 10
   - name: laptop
     internal: true # the built-in eDP, LVDS or DSI panel
     below: dell

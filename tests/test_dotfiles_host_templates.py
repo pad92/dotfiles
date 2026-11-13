@@ -321,6 +321,11 @@ class HostTemplateTests(unittest.TestCase):
                     {"name": "dell", "match": "Dell", "mode": "2560x1440@60"}
                 ]
             },
+            "unsupported monitor bit depth": {
+                "dotfiles_hypr_monitors": [
+                    {"name": "asus", "match": "ASUS", "bitdepth": 12}
+                ]
+            },
             "rule on an unknown monitor": {
                 "dotfiles_hypr_workspace_rules": [{"workspace": 3, "monitor": "lg"}]
             },

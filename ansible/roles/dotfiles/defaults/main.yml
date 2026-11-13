@@ -211,7 +211,9 @@ dotfiles_hypridle_suspend_timeout: 0
 #     neighbour it shares an edge with. The first monitor without a relation
 #     is the origin;
 #   mode: optional, the mode policy of this monitor alone, overriding
-#     dotfiles_hypr_monitor_mode.
+#     dotfiles_hypr_monitor_mode;
+#   bitdepth: optional, 10 for a 10-bit framebuffer on an HDR or wide-gamut
+#     panel (8, Hyprland's default, otherwise).
 # A monitor that is not connected is skipped. A monitor whose neighbour is
 # missing, or that no entry matches, joins the right edge of the layout, so
 # the cursor can always reach every monitor.
