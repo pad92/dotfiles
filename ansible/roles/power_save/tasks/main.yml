@@ -1,0 +1,56 @@
+---
+- name: Validate the power-save mode
+  ansible.builtin.assert:
+    that:
+      - power_save_mode | string | lower in ['auto', 'true', 'false']
+    fail_msg: power_save_mode must be auto, true or false.
+    quiet: true
+
+- name: Decide whether to save power
+  ansible.builtin.set_fact:
+    power_save_enabled: >-
+      {{ (ansible_facts['form_factor'] | default('')) in power_save_portable_form_factors
+         if power_save_mode | string | lower == 'auto'
+         else power_save_mode | bool }}
+
+- name: Find the loaded Wi-Fi and audio modules
+  ansible.builtin.find:
+    paths: '{{ power_save_module_directory }}'
+    patterns: >-
+      {{ power_save_module_options | map(attribute='modules') | flatten }}
+    file_type: directory
+  register: power_save_loaded
+
+# The first loaded module of each group gets the options listed for it.
+- name: Select the module options
+  ansible.builtin.set_fact:
+    power_save_options: >-
+      {%- set loaded = power_save_loaded.files | map(attribute='path')
+          | map('basename') | list -%}
+      {%- set selected = {} -%}
+      {%- for group in power_save_module_options -%}
+      {%-   set present = group.modules | select('in', loaded) | list -%}
+      {%-   if present -%}
+      {%-     set _ = selected.update({present[0]: group.options[present[0]]}) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ selected }}
+
+- name: Configure Wi-Fi and audio power saving
+  ansible.builtin.template:
+    src: power-save-modprobe.conf.j2
+    dest: '{{ power_save_modprobe_path }}'
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - power_save_enabled | bool
+    - power_save_options | length > 0
+  notify: Report power-save options apply at next boot
+
+- name: Remove Wi-Fi and audio power saving
+  ansible.builtin.file:
+    path: '{{ power_save_modprobe_path }}'
+    state: absent
+  when: not (power_save_enabled | bool) or power_save_options | length == 0
+  notify: Report power-save options apply at next boot

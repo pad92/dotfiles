@@ -1,0 +1,4 @@
+# Managed by dotfiles. Local changes will be overwritten.
+{% for module, options in power_save_options.items() %}
+options {{ module }} {{ options | join(' ') }}
+{% endfor %}

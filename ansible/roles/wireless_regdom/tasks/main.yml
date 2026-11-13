@@ -1,0 +1,55 @@
+---
+- name: Validate the regulatory domain
+  ansible.builtin.assert:
+    that:
+      - wireless_regdom_country | string is match('^(00|[A-Z]{2})$')
+    fail_msg: wireless_regdom_country must be a two-letter uppercase country code or 00.
+    quiet: true
+  when: wireless_regdom_country is not none
+
+# wireless-regdb ships the file, and its udev rule reads it when cfg80211
+# loads.
+- name: Check for the wireless-regdb configuration
+  ansible.builtin.stat:
+    path: '{{ wireless_regdom_config }}'
+    get_checksum: false
+  register: wireless_regdom_file
+  when: wireless_regdom_country is not none
+
+- name: Report the missing wireless-regdb configuration
+  ansible.builtin.debug:
+    msg: >-
+      {{ wireless_regdom_config }} is missing: install wireless-regdb to set
+      the regulatory domain.
+  when:
+    - wireless_regdom_country is not none
+    - not wireless_regdom_file.stat.exists
+
+- name: Comment out other regulatory domains
+  ansible.builtin.replace:
+    path: '{{ wireless_regdom_config }}'
+    regexp: '^(WIRELESS_REGDOM=(?!"{{ wireless_regdom_country }}"$).*)$'
+    replace: '#\1'
+    backup: true
+  when:
+    - wireless_regdom_country is not none
+    - wireless_regdom_file.stat.exists
+  register: wireless_regdom_others
+
+- name: Set the regulatory domain
+  ansible.builtin.lineinfile:
+    path: '{{ wireless_regdom_config }}'
+    regexp: '^#?WIRELESS_REGDOM="{{ wireless_regdom_country }}"$'
+    line: 'WIRELESS_REGDOM="{{ wireless_regdom_country }}"'
+    backup: true
+  when:
+    - wireless_regdom_country is not none
+    - wireless_regdom_file.stat.exists
+  register: wireless_regdom_line
+
+- name: Report the regulatory domain applies at next boot
+  ansible.builtin.debug:
+    msg: >-
+      Regulatory domain set to {{ wireless_regdom_country }}. It applies at the next
+      boot, or now with `iw reg set {{ wireless_regdom_country }}`.
+  when: wireless_regdom_others is changed or wireless_regdom_line is changed

@@ -213,28 +213,11 @@ ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 Hosts installed with the earlier openresolv instructions are migrated by the
 same tag; follow the [DNS migration note](./dns-migration.md).
 
-### Configure wifi
+### Wi-Fi and audio
 
-```sh
-echo 'WIRELESS_REGDOM="FR"' > /mnt/etc/conf.d/wireless-regdom
-echo "options iwlwifi power_save=1"     > /mnt/etc/modprobe.d/iwlwifi.conf
-echo "options iwlwifi uapsd_disable=0" >> /mnt/etc/modprobe.d/iwlwifi.conf
-if grep -wq '^iwlmvm' /proc/modules; then
-  echo "options iwlmvm power_scheme=3" >> /mnt/etc/modprobe.d/iwlwifi.conf
-elif grep -wq '^iwldvm' /proc/modules; then
-  echo "options iwldvm force_cam=0"    >> /mnt/etc/modprobe.d/iwlwifi.conf
-fi
-```
-
-### Sound
-
-```sh
-if grep -wq '^snd_hda_intel' /proc/modules; then
-echo "options snd_hda_intel power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
-elif grep -wq '^snd_ac97_codec' /proc/modules; then
-echo "options snd_ac97_codec power_save=1" > /mnt/etc/modprobe.d/audio_powersave.conf
-fi
-```
+Ansible sets the Wi-Fi regulatory domain (`wireless_regdom` tag, `wireless_regdom_country: FR` in
+`group_vars/all/main.yml`) and, on a portable machine, the Intel Wi-Fi and HDA
+audio power-saving module options (`power_save` tag). Nothing is needed here.
 
 ### Create fstab
 
@@ -267,10 +250,11 @@ output illustrates the example commands above.
 
 ## Build flags
 
-Keep the default `/etc/makepkg.conf` unless you have a specific reason to change
-it. `-march=native` produces packages optimized for the build machine and can
-make them unsuitable for other computers. Custom compression settings can also
-increase build time without improving runtime performance.
+Leave `/etc/makepkg.conf` alone. The Ansible `makepkg` tag writes its overrides
+to `/etc/makepkg.conf.d/zz-dotfiles.conf`: `-march=native -mtune=native`, half
+the CPU cores for `MAKEFLAGS`, and no debug packages. These settings only affect
+packages built on this machine, such as AUR packages. A package built this way
+may not run on a different CPU, so do not copy it to another computer.
 
 ## Time zone
 
@@ -360,8 +344,10 @@ The `sd-encrypt` hook uses `/etc/cryptsetup-keys.d/cryptlvm.key` for the
 ```sh
 systemctl enable NetworkManager
 systemctl enable systemd-resolved
-systemctl enable systemd-timesyncd.service
 ```
+
+The Ansible `time_sync` tag enables `systemd-timesyncd` later, unless another
+NTP client such as chrony is in use.
 
 ## User
 
@@ -444,9 +430,7 @@ sudo systemctl enable --now auto-cpufreq
 
 ## SSD Trim
 
-```sh
-sudo systemctl enable fstrim.timer
-```
+The `package_services` tag enables `fstrim.timer` with the `01_base` group.
 
 ## USBGuard
 
@@ -479,18 +463,13 @@ matches the GPU rather than installing a second driver set manually.
 
 ## GNOME Keyring PAM Setup
 
-For TTY logins, append these entries to the matching sections in
-`/etc/pam.d/login`. Keep the existing PAM rules. Automatic unlock requires the
-login password and the keyring password to match. Display managers may already
-configure PAM; use their PAM file instead of `/etc/pam.d/login` when applicable.
-
-```ini
-auth       optional     pam_gnome_keyring.so
-session    optional     pam_gnome_keyring.so    auto_start
-```
-
-See the [ArchWiki GNOME Keyring guide](https://wiki.archlinux.org/title/GNOME/Keyring)
-for other login methods and password-change integration.
+The `gnome_keyring` tag adds the `pam_gnome_keyring.so` auth, session and
+password rules to `/etc/pam.d/login`, for TTY logins. Automatic unlock requires
+the login password and the keyring password to match. Display managers may
+already configure PAM; set `gnome_keyring_pam_enabled: false` and use their PAM
+file instead. See the
+[ArchWiki GNOME Keyring guide](https://wiki.archlinux.org/title/GNOME/Keyring)
+for other login methods.
 
 ## Start Hyprland with UWSM
 
@@ -555,19 +534,9 @@ uwsm app -- alacritty
 
 The `realtime-privileges` package sets PAM limits and creates a `realtime`
 group for real-time scheduling. This can help prevent audio dropouts under high
-CPU load.
-
-Install the package and add your user to the group:
-
-```sh
-sudo pacman -S realtime-privileges
-```
-
-```sh
-sudo usermod -aG realtime MyUser
-```
-
-Log out and back in, or reboot, for the new group membership to take effect.
+CPU load. It is part of the `01_base` group, and the `package_services` tag adds
+the regular user to `realtime`. Log out and back in, or reboot, for the new
+group membership to take effect.
 
 ## Security follow-up
 

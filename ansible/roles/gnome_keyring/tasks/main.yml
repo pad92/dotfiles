@@ -1,0 +1,57 @@
+---
+- name: Check for the GNOME keyring PAM module
+  ansible.builtin.stat:
+    path: '{{ gnome_keyring_pam_module }}'
+    get_checksum: false
+  register: gnome_keyring_module
+
+- name: Report the missing GNOME keyring PAM module
+  ansible.builtin.debug:
+    msg: >-
+      {{ gnome_keyring_pam_module }} is missing: install gnome-keyring to
+      unlock the keyring at login.
+  when: not gnome_keyring_module.stat.exists
+
+- name: Unlock the GNOME keyring at a TTY login
+  community.general.pamd:
+    name: '{{ gnome_keyring_pam_service }}'
+    path: '{{ gnome_keyring_pam_directory }}'
+    type: '{{ item.after_type }}'
+    control: include
+    module_path: system-local-login
+    new_type: '{{ item.type }}'
+    new_control: '{{ item.control }}'
+    new_module_path: pam_gnome_keyring.so
+    module_arguments: '{{ item.args }}'
+    state: after
+    backup: true
+  loop: '{{ gnome_keyring_pam_rules }}'
+  loop_control:
+    label: '{{ item.type }}'
+  when: gnome_keyring_module.stat.exists
+
+# pamd changes nothing when the reference rule is missing, for example in a
+# login file that no longer includes system-local-login.
+- name: Read the login PAM service
+  ansible.builtin.slurp:
+    src: '{{ gnome_keyring_pam_directory }}/{{ gnome_keyring_pam_service }}'
+  register: gnome_keyring_pam_file
+  when:
+    - gnome_keyring_module.stat.exists
+    - not ansible_check_mode
+
+- name: Report GNOME keyring rules that could not be added
+  ansible.builtin.debug:
+    msg: >-
+      {{ gnome_keyring_pam_directory }}/{{ gnome_keyring_pam_service }} has no
+      `include system-local-login` rule for: {{ gnome_keyring_pam_missing
+      | join(', ') }}. Add the pam_gnome_keyring.so rules by hand.
+  vars:
+    gnome_keyring_pam_missing: >-
+      {{ gnome_keyring_pam_rules | map(attribute='type')
+         | reject('in', gnome_keyring_pam_file.content | b64decode
+                  | regex_findall('(?m)^(-?\w+)\s+optional\s+pam_gnome_keyring\.so'))
+         | list }}
+  when:
+    - gnome_keyring_pam_file.content is defined
+    - gnome_keyring_pam_missing | length > 0

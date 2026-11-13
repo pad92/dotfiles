@@ -871,10 +871,18 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     def test_selected_groups_enable_their_installed_services(self):
         output = self.run_package_services(
             ["01_base", "04_printers", "12_containers_docker"],
-            ["bluetooth.service", "cups.socket", "docker.socket", "paccache.timer"],
+            [
+                "bluetooth.service",
+                "cups.socket",
+                "docker.socket",
+                "fstrim.timer",
+                "paccache.timer",
+            ],
         )
         self.assertIn(
-            "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket']", output
+            "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket',"
+            " 'fstrim.timer']",
+            output,
         )
         # paccache.timer is installed but deliberately not managed.
         self.assertNotIn("paccache.timer", output)

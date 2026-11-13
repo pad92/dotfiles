@@ -1,9 +1,11 @@
 ---
 # Units enabled and started when their package group is selected, by OS family.
 # Debian and Fedora packages usually enable their own services.
+# fstrim.timer comes with util-linux; it trims mounted filesystems weekly and
+# skips those that do not support discard.
 package_services_by_group:
   Archlinux:
-    01_base: [bluetooth.service]
+    01_base: [bluetooth.service, fstrim.timer]
     04_printers: [cups.socket]
     12_containers_docker: [docker.socket]
     20_apps: [fwupd-refresh.timer]
@@ -16,3 +18,11 @@ package_services_device_requirements:
   bluetooth.service:
     path: /sys/class/bluetooth
     patterns: [hci*]
+# System groups that a selected package group creates and that the regular
+# users join, by OS family. realtime-privileges creates `realtime`, whose
+# members get the real-time scheduling limits that PipeWire uses.
+package_services_user_groups_by_group:
+  Archlinux:
+    01_base: [realtime]
+package_services_group_users:
+  - "{{ ansible_facts['user_id'] }}"

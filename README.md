@@ -119,33 +119,37 @@ supported-distribution check and the read-only package group selection always
 run. The [Ansible guide](./ansible/README.md) lists the roles and covers
 variables, package ownership, and system settings.
 
-| Tags                                       | Action                                                                        |
-| :----------------------------------------- | :---------------------------------------------------------------------------- |
-| `package_manager`                          | Configure pacman and makepkg.                                                 |
-| `packages`                                 | Configure pacman, then install and reconcile packages.                        |
-| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                        |
-| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                 |
-| `yay`                                      | Configure pacman and run the AUR flow only.                                   |
-| `system`                                   | Run every host role from `lact` to `cpu_power`, and makepkg.                  |
-| `package_services`                         | Enable the services of the selected package groups and the Docker group.      |
-| `docker`                                   | Add the Docker group users.                                                   |
-| `hardening`                                | Configure SSH client defaults and desktop sysctls.                            |
-| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                             |
-| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.             |
-| `vpn`                                      | Configure the openfortivpn SAML VPN.                                          |
-| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                   |
-| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                 |
-| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                             |
-| `gaming`                                   | Check dependencies and configure services for the Steam group.                |
-| `lact`                                     | Manage `/etc/lact/config.yaml`.                                               |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.       |
-| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                     |
-| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.               |
-| `agent_cli`                                | Set the Claude Code and Codex status lines.                                   |
-| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                   |
-| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                          |
-| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
-| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                       |
+| Tags                                       | Action                                                                          |
+| :----------------------------------------- | :------------------------------------------------------------------------------ |
+| `package_manager`                          | Configure pacman and makepkg.                                                   |
+| `packages`                                 | Configure pacman, then install and reconcile packages.                          |
+| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                          |
+| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                   |
+| `yay`                                      | Configure pacman and run the AUR flow only.                                     |
+| `system`                                   | Run every host role from `lact` to `gnome_keyring`, and makepkg.                |
+| `package_services`                         | Enable the services and user groups of the selected package groups, and Docker. |
+| `docker`                                   | Add the Docker group users.                                                     |
+| `hardening`                                | Configure SSH client defaults and desktop sysctls.                              |
+| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                               |
+| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.               |
+| `vpn`                                      | Configure the openfortivpn SAML VPN.                                            |
+| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                     |
+| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                   |
+| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                               |
+| `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
+| `power_save`                               | Set Wi-Fi and audio power-saving module options on a portable machine.          |
+| `wireless_regdom`                          | Set the Wi-Fi regulatory domain (`wireless_regdom_country`).                    |
+| `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
+| `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
+| `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
+| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                       |
+| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
+| `agent_cli`                                | Set the Claude Code and Codex status lines.                                     |
+| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
+| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
+| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |
+| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
 
 Changed files notify their handlers: Mako and Waybar reload, active audio
 services reload or restart, and active user units whose definitions changed

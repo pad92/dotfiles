@@ -78,6 +78,25 @@
     - role: cpu_power
       when: packages_action | default('install') != 'plan'
       tags: [system, cpu_power, amd_cpu_performance]
+    - role: time_sync
+      when: packages_action | default('install') != 'plan'
+      tags: [system, time_sync]
+    - role: power_save
+      when: packages_action | default('install') != 'plan'
+      tags: [system, power_save]
+    - role: wireless_regdom
+      when:
+        - packages_action | default('install') != 'plan'
+        - ansible_facts['os_family'] == 'Archlinux'
+      tags: [system, wireless_regdom]
+    # Arch's login PAM file includes system-local-login; Debian and Fedora
+    # configure pam_gnome_keyring through their own PAM tools.
+    - role: gnome_keyring
+      when:
+        - packages_action | default('install') != 'plan'
+        - ansible_facts['os_family'] == 'Archlinux'
+        - gnome_keyring_pam_enabled | default(true) | bool
+      tags: [system, gnome_keyring]
     - role: dotfiles
       become: false
       tags: [dotfiles]

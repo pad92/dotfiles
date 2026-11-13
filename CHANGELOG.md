@@ -88,6 +88,18 @@ Release history and changes planned for the next version.
     file. The playbook now manages `~/.config/zed/tasks.json` and
     `keymap.json`.
   - Install Zed on Arch with the `10_sre_devops` package group.
+- **Ansible roles** (steps of the Arch install guide that were manual):
+  - `time_sync` enables `systemd-timesyncd` when no other NTP client (chrony,
+    ntpd, ntpsec, openntpd) is enabled or running.
+  - `power_save` writes Wi-Fi (`iwlwifi`, `iwlmvm` or `iwldvm`) and audio
+    (`snd_hda_intel` or `snd_ac97_codec`) power-saving options for the loaded
+    modules, only on a portable machine unless `power_save_mode` forces it.
+  - `wireless_regdom` sets the Wi-Fi regulatory domain in
+    `/etc/conf.d/wireless-regdom`; the workstations use `FR`.
+  - `gnome_keyring` adds the `pam_gnome_keyring.so` rules to
+    `/etc/pam.d/login`, so a TTY login unlocks the keyring.
+  - `package_services` enables `fstrim.timer` and adds the regular user to the
+    `realtime` group with `01_base`.
 - **AI coding agents**:
   - The Claude Code status line shows the tokens in the context window next
     to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
@@ -294,6 +306,13 @@ Release history and changes planned for the next version.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
+  - The Arch install guide no longer advises against `-march=native`. Its
+    "Build flags" section now describes the makepkg overrides that Ansible
+    writes to `/etc/makepkg.conf.d/zz-dotfiles.conf` and warns not to copy
+    those packages to another computer.
+  - The Arch install guide no longer lists the Wi-Fi, audio, NTP, TRIM,
+    `realtime` and GNOME keyring steps: it points to the Ansible tags that now
+    apply them.
   - The README opens with the animated demo.
 - **Scripts**:
   - `hypr-screenshot.sh` also records an animated WebP demo

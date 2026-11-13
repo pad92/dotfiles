@@ -1,0 +1,6 @@
+---
+- name: Report power-save options apply at next boot
+  ansible.builtin.debug:
+    msg: >-
+      {{ power_save_modprobe_path }} changed. Reboot, or reload the Wi-Fi and
+      audio modules, to apply it.

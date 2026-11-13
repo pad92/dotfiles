@@ -64,3 +64,50 @@
     enabled: true
     state: started
   loop: '{{ package_services_to_enable }}'
+
+- name: Validate the users who join package groups
+  ansible.builtin.assert:
+    that:
+      - item | length > 0
+      - item != 'root'
+    fail_msg: package_services_group_users must list regular user names.
+    quiet: true
+  loop: '{{ package_services_group_users }}'
+
+- name: Select user groups for the selected package groups
+  ansible.builtin.set_fact:
+    package_services_user_groups: >-
+      {{ package_services_user_groups_by_group.get(ansible_facts['os_family'], {})
+         | dict2items | selectattr('key', 'in', packages_selected_groups)
+         | map(attribute='value') | flatten | unique | sort }}
+
+# A group exists only once the package that creates it is installed.
+- name: Read the system groups
+  ansible.builtin.getent:
+    database: group
+  when: package_services_user_groups | length > 0
+
+- name: Find user groups that exist on the system
+  ansible.builtin.set_fact:
+    package_services_user_groups_present: >-
+      {{ package_services_user_groups
+         | select('in', ansible_facts.getent_group | default({})) | list }}
+    package_services_user_groups_missing: >-
+      {{ package_services_user_groups
+         | reject('in', ansible_facts.getent_group | default({})) | list }}
+
+- name: Report user groups whose package is not installed
+  ansible.builtin.debug:
+    msg: >-
+      Not joined because the group does not exist:
+      {{ package_services_user_groups_missing | join(', ') }}
+  when: package_services_user_groups_missing | length > 0
+
+- name: Add the regular users to the selected groups
+  ansible.builtin.user:
+    name: '{{ item }}'
+    groups: '{{ package_services_user_groups_present }}'
+    append: true
+  loop: '{{ package_services_group_users }}'
+  when: package_services_user_groups_present | length > 0
+  notify: Report group membership requires login
