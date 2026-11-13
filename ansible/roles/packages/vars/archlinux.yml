@@ -311,3 +311,10 @@ packages_family_groups:
     24_3dprint:
       - f3d
       - prusa-slicer
+    # OpenRazer, added to a 21_steam selection when a Razer USB device is
+    # plugged in (packages_razer_usb_vendor_id). The DKMS driver is listed
+    # itself so that the running kernel's headers are installed with it.
+    25_razer:
+      - openrazer-daemon
+      - openrazer-driver-dkms
+      - python-openrazer

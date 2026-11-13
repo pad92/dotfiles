@@ -103,5 +103,23 @@ class DurationsFileTests(unittest.TestCase):
             )
 
 
+class SummarizeTests(unittest.TestCase):
+    def test_counts_only_unittest_summaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            logs = Path(directory)
+            # A failed play test prints its PLAY RECAP before unittest's summary.
+            (logs / "play.log").write_text(
+                "AssertionError: 2 != 0 : PLAY RECAP\n"
+                "case0 : ok=3    changed=0    unreachable=0    failed=1    "
+                "skipped=0    rescued=0    ignored=0   \n"
+                "Ran 1 test in 4.2s\n"
+                "\n"
+                "FAILED (failures=1, skipped=2)\n"
+            )
+            (logs / "fast.log").write_text("Ran 12 tests in 0.3s\n\nOK (skipped=1)\n")
+            (logs / "plain.log").write_text("Ran 3 tests in 0.1s\n\nOK\n")
+            self.assertEqual(RUNNER.summarize(logs), (16, 3))
+
+
 if __name__ == "__main__":
     unittest.main()

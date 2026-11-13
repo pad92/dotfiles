@@ -22,8 +22,11 @@ package_services_device_requirements:
 # System groups that a selected package group creates and that the regular
 # users join, by OS family. realtime-privileges creates `realtime`, whose
 # members get the real-time scheduling limits that PipeWire uses.
+# openrazer-driver-dkms creates `plugdev`, which its udev rule gives the Razer
+# device nodes; openrazer-daemon does not start for a user outside it.
 package_services_user_groups_by_group:
   Archlinux:
     01_base: [realtime]
+    25_razer: [plugdev]
 package_services_group_users:
   - "{{ ansible_facts['user_id'] }}"

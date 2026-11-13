@@ -223,9 +223,15 @@ queued without waiting for completion. A successful play therefore confirms
 submission, not service health; inspect `systemctl --user --failed` and
 `journalctl --user -b` if a service does not start.
 
+`openrazer-daemon.service` is not shipped as a link. When the `25_razer`
+package group is selected and the unit is installed, deployment enables it with
+`systemctl --user enable` (`dotfiles_openrazer_enabled`). It never disables it.
+
 `dotfiles_obsolete_user_unit_links` lists unit links the repository no longer
 ships, relative to `~/.config/systemd/user`. Deployment deletes each one that is
-still a symlink and leaves a regular file at that path alone.
+still a broken symlink. It leaves a regular file at that path alone, and a link
+to an installed unit too, since `systemctl --user enable` created it on the
+host.
 
 Hypridle is enabled by default. To stop it on one machine, set this in its
 `ansible/host_vars/<hostname>.yml`:

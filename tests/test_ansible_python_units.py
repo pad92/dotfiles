@@ -79,6 +79,47 @@ class PackageFilterTests(unittest.TestCase):
             ["08_amd"],
         )
 
+    def test_usb_vendor_presence_is_unknown_without_a_usable_listing(self):
+        # Root hubs (1d6b) are always listed, so an empty listing means sysfs
+        # was not read, not that nothing is plugged in.
+        listing = "1d6b\n1D6B\n1532\n"
+        self.assertIs(filters.usb_vendor_present(listing, "1532"), True)
+        self.assertIs(filters.usb_vendor_present("1d6b\n046d\n", "1532"), False)
+        self.assertIsNone(filters.usb_vendor_present("", "1532"))
+        self.assertIsNone(filters.usb_vendor_present(None, "1532"))
+        self.assertIsNone(filters.usb_vendor_present("1d6b\nzzzz\n", "1532"))
+        self.assertIsNone(filters.usb_vendor_present(listing, "15320"))
+        # An unquoted 1532 in YAML is an integer; it must not match by accident.
+        self.assertIsNone(filters.usb_vendor_present(listing, 1532))
+
+    def test_detected_group_needs_its_required_group_and_proof(self):
+        def add(selected, present, explicit=None, recorded=None):
+            return filters.add_detected_group(
+                selected, explicit, present, "21_steam", "25_razer", recorded
+            )
+
+        gaming = ["01_base", "21_steam"]
+        self.assertEqual(add(gaming, True), ["01_base", "21_steam", "25_razer"])
+        self.assertEqual(add(["01_base"], True), ["01_base"])
+        # Neither an absent device nor an unknown answer adds the group alone.
+        self.assertEqual(add(gaming, False), gaming)
+        self.assertEqual(add(gaming, None), gaming)
+        # A group the saved state records survives an unplugged device...
+        recorded = ["01_base", "21_steam", "25_razer"]
+        self.assertEqual(add(gaming, False, recorded=recorded), recorded)
+        self.assertEqual(add(gaming, None, recorded=recorded), recorded)
+        # ...but not the removal of the required group.
+        self.assertEqual(add(["01_base"], False, recorded=recorded), ["01_base"])
+        self.assertEqual(add(gaming, False, recorded="25_razer"), gaming)
+        # An explicit one-run selection is never rewritten by detection.
+        self.assertEqual(add(gaming, True, explicit=gaming), gaming)
+        # A host that lists the group itself keeps a single entry.
+        forced = [*gaming, "25_razer"]
+        self.assertEqual(add(forced, True), forced)
+        self.assertEqual(
+            filters.add_detected_group(gaming, None, True, None, "25_razer"), gaming
+        )
+
     def test_package_state_rejects_invalid_entries_and_json(self):
         self.assertIsNone(
             filters.parse_package_state(
@@ -226,7 +267,9 @@ class PackageFilterTests(unittest.TestCase):
             exported["recorded_package_groups"], filters.recorded_package_groups
         )
         self.assertIs(exported["dotfiles_to_lua"], filters.to_lua)
-        self.assertEqual(len(exported), 15)
+        self.assertIs(exported["usb_vendor_present"], filters.usb_vendor_present)
+        self.assertIs(exported["add_detected_group"], filters.add_detected_group)
+        self.assertEqual(len(exported), 17)
         self.assertEqual(
             set(lact.FilterModule().filters()), {"lact_gpu_ids", "lact_config"}
         )

@@ -108,17 +108,32 @@
   loop: '{{ dotfiles_obsolete_user_unit_links }}'
   register: dotfiles_obsolete_user_unit_link_states
 
-- name: Remove obsolete user unit links
-  ansible.builtin.file:
-    path: '{{ item.stat.path }}'
-    state: absent
-  # Only symlinks are removed; a real file there is local configuration.
+# A link to an installed unit was enabled on this host (systemctl --user
+# enable), not left by the repository, so only broken links are removed.
+- name: Inspect the targets of obsolete user unit links
+  ansible.builtin.stat:
+    path: '{{ item.stat.lnk_source }}'
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  # Only symlinks are considered; a real file there is local configuration.
   loop: >-
     {{ dotfiles_obsolete_user_unit_link_states.results
        | selectattr('stat.islnk', 'defined') | selectattr('stat.islnk')
        | list }}
   loop_control:
     label: '{{ item.item }}'
+  register: dotfiles_obsolete_user_unit_link_targets
+
+- name: Remove broken obsolete user unit links
+  ansible.builtin.file:
+    path: '{{ item.item.stat.path }}'
+    state: absent
+  loop: >-
+    {{ dotfiles_obsolete_user_unit_link_targets.results
+       | rejectattr('stat.exists') | list }}
+  loop_control:
+    label: '{{ item.item.item }}'
   notify: Reload the user systemd manager
 
 - name: Reload user units and inspect hypridle before disabling it
@@ -138,6 +153,24 @@
   when:
     - not dotfiles_hypridle_enabled
     - dotfiles_hypridle_service.status.LoadState | default('not-found') != 'not-found'
+
+- name: Find the OpenRazer user unit
+  ansible.builtin.stat:
+    path: '{{ dotfiles_openrazer_unit }}'
+    get_checksum: false
+  register: dotfiles_openrazer_unit_state
+  when: dotfiles_openrazer_enabled | bool
+
+# Enabled only: the daemon refuses to start until the user's session includes
+# the plugdev group, which takes a new login after package_services adds it.
+- name: Enable the OpenRazer daemon for a detected Razer device
+  ansible.builtin.systemd_service:
+    name: '{{ dotfiles_openrazer_unit | basename }}'
+    enabled: true
+    scope: user
+  when:
+    - dotfiles_openrazer_enabled | bool
+    - dotfiles_openrazer_unit_state.stat.exists | default(false)
 
 - name: Apply pending user systemd unit changes
   ansible.builtin.meta: flush_handlers

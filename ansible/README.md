@@ -391,6 +391,28 @@ scx-manager from starting it again. To use a sched-ext scheduler instead,
 set `gaming_sched_ext_units: []` and run
 `sudo systemctl unmask scx_loader.service`.
 
+A Razer mouse or keyboard needs OpenRazer for `razer_dpi.py`. When `21_steam`
+is selected, the package selection reads the `idVendor` of each USB device in
+`/sys/bus/usb/devices` and adds the `25_razer` group if one reports Razer's
+vendor ID (`packages_razer_usb_vendor_id`, `1532`). The group installs
+`openrazer-daemon`, `openrazer-driver-dkms` and `python-openrazer`, and the
+DKMS driver brings the headers of the running kernel with it. The regular
+users join `plugdev`, which the driver's udev rule gives the device, and the
+`dotfiles` role enables the `openrazer-daemon` user unit without starting it.
+It starts at the next login, once the session has the new group.
+
+The device has to be plugged in for the first run. Once the saved package
+state records `25_razer`, the group stays selected while the device is
+unplugged or cannot be read, so a later `packages_action=reconcile` keeps
+OpenRazer. To remove it, set `packages_razer_detection: false` in the host's
+`host_vars` and run a reconcile. To install it with no device plugged in,
+list `25_razer` in the host's `packages_host_groups`. An explicit
+`packages_group_selection` is never extended and skips the detection. The
+group names are variables (`packages_razer_group`,
+`packages_razer_required_group`); `dotfiles_openrazer_group` and
+`package_services_user_groups_by_group` repeat the name, and a test checks
+that they agree.
+
 To install the selected groups and configure gaming services, run:
 
 ```sh
@@ -570,8 +592,8 @@ root-equivalent access to the Docker daemon; log in again to use it. In the
 same way, the users in `package_services_group_users` join the groups that a
 selected package group creates (`package_services_user_groups_by_group`):
 `realtime` with `01_base`, for the real-time scheduling limits of
-`realtime-privileges`. A group that does not exist yet is reported. When the
-playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
+`realtime-privileges`, and `plugdev` with `25_razer`, for OpenRazer. A group
+that does not exist yet is reported. When the playbook installs or updates `cachyos-ananicy-rules`, it restarts `ananicy-cpp`
 so the new rules load.
 
 ### Time, power saving, Wi-Fi and keyring

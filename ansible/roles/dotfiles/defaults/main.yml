@@ -122,6 +122,14 @@ dotfiles_file_handlers:
   .config/waybar/config: [Reload Waybar]
   .config/waybar/conf/temperature.json: [Reload Waybar]
 dotfiles_systemd_directory: .config/systemd
+# OpenRazer user daemon, enabled when its package group is selected (a
+# 21_steam host with a Razer USB device). It is never disabled: a device that
+# is unplugged during a run is not proof that the host has none. Keep the group
+# name equal to packages_razer_group; a test checks it.
+dotfiles_openrazer_group: 25_razer
+dotfiles_openrazer_enabled: >-
+  {{ dotfiles_openrazer_group in (packages_selected_groups | default([])) }}
+dotfiles_openrazer_unit: /usr/lib/systemd/user/openrazer-daemon.service
 # Set it to false in host_vars/<hostname>.yml to stop hypridle.
 dotfiles_hypridle_enabled: true
 # User unit links removed from the repository; deployment deletes them when
@@ -130,6 +138,8 @@ dotfiles_obsolete_user_unit_links:
   # Tracker 3 became localsearch, whose units are static and D-Bus activated.
   - gnome-session.target.wants/tracker-miner-fs-3.service
   - gnome-session.target.wants/tracker-miner-rss-3.service
+  # No role installs arch-update; a link to an installed timer is kept.
+  - timers.target.wants/arch-update.timer
 dotfiles_systemd_graphical_units:
   - awww.service
   - awww_random.timer

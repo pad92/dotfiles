@@ -16,6 +16,7 @@ GRAPHICS_GROUPS = {
     "09_nvidia_legacy",
     "09_nvidia_modern",
 }
+USB_VENDOR_ID = re.compile(r"^[0-9a-f]{4}$")
 PROTECTED_PACKAGES = {
     "base",
     "base-devel",
@@ -64,6 +65,54 @@ def select_package_groups(
     ):
         selected = [group for group in selected if group not in GRAPHICS_GROUPS]
         selected += list(detected_graphics_groups)
+    return selected
+
+
+def usb_vendor_present(vendor_ids: Any, vendor_id: Any) -> bool | None:
+    """Whether a USB device of vendor_id is connected, or None when unknown.
+
+    vendor_ids holds the idVendor values read from /sys/bus/usb/devices, one
+    per line. The USB root hubs are always listed, so an empty listing means
+    sysfs was not read: like an unreadable value or a malformed vendor_id, it
+    gives None rather than False.
+    """
+    if not isinstance(vendor_ids, str) or not isinstance(vendor_id, str):
+        return None
+    wanted = vendor_id.strip().lower()
+    found = [line.strip().lower() for line in vendor_ids.splitlines() if line.strip()]
+    if not USB_VENDOR_ID.fullmatch(wanted) or not found:
+        return None
+    if any(not USB_VENDOR_ID.fullmatch(value) for value in found):
+        return None
+    return wanted in found
+
+
+def add_detected_group(
+    selected: Any,
+    explicit: Any,
+    present: Any,
+    required_group: Any,
+    group: Any,
+    recorded: Any = None,
+) -> Any:
+    """Add a hardware group to a selection that holds required_group.
+
+    The group is added when its device is present, or when the saved package
+    state already records it: a device unplugged during one run, or unknown,
+    must not make a later reconcile remove what the host uses. An explicit
+    one-run selection stays unchanged.
+    """
+    if (
+        explicit is not None
+        or not isinstance(selected, list)
+        or not isinstance(required_group, str)
+        or not isinstance(group, str)
+        or required_group not in selected
+        or group in selected
+    ):
+        return selected
+    if present is True or (isinstance(recorded, list) and group in recorded):
+        return [*selected, group]
     return selected
 
 
@@ -473,6 +522,8 @@ class FilterModule:
         return {
             "valid_package_name": valid_package_name,
             "select_package_groups": select_package_groups,
+            "usb_vendor_present": usb_vendor_present,
+            "add_detected_group": add_detected_group,
             "dkms_kernel_headers": dkms_kernel_headers,
             "recorded_package_groups": recorded_package_groups,
             "parse_package_state": parse_package_state,
