@@ -1,0 +1,16 @@
+[Unit]
+Description=SwayOSD server for the volume, brightness and Caps Lock pop-ups
+ConditionEnvironment=XDG_CURRENT_DESKTOP=Hyprland
+# swayosd-server keeps running but ignores the volume keys once its
+# PulseAudio connection is lost, so it restarts with pipewire-pulse.
+PartOf=graphical-session.target pipewire-pulse.service
+After=graphical-session.target pipewire-pulse.service
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/swayosd-server
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,174 @@
+---
+# User PipeWire and WirePlumber configuration. Every setting can be
+# overridden for one machine in host_vars/<hostname>.yml.
+audio_config_home: >-
+  {{ ansible_facts['env'].get('XDG_CONFIG_HOME')
+     or ansible_facts['user_dir'] ~ '/.config' }}
+audio_pipewire_dir: '{{ audio_config_home }}/pipewire/pipewire.conf.d'
+audio_wireplumber_dir: '{{ audio_config_home }}/wireplumber/wireplumber.conf.d'
+# Directories the role writes under; none of them may be a link.
+audio_config_directories:
+  - '{{ audio_pipewire_dir | dirname }}'
+  - '{{ audio_pipewire_dir }}'
+  - '{{ audio_wireplumber_dir | dirname }}'
+  - '{{ audio_wireplumber_dir }}'
+audio_rate: 48000
+
+# Every node the role creates is named <audio_node_prefix>.<role>, and the
+# stream that feeds a node is <node>.capture, so they sort together in
+# pw-cli, qpwgraph and pavucontrol.
+audio_node_prefix: voice
+# Clean source, the WirePlumber smart filter nearest the applications: an
+# application that records from the default source gets it, and the voice
+# effects record from it by name. Keep the microphone as the default source;
+# selecting this filter as the default would make the chain read itself.
+audio_clean_source: '{{ audio_node_prefix }}.clean'
+audio_clean_source_description: Voix filtrée
+# Echo-cancelled source that RNNoise reads, when RNNoise is enabled.
+# Applications list it too; its description marks it as internal.
+audio_echo_cancel_source: '{{ audio_node_prefix }}.echo-cancel'
+audio_echo_cancel_source_description: Voix sans écho (interne)
+
+# WebRTC options of the echo canceller (webrtc.<key>). Echo cancellation
+# itself is always on. Gain control is left off: it pumps the level between
+# phrases. WebRTC noise suppression only runs without RNNoise, since two
+# suppressors in a row add artefacts.
+audio_echo_cancel_args:
+  high_pass_filter: true
+  noise_suppression: '{{ not audio_rnnoise_enabled | bool }}'
+  transient_suppression: true
+  voice_detection: true
+  gain_control: false
+
+# RNNoise (noise-suppression-for-voice) is packaged in the Arch 01_base group
+# only.
+audio_rnnoise_enabled: "{{ ansible_facts['os_family'] == 'Archlinux' }}"
+# Voice probability (%) below which RNNoise mutes; the grace periods keep the
+# start and the end of words.
+audio_rnnoise_controls:
+  VAD Threshold (%): 50
+  VAD Grace Period (ms): 200
+  Retroactive VAD Grace (ms): 50
+
+# Keep ALSA and Bluetooth devices awake (no pop, no start-up latency). Set it
+# to false to let WirePlumber suspend idle devices, for example to save power.
+audio_disable_suspend: true
+
+# Voice effects, deployed when the host selects audio_voice_effects_group
+# (swh-plugins). Each effect gets the <audio_node_prefix>.<name> source,
+# shown under its description. Its nodes are chained in order; input and
+# output name the ports when they are not the defaults (Input/Output for
+# LADSPA, In/Out for builtin nodes).
+audio_voice_effects_group: 26_voice_effects
+audio_voice_effects_enabled: >-
+  {{ audio_voice_effects_group in (packages_selected_groups | default([])) }}
+audio_voice_effects:
+  - name: vader
+    description: Voix Vader
+    nodes:
+      - type: ladspa
+        name: pitch
+        plugin: am_pitchshift_1433
+        label: amPitchshift
+        control: { Pitch shift: 0.75 }
+  - name: chipmunk
+    description: Voix aiguë
+    nodes:
+      - type: ladspa
+        name: pitch
+        plugin: am_pitchshift_1433
+        label: amPitchshift
+        control: { Pitch shift: 1.55 }
+  - name: robot
+    description: Voix robot
+    nodes:
+      - type: ladspa
+        name: ringmod
+        plugin: ringmod_1188
+        label: ringmod_1i1o1l
+        control:
+          Modulation depth (0=none, 1=AM, 2=RM): 2.0
+          Frequency (Hz): 55.0
+          Sine level: 1.0
+          Triangle level: 0.0
+          Sawtooth level: 0.0
+          Square level: 0.0
+  - name: church
+    description: Voix cathédrale
+    nodes:
+      - type: ladspa
+        name: reverb
+        plugin: gverb_1216
+        label: gverb
+        output: Left output
+        control:
+          Roomsize (m): 75.0
+          Reverb time (s): 3.5
+          Damping: 0.5
+          Input bandwidth: 0.75
+          Dry signal level (dB): 0.0
+          Early reflection level (dB): -12.0
+          Tail level (dB): -15.0
+  # Two-way radio: compressed and slightly saturated voice, band-limited to
+  # 300-3200 Hz with a presence bump. No static is added; the silence between
+  # phrases comes from the RNNoise voice detector upstream.
+  - name: radio
+    description: Voix radio
+    nodes:
+      - type: ladspa
+        name: comp
+        plugin: sc4m_1916
+        label: sc4m
+        control:
+          RMS/peak: 0.5
+          Attack time (ms): 5.0
+          Release time (ms): 120.0
+          Threshold level (dB): -24.0
+          Ratio (1:n): 8.0
+          Knee radius (dB): 3.0
+          Makeup gain (dB): 10.0
+      - type: ladspa
+        name: drive
+        plugin: valve_1209
+        label: valve
+        control:
+          Distortion level: 0.35
+          Distortion character: 0.5
+      - type: builtin
+        name: highpass1
+        label: bq_highpass
+        control: { Freq: 300.0, Q: 0.707 }
+      - type: builtin
+        name: highpass2
+        label: bq_highpass
+        control: { Freq: 300.0, Q: 0.707 }
+      - type: builtin
+        name: lowpass1
+        label: bq_lowpass
+        control: { Freq: 3200.0, Q: 0.707 }
+      - type: builtin
+        name: lowpass2
+        label: bq_lowpass
+        control: { Freq: 3200.0, Q: 0.707 }
+      - type: builtin
+        name: presence
+        label: bq_peaking
+        control: { Freq: 1800.0, Q: 1.0, Gain: 6.0 }
+      - type: ladspa
+        name: limit
+        plugin: fast_lookahead_limiter_1913
+        label: fastLookaheadLimiter
+        input: Input 1
+        output: Output 1
+        control:
+          Input gain (dB): 0.0
+          Limit (dB): -1.0
+          Release time (s): 0.1
+
+# Files the role used to ship, deleted only while they are regular files that
+# still hold the shipped content (sha1), so a hand-edited copy or a link is
+# kept and reported. 10-realtime.conf repeated the
+# PipeWire defaults (nice.level -11, rt.prio 88).
+audio_obsolete_files:
+  # yamllint disable-line rule:line-length
+  pipewire/pipewire.conf.d/10-realtime.conf: 882c4334ea7cdbffffbecd8d116bd830d5f3023d # pragma: allowlist secret

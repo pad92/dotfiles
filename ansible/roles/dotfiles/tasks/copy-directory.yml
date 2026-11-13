@@ -69,7 +69,8 @@
   notify: '{{ dotfiles_copy_handlers }}'
 
 # Only the files the previous deployment listed are deleted, and only when
-# they still match what it copied: a file added or changed by hand stays.
+# they are still regular files with what it copied: a file added or changed
+# by hand, or replaced by a link, stays (dotfiles_obsolete_files).
 - name: Inspect the manifest of {{ dotfiles_copy.dest }}
   ansible.builtin.stat:
     path: '{{ dotfiles_copy_manifest }}'
@@ -103,32 +104,14 @@
       {{ dict(dotfiles_copy_previous_manifest.keys() | map('normpath')
               | zip(dotfiles_copy_previous_manifest.values())) }}
 
-- name: Inspect the files no longer shipped in {{ dotfiles_copy.dest }}
-  ansible.builtin.stat:
-    path: '{{ item }}'
-    follow: false
-    get_checksum: true
-    checksum_algorithm: sha1
-    get_mime: false
-    get_attributes: false
-  # Normalized paths outside the tree, from a hand-edited manifest, are ignored.
-  loop: >-
-    {{ dotfiles_copy_previous_files.keys()
-       | difference(dotfiles_copy_files.keys())
-       | select('match', (dotfiles_copy_root ~ '/') | regex_escape)
-       | sort }}
-  register: dotfiles_copy_obsolete_stats
-
 - name: Delete the unchanged files no longer shipped in {{ dotfiles_copy.dest }}
-  ansible.builtin.file:
-    path: '{{ item.item }}'
-    state: absent
-  loop: >-
-    {{ dotfiles_copy_obsolete_stats.results | selectattr('stat.isreg', 'defined')
-       | selectattr('stat.isreg') | list }}
-  loop_control:
-    label: '{{ item.item }}'
-  when: item.stat.checksum == dotfiles_copy_previous_files[item.item]
+  dotfiles_obsolete_files:
+    files: >-
+      {{ dotfiles_copy_previous_files
+         | dict2items
+         | rejectattr('key', 'in', dotfiles_copy_files.keys() | list)
+         | selectattr('key', 'match', (dotfiles_copy_root ~ '/') | regex_escape)
+         | items2dict }}
   register: dotfiles_copy_deletions
   notify: '{{ dotfiles_copy_handlers }}'
 
@@ -142,8 +125,7 @@
     dotfiles_changed_files: >-
       {{ ((dotfiles_directory_copies.results | default([]) | selectattr('changed')
           | map(attribute='item.dest') | list)
-         + (dotfiles_copy_deletions.results | default([]) | selectattr('changed')
-            | map(attribute='item.item') | list))
+         + dotfiles_copy_deletions.deleted)
          | map('relpath', dotfiles_home) | list }}
     dotfiles_changed_file_handlers: >-
       {{ dotfiles_file_handlers | dict2items
@@ -153,15 +135,12 @@
   when: dotfiles_changed_file_handlers | length > 0
   notify: '{{ dotfiles_changed_file_handlers }}'
 
-- name: Report the changed files no longer shipped in {{ dotfiles_copy.dest }}
+- name: Report the files no longer shipped but kept in {{ dotfiles_copy.dest }}
   ansible.builtin.debug:
-    msg: '{{ item.item }} was changed by hand, so it is kept.'
-  loop: >-
-    {{ dotfiles_copy_obsolete_stats.results | selectattr('stat.isreg', 'defined')
-       | selectattr('stat.isreg') | list }}
+    msg: '{{ item.path }} {{ item.reason }}, so it is kept.'
+  loop: '{{ dotfiles_copy_deletions.kept }}'
   loop_control:
-    label: '{{ item.item }}'
-  when: item.stat.checksum != dotfiles_copy_previous_files[item.item]
+    label: '{{ item.path }}'
 
 - name: Create the manifest directory for {{ dotfiles_copy.dest }}
   ansible.builtin.file:

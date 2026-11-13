@@ -368,6 +368,34 @@
         loop_var: dotfiles_copy_item
         label: '{{ dotfiles_copy_item.dest | default(dotfiles_copy_item) }}'
 
+    # A directory taken out of dotfiles_directories or dotfiles_trees is no
+    # longer this role's: its manifest is forgotten and its files are left
+    # alone, for the role that now owns them (such as audio) or the user.
+    - name: Find the manifests of the copied directories
+      ansible.builtin.find:
+        paths: '{{ dotfiles_manifest_directory }}'
+        patterns: '*.json'
+        file_type: file
+        hidden: true
+      register: dotfiles_manifest_files
+
+    - name: Forget the manifests of directories the role no longer copies
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop: >-
+        {{ dotfiles_manifest_files.files | map(attribute='path')
+           | reject('in', dotfiles_current_manifests) | sort }}
+      vars:
+        dotfiles_current_manifests: >-
+          {{ [dotfiles_manifest_directory]
+             | product(((dotfiles_directories | map('normpath') | list)
+                        + (dotfiles_trees | map(attribute='dest')
+                           | map('normpath') | list))
+                       | map('replace', '/', '%2F')
+                       | map('regex_replace', '$', '.json'))
+             | map('join', '/') | list }}
+
     # The check above already passed; this checks again, then removes.
     - name: Remove the Vundle and tpm leftovers
       dotfiles_retired_plugins:

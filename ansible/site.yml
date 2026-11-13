@@ -100,6 +100,10 @@
     - role: dotfiles
       become: false
       tags: [dotfiles]
+    - role: audio
+      become: false
+      when: packages_action | default('install') != 'plan'
+      tags: [dotfiles, audio]
     - role: agent_cli
       become: false
       tags: [dotfiles, agent_cli]

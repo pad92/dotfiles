@@ -561,6 +561,10 @@ class BackupScriptTests(unittest.TestCase):
             result = backups.load_configuration(self.home, ["foo=bar"])
         self.assertEqual(result["dotfiles_files"], ["custom"])
         self.assertIn("foo=bar", run.call_args.args[0])
+        # The audio role's obsolete files resolve against the same home.
+        self.assertTrue(result["audio_obsolete_files"])
+        if self.home.resolve() != Path.home().resolve():
+            self.assertEqual(result["audio_config_home"], f"{self.home}/.config")
         for completed in [
             subprocess.CompletedProcess([], 1, stdout="secret"),
             subprocess.CompletedProcess([], 0, stdout="[]"),

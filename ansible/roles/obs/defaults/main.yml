@@ -44,7 +44,7 @@ obs_webcam_threshold: 0.65
 obs_webcam_edge_trim: 2
 obs_mic_device: default
 obs_desktop_audio_device: default
-# Disable when the default source is already filtered (for example Mic_Clean).
+# Disable when the default source is already filtered (for example voice.clean).
 obs_mic_noise_suppression: true
 obs_demo_title: Démo
 obs_pause_text: Pause, on revient tout de suite

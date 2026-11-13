@@ -1,0 +1,92 @@
+---
+# Writing through a link would put the files wherever it points, such as the
+# repository clone of an old deployment that linked these directories.
+- name: Inspect the PipeWire and WirePlumber configuration directories
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: '{{ audio_config_directories }}'
+  register: audio_config_directory_stats
+
+- name: Refuse to write through a linked configuration directory
+  ansible.builtin.assert:
+    that:
+      - not item.stat.islnk | default(false)
+    fail_msg: >-
+      {{ item.item }} is a link to {{ item.stat.lnk_source | default('?') }}.
+      Replace it with a real directory (move it aside and copy what it holds)
+      before running the audio role.
+    quiet: true
+  loop: '{{ audio_config_directory_stats.results }}'
+  loop_control:
+    label: '{{ item.item }}'
+
+- name: Create the PipeWire and WirePlumber configuration directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop: '{{ audio_config_directories }}'
+
+- name: Write the clean microphone (echo cancellation and RNNoise)
+  ansible.builtin.template:
+    src: 20-echo-cancel.conf.j2
+    dest: '{{ audio_pipewire_dir }}/20-echo-cancel.conf'
+    mode: '0644'
+  notify: Apply changed user audio configuration
+
+- name: Write the voice effect microphones
+  ansible.builtin.template:
+    src: 30-voice-effects.conf.j2
+    dest: '{{ audio_pipewire_dir }}/30-voice-effects.conf'
+    mode: '0644'
+  when: audio_voice_effects_enabled | bool
+  notify: Apply changed user audio configuration
+
+- name: Remove the voice effect microphones of a host without the group
+  ansible.builtin.file:
+    path: '{{ audio_pipewire_dir }}/30-voice-effects.conf'
+    state: absent
+  when: not audio_voice_effects_enabled | bool
+  notify: Apply changed user audio configuration
+
+- name: Write the Bluetooth configuration
+  ansible.builtin.copy:
+    src: 50-bluez-config.conf
+    dest: '{{ audio_wireplumber_dir }}/50-bluez-config.conf'
+    mode: '0644'
+  notify: Apply changed user audio configuration
+
+- name: Write the device suspend policy
+  ansible.builtin.copy:
+    src: 50-disable-suspend.conf
+    dest: '{{ audio_wireplumber_dir }}/50-disable-suspend.conf'
+    mode: '0644'
+  when: audio_disable_suspend | bool
+  notify: Apply changed user audio configuration
+
+- name: Let WirePlumber suspend idle devices
+  ansible.builtin.file:
+    path: '{{ audio_wireplumber_dir }}/50-disable-suspend.conf'
+    state: absent
+  when: not audio_disable_suspend | bool
+  notify: Apply changed user audio configuration
+
+# The dotfiles role used to copy these files; this role owns them now.
+- name: Delete the unchanged files the role no longer ships
+  dotfiles_obsolete_files:
+    files: >-
+      {{ dict([audio_config_home] | product(audio_obsolete_files.keys())
+              | map('join', '/') | zip(audio_obsolete_files.values())) }}
+  register: audio_obsolete_result
+  notify: Apply changed user audio configuration
+
+- name: Report the files the role no longer ships but keeps
+  ansible.builtin.debug:
+    msg: '{{ item.path }} {{ item.reason }}, so it is kept.'
+  loop: '{{ audio_obsolete_result.kept }}'
+  loop_control:
+    label: '{{ item.path }}'

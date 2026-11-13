@@ -1,0 +1,50 @@
+# {{ ansible_managed }}
+# Virtual microphones with real-time effects, all fed by "{{ audio_clean_source }}"
+# (audio_voice_effects in the audio role). Each node of an effect feeds the
+# next one; a module that fails to load is skipped (nofail).
+{# Strings are written as JSON strings, which SPA-JSON reads, so a quote or a
+   backslash in a value cannot end the string early. #}
+{% macro spa(value) -%}
+{{ value | to_json(ensure_ascii=False) }}
+{%- endmacro %}
+{% macro port(node, direction) -%}
+{{ node[direction] | default(('Input' if direction == 'input' else 'Output') if node.type == 'ladspa' else ('In' if direction == 'input' else 'Out')) }}
+{%- endmacro %}
+
+context.modules = [
+{% for effect in audio_voice_effects %}
+{% set source = audio_node_prefix ~ '.' ~ effect.name %}
+    # {{ effect.description | replace("\n", " ") }}
+    { name = libpipewire-module-filter-chain
+        args = {
+            node.description = {{ spa(effect.description) }}
+            media.name       = {{ spa(effect.description) }}
+            filter.graph = {
+                nodes = [
+{% for node in effect.nodes %}
+                    { type = {{ node.type }}  name = {{ node.name }}{% if node.plugin is defined %}  plugin = {{ node.plugin }}{% endif %}  label = {{ node.label }}
+                        control = {
+{% for key, value in (node.control | default({})) | dictsort %}
+                            {{ spa(key) }} = {{ spa(value) }}
+{% endfor %}
+                        }
+                    }
+{% endfor %}
+                ]
+                links = [
+{% for upstream, downstream in effect.nodes | zip(effect.nodes[1:]) %}
+                    { output = {{ spa(upstream.name ~ ':' ~ port(upstream, 'output')) }}  input = {{ spa(downstream.name ~ ':' ~ port(downstream, 'input')) }} }
+{% endfor %}
+                ]
+                inputs  = [ {{ spa(effect.nodes[0].name ~ ':' ~ port(effect.nodes[0], 'input')) }} ]
+                outputs = [ {{ spa(effect.nodes[-1].name ~ ':' ~ port(effect.nodes[-1], 'output')) }} ]
+            }
+            audio.rate     = {{ audio_rate }}
+            audio.position = [ MONO ]
+            capture.props  = { node.name = {{ spa(source ~ '.capture') }}  node.passive = true  target.object = {{ spa(audio_clean_source) }} }
+            playback.props = { node.name = {{ spa(source) }}  media.class = "Audio/Source" }
+        }
+        flags = [ nofail ]
+    }
+{% endfor %}
+]

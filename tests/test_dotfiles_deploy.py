@@ -926,6 +926,31 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
             run()
             self.assertEqual(outside.read_text(), "outside\n")
 
+            # A directory dropped from the role (here .config/pipewire, now
+            # the audio role's) loses its manifest; its files stay.
+            released = home / ".config/pipewire/20-echo-cancel.conf"
+            released.parent.mkdir(parents=True)
+            released.write_text("shipped\n")
+            stale = manifest.parent / ".config%2Fpipewire.json"
+            stale.write_text(
+                json.dumps(
+                    {
+                        "dest": str(released.parent),
+                        "files": {
+                            str(released): hashlib.sha1(
+                                b"shipped\n", usedforsecurity=False
+                            ).hexdigest()
+                        },
+                    }
+                )
+            )
+            run("--check")
+            self.assertTrue(stale.exists())
+            run()
+            self.assertFalse(stale.exists())
+            self.assertTrue(manifest.exists())
+            self.assertEqual(released.read_text(), "shipped\n")
+
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
 @unittest.skipUnless(shutil.which("vim"), "vim is not installed")

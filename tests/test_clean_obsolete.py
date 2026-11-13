@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import io
 import os
@@ -38,7 +39,12 @@ class HomeTestCase(unittest.TestCase):
         variables = {**defaults, "dotfiles_home": str(self.home)}
         templar = managed.Templar(loader=managed.DataLoader(), variables=variables)
         return {
-            name: templar.template(variables[name]) for name in managed.PATH_VARIABLES
+            **{
+                name: templar.template(variables[name])
+                for name in managed.PATH_VARIABLES
+            },
+            "audio_config_home": str(self.home / ".config"),
+            "audio_obsolete_files": {},
         }
 
     def link(self, relative: str, target: str) -> Path:
@@ -179,6 +185,109 @@ class BackupTests(HomeTestCase):
         clean.apply(plan, self.home)
 
         self.assertTrue(repaired.is_symlink())
+
+
+class ObsoleteFileTests(HomeTestCase):
+    SHIPPED = b"context.properties = {}\n"
+    RELATIVE = "pipewire/pipewire.conf.d/10-realtime.conf"
+
+    def configuration(self):
+        return {
+            **self.config(),
+            "audio_obsolete_files": {
+                self.RELATIVE: hashlib.sha1(self.SHIPPED).hexdigest()
+            },
+        }
+
+    def obsolete(self, content: bytes = SHIPPED) -> Path:
+        path = self.home / ".config" / self.RELATIVE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return path
+
+    def plan(self):
+        plan = clean.Plan()
+        clean.role_obsolete_files(self.configuration(), plan)
+        return plan
+
+    def test_unchanged_obsolete_file_is_removed_without_confirmation(self):
+        path = self.obsolete()
+        plan = self.plan()
+
+        self.assertEqual(list(plan.obsolete_files), [path])
+        self.assertFalse(plan.needs_confirmation())
+        clean.confirm_removal(plan, prompt=self.fail, interactive=False)
+        clean.apply(plan, self.home)
+
+        self.assertFalse(path.exists())
+        self.assertTrue(path.parent.is_dir())
+
+    def test_changed_obsolete_file_is_kept_and_reported(self):
+        path = self.obsolete(b"context.properties = { mine = true }\n")
+        plan = self.plan()
+
+        self.assertEqual(plan.obsolete_files, {})
+        self.assertEqual(plan.kept, [f"{path}: obsolete file that was changed by hand"])
+
+    def test_obsolete_path_that_is_a_link_is_kept(self):
+        target = self.root / "shared.conf"
+        target.write_bytes(self.SHIPPED)
+        path = self.home / ".config" / self.RELATIVE
+        path.parent.mkdir(parents=True)
+        path.symlink_to(target)
+
+        plan = self.plan()
+
+        self.assertEqual(plan.obsolete_files, {})
+        self.assertEqual(
+            plan.kept, [f"{path}: obsolete file that is not a regular file"]
+        )
+
+    def test_missing_obsolete_file_is_not_listed(self):
+        plan = self.plan()
+
+        self.assertTrue(plan.is_empty())
+        self.assertEqual(plan.kept, [])
+
+    def test_linked_parent_directory_is_not_followed(self):
+        outside = self.root / "outside/pipewire.conf.d"
+        outside.mkdir(parents=True)
+        (outside / "10-realtime.conf").write_bytes(self.SHIPPED)
+        (self.home / ".config/pipewire").mkdir(parents=True)
+        (self.home / ".config/pipewire/pipewire.conf.d").symlink_to(outside)
+
+        plan = self.plan()
+
+        self.assertEqual(plan.obsolete_files, {})
+        self.assertTrue((outside / "10-realtime.conf").exists())
+
+    def test_file_edited_after_the_plan_is_left_alone(self):
+        path = self.obsolete()
+        plan = self.plan()
+        path.write_bytes(b"edited meanwhile\n")
+
+        clean.apply(plan, self.home)
+
+        self.assertEqual(path.read_bytes(), b"edited meanwhile\n")
+
+    def test_report_names_the_obsolete_file(self):
+        path = self.obsolete()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            clean.report(self.plan(), dry_run=True)
+
+        self.assertEqual(
+            output.getvalue().splitlines(), [f"would remove obsolete file {path}"]
+        )
+
+    def test_escaping_obsolete_path_is_rejected(self):
+        configuration = {
+            **self.config(),
+            "audio_obsolete_files": {"../outside.conf": "0" * 40},
+        }
+
+        with self.assertRaises(ValueError):
+            clean.role_obsolete_files(configuration, clean.Plan())
 
 
 class RepositoryTests(HomeTestCase):
