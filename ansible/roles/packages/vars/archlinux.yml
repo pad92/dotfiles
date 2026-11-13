@@ -180,6 +180,7 @@ packages_family_groups:
       - packer
       - pre-commit
       - python
+      - python-coverage
       - python-pipx
       - ripgrep
       - rsync

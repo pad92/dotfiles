@@ -5,10 +5,13 @@ repos:
   # public/ is gitignored, so this only refreshes the local preview.
   - repo: local
     hooks:
+      # The CI enforces the .coveragerc floor on the unit tests, so the hook
+      # runs them under coverage too: a commit that lowers the coverage fails
+      # here instead of in the pipeline.
       - id: test
-        name: run unit and shell tests
+        name: run unit tests under coverage and shell tests
         language: system
-        entry: env -u GIT_INDEX_FILE make test
+        entry: env -u GIT_INDEX_FILE make coverage test-shell
         always_run: true
         pass_filenames: false
         stages: [pre-commit]

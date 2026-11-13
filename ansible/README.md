@@ -595,11 +595,12 @@ so the new rules load.
   `gnome_keyring_pam_enabled: false` for a host that logs in through a display
   manager.
 
-Use `make ansible-backup-ls` to list backups created for Ansible-managed
-dotfiles, or `make ansible-backup-rm` to review and remove them through an
-Ansible file task after a confirmation prompt. The helper script only collects
-the candidate paths. Both targets use `$HOME` by default; set
-`ANSIBLE_BACKUP_ROOT=/path` on the `make` command line to select another root.
+Use `make clean DRY_RUN=1` to list the backups created for Ansible-managed
+dotfiles, and `make clean` to remove them after typing `REMOVE`, together with
+the other leftovers described in the main README. `make clean` runs with the
+Python interpreter of `ansible-playbook`; set `ANSIBLE_PYTHON` to use another.
+`scripts/ansible_backup_files.py` only collects the backup paths. The home is `$HOME` by default; set
+`CLEAN_ROOT=/path` on the `make` command line to select another one.
 
 ### OBS
 

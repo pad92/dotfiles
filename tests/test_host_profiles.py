@@ -16,7 +16,7 @@ from ansible_host_profiles import (
     inventory_arguments,
     resolve_host_settings,
 )
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ansible_test_environment, ansible_tree
 
 WORKSTATION = yaml.safe_load(
     (ROOT / "ansible/group_vars/all/packages.yml").read_text()
@@ -35,6 +35,24 @@ class HostProfileTests(unittest.TestCase):
 
     def settings(self, hostname):
         return resolve_host_settings(hostname, self.work)[0]
+
+    # The ignored local Vault is encrypted on a workstation: the tests have no
+    # password for it, and CI has no such file.
+    def test_ansible_copy_leaves_out_the_local_vault(self):
+        source = self.work / "source"
+        (source / "group_vars/all").mkdir(parents=True)
+        (source / "group_vars/all/vault.yml").write_text("$ANSIBLE_VAULT;1.1;AES256\n")
+        (source / "group_vars/all/main.yml").write_text("x: 1\n")
+        (source / "host_vars").mkdir()
+        (source / "inventory.yml").write_text("all: {}\n")
+        (source / "roles").mkdir()
+
+        tree = ansible_tree(self.work / "out", source)
+
+        self.assertFalse(list(tree.glob("group_vars/*/vault*.yml")))
+        self.assertTrue((tree / "group_vars/all/main.yml").is_file())
+        self.assertFalse((tree / "inventory.yml").is_symlink())
+        self.assertTrue((tree / "roles").is_symlink())
 
     def test_laptop_adds_the_vpn_and_disables_ipv6_and_hypridle(self):
         settings = self.settings("PadsP5560")
@@ -112,7 +130,11 @@ class HostProfileTests(unittest.TestCase):
             )
         )
         return subprocess.run(
-            ["ansible-playbook", *inventory_arguments(hostname), str(playbook)],
+            [
+                "ansible-playbook",
+                *inventory_arguments(hostname, self.work),
+                str(playbook),
+            ],
             cwd=self.work,
             env=ansible_test_environment(self.work),
             capture_output=True,
