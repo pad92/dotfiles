@@ -21,3 +21,4 @@ packages_family_group_labels:
   21_steam: Steam and games
   22_obs: OBS Studio and virtual camera
   23_vpn: openfortivpn SAML VPN
+  24_3dprint: 3D printing (PrusaSlicer, F3D)

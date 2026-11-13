@@ -1,0 +1,33 @@
+---
+- name: Require Arch Linux for the 3D printing role
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Archlinux'
+    fail_msg: The 3D printing role only maps packages and paths for Arch Linux.
+    quiet: true
+
+# A no-op after the packages role; installs the group when the role runs
+# alone with --tags 3dprint.
+- name: Install PrusaSlicer and F3D
+  community.general.pacman:
+    name: '{{ print3d_packages }}'
+    state: present
+  when: print3d_packages | length > 0
+
+- name: Create the F3D system configuration directory
+  ansible.builtin.file:
+    path: '{{ print3d_f3d_config_dir }}'
+    state: directory
+    owner: '{{ print3d_f3d_config_owner }}'
+    group: '{{ print3d_f3d_config_group }}'
+    mode: '0755'
+
+- name: Make F3D thumbnails render with the headless EGL backend
+  ansible.builtin.copy:
+    dest: '{{ print3d_f3d_config_dir }}/thumbnail.json'
+    content: |
+      {{ [{'options': print3d_f3d_thumbnail_options}] | to_nice_json(indent=2) }}
+    owner: '{{ print3d_f3d_config_owner }}'
+    group: '{{ print3d_f3d_config_group }}'
+    mode: '0644'
+  notify: Clear the GNOME thumbnail cache

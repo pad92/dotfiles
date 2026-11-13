@@ -16,6 +16,9 @@ Monstre = "Monstre"
 Effet = "Effet"
 exemple = "exemple"
 wronly = "wronly"
+# GNOME/freedesktop term for a program that renders previews (F3D).
+thumbnailer = "thumbnailer"
+thumbnailers = "thumbnailers"
 
 [default.extend-identifiers]
 PNGs = "PNGs"

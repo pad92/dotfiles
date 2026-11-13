@@ -12,3 +12,4 @@ packages_workstation_groups:
   - 14_iac_opentofu
   - 20_apps
   - 22_obs
+  - 24_3dprint

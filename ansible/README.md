@@ -45,6 +45,7 @@ Each role has one function. `site.yml` runs them in this order:
 | `dotfiles`         | Deploy the home directory files and the user units.                                         |
 | `agent_cli`        | Set the Claude Code and Codex status lines.                                                 |
 | `obs`              | Configure OBS Studio and its virtual camera for `22_obs`.                                   |
+| `print3d`          | Configure F3D thumbnails of 3D files for Nautilus, for `24_3dprint` (tag `3dprint`).        |
 
 Package group selection only reads the host, so both playbooks run it first
 with the `always` tag (`include_role` of `packages`, `tasks_from: selection`).
@@ -711,3 +712,32 @@ From a terminal, the same unit works without Waybar:
 systemctl start --no-block openfortivpn@work.service
 journalctl -fu openfortivpn@work.service
 ```
+
+### 3D printing
+
+The `24_3dprint` group installs PrusaSlicer and F3D. Both workstations select
+it through `packages_workstation_groups`. The `print3d` role runs under the
+`3dprint` tag:
+
+```sh
+make deploy TAGS=3dprint BECOME_PASS=1
+```
+
+The packages role installs the group and tracks it for reconciliation. The
+role installs the same packages with pacman too, so `TAGS=3dprint` works on
+its own. A package installed that way is not recorded as owned by the
+packages role, which then never removes it.
+
+F3D ships thumbnailers for STL, STEP, 3MF, glTF and other 3D formats. Nautilus
+runs them in a bwrap sandbox, where the default backend fails to open a
+display and the preview is marked failed. The role writes
+`/etc/f3d/thumbnail.json` (root, `0644`, in a `0755` directory) to force the
+headless EGL backend for every user (`print3d_f3d_thumbnail_options`). F3D
+reads `/etc/f3d` first, so a `~/.config/f3d/thumbnail.json` can still override
+it.
+
+GNOME never retries a file listed under `~/.cache/thumbnails/fail`. When the
+F3D file changes, a handler removes the `fail`, `normal`, `large`, `x-large`
+and `xx-large` directories of the SSH user's cache (`$XDG_CACHE_HOME` when it
+is set). Nautilus recreates them as it draws new previews. An unchanged run
+leaves the cache alone.
