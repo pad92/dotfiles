@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: audio
+  author: pad
+  description: >-
+    Writes the user PipeWire and WirePlumber configuration: echo cancellation,
+    noise suppression and voice effects.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [audio, pipewire, wireplumber]
+dependencies: []

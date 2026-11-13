@@ -1,4 +1,4 @@
-# Dotfile role
+# dotfiles
 
 `files/home/` mirrors paths under a user's home directory. The role copies
 static configuration, user scripts and the Vim and Zsh trees, and renders
@@ -10,6 +10,43 @@ controller's copy of the repository: nothing in the home directory points
 into a clone, so the target needs none, and a clone there can be deleted
 once deployed. `dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come
 from the facts of the SSH user.
+
+## Requirements
+
+- Runs as the SSH user, without privilege escalation (`become: false`).
+- A running user systemd manager, for the units and handlers.
+- Network access to GitHub on the target, to clone the pinned Zsh and Vim
+  plugins when they are missing or their pin changes.
+
+## Role Variables
+
+The full list, with comments, is in `defaults/main.yml`. The ones a host
+usually sets:
+
+| Variable                              | Default                   | Description                                                                      |
+| :------------------------------------ | :------------------------ | :------------------------------------------------------------------------------- |
+| `dotfiles_hypr_monitors`              | `[]`                      | Monitors and where they sit (see [Host-dependent files](#host-dependent-files)). |
+| `dotfiles_hypr_monitor_mode`          | `preferred`               | `preferred`, `highrr` or `highres`.                                              |
+| `dotfiles_hypr_workspace_rules`       | `[]`                      | Hyprland workspace rules, by monitor name.                                       |
+| `dotfiles_hypr_window_rules`          | `[]`                      | Hyprland window rules.                                                           |
+| `dotfiles_hypr_touch_monitor`         | `''`                      | Monitor that receives touch input.                                               |
+| `dotfiles_hypr_effects_enabled`       | `true` unless portable    | Blur and shadows.                                                                |
+| `dotfiles_is_portable`                | from the DMI chassis type | Override when the firmware reports the wrong type.                               |
+| `dotfiles_hypridle_enabled`           | `true`                    | `false` stops and disables `hypridle.service`.                                   |
+| `dotfiles_hypridle_lock_timeout`      | `300`                     | Seconds before locking.                                                          |
+| `dotfiles_hypridle_dpms_timeout`      | `900`                     | Seconds before the screens turn off.                                             |
+| `dotfiles_hypridle_suspend_timeout`   | `0`                       | Seconds before suspend; `0` adds no suspend listener.                            |
+| `dotfiles_waybar_modules_right`       | see `defaults/main.yml`   | Right-hand Waybar modules.                                                       |
+| `dotfiles_waybar_portable_modules`    | backlight, battery        | Modules added on a portable machine.                                             |
+| `dotfiles_waybar_temperature_sensors` | `[]`                      | `temperature#<name>` modules.                                                    |
+| `dotfiles_systemd_graphical_units`    | see `defaults/main.yml`   | User units started with the graphical session.                                   |
+| `dotfiles_zsh_plugins`                | pinned list               | Zsh plugins cloned at a commit.                                                  |
+| `dotfiles_vim_pack_plugins`           | pinned list               | Vim plugins cloned at a commit.                                                  |
+| `dotfiles_directory_handlers`         | see `defaults/main.yml`   | Reload handlers by copied directory.                                             |
+| `dotfiles_file_handlers`              | see `defaults/main.yml`   | Reload handlers by file.                                                         |
+
+`dotfiles_home`, `dotfiles_owner` and `dotfiles_group` come from the facts of
+the SSH user.
 
 ## Vim and Zsh trees
 
@@ -56,10 +93,12 @@ Each copied directory has a manifest in `~/.local/state/dotfiles/manifests/`
 (`dotfiles_manifest_directory`) that lists the files deployed there with their
 SHA-1. The next deployment deletes the files of the old manifest that the
 repository no longer ships, as long as they are still regular files with the
-same checksum. A file you changed is kept and reported, and a file you added
-is never listed, so it stays. The first deployment with this version has no
-manifest yet, so it deletes nothing. Check mode reports the deletions without
-making them.
+same checksum. A file you changed or replaced with a link is kept and
+reported, and a file you added is never listed, so it stays. The first
+deployment with this version has no manifest yet, so it deletes nothing. Check
+mode reports the deletions without making them. When a directory leaves
+`dotfiles_directories` or `dotfiles_trees`, its manifest is deleted and its
+files are left alone: the role no longer owns them.
 
 Earlier versions linked these trees into `~/.dotfiles`. When a tree is still a
 link there (`dotfiles_legacy_link_root`, which follows `dotfiles_link_root` or
@@ -216,9 +255,9 @@ configuration or temperature file reloads Waybar, and a changed
 `hosts/settings.lua` reloads a running Hyprland. The role reloads the user systemd manager after unit
 changes and before starting the configured services. A user systemd manager
 must be running. Hyprlauncher is relaunched as a UWSM service so Ansible does
-not wait for the launcher to exit. Changed unit definitions use `try-restart`;
-audio configuration uses `try-reload-or-restart`. Both leave inactive services
-stopped. Service jobs, including the initial graphical service starts, are
+not wait for the launcher to exit. Changed unit definitions use `try-restart`,
+which leaves inactive services stopped. The PipeWire and WirePlumber files
+belong to the `audio` role. Service jobs, including the initial graphical service starts, are
 queued without waiting for completion. A successful play therefore confirms
 submission, not service health; inspect `systemctl --user --failed` and
 `journalctl --user -b` if a service does not start.
@@ -255,6 +294,21 @@ standard library and `powerprofilesctl`, supplied by power-profiles-daemon.
 Deploy with `dotfiles_deploy`; the role reloads Waybar when its configuration
 changes.
 
+## GPU selection
+
+UWSM (`~/.config/uwsm/gpu-devices.sh`) lists the DRM cards at session start
+and puts the unique boot VGA card first, then the other GPUs. The firmware's
+boot choice does not say whether a card is integrated or dedicated. With
+several GPUs and no unique boot VGA card, or no usable card, UWSM leaves the
+selection unchanged and prints why, so Aquamarine uses its default or an
+existing override. The Aquamarine device list uses the current DRM nodes,
+without card numbers or PCI addresses. The selection happens at login:
+reconnect the session after changing the GPU hardware.
+
+Applications keep choosing their driver, Vulkan and VA-API included. Use
+`prime-run application` for workloads that need NVIDIA, after removing any
+session-wide `VK_DRIVER_FILES` override. Keep LACT on `Auto` for office use.
+
 ## Claude Code status line
 
 `~/.bin/claude-statusline` renders the Claude Code status line on one line with
@@ -270,3 +324,35 @@ estimated cost appears only when no subscription limit is reported, because it
 is a list-price estimate. `NO_COLOR` disables colors. The script needs `jq`.
 
 The `agent_cli` role adds this script to the Claude Code settings.
+
+## Tags
+
+| Tag                 | Runs                                                                  |
+| :------------------ | :-------------------------------------------------------------------- |
+| `dotfiles`          | The whole role (and the `audio` and `agent_cli` roles in `site.yml`). |
+| `dotfiles_deploy`   | Deploy the configuration and clone the pinned Vim and Zsh plugins.    |
+| `systemd`           | Deploy the user units and enable `dotfiles_systemd_graphical_units`.  |
+| `hyprlock_carousel` | Render the lock-screen carousel helper.                               |
+
+## Dependencies
+
+None. The play gathers the facts and runs the system roles
+first.
+
+## Example Playbook
+
+```yaml
+- hosts: all
+  roles:
+    - role: dotfiles
+      become: false
+      tags: [dotfiles]
+```
+
+## License
+
+Unlicense
+
+## Author Information
+
+pad

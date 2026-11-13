@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: packages
+  author: pad
+  description: >-
+    Selects package groups from the host and its GPUs, installs their packages
+    and AUR packages, and removes the packages it owns that no group lists any
+    more.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [packages, aur, pacman]
+dependencies: []

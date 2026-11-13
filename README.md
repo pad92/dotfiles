@@ -99,7 +99,9 @@ home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
 `<path>.<pid>.<date>@<time>~`). It also deletes the broken links
 under the paths the role deploys, such as a link into a deleted `~/.dotfiles` clone
 or a `.wants` link to a unit that is gone, and leaves other broken links in
-the home alone. In the repository it removes the Git metadata of the retired
+the home alone. It deletes the files a role no longer ships, such as the
+`audio` role's former `10-realtime.conf`, while they still hold the shipped
+content; an edited copy or a link is kept and reported. In the repository it removes the Git metadata of the retired
 submodules (Vundle, tpm, dotbot, the Zsh plugins: their `[submodule]` sections
 and their clones under `.git/modules`), the records of worktrees whose
 directory is gone, the Python tool caches and untracked broken links. It does
@@ -108,7 +110,7 @@ submodule clone with a commit that no remote branch or tag holds, or whose
 checkout still exists, is kept and reported. Everything is listed before
 anything changes. The backups, the submodule metadata and the worktree records
 go only after you type `REMOVE` on a terminal; without a terminal they stay.
-Caches and broken links go without asking. `DRY_RUN` accepts only `1` (list)
+Caches, broken links and unchanged obsolete files go without asking. `DRY_RUN` accepts only `1` (list)
 and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
 as aliases of `make clean DRY_RUN=1` and `make clean`, and
 `ANSIBLE_BACKUP_ROOT` still selects the home.
@@ -163,7 +165,8 @@ variables, package ownership, and system settings.
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
 | `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
-| `dotfiles`                                 | Run the `dotfiles` and `agent_cli` roles.                                       |
+| `dotfiles`                                 | Run the `dotfiles`, `audio` and `agent_cli` roles.                              |
+| `audio`                                    | Write the PipeWire and WirePlumber configuration: clean mic and voice effects.  |
 | `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
 | `agent_cli`                                | Set the Claude Code and Codex status lines.                                     |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
@@ -172,7 +175,7 @@ variables, package ownership, and system settings.
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
 
 Changed files notify their handlers: Mako and Waybar reload, active audio
-services reload or restart, and active user units whose definitions changed
+services reload or restart (the SwayOSD server restarts with them), and active user units whose definitions changed
 restart after `daemon-reload`. Hypridle needs `WAYLAND_DISPLAY` in the user
 systemd environment to start.
 
@@ -264,8 +267,8 @@ backs up changes, and restarts `lactd` when needed. It adds `Auto`, `Adaptive`,
 and `PreferMaximumPerformance` profiles, named after LACT's PowerMizer modes,
 for detected AMD and NVIDIA GPUs. Intel GPU settings are left unchanged.
 
-See [AMD options](./ansible/README.md#amd-cpu-performance) and
-[gaming setup](./ansible/README.md#gaming) for overrides and dependencies.
+See [AMD options](./ansible/roles/cpu_power/README.md) and
+[gaming setup](./ansible/roles/gaming/README.md) for overrides and dependencies.
 
 ## Customize
 

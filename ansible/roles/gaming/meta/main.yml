@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: gaming
+  author: pad
+  description: >-
+    Configures ananicy-cpp and power-profiles-daemon for the Steam package
+    group.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [gaming, steam, ananicy]
+dependencies: []

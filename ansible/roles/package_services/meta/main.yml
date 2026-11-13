@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: package_services
+  author: pad
+  description: >-
+    Enables the services of the selected package groups and adds the users to
+    the groups they create.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [systemd, services]
+dependencies: []

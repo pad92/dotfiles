@@ -29,6 +29,9 @@ Release history and changes planned for the next version.
     is typed on a terminal. `DRY_RUN=1` lists without changing anything
     (`DRY_RUN` takes only `0` or `1`), and `CLEAN_ROOT` selects another
     home. The script runs with the Python interpreter of `ansible-playbook`.
+    It also removes the files a role no longer ships (`audio_obsolete_files`)
+    while they hold the shipped content, without asking; an edited copy or a
+    link is kept and reported, as during deployment.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
@@ -145,9 +148,48 @@ Release history and changes planned for the next version.
     user's GNOME thumbnail cache, failed entries included, so previews are
     drawn again.
 
+- **Audio**:
+  - Add the `audio` role (tags `dotfiles` and `audio`), which now writes the
+    PipeWire and WirePlumber files the `dotfiles` role used to copy.
+  - The clean source runs RNNoise after the WebRTC echo canceller, to remove
+    keyboard, fan and street noise and mute the gaps between phrases.
+  - Add the `voice.radio` effect: compressed, slightly saturated voice
+    limited to 300-3200 Hz, fed by `voice.clean`, with no added static.
+  - Add the `26_voice_effects` group (`swh-plugins`, moved from `01_base`),
+    selected by both workstations. The effects are generated from
+    `audio_voice_effects`.
+  - `audio_disable_suspend` sets per host whether audio devices stay awake
+    (default `true`).
+
 ### Changed
 
+- **Audio**:
+  - Rename the PipeWire nodes to `voice.<name>`, with `voice.<name>.capture`
+    for the stream that feeds each one: `Mic_Clean` becomes `voice.clean`,
+    `Mic_Vader` becomes `voice.vader`, and so on. The descriptions are in
+    French and no longer all start with "Microphone (". An application or
+    OBS scene that named `Mic_Clean` needs `voice.clean` or the default
+    source.
+  - The echo canceller and RNNoise are WirePlumber smart source filters,
+    chained in a fixed order and given to every application that records
+    from the default source, which stays the microphone. Do not select
+    `voice.clean` as the default source.
+  - Keep the Vader, Chipmunk, Robot and Church effects; drop Monster, Helium
+    and Metallic, which repeated Vader, Chipmunk and Robot.
+  - Bluetooth enables every codec again (the HFP codecs of headset
+    microphones included) and LDAC uses its adaptive quality instead of a
+    fixed 990 kbps.
+  - Delete `10-realtime.conf`, which repeated PipeWire's defaults, unless
+    it was edited or is a link; a kept file is reported.
+  - Stop before writing through a linked `~/.config/pipewire`,
+    `~/.config/wireplumber` or `*.conf.d` directory.
 - **Dotfiles**:
+  - Delete the manifest of a directory that leaves `dotfiles_directories`
+    or `dotfiles_trees` (such as `.config/pipewire`), leaving its files in
+    place.
+  - The `dotfiles_obsolete_files` module deletes the files a role no longer
+    ships, shared by the `dotfiles` and `audio` roles. A file replaced by a
+    link is now reported as kept.
   - Copy `~/.vim` and the Zsh tree (`~/.local/share/dotfiles/zsh`) instead
     of linking them into the target's clone, and copy the Hyprlock background
     as well. Once deployed, the home
@@ -354,6 +396,17 @@ Release history and changes planned for the next version.
     user units have their own regression test, and deploying every shipped
     unit made each run three times longer.
 - **Documentation**:
+  - The Ansible documentation goes from general to specific.
+    `ansible/README.md` keeps the requirements, layout, inventory, `make`
+    targets and role conventions. The new `ansible/PLAYBOOKS.md` gives the
+    order, tags and conditions of `site.yml` and `obs.yml`. Each role has a
+    README in the `ansible-galaxy` layout (Requirements, Role Variables,
+    Dependencies, Example Playbook, License, Author Information), which holds
+    the details that used to be in `ansible/README.md`. The DNS migration note
+    and the main README link to the role READMEs.
+  - Every role has a `meta/main.yml` with its Galaxy information: description,
+    license, minimum Ansible version, supported platforms and tags. None
+    declares a dependency; the playbooks set the order.
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
   - The Arch install guide no longer advises against `-march=native`. Its
@@ -387,6 +440,17 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Audio**: the echo canceller used option names that PipeWire 1.6 ignores
+  (`webrtc.highpass_filter`, `webrtc.extended_filter`,
+  `webrtc.echo_cancellation`). A missing LADSPA plugin no longer stops
+  PipeWire: every module is loaded with `nofail`, and plugins are found by
+  name instead of an Arch path. Descriptions and control names are written
+  as escaped JSON strings, so a quote no longer breaks the file.
+- **Hyprland**: the volume and brightness keys no longer stop working after
+  an audio deployment. `swayosd-server` lost its PulseAudio connection when
+  the `audio` role restarted PipeWire and never reconnected. It now runs as
+  the `swayosd-server.service` user unit, enabled in `graphical-session.target`
+  and `PartOf=pipewire-pulse.service`, instead of the Hyprland autostart list.
 - **CI**: `run_unit_tests.py` reads the skipped count only from unittest's
   summary line. A failed play test printed its `PLAY RECAP`, whose
   `skipped=0    rescued=0` made the runner crash before it listed the failure.

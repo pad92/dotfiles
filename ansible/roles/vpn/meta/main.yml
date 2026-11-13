@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: vpn
+  author: pad
+  description: >-
+    Configures an openfortivpn SAML VPN unit that local users can start
+    without a password.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+  galaxy_tags: [vpn, networking, openfortivpn]
+dependencies: []

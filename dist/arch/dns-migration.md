@@ -9,7 +9,7 @@ profiles point their DNS at it. Steps marked "with the relay" apply only to
 those hosts.
 
 The Ansible `dns` tag does the migration. The
-[Ansible guide](../../ansible/README.md#dns) describes the rules it applies;
+[`dns` role README](../../ansible/roles/dns/README.md) describes the rules it applies;
 this note is the procedure. On a host installed with the current guide there is
 nothing to migrate, but the tag still writes the resolved, NetworkManager and
 Docker settings.
@@ -123,7 +123,7 @@ system_dns_manage: false
 ### Restore the files
 
 The backups are root-only copies in mode `0600` (see
-[Backups](../../ansible/README.md#backups)). Do not restore them with `cp -a`:
+[Backups](../../ansible/roles/dns/README.md#backups)). Do not restore them with `cp -a`:
 it would also copy the `0700` mode of the backup directories onto `/etc`. The
 commands below run in one terminal, since later blocks reuse `$B`. List the
 backups, then reinstall each file with its normal mode:
