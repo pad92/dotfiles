@@ -375,6 +375,127 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(positions, {"eDP-1": "0x0", "DP-2": "1920x0"})
 
 
+# layout.rules() as "connector<TAB>mode<TAB>position" lines.
+RULES_SCRIPT = """
+package.path = arg[1] .. "/?.lua;" .. package.path
+local layout = require("include.layout")
+local input = load("return " .. io.read("*a"))()
+for _, rule in ipairs(layout.rules(input.specs, input.monitors, input.mode)) do
+  print(rule.output .. "\\t" .. rule.mode .. "\\t" .. rule.position)
+end
+"""
+
+
+def mode(width, height, refresh_rate, preferred=False):
+    return {
+        "width": width,
+        "height": height,
+        "refresh_rate": refresh_rate,
+        "preferred": preferred,
+    }
+
+
+# The modes PadsTower's monitors list, shortened: the Dell offers 75 Hz only
+# at low resolutions, the ASUS 180 Hz at its native one.
+DELL_MODES = [
+    mode(2560, 1440, 59.951, preferred=True),
+    mode(1280, 1024, 75.025),
+    mode(1024, 768, 75.029),
+    mode(640, 480, 60.0),
+]
+ASUS_MODES = [
+    mode(2560, 1440, 59.951, preferred=True),
+    mode(2560, 1440, 180.0),
+    mode(1920, 1080, 120.0),
+]
+
+
+@unittest.skipUnless(LUA, "requires lua or luajit")
+class RulesTests(unittest.TestCase):
+    def rules(self, specs, monitors, policy):
+        result = subprocess.run(
+            [LUA, "-", str(HYPR)],
+            input=RULES_SCRIPT.replace(
+                'io.read("*a")',
+                json.dumps(
+                    lua_literal({"specs": specs, "monitors": monitors, "mode": policy})
+                ),
+            ),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        return {
+            output: (rule_mode, position)
+            for output, rule_mode, position in (
+                line.split("\t") for line in result.stdout.splitlines()
+            )
+        }
+
+    def test_a_monitor_mode_overrides_the_host_policy(self):
+        specs = [
+            {"name": "dell", "match": "Dell Inc. DELL P2423DE", "mode": "preferred"},
+            {
+                "name": "asus",
+                "match": "ASUSTek COMPUTER INC XG32WCS",
+                "right_of": "dell",
+            },
+        ]
+        monitors = [
+            dict(DELL, available_modes=DELL_MODES),
+            dict(ASUS, available_modes=ASUS_MODES),
+        ]
+        self.assertEqual(
+            self.rules(specs, monitors, "highrr"),
+            {"DP-2": ("preferred", "0x0"), "DP-3": ("highrr", "2560x0")},
+        )
+
+    def test_positions_use_the_size_of_the_requested_mode(self):
+        # The Dell still runs the 1024x768 mode an earlier highrr policy gave
+        # it. Placed from that size, the ASUS would land at 1024x0 and overlap
+        # the Dell once it is back at 2560x1440.
+        specs = [
+            {"name": "dell", "match": "Dell Inc. DELL P2423DE", "mode": "preferred"},
+            {
+                "name": "asus",
+                "match": "ASUSTek COMPUTER INC XG32WCS",
+                "right_of": "dell",
+            },
+        ]
+        monitors = [
+            dict(DELL, width=1024, height=768, available_modes=DELL_MODES),
+            dict(ASUS, available_modes=ASUS_MODES),
+        ]
+        self.assertEqual(
+            self.rules(specs, monitors, "highrr"),
+            {"DP-2": ("preferred", "0x0"), "DP-3": ("highrr", "2560x0")},
+        )
+
+    def test_the_host_policy_picks_the_size_it_will_get(self):
+        # Without its own mode, the Dell gets highrr and its 75 Hz 1024x768
+        # mode, so the ASUS stands against that narrower edge.
+        monitors = [
+            dict(DELL, available_modes=DELL_MODES),
+            dict(ASUS, available_modes=ASUS_MODES),
+        ]
+        self.assertEqual(
+            self.rules(SPECS[:2], monitors, "highrr"),
+            {"DP-2": ("highrr", "0x0"), "DP-3": ("highrr", "1024x0")},
+        )
+        self.assertEqual(
+            self.rules(SPECS[:2], monitors, "highres"),
+            {"DP-2": ("highres", "0x0"), "DP-3": ("highres", "2560x0")},
+        )
+
+    def test_without_listed_modes_the_current_size_is_used(self):
+        monitors = [dict(DELL, width=1024, height=768), ASUS]
+        self.assertEqual(
+            self.rules(SPECS[:2], monitors, None),
+            {"DP-2": ("preferred", "0x0"), "DP-3": ("preferred", "1024x0")},
+        )
+
+
 # include/host.lua against a recording stand-in for the hl API, with
 # monitors that change between events as a hotplug would.
 HOST_SCRIPT = """

@@ -15,7 +15,9 @@
 --             serial number to tell identical models apart), or
 --   internal  true for the built-in panel of a laptop;
 --   right_of, left_of, above, below
---             at most one, the layout name of the neighbour.
+--             at most one, the layout name of the neighbour;
+--   mode      optional mode policy for this monitor only (preferred, highrr
+--             or highres), overriding the host-wide one.
 local M = {}
 
 -- DRM connector types of a built-in panel. They name the kind of link, not a
@@ -359,15 +361,82 @@ function M.selector(specs, name, monitors)
   return nil
 end
 
+-- The mode a policy picks among a monitor's available modes, as Hyprland
+-- picks it: the EDID's preferred mode, the highest refresh rate then the
+-- largest area (highrr), or the largest area then the highest refresh rate
+-- (highres). nil when the monitor lists no mode.
+function M.pick_mode(available, policy)
+  local function area(m)
+    return (m.width or 0) * (m.height or 0)
+  end
+  local function better(a, b)
+    if policy == "highres" then
+      if area(a) ~= area(b) then
+        return area(a) > area(b)
+      end
+      return (a.refresh_rate or 0) > (b.refresh_rate or 0)
+    end
+    if (a.refresh_rate or 0) ~= (b.refresh_rate or 0) then
+      return (a.refresh_rate or 0) > (b.refresh_rate or 0)
+    end
+    return area(a) > area(b)
+  end
+  local best
+  for _, candidate in ipairs(available or {}) do
+    if policy ~= "highrr" and policy ~= "highres" then
+      if candidate.preferred then
+        return candidate
+      end
+    elseif not best or better(candidate, best) then
+      best = candidate
+    end
+  end
+  return best
+end
+
 -- Returns the monitor rules for the connected monitors: the computed
--- position, with Hyprland's own choice of mode and scale.
+-- position, with Hyprland's own choice of mode and scale. A spec's own mode
+-- policy wins over the host-wide one: "highrr" on a 60 Hz office monitor
+-- would pick a 75 Hz low resolution mode.
+--
+-- The positions are computed from the size of the mode each rule asks for,
+-- when the monitor lists its modes, not from the size of the current mode:
+-- a monitor that grows once its rule applies would otherwise overlap the
+-- neighbour placed against its old edge until the next pass.
 function M.rules(specs, monitors, mode)
-  local positions = M.compute(specs, monitors)
+  local modes = {}
+  for _, spec in ipairs(specs or {}) do
+    if spec.mode then
+      modes[spec.name] = spec.mode
+    end
+  end
+  local mode_of = {}
+  for name, monitor in pairs(M.assign(specs, monitors)) do
+    mode_of[monitor.name] = modes[name]
+  end
+  for _, monitor in ipairs(monitors or {}) do
+    mode_of[monitor.name] = mode_of[monitor.name] or mode or "preferred"
+  end
+
+  local targets = {}
+  for _, monitor in ipairs(monitors or {}) do
+    local target = {}
+    for key, value in pairs(monitor) do
+      target[key] = value
+    end
+    local picked = M.pick_mode(monitor.available_modes, mode_of[monitor.name])
+    if picked and picked.width and picked.height then
+      target.width, target.height = picked.width, picked.height
+    end
+    table.insert(targets, target)
+  end
+  local positions = M.compute(specs, targets)
+
   local rules = {}
   for _, monitor in ipairs(monitors or {}) do
     table.insert(rules, {
       output = monitor.name,
-      mode = mode or "preferred",
+      mode = mode_of[monitor.name],
       position = positions[monitor.name],
       scale = "auto",
     })
