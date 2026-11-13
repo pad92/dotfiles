@@ -1,12 +1,17 @@
 import importlib.util
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from git_fixtures import git, repository
 
-SCRIPTS = Path(__file__).parents[1] / "scripts"
+ROOT = Path(__file__).parents[1]
+SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 SPEC = importlib.util.spec_from_file_location(
     "clean_obsolete", SCRIPTS / "clean_obsolete.py"
@@ -89,7 +94,7 @@ class BackupTests(HomeTestCase):
         backup = self.backup()
         plan = clean.Plan(backups=[backup])
 
-        clean.confirm_backup_removal(plan, prompt=self.fail, interactive=False)
+        clean.confirm_removal(plan, prompt=self.fail, interactive=False)
         clean.apply(plan, self.home)
 
         self.assertEqual(backup.read_text(), "previous .zshrc")
@@ -99,7 +104,7 @@ class BackupTests(HomeTestCase):
         backup = self.backup()
         plan = clean.Plan(backups=[backup])
 
-        clean.confirm_backup_removal(plan, prompt=lambda _: "yes", interactive=True)
+        clean.confirm_removal(plan, prompt=lambda _: "yes", interactive=True)
         clean.apply(plan, self.home)
 
         self.assertTrue(backup.exists())
@@ -116,9 +121,7 @@ class BackupTests(HomeTestCase):
         link.symlink_to(target)
         plan = clean.Plan(backups=[backup, tree, link])
 
-        clean.confirm_backup_removal(
-            plan, prompt=lambda _: "REMOVE\n", interactive=True
-        )
+        clean.confirm_removal(plan, prompt=lambda _: "REMOVE\n", interactive=True)
         clean.apply(plan, self.home)
 
         self.assertFalse(backup.exists())
@@ -127,11 +130,9 @@ class BackupTests(HomeTestCase):
         self.assertEqual(target.read_text(), "kept")
 
 
-class RepositoryTests(unittest.TestCase):
+class RepositoryTests(HomeTestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        super().setUp()
         self.repository = self.root / "dotfiles"
         repository(self.repository)
         (self.repository / "README").write_text("dotfiles\n")
@@ -205,6 +206,86 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(plan.submodule_directories, [])
         self.assertIn("no remote branch or tag holds", plan.kept[0])
 
+    def test_retired_submodule_is_kept_without_a_terminal(self):
+        git_directory = self.retired_submodule("dotbot")
+        plan = self.plan()
+
+        clean.confirm_removal(plan, prompt=self.fail, interactive=False)
+        clean.apply(plan, self.repository)
+
+        self.assertTrue(git_directory.is_dir())
+        self.assertIn(
+            "submodule.dotbot.url",
+            git(self.repository, "config", "--list", "--local"),
+        )
+        self.assertIn("1 retired submodules: no terminal", plan.kept[-1])
+
+    def test_removes_section_left_without_url(self):
+        git(self.repository, "config", "submodule.dotbot.active", "true")
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_sections, ["dotbot"])
+
+    def test_keeps_nested_clone_with_a_local_commit(self):
+        git_directory = self.retired_submodule("vim")
+        nested = self.retired_submodule("nested", local_commit=True)
+        git(self.repository, "config", "--remove-section", "submodule.nested")
+        (git_directory / "modules").mkdir()
+        nested.rename(git_directory / "modules" / "nested")
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_directories, [])
+        self.assertIn("no remote branch or tag holds", plan.kept[0])
+
+    def test_main_worktree_path_may_contain_spaces(self):
+        spaced = self.root / "dot files"
+        repository(spaced)
+
+        self.assertTrue(clean.is_main_worktree(spaced))
+
+    def test_prunes_worktree_records_after_confirmation(self):
+        worktree = self.root / "gone"
+        git(self.repository, "worktree", "add", "-q", str(worktree))
+        shutil.rmtree(worktree)
+        plan = clean.Plan(prunable_worktrees=clean.prunable_worktrees(self.repository))
+        self.assertEqual(len(plan.prunable_worktrees), 1)
+
+        clean.confirm_removal(plan, prompt=lambda _: "REMOVE", interactive=True)
+        clean.apply(plan, self.repository)
+
+        self.assertEqual(clean.prunable_worktrees(self.repository), [])
+
+    def test_dry_run_changes_nothing(self):
+        git_directory = self.retired_submodule("dotbot")
+        backup = self.home / ".zshrc.bak"
+        backup.write_text("previous .zshrc")
+        cache = self.repository / "__pycache__"
+        cache.mkdir()
+        arguments = [
+            "clean_obsolete.py",
+            "--root",
+            str(self.home),
+            "--repository",
+            str(self.repository),
+            "--dry-run",
+        ]
+
+        with (
+            patch.object(
+                clean.managed, "load_configuration", return_value=self.config()
+            ),
+            patch("sys.argv", arguments),
+            patch("builtins.input", side_effect=self.fail),
+            patch("sys.stdout"),
+        ):
+            self.assertEqual(clean.main(), 0)
+
+        self.assertEqual(backup.read_text(), "previous .zshrc")
+        self.assertTrue(git_directory.is_dir())
+        self.assertTrue(cache.is_dir())
+
     def test_keeps_submodules_still_declared(self):
         self.retired_submodule("dotbot")
         (self.repository / ".gitmodules").write_text(
@@ -238,6 +319,74 @@ class RepositoryTests(unittest.TestCase):
         self.assertFalse(untracked.is_symlink())
         self.assertTrue(tracked.is_symlink())
         self.assertTrue(skipped.is_dir())
+
+    def test_glob_named_link_is_not_matched_against_tracked_files(self):
+        (self.repository / "ab").write_text("")
+        git(self.repository, "add", "ab")
+        link = self.repository / "a*"
+        link.symlink_to("/nonexistent")
+
+        plan = clean.Plan()
+        clean.repository_files(self.repository, plan)
+
+        self.assertEqual(plan.paths, [link])
+
+    def test_leaves_nested_checkouts_and_virtualenvs_alone(self):
+        nested = self.repository / "bundle" / "Vundle.vim"
+        repository(nested)
+        (nested / "dangling").symlink_to("/nonexistent")
+        (nested / "__pycache__").mkdir()
+        venv = self.repository / ".venv"
+        (venv / "bin").mkdir(parents=True)
+        (venv / "pyvenv.cfg").write_text("home = /usr/bin\n")
+        (venv / "bin" / "python").symlink_to("/nonexistent/python")
+
+        plan = clean.Plan()
+        clean.repository_files(self.repository, plan)
+
+        self.assertEqual(plan.paths, [])
+
+
+class MakefileTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.work = Path(temporary.name)
+        shutil.copy(ROOT / "Makefile", self.work / "Makefile")
+        playbook = self.work / "ansible-playbook"
+        playbook.write_text(
+            "#!/bin/sh\n"
+            "echo 'ansible-playbook [core 2.22.0]'\n"
+            "echo '  python version = 3.14.0 (main) [GCC] (/opt/ansible/bin/python)'\n"
+        )
+        playbook.chmod(0o755)
+        self.playbook = playbook
+
+    def make(self, *arguments):
+        return subprocess.run(
+            ["make", "-n", f"ANSIBLE_PLAYBOOK={self.playbook}", *arguments],
+            cwd=self.work,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+            env={**os.environ, "DRY_RUN": ""},
+        )
+
+    def test_clean_runs_with_the_interpreter_of_ansible(self):
+        result = self.make("clean")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            '"/opt/ansible/bin/python" scripts/clean_obsolete.py', result.stdout
+        )
+
+    def test_dry_run_takes_only_zero_or_one(self):
+        self.assertIn("--dry-run", self.make("clean", "DRY_RUN=1").stdout)
+        self.assertNotIn("--dry-run", self.make("clean", "DRY_RUN=0").stdout)
+        refused = self.make("clean", "DRY_RUN=yes")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("DRY_RUN=yes is not 0 or 1", refused.stderr)
 
 
 if __name__ == "__main__":

@@ -11,11 +11,13 @@ Release history and changes planned for the next version.
     earlier migrations: broken links under the paths the `dotfiles` role
     deploys, the Git metadata of the retired submodules (`[submodule]` sections and clones
     under `.git/modules`), the records of worktrees whose directory is gone,
-    Python tool caches and untracked broken links in the repository. A
-    submodule clone holding a commit that no remote branch or tag has is
-    kept. The backups go only after `REMOVE` is typed on a terminal.
-    `DRY_RUN=1` lists without changing anything, and `CLEAN_ROOT` selects
-    another home.
+    Python tool caches and untracked broken links in the repository, outside
+    nested Git checkouts and virtual environments. A submodule clone
+    holding a commit that no remote branch or tag has is kept. The backups,
+    the submodule metadata and the worktree records go only after `REMOVE`
+    is typed on a terminal. `DRY_RUN=1` lists without changing anything
+    (`DRY_RUN` takes only `0` or `1`), and `CLEAN_ROOT` selects another
+    home. The script runs with the Python interpreter of `ansible-playbook`.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)

@@ -4,8 +4,7 @@ These leftovers are removed:
 
 - the backups the dotfiles role made next to the paths it manages
   (<path>.bak after a conflict, <path>.<pid>.<date>@<time>~ from a copy),
-  found by ansible_backup_files.py. They hold the previous content of a
-  file, so they go only after REMOVE is typed on a terminal;
+  found by ansible_backup_files.py;
 - broken symbolic links under the paths the dotfiles role deploys in the
   home directory, such as a link into a deleted ~/.dotfiles clone or a
   .wants link to a user unit that no longer exists;
@@ -13,13 +12,17 @@ These leftovers are removed:
   tpm, dotbot, the Zsh plugins): their submodule.<name> sections in
   .git/config and their clones under .git/modules, plus the records of
   worktrees whose directory is gone (git worktree prune);
-- in the repository, Python tool caches and untracked broken links.
+- in the repository, Python tool caches and untracked broken links, outside
+  nested Git checkouts and Python virtual environments.
 
-The other leftovers are regenerated or hold no content of their own. A
-submodule clone is removed only when every commit its refs reach is also
-reachable from a remote-tracking branch or a tag, and when no checkout of it
-remains. Otherwise it is kept and reported. Everything is listed before
-anything changes, and --dry-run only lists.
+Backups, submodule metadata and worktree records go only after REMOVE is
+typed on a terminal: a backup holds the previous content of a file, and a
+worktree record may name a checkout on a drive that is not mounted. Caches
+and broken links are regenerated or hold no content of their own, so they go
+without asking. A submodule clone is removed only when every commit its refs
+reach is also reachable from a remote-tracking branch or a tag, and when no
+checkout of it remains. Otherwise it is kept and reported. Everything is
+listed before anything changes, and --dry-run only lists.
 """
 
 import argparse
@@ -54,14 +57,17 @@ class Plan:
     prunable_worktrees: list[str] = field(default_factory=list)
     kept: list[str] = field(default_factory=list)
 
-    def is_empty(self) -> bool:
-        return not (
-            self.paths
-            or self.backups
+    def needs_confirmation(self) -> bool:
+        """Whether the plan removes something that REMOVE must confirm."""
+        return bool(
+            self.backups
             or self.submodule_sections
             or self.submodule_directories
             or self.prunable_worktrees
         )
+
+    def is_empty(self) -> bool:
+        return not (self.paths or self.needs_confirmation())
 
 
 def run_git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -129,27 +135,35 @@ def is_main_worktree(repository: Path) -> bool:
     )
     if result.returncode != 0:
         return False
-    git_directory, common_directory = result.stdout.split()
+    # One path per line: a path may contain spaces.
+    git_directory, common_directory = result.stdout.splitlines()
     return git_directory == common_directory
 
 
 def configured_submodules(common_directory: Path) -> list[str]:
-    """Names of the submodule.<name> sections of the repository config."""
+    """Names of the submodule.<name> sections of the repository config.
+
+    Every key counts, not only url: a section left with active or update
+    alone is still a leftover.
+    """
     result = run_git(
         "config",
         "--file",
         str(common_directory / "config"),
         "--name-only",
         "--get-regexp",
-        r"^submodule\..*\.url$",
+        r"^submodule\.",
     )
     # Exit status 1: no such key, so no submodule section.
     if result.returncode not in (0, 1):
         raise RuntimeError("Unable to read the submodules of the Git config")
+    # submodule.<name>.<key>: the name may itself contain dots.
     return sorted(
-        line[len("submodule.") : -len(".url")]
-        for line in result.stdout.splitlines()
-        if line
+        {
+            line[len("submodule.") :].rsplit(".", 1)[0]
+            for line in result.stdout.splitlines()
+            if line.count(".") >= 2
+        }
     )
 
 
@@ -182,6 +196,11 @@ def nested_git_directories(directory: Path) -> list[Path]:
         path = Path(parent)
         if (path / "HEAD").is_file() and (path / "objects").is_dir():
             found.append(path)
+            # A Git directory keeps the clones of its own submodules under
+            # modules/; objects, refs and logs hold none and can be large.
+            child_directories[:] = [
+                name for name in child_directories if name == "modules"
+            ]
     return found
 
 
@@ -252,7 +271,9 @@ def prunable_worktrees(repository: Path) -> list[str]:
 
 
 def is_tracked(repository: Path, path: Path) -> bool:
+    # --literal-pathspecs: a link named "a*" must not match a tracked "ab".
     result = run_git(
+        "--literal-pathspecs",
         "ls-files",
         "--error-unmatch",
         "--",
@@ -262,13 +283,29 @@ def is_tracked(repository: Path, path: Path) -> bool:
     return result.returncode == 0
 
 
+def is_separate_tree(directory: Path) -> bool:
+    """A nested Git checkout or a Python virtual environment.
+
+    Their content belongs to another repository or to the environment: a
+    link this repository does not track may be one the nested clone tracks.
+    """
+    git_entry = directory / ".git"
+    return (
+        git_entry.exists()
+        or git_entry.is_symlink()
+        or (directory / "pyvenv.cfg").is_file()
+    )
+
+
 def repository_files(repository: Path, plan: Plan) -> None:
     """Python caches and untracked broken links of the working tree."""
     for parent, child_directories, child_files in os.walk(repository):
         parent_path = Path(parent)
         for name in list(child_directories):
             path = parent_path / name
-            if name in REPOSITORY_SKIPPED_DIRECTORIES:
+            if name in REPOSITORY_SKIPPED_DIRECTORIES or (
+                not path.is_symlink() and is_separate_tree(path)
+            ):
                 child_directories.remove(name)
             elif name in CACHE_DIRECTORY_NAMES and not path.is_symlink():
                 child_directories.remove(name)
@@ -362,29 +399,41 @@ def report(plan: Plan, dry_run: bool) -> None:
         print("Nothing to clean.")
 
 
-def confirm_backup_removal(
-    plan: Plan, prompt=input, interactive: bool | None = None
-) -> None:
-    """Keep the backups unless REMOVE is typed on a terminal."""
-    if not plan.backups:
+def confirmed_items(plan: Plan) -> list[str]:
+    """What REMOVE confirms, counted for the prompt and the report."""
+    items = []
+    if plan.backups:
+        items.append(f"{len(plan.backups)} backups")
+    if plan.submodule_sections or plan.submodule_directories:
+        items.append(f"{len(plan.submodule_sections)} retired submodules")
+    if plan.prunable_worktrees:
+        items.append(f"{len(plan.prunable_worktrees)} worktree records")
+    return items
+
+
+def confirm_removal(plan: Plan, prompt=input, interactive: bool | None = None) -> None:
+    """Keep backups and Git metadata unless REMOVE is typed on a terminal."""
+    if not plan.needs_confirmation():
         return
+    items = ", ".join(confirmed_items(plan))
     if interactive is None:
         interactive = sys.stdin.isatty()
     if not interactive:
         reason = "no terminal to confirm their removal"
     else:
         try:
-            answer = prompt(
-                f"Type REMOVE to delete the {len(plan.backups)} backups listed above: "
-            )
+            answer = prompt(f"Type REMOVE to delete the {items} listed above: ")
         except EOFError:
             answer = ""
         if answer.strip() == "REMOVE":
             return
         reason = "removal not confirmed"
-    plan.kept.append(f"{len(plan.backups)} backups: {reason}")
+    plan.kept.append(f"{items}: {reason}")
     print(f"keep {plan.kept[-1]}")
     plan.backups.clear()
+    plan.submodule_sections.clear()
+    plan.submodule_directories.clear()
+    plan.prunable_worktrees.clear()
 
 
 def main() -> int:
@@ -422,7 +471,7 @@ def main() -> int:
         plan = build_plan(root, configuration, repository)
         report(plan, arguments.dry_run)
         if not arguments.dry_run:
-            confirm_backup_removal(plan)
+            confirm_removal(plan)
             apply(plan, repository)
     except (
         OSError,

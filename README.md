@@ -96,17 +96,20 @@ Reconciliation previews the removals and asks for confirmation.
 `make clean` removes what deployments and earlier versions left behind. In the
 home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
 `dotfiles` role made next to the paths it manages (`<path>.bak` and
-`<path>.<pid>.<date>@<time>~`), but only after you type `REMOVE` on a
-terminal; without a terminal it keeps them. It also deletes the broken links
+`<path>.<pid>.<date>@<time>~`). It also deletes the broken links
 under the paths the role deploys, such as a link into a deleted `~/.dotfiles` clone
 or a `.wants` link to a unit that is gone, and leaves other broken links in
 the home alone. In the repository it removes the Git metadata of the retired
 submodules (Vundle, tpm, dotbot, the Zsh plugins: their `[submodule]` sections
 and their clones under `.git/modules`), the records of worktrees whose
-directory is gone, the Python tool caches and untracked broken links. A
+directory is gone, the Python tool caches and untracked broken links. It does
+not look into nested Git checkouts or Python virtual environments. A
 submodule clone with a commit that no remote branch or tag holds, or whose
 checkout still exists, is kept and reported. Everything is listed before
-anything changes. `make ansible-backup-ls` and `make ansible-backup-rm` remain
+anything changes. The backups, the submodule metadata and the worktree records
+go only after you type `REMOVE` on a terminal; without a terminal they stay.
+Caches and broken links go without asking. `DRY_RUN` accepts only `1` (list)
+and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
 as aliases of `make clean DRY_RUN=1` and `make clean`, and
 `ANSIBLE_BACKUP_ROOT` still selects the home.
 

@@ -39,10 +39,16 @@ COVERAGE ?= $(PYTHON) -m coverage
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
 # Home whose dotfile backups and broken links make clean removes. The former
-# name ANSIBLE_BACKUP_ROOT still selects it. DRY_RUN=1 only lists.
+# name ANSIBLE_BACKUP_ROOT still selects it. DRY_RUN=1 only lists; 0 or
+# empty removes, and any other value is refused.
 ANSIBLE_BACKUP_ROOT ?= $(HOME)
 CLEAN_ROOT ?= $(ANSIBLE_BACKUP_ROOT)
 DRY_RUN ?=
+# Interpreter of ansible-playbook, which clean_obsolete.py needs to import
+# Ansible: PYTHON may lack it when Ansible comes from pipx or a virtualenv.
+# Evaluated only when make clean runs.
+ANSIBLE_PYTHON ?= $(or $(shell $(ANSIBLE_PLAYBOOK) --version 2>/dev/null | \
+	sed -n 's/^ *python version = .*(\(.*\))$$/\1/p'),$(PYTHON))
 # Output path for the Hyprland showcase screenshot
 SCREENSHOT ?= dist/hyprland.webp
 
@@ -123,10 +129,11 @@ install-obs: ## Same as deploy PLAYBOOK=obs: OBS, its runtime and demo scenes
 	$(call run_playbook)
 
 # $(call clean_obsolete,<extra options>)
-clean_obsolete = $(ANSIBLE_ENV) $(PYTHON) scripts/clean_obsolete.py --root "$(CLEAN_ROOT)" $(1)
+clean_obsolete = $(ANSIBLE_ENV) "$(ANSIBLE_PYTHON)" scripts/clean_obsolete.py --root "$(CLEAN_ROOT)" $(1)
 
 clean: ## Remove dotfile backups, migration leftovers and broken links (DRY_RUN=1 lists)
-	@$(call clean_obsolete,$(if $(DRY_RUN),--dry-run))
+	$(if $(filter-out 0 1,$(DRY_RUN)),$(error DRY_RUN=$(DRY_RUN) is not 0 or 1))
+	@$(call clean_obsolete,$(if $(filter 1,$(DRY_RUN)),--dry-run))
 
 # Former names, kept for scripts and habits: they now cover every leftover
 # that make clean removes, not only the backups.

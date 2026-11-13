@@ -554,8 +554,9 @@ so the new rules load.
 
 Use `make clean DRY_RUN=1` to list the backups created for Ansible-managed
 dotfiles, and `make clean` to remove them after typing `REMOVE`, together with
-the other leftovers described in the main README. `scripts/ansible_backup_files.py`
-only collects the backup paths. The home is `$HOME` by default; set
+the other leftovers described in the main README. `make clean` runs with the
+Python interpreter of `ansible-playbook`; set `ANSIBLE_PYTHON` to use another.
+`scripts/ansible_backup_files.py` only collects the backup paths. The home is `$HOME` by default; set
 `CLEAN_ROOT=/path` on the `make` command line to select another one.
 
 ### OBS
