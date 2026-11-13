@@ -14,6 +14,8 @@ dotfiles_hypr_shared_monitors:
   - name: asus
     match: ASUSTek COMPUTER INC XG32WCS
     right_of: dell
+    # HDR10 panel: a 10-bit framebuffer for HDR games and films.
+    bitdepth: 10
 dotfiles_hypr_monitors: '{{ dotfiles_hypr_shared_monitors }}'
 dotfiles_hypr_shared_workspace_rules:
   - workspace: 1

@@ -25,6 +25,9 @@ Release history and changes planned for the next version.
     waited for the next screen update.
   - Add a Waybar `REC` indicator that stops the recording when clicked.
   - Install `wf-recorder` with the Hyprland package group (Arch and Fedora).
+  - A monitor entry can set `bitdepth: 10` for a 10-bit framebuffer. The
+    shared ASUS XG32WCS entry uses it, so HDR games and films get 10 bits
+    instead of Hyprland's default 8.
   - `SUPER + F1` opens a searchable Hyprlauncher list of the keybindings
     Hyprland has loaded (`hypr-keybinds.sh`, read from `hyprctl binds -j`).
     A bind without a description is listed under its dispatcher name.

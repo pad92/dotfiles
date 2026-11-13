@@ -385,6 +385,15 @@ for _, rule in ipairs(layout.rules(input.specs, input.monitors, input.mode)) do
 end
 """
 
+BITDEPTH_SCRIPT = """
+package.path = arg[1] .. "/?.lua;" .. package.path
+local layout = require("include.layout")
+local input = load("return " .. io.read("*a"))()
+for _, rule in ipairs(layout.rules(input.specs, input.monitors, "preferred")) do
+  print(rule.output .. "\\t" .. tostring(rule.bitdepth))
+end
+"""
+
 
 def mode(width, height, refresh_rate, preferred=False):
     return {
@@ -493,6 +502,32 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(
             self.rules(SPECS[:2], monitors, None),
             {"DP-2": ("preferred", "0x0"), "DP-3": ("preferred", "1024x0")},
+        )
+
+    def test_a_monitor_bitdepth_reaches_only_its_rule(self):
+        specs = [
+            {"name": "dell", "match": "Dell Inc. DELL P2423DE"},
+            {
+                "name": "asus",
+                "match": "ASUSTek COMPUTER INC XG32WCS",
+                "right_of": "dell",
+                "bitdepth": 10,
+            },
+        ]
+        result = subprocess.run(
+            [LUA, "-", str(HYPR)],
+            input=BITDEPTH_SCRIPT.replace(
+                'io.read("*a")',
+                json.dumps(lua_literal({"specs": specs, "monitors": [DELL, ASUS]})),
+            ),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        self.assertEqual(
+            dict(line.split("\t") for line in result.stdout.splitlines()),
+            {"DP-2": "nil", "DP-3": "10"},
         )
 
 

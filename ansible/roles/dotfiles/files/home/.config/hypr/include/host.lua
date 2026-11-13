@@ -47,7 +47,7 @@ local function arrange(settings, monitors, sent)
   local connected = {}
   for _, rule in ipairs(layout.rules(settings.monitors, monitors, settings.monitor_mode)) do
     connected[rule.output] = true
-    local key = table.concat({ rule.mode, rule.position, rule.scale }, " ")
+    local key = table.concat({ rule.mode, rule.position, rule.scale, tostring(rule.bitdepth) }, " ")
     if sent[rule.output] ~= key then
       hl.monitor(rule)
       sent[rule.output] = key
