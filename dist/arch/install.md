@@ -260,9 +260,11 @@ audio power-saving module options (`power_save` tag). Nothing is needed here.
 ### Create fstab
 
 ```sh
-genfstab -U /mnt                                           >> /mnt/etc/fstab
-echo 'tmpfs     /tmp tmpfs defaults,noatime,mode=1777 0 0' >> /mnt/etc/fstab
+genfstab -U /mnt >> /mnt/etc/fstab
 ```
+
+Do not add a `/tmp` line: systemd's `tmp.mount` already mounts `/tmp` as a
+tmpfs with `nosuid,nodev`.
 
 # Configure the installed system
 
@@ -316,18 +318,12 @@ echo 'LANG=en_US.UTF-8'  > /etc/locale.conf
 ```sh
 echo 'KEYMAP=us-acentos' > /etc/vconsole.conf
 echo 'FONT=ter-116n'    >> /etc/vconsole.conf
-
-mkdir -p /etc/X11/xorg.conf.d
-cat <<EOF>/etc/X11/xorg.conf.d/00-keyboard.conf
-# Set the Xorg keyboard layout. Adjust this for your keyboard.
-Section "InputClass"
-        Identifier "system-keyboard"
-        MatchIsKeyboard "on"
-        Option "XkbLayout" "us"
-        Option "XkbVariant" "intl"
-EndSection
-EOF
 ```
+
+The `sd-vconsole` initramfs hook reads this file, so the LUKS passphrase
+prompt uses this keymap. Hyprland sets its own keyboard layout in the
+dotfiles, and Xwayland applications use it, so no Xorg keyboard file is
+needed.
 
 ## Hostname
 
@@ -399,18 +395,10 @@ Once `sudo` works for this user, you can lock the root account with
 
 ### Package manager
 
-```sh
-# Enable color, disk-space checks, and the official multilib repository.
-sed -i 's/#Color/Color/' /etc/pacman.conf
-sed -i 's/#CheckSpace/CheckSpace/' /etc/pacman.conf
-sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-pacman -Syu
-```
-
-The Ansible installer enables `Color`, `CheckSpace`, and `multilib` in
-`/etc/pacman.conf`, and sets `ParallelDownloads = 5`. When it enables
-`multilib`, it runs `pacman -Syu`, which syncs package databases and upgrades
-installed packages. Run `pacman -Syu` separately when you want a full system
+Leave `/etc/pacman.conf` alone. The Ansible installer enables `Color`,
+`CheckSpace`, and `multilib` in it, and sets `ParallelDownloads = 5`. When it
+enables `multilib`, it runs `pacman -Syu`, which syncs package databases and
+upgrades installed packages. Run `pacman -Syu` separately when you want a full system
 upgrade and `multilib` is already enabled. The base and Steam groups include
 `lib32-*` packages from `multilib`.
 
@@ -555,9 +543,8 @@ environment and applications.
 
 ### Installation
 
-```sh
-sudo pacman -S uwsm libnewt
-```
+The `01_base` package group installs `uwsm` and `libnewt`, which provides the
+`whiptail` menu that `uwsm select` shows.
 
 ### Launch from TTY
 

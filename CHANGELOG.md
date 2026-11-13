@@ -100,6 +100,9 @@ Release history and changes planned for the next version.
     `/etc/pam.d/login`, so a TTY login unlocks the keyring.
   - `package_services` enables `fstrim.timer` and `paccache.timer` and adds
     the regular user to the `realtime` group with `01_base`.
+  - `01_base` installs `libnewt` explicitly. The `uwsm select` menu in
+    `~/.zprofile` needs its `whiptail`, which only came in as a
+    NetworkManager dependency.
 - **AI coding agents**:
   - The Claude Code status line shows the tokens in the context window next
     to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
@@ -324,6 +327,10 @@ Release history and changes planned for the next version.
     TRIM through LUKS (`--allow-discards`), zram instead of a swap volume,
     adding the CachyOS repositories, `cachyos-rate-mirrors` instead of
     `reflector`, and the firewall that CachyOS enables but Ansible does not.
+  - The Arch install guide no longer edits `/etc/pacman.conf` or installs
+    `uwsm` by hand, because Ansible already does both. It also drops the
+    `/tmp` fstab line, which removed the `nosuid,nodev` options of systemd's
+    `tmp.mount`, and the Xorg keyboard file, which Hyprland does not read.
   - The README opens with the animated demo.
 - **Scripts**:
   - `hypr-screenshot.sh` also records an animated WebP demo
