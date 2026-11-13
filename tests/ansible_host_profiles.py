@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ansible_test_environment, ansible_tree
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "ansible/inventory.yml"
@@ -23,14 +23,15 @@ def configured_hostnames():
     return [path.stem for path in HOST_FILES]
 
 
-def inventory_arguments(hostname):
+def inventory_arguments(hostname, work):
     """Inventory options that reach hostname locally, with its host_vars.
 
-    The repository inventory is used as is, so Ansible loads group_vars and
-    host_vars exactly as it does for `make deploy`. A host outside it is added
-    by a second inventory source, like a machine without host_vars.
+    The repository inventory is used from a copy of ansible/ in work, so
+    Ansible loads group_vars and host_vars as it does for `make deploy`, minus
+    the local Vault (see ansible_tree). A host outside it is added by a second
+    inventory source, like a machine without host_vars.
     """
-    arguments = ["-i", str(INVENTORY)]
+    arguments = ["-i", str(ansible_tree(Path(work)) / INVENTORY.name)]
     if hostname not in yaml.safe_load(INVENTORY.read_text())["all"]["hosts"]:
         arguments += ["-i", f"{hostname},"]
     return arguments + ["-e", "ansible_connection=local"]
@@ -62,7 +63,7 @@ def resolve_host_settings(hostname, work):
         )
     )
     result = subprocess.run(
-        ["ansible-playbook", *inventory_arguments(hostname), str(playbook)],
+        ["ansible-playbook", *inventory_arguments(hostname, work), str(playbook)],
         cwd=work,
         env=ansible_test_environment(Path(work)),
         capture_output=True,

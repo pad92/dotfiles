@@ -6,6 +6,18 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Makefile**:
+  - Add `make clean`, which removes the dotfile backups and the leftovers of
+    earlier migrations: broken links under the paths the `dotfiles` role
+    deploys, the Git metadata of the retired submodules (`[submodule]` sections and clones
+    under `.git/modules`), the records of worktrees whose directory is gone,
+    Python tool caches and untracked broken links in the repository, outside
+    nested Git checkouts and virtual environments. A submodule clone
+    holding a commit that no remote branch or tag has is kept. The backups,
+    the submodule metadata and the worktree records go only after `REMOVE`
+    is typed on a terminal. `DRY_RUN=1` lists without changing anything
+    (`DRY_RUN` takes only `0` or `1`), and `CLEAN_ROOT` selects another
+    home. The script runs with the Python interpreter of `ansible-playbook`.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
@@ -162,6 +174,9 @@ Release history and changes planned for the next version.
   - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
     so Zsh skipped it.
 - **Makefile**:
+  - `make ansible-backup-ls` and `make ansible-backup-rm` become aliases of
+    `make clean DRY_RUN=1` and `make clean`, so they also cover the other
+    leftovers. `ansible/backup.yml` is removed.
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and
     `BECOME_PASS=1` replace the `--tags`, `--check` and `--ask-become-pass`
@@ -183,6 +198,16 @@ Release history and changes planned for the next version.
 - **CI**:
   - The unit test and Ansible lint jobs install their collections with
     `make galaxy`, so both use `.ansible/collections` and the Makefile command.
+  - Pin ansible-core 2.22.0 (was 2.21.4) in `requirements-ansible.txt` and
+    `requirements-test.txt`, the version Arch ships.
+  - The pre-commit `test` hook runs `make coverage test-shell` instead of
+    `make test`, so a commit that drops the unit test coverage below the
+    `.coveragerc` floor fails locally rather than only in the `unit_tests`
+    job. `python-coverage` joins the `10_sre_devops` packages for it.
+  - Test the error and recovery paths of `scripts/clean_obsolete.py`
+    (unreadable clone, linked worktree, Git failures, paths gone before the
+    removal, the run without a terminal). Untested, they had dropped the
+    total coverage to 96 % and failed the job.
 - **Ansible roles**:
   - Split the `system` role into one role per function: `lact`, `gaming`,
     `package_services`, `docker`, `hardening`, `dns`, `vpn`, `gpu` and
@@ -429,6 +454,10 @@ Release history and changes planned for the next version.
   - The monitor geometry check skips files encrypted whole with Ansible Vault.
     It read the ignored local `group_vars/all/vault.yml` as YAML, got a
     string, and failed, which blocked the pre-commit `test` hook.
+  - The tests that run a playbook with the inventory or `group_vars` read a
+    copy of `ansible/` without the ignored local `vault*.yml`. On a
+    workstation whose Vault is encrypted, Ansible stopped on it before the
+    first task, with ansible-core 2.21 as with 2.22, and 13 tests failed.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

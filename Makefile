@@ -38,16 +38,25 @@ ANSIBLE_LINT ?= ansible-lint
 COVERAGE ?= $(PYTHON) -m coverage
 YAMLLINT ?= yamllint
 YAMLLINT_CONFIG := .yamllint
+# Home whose dotfile backups and broken links make clean removes. The former
+# name ANSIBLE_BACKUP_ROOT still selects it. DRY_RUN=1 only lists; 0 or
+# empty removes, and any other value is refused.
 ANSIBLE_BACKUP_ROOT ?= $(HOME)
+CLEAN_ROOT ?= $(ANSIBLE_BACKUP_ROOT)
+DRY_RUN ?=
+# Interpreter of ansible-playbook, which clean_obsolete.py needs to import
+# Ansible: PYTHON may lack it when Ansible comes from pipx or a virtualenv.
+# Evaluated only when make clean runs.
+ANSIBLE_PYTHON ?= $(or $(shell $(ANSIBLE_PLAYBOOK) --version 2>/dev/null | \
+	sed -n 's/^ *python version = .*(\(.*\))$$/\1/p'),$(PYTHON))
 # Output path for the Hyprland showcase screenshot
 SCREENSHOT ?= dist/hyprland.webp
 
-# Playbooks that configure an inventory host. backup.yml runs on localhost
-# only and has its own targets.
+# Playbooks that configure an inventory host.
 PLAYBOOKS := site obs
 # Vault files are encrypted, not YAML: yamllint skips them.
 ANSIBLE_YAML_FILES := $(filter-out ansible/group_vars/all/vault%,$(wildcard \
-	ansible/site.yml ansible/obs.yml ansible/backup.yml ansible/inventory.yml \
+	ansible/site.yml ansible/obs.yml ansible/inventory.yml \
 	ansible/tasks/*.yml ansible/group_vars/*/*.yml ansible/host_vars/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml))
@@ -72,7 +81,7 @@ run_playbook = $(if $(and $(filter 1,$(words $(PLAYBOOK))),$(if $(filter-out $(P
 
 .PHONY: help deploy check plan tags tasks install install-obs galaxy galaxy-force \
 	verify lint lint-ansible test test-python test-shell coverage screenshot \
-	ansible-backup-ls ansible-backup-rm
+	ansible-backup-ls ansible-backup-rm clean
 
 help: ## Show this help
 	@printf 'Usage: make <target> [VARIABLE=value ...]\n\nTargets:\n'
@@ -119,11 +128,20 @@ install-obs: override PLAYBOOK := obs
 install-obs: ## Same as deploy PLAYBOOK=obs: OBS, its runtime and demo scenes
 	$(call run_playbook)
 
-ansible-backup-ls: ## List Ansible-managed backups under ANSIBLE_BACKUP_ROOT (default: HOME)
-	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml
+# $(call clean_obsolete,<extra options>)
+clean_obsolete = $(ANSIBLE_ENV) "$(ANSIBLE_PYTHON)" scripts/clean_obsolete.py --root "$(CLEAN_ROOT)" $(1)
 
-ansible-backup-rm: ## Review and remove Ansible-managed backups under ANSIBLE_BACKUP_ROOT
-	@ANSIBLE_BACKUP_ROOT="$(ANSIBLE_BACKUP_ROOT)" $(ANSIBLE_ENV) $(ANSIBLE_PLAYBOOK) -i localhost, ansible/backup.yml -e dotfiles_backup_action=remove
+clean: ## Remove dotfile backups, migration leftovers and broken links (DRY_RUN=1 lists)
+	$(if $(filter-out 0 1,$(DRY_RUN)),$(error DRY_RUN=$(DRY_RUN) is not 0 or 1))
+	@$(call clean_obsolete,$(if $(filter 1,$(DRY_RUN)),--dry-run))
+
+# Former names, kept for scripts and habits: they now cover every leftover
+# that make clean removes, not only the backups.
+ansible-backup-ls: ## Same as make clean DRY_RUN=1
+	@$(call clean_obsolete,--dry-run)
+
+ansible-backup-rm: ## Same as make clean
+	@$(call clean_obsolete)
 
 ## Ansible collections ------------------------------------------------------
 

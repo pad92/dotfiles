@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 from ansible.errors import AnsibleFilterError
 from ansible_host_profiles import resolve_host_settings
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ansible_test_environment, ansible_tree
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/obs"
@@ -1220,7 +1220,7 @@ class ProfileContractTests(unittest.TestCase):
                     "localhost,",
                     "-c",
                     "local",
-                    str(ROOT / "ansible/obs.yml"),
+                    str(ansible_tree(work) / "obs.yml"),
                     "-e",
                     "packages_action=reconcile",
                     "-e",
