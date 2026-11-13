@@ -16,10 +16,6 @@ GRAPHICS_GROUPS = {
     "09_nvidia_legacy",
     "09_nvidia_modern",
 }
-# The Razer group is added only to a gaming selection, on a host where a
-# Razer USB device was detected.
-GAMING_GROUP = "21_steam"
-RAZER_GROUP = "25_razer"
 USB_VENDOR_ID = re.compile(r"^[0-9a-f]{4}$")
 PROTECTED_PACKAGES = {
     "base",
@@ -91,21 +87,33 @@ def usb_vendor_present(vendor_ids: Any, vendor_id: Any) -> bool | None:
     return wanted in found
 
 
-def add_razer_group(selected: Any, explicit: Any, razer_present: Any) -> Any:
-    """Add the Razer group to a gaming selection when a Razer device is present.
+def add_detected_group(
+    selected: Any,
+    explicit: Any,
+    present: Any,
+    required_group: Any,
+    group: Any,
+    recorded: Any = None,
+) -> Any:
+    """Add a hardware group to a selection that holds required_group.
 
-    An explicit one-run selection stays unchanged, and neither an absent nor an
-    unknown device adds the group: the host can still list it itself.
+    The group is added when its device is present, or when the saved package
+    state already records it: a device unplugged during one run, or unknown,
+    must not make a later reconcile remove what the host uses. An explicit
+    one-run selection stays unchanged.
     """
     if (
         explicit is not None
-        or razer_present is not True
         or not isinstance(selected, list)
-        or GAMING_GROUP not in selected
-        or RAZER_GROUP in selected
+        or not isinstance(required_group, str)
+        or not isinstance(group, str)
+        or required_group not in selected
+        or group in selected
     ):
         return selected
-    return [*selected, RAZER_GROUP]
+    if present is True or (isinstance(recorded, list) and group in recorded):
+        return [*selected, group]
+    return selected
 
 
 def dkms_kernel_headers(desired: Any, kernel_package: Any) -> list[str]:
@@ -515,7 +523,7 @@ class FilterModule:
             "valid_package_name": valid_package_name,
             "select_package_groups": select_package_groups,
             "usb_vendor_present": usb_vendor_present,
-            "add_razer_group": add_razer_group,
+            "add_detected_group": add_detected_group,
             "dkms_kernel_headers": dkms_kernel_headers,
             "recorded_package_groups": recorded_package_groups,
             "parse_package_state": parse_package_state,

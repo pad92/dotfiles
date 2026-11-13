@@ -9,9 +9,11 @@ Release history and changes planned for the next version.
 - **Razer devices**: a `21_steam` host with a Razer USB device plugged in gets
   the new `25_razer` group (`openrazer-daemon`, `openrazer-driver-dkms`,
   `python-openrazer`). Detection reads the `idVendor` files in
-  `/sys/bus/usb/devices` and adds nothing when sysfs cannot be read. The users
-  join `plugdev` and the `openrazer-daemon` user unit is enabled, to start at
-  the next login. The repository no longer ships the
+  `/sys/bus/usb/devices` and adds nothing when a device cannot be read. Once
+  the saved package state records the group, it stays selected while the
+  device is unplugged; `packages_razer_detection: false` turns both off. The
+  users join `plugdev` and the `openrazer-daemon` user unit is enabled, to
+  start at the next login. The repository no longer ships the
   `default.target.wants/openrazer-daemon.service` link, which enabled the unit
   on every host whether OpenRazer was installed or not.
 
@@ -389,7 +391,8 @@ Release history and changes planned for the next version.
   `timers.target.wants/arch-update.timer` link. No role installs
   `arch-update`, so the link pointed at nothing and `make clean` reported it
   as a broken link it had to keep. Deployment now removes it from the home
-  directory when it is still a symlink.
+  directory when it is still a broken symlink; a link to an installed timer is
+  kept. The other obsolete unit links follow the same rule.
 - **tmux**: true color works again. The `terminal-overrides` line for mouse
   scrolling replaced the list instead of appending to it, which dropped the
   `RGB` override set at the top of `.tmux.conf`.

@@ -12,10 +12,18 @@ packages_state_merge_selection: false
 packages_upgrade_system: false
 packages_aur_action: install
 packages_aur_helper_preference: [yay]
-# USB vendor ID of Razer, assigned by the USB-IF. A 21_steam selection gets the
-# 25_razer group when a connected USB device reports it in sysfs. Quote it: an
-# unquoted 1532 is an integer and disables the detection.
+# OpenRazer detection. A selection that holds packages_razer_required_group
+# gets packages_razer_group when a connected USB device reports the Razer
+# vendor ID (assigned by the USB-IF) in packages_usb_sysfs_devices, or when the
+# saved package state already records the group. Quote the vendor ID: an
+# unquoted 1532 is an integer and disables the detection. Set
+# packages_razer_detection to false to stop adding the group; a reconcile then
+# offers to remove OpenRazer unless the host lists the group itself.
+packages_razer_detection: true
+packages_razer_required_group: 21_steam
+packages_razer_group: 25_razer
 packages_razer_usb_vendor_id: '1532'
+packages_usb_sysfs_devices: /sys/bus/usb/devices
 packages_gaming_required_packages:
   - ananicy-cpp
   - power-profiles-daemon
