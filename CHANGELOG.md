@@ -198,6 +198,8 @@ Release history and changes planned for the next version.
 - **CI**:
   - The unit test and Ansible lint jobs install their collections with
     `make galaxy`, so both use `.ansible/collections` and the Makefile command.
+  - Pin ansible-core 2.22.0 (was 2.21.4) in `requirements-ansible.txt` and
+    `requirements-test.txt`, the version Arch ships.
 - **Ansible roles**:
   - Split the `system` role into one role per function: `lact`, `gaming`,
     `package_services`, `docker`, `hardening`, `dns`, `vpn`, `gpu` and
