@@ -308,6 +308,15 @@ Release history and changes planned for the next version.
   scrolling replaced the list instead of appending to it, which dropped the
   `RGB` override set at the top of `.tmux.conf`.
 - **Hyprland**:
+  - The Dell P2423DE runs at 2560x1440 again on PadsTower. The host-wide
+    `highrr` mode policy, meant for the ASUS, put it in 1024x768 at 75 Hz,
+    its highest refresh rate. A monitor entry can now set its own `mode`,
+    and the shared Dell entry keeps its EDID mode (`preferred`).
+  - No more "monitor overlaps" warning when a monitor changes mode. The
+    layout placed its neighbours from the size of the current mode, then
+    the monitor grew under them until the next pass. Positions now use the
+    size of the mode each rule asks for, read from the monitor's
+    `available_modes`.
   - The cursor can move between every monitor again on PadsP5560. The laptop
     panel was fixed at `0x1440`. The Dell and ASUS rules were dropped without
     `vault_dotfiles_monitor_outputs`, so Hyprland placed those monitors to the
@@ -414,6 +423,9 @@ Release history and changes planned for the next version.
     `GIT_DIR` set, and the tests that create their own repositories then
     reinitialised this one: `core.bare=true`, plus their `user.name`,
     `user.email` and `commit.gpgsign=false` in `.git/config`.
+  - The monitor geometry check skips files encrypted whole with Ansible Vault.
+    It read the ignored local `group_vars/all/vault.yml` as YAML, got a
+    string, and failed, which blocked the pre-commit `test` hook.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

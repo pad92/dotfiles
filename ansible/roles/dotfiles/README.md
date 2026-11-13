@@ -140,7 +140,9 @@ between boots.
 Hyprland's `include/host.lua` applies `hosts/settings.lua` and no longer looks
 at the hostname. No resolution, refresh rate, scale or position is written
 anywhere. Hyprland picks the mode (`dotfiles_hypr_monitor_mode`: `preferred`,
-`highrr` or `highres`) and derives the scale from the panel's density.
+`highrr` or `highres`) and derives the scale from the panel's density. An
+entry's own `mode` overrides that policy for its monitor: `highrr` would put
+a 60 Hz monitor that also offers 75 Hz at a low resolution in that mode.
 `include/layout.lua` then positions the monitors from the size each one
 reports, at start-up and again whenever a monitor is plugged in or
 unplugged. Each entry of `dotfiles_hypr_monitors` names one display and says
@@ -150,6 +152,7 @@ where it sits:
 dotfiles_hypr_monitors:
   - name: dell
     match: Dell Inc. DELL P2423DE # start of the description, no serial
+    mode: preferred # optional, overrides dotfiles_hypr_monitor_mode
   - name: asus
     match: ASUSTek COMPUTER INC XG32WCS
     right_of: dell

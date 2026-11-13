@@ -15,6 +15,15 @@ local function connected_monitors(gone)
   local monitors = {}
   for _, monitor in ipairs(hl.get_monitors and hl.get_monitors() or {}) do
     if monitor.enabled ~= false and not monitor.is_mirror and monitor.name ~= gone then
+      local modes = {}
+      for _, mode in ipairs(monitor.available_modes or {}) do
+        table.insert(modes, {
+          width = mode.width,
+          height = mode.height,
+          refresh_rate = mode.refresh_rate,
+          preferred = mode.preferred,
+        })
+      end
       table.insert(monitors, {
         name = monitor.name,
         description = monitor.description,
@@ -22,16 +31,18 @@ local function connected_monitors(gone)
         height = monitor.height,
         scale = monitor.scale,
         transform = monitor.transform,
+        available_modes = modes,
       })
     end
   end
   return monitors
 end
 
--- Sends the monitor rules that differ from the last ones sent. The sizes are
--- read before Hyprland applies the mode and scale those rules ask for, so
--- the layout is computed again once it has (monitor.layout_changed); the
--- comparison stops that loop as soon as the positions are stable.
+-- Sends the monitor rules that differ from the last ones sent. The layout
+-- uses the size of the mode each rule asks for, but the scale is read before
+-- Hyprland applies the "auto" one, so the layout is computed again once it
+-- has (monitor.layout_changed); the comparison stops that loop as soon as
+-- the positions are stable.
 local function arrange(settings, monitors, sent)
   local connected = {}
   for _, rule in ipairs(layout.rules(settings.monitors, monitors, settings.monitor_mode)) do

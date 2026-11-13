@@ -180,7 +180,9 @@ class HostTemplateTests(unittest.TestCase):
             kinds = [call[0] for call in calls]
             monitors = [tuple(call[1:4]) for call in calls if call[0] == "monitor"]
             self.assertEqual(
-                monitors, [("DP-2", "highrr", "0x0"), ("DP-3", "highrr", "2560x0")]
+                # highrr would put the 60 Hz Dell in a 75 Hz 1024x768 mode.
+                monitors,
+                [("DP-2", "preferred", "0x0"), ("DP-3", "highrr", "2560x0")],
             )
             window_rules = [call[1] for call in calls if call[0] == "window_rule"]
             self.assertEqual(window_rules, ["desc:ASUSTek COMPUTER INC XG32WCS"] * 2)
@@ -235,7 +237,12 @@ class HostTemplateTests(unittest.TestCase):
     def test_inventory_sets_no_monitor_geometry(self):
         for path in sorted((ROOT / "ansible").glob("*_vars/**/*.yml")):
             with self.subTest(path=path.relative_to(ROOT).as_posix()):
-                data = yaml.safe_load(path.read_text()) or {}
+                text = path.read_text()
+                # A whole-file Ansible Vault (the ignored local vault.yml) is
+                # ciphertext, not settings: there is nothing to inspect.
+                if text.startswith("$ANSIBLE_VAULT;"):
+                    continue
+                data = yaml.safe_load(text) or {}
                 for name, value in data.items():
                     if name.startswith("dotfiles_hypr_"):
                         self.assertIsNone(GEOMETRY.search(json.dumps(value)), name)
@@ -309,6 +316,11 @@ class HostTemplateTests(unittest.TestCase):
                 ]
             },
             "unknown mode policy": {"dotfiles_hypr_monitor_mode": "2560x1440@60"},
+            "unknown monitor mode policy": {
+                "dotfiles_hypr_monitors": [
+                    {"name": "dell", "match": "Dell", "mode": "2560x1440@60"}
+                ]
+            },
             "rule on an unknown monitor": {
                 "dotfiles_hypr_workspace_rules": [{"workspace": 3, "monitor": "lg"}]
             },
