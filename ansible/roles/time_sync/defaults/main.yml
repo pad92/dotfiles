@@ -1,0 +1,10 @@
+---
+time_sync_unit: systemd-timesyncd.service
+# NTP daemons that replace systemd-timesyncd. When one of them is enabled or
+# running, timesyncd is left alone: two clients would fight over the clock.
+time_sync_alternatives:
+  - chronyd.service
+  - chrony.service
+  - ntpd.service
+  - ntpsec.service
+  - openntpd.service

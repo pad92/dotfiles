@@ -1,0 +1,40 @@
+---
+- name: Read the service states
+  ansible.builtin.service_facts:
+
+- name: Find the NTP clients in use
+  ansible.builtin.set_fact:
+    time_sync_others: >-
+      {{ (time_sync_candidates
+          | selectattr('value.status', 'defined')
+          | selectattr('value.status', 'in', ['enabled', 'enabled-runtime', 'alias'])
+          | list
+          + time_sync_candidates | selectattr('value.state', '==', 'running') | list)
+         | map(attribute='key') | unique | list }}
+  vars:
+    time_sync_candidates: >-
+      {{ ansible_facts.services | dict2items
+         | selectattr('key', 'in', time_sync_alternatives) | list }}
+
+- name: Report the NTP client left in charge
+  ansible.builtin.debug:
+    msg: >-
+      {{ time_sync_others | join(', ') }} already synchronizes the
+      clock; {{ time_sync_unit }} is left as it is.
+  when: time_sync_others | length > 0
+
+- name: Report the missing systemd-timesyncd unit
+  ansible.builtin.debug:
+    msg: '{{ time_sync_unit }} is not installed; the clock is not synchronized.'
+  when:
+    - time_sync_others | length == 0
+    - time_sync_unit not in ansible_facts.services
+
+- name: Enable and start systemd-timesyncd
+  ansible.builtin.systemd_service:
+    name: '{{ time_sync_unit }}'
+    enabled: true
+    state: started
+  when:
+    - time_sync_others | length == 0
+    - time_sync_unit in ansible_facts.services

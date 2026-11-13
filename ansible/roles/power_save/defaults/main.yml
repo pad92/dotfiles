@@ -1,0 +1,31 @@
+---
+# Wi-Fi and HDA audio power saving, written as module options.
+# auto: only on a portable machine (DMI chassis type), where battery life
+# matters more than the latency power saving adds. true or false forces it.
+power_save_mode: auto
+power_save_portable_form_factors:
+  - Portable
+  - Laptop
+  - Notebook
+  - Sub Notebook
+  - Hand Held
+  - Convertible
+  - Detachable
+  - Tablet
+power_save_module_directory: /sys/module
+power_save_modprobe_path: /etc/modprobe.d/zz-dotfiles-power-save.conf
+# Options per loaded kernel module. Within a group, only the first loaded
+# module gets its options: iwlmvm and iwldvm are the two Intel Wi-Fi firmware
+# drivers, snd_hda_intel and snd_ac97_codec the two audio codec drivers.
+power_save_module_options:
+  - modules: [iwlwifi]
+    options:
+      iwlwifi: [power_save=1, uapsd_disable=0]
+  - modules: [iwlmvm, iwldvm]
+    options:
+      iwlmvm: [power_scheme=3]
+      iwldvm: [force_cam=0]
+  - modules: [snd_hda_intel, snd_ac97_codec]
+    options:
+      snd_hda_intel: [power_save=1]
+      snd_ac97_codec: [power_save=1]

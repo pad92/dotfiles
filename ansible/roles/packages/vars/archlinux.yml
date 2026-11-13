@@ -31,6 +31,7 @@ packages_family_groups:
       - jq
       - lhasa
       - lib32-mesa
+      - libnewt
       - libva-utils
       - lshw
       - lzip

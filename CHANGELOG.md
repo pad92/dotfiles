@@ -100,6 +100,21 @@ Release history and changes planned for the next version.
     file. The playbook now manages `~/.config/zed/tasks.json` and
     `keymap.json`.
   - Install Zed on Arch with the `10_sre_devops` package group.
+- **Ansible roles** (steps of the Arch install guide that were manual):
+  - `time_sync` enables `systemd-timesyncd` when no other NTP client (chrony,
+    ntpd, ntpsec, openntpd) is enabled or running.
+  - `power_save` writes Wi-Fi (`iwlwifi`, `iwlmvm` or `iwldvm`) and audio
+    (`snd_hda_intel` or `snd_ac97_codec`) power-saving options for the loaded
+    modules, only on a portable machine unless `power_save_mode` forces it.
+  - `wireless_regdom` sets the Wi-Fi regulatory domain in
+    `/etc/conf.d/wireless-regdom`; the workstations use `FR`.
+  - `gnome_keyring` adds the `pam_gnome_keyring.so` rules to
+    `/etc/pam.d/login`, so a TTY login unlocks the keyring.
+  - `package_services` enables `fstrim.timer` and `paccache.timer` and adds
+    the regular user to the `realtime` group with `01_base`.
+  - `01_base` installs `libnewt` explicitly. The `uwsm select` menu in
+    `~/.zprofile` needs its `whiptail`, which only came in as a
+    NetworkManager dependency.
 - **AI coding agents**:
   - The Claude Code status line shows the tokens in the context window next
     to its gauge (`ctx ▰▰▰▱▱▱▱▱▱▱ 31% 63k/200k`), rounded down. Output tokens
@@ -229,6 +244,10 @@ Release history and changes planned for the next version.
     `gaming_power_manager_conflict_action` and `dotfiles_claude_statusline` to
     `agent_cli_claude_statusline`. A host override or `-e` option that uses an
     old name is ignored.
+  - With `21_steam`, the `gaming` tag stops, disables and masks
+    `scx_loader.service` (and the older `scx.service`) so that `ananicy-cpp`
+    no longer runs next to a sched-ext scheduler, which the CachyOS wiki
+    advises against. The kernel scheduler takes over again.
 
 - **Ansible hosts**:
   - The playbooks reach the workstations over SSH. `ansible/inventory.yml`
@@ -319,6 +338,24 @@ Release history and changes planned for the next version.
 - **Documentation**:
   - The Arch install guide installs `systemd-resolvconf` instead of
     `openresolv` and links `/etc/resolv.conf` to the resolved stub.
+  - The Arch install guide no longer advises against `-march=native`. Its
+    "Build flags" section now describes the makepkg overrides that Ansible
+    writes to `/etc/makepkg.conf.d/zz-dotfiles.conf` and warns not to copy
+    those packages to another computer.
+  - The Arch install guide no longer lists the Wi-Fi, audio, NTP, TRIM,
+    `realtime` and GNOME keyring steps: it points to the Ansible tags that now
+    apply them.
+  - The Arch install guide follows the ArchWiki and CachyOS wiki: it checks
+    the UEFI boot mode, network and clock first, uses a 1 GiB EFI System
+    Partition, uncomments only the UTF-8 locales, leaves `/etc/hosts` to
+    `nss-myhostname` and drops the unused `irqbalance`. New sections cover
+    TRIM through LUKS (`--allow-discards`), zram instead of a swap volume,
+    adding the CachyOS repositories, `cachyos-rate-mirrors` instead of
+    `reflector`, and the firewall that CachyOS enables but Ansible does not.
+  - The Arch install guide no longer edits `/etc/pacman.conf` or installs
+    `uwsm` by hand, because Ansible already does both. It also drops the
+    `/tmp` fstab line, which removed the `nosuid,nodev` options of systemd's
+    `tmp.mount`, and the Xorg keyboard file, which Hyprland does not read.
   - The README opens with the animated demo.
 - **Scripts**:
   - `hypr-screenshot.sh` also records an animated WebP demo
