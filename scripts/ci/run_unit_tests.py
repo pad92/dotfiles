@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import subprocess
 import sys
@@ -176,14 +177,21 @@ def collect_timings(logs: Path) -> dict[str, float]:
     return measured
 
 
+# unittest's last lines: "Ran 3 tests in 0.1s" then "OK (skipped=1)" or
+# "FAILED (failures=1, skipped=2)". A failed play test prints its PLAY RECAP,
+# whose "skipped=0    rescued=0" must not be read as a unittest summary.
+RAN_LINE = re.compile(r"^Ran (\d+) tests? in ")
+SKIPPED_SUMMARY = re.compile(r"^(?:OK|FAILED) \(.*\bskipped=(\d+)")
+
+
 def summarize(logs: Path) -> tuple[int, int]:
     tests = skipped = 0
     for path in logs.glob("*.log"):
         for line in path.read_text(errors="replace").splitlines():
-            if line.startswith("Ran "):
-                tests += int(line.split()[1])
-            if "skipped=" in line:
-                skipped += int(line.split("skipped=")[1].split(")")[0].split(",")[0])
+            if ran := RAN_LINE.match(line):
+                tests += int(ran.group(1))
+            if summary := SKIPPED_SUMMARY.match(line):
+                skipped += int(summary.group(1))
     return tests, skipped
 
 

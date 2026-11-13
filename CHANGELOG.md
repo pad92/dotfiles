@@ -387,6 +387,11 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **CI**: `run_unit_tests.py` reads the skipped count only from unittest's
+  summary line. A failed play test printed its `PLAY RECAP`, whose
+  `skipped=0    rescued=0` made the runner crash before it listed the failure.
+  The play tests also pass the repository's filter plugins themselves, since
+  Ansible ignores `ansible.cfg` in the world-writable CI checkout.
 - **systemd user units**: the repository no longer ships the
   `timers.target.wants/arch-update.timer` link. No role installs
   `arch-update`, so the link pointed at nothing and `make clean` reported it

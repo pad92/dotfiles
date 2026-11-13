@@ -27,7 +27,13 @@ class AnsibleRegressionTests(unittest.TestCase):
         result = subprocess.run(
             ["ansible-playbook", "-i", inventory, str(playbook), *arguments],
             cwd=ROOT,
-            env={**os.environ, "ANSIBLE_LOCAL_TEMP": str(self.directory / "ansible")},
+            env={
+                **os.environ,
+                "ANSIBLE_LOCAL_TEMP": str(self.directory / "ansible"),
+                # Ansible ignores ansible.cfg in a world-writable directory,
+                # such as the CI checkout, so the filters are named here.
+                "ANSIBLE_FILTER_PLUGINS": str(ROOT / "ansible/filter_plugins"),
+            },
             capture_output=True,
             text=True,
             timeout=90,
