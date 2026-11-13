@@ -6,6 +6,16 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Makefile**:
+  - Add `make clean`, which removes the dotfile backups and the leftovers of
+    earlier migrations: broken links under the paths the `dotfiles` role
+    deploys, the Git metadata of the retired submodules (`[submodule]` sections and clones
+    under `.git/modules`), the records of worktrees whose directory is gone,
+    Python tool caches and untracked broken links in the repository. A
+    submodule clone holding a commit that no remote branch or tag has is
+    kept. The backups go only after `REMOVE` is typed on a terminal.
+    `DRY_RUN=1` lists without changing anything, and `CLEAN_ROOT` selects
+    another home.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
@@ -162,6 +172,9 @@ Release history and changes planned for the next version.
   - Drop `make` from the Zsh plugin list: no such plugin was ever shipped,
     so Zsh skipped it.
 - **Makefile**:
+  - `make ansible-backup-ls` and `make ansible-backup-rm` become aliases of
+    `make clean DRY_RUN=1` and `make clean`, so they also cover the other
+    leftovers. `ansible/backup.yml` is removed.
   - `make deploy` runs a playbook on `HOST`, and `make check` previews the same
     run in check mode. `PLAYBOOK` (`site` or `obs`), `TAGS`, `SKIP_TAGS` and
     `BECOME_PASS=1` replace the `--tags`, `--check` and `--ask-become-pass`
