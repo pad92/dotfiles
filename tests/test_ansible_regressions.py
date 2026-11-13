@@ -256,7 +256,8 @@ if 'show' in args:
         source.mkdir(parents=True)
         target = self.directory / "target/.config/systemd/user"
         (target / "gnome-session.target.wants").mkdir(parents=True)
-        fs, rss = (target / name for name in obsolete)
+        fs = target / "gnome-session.target.wants/tracker-miner-fs-3.service"
+        rss = target / "gnome-session.target.wants/tracker-miner-rss-3.service"
         fs.symlink_to("/usr/lib/systemd/user/tracker-miner-fs-3.service")
         # A real file at an obsolete path is local configuration and must stay.
         rss.write_text("[Unit]\nDescription=Local\n")
@@ -295,3 +296,109 @@ if 'show' in args:
         result = self.run_play(plays)
         self.assertRegex(result.stdout, r"changed=0\b")
         self.assertEqual(log.read_text(), "")
+
+    def test_openrazer_is_enabled_only_for_the_razer_group(self):
+        user_units = ROLES / "dotfiles/files/home/.config/systemd/user"
+        # A shipped link would enable the daemon on every host.
+        self.assertFalse(
+            (user_units / "default.target.wants/openrazer-daemon.service").is_symlink()
+        )
+        (self.directory / "source/.config/systemd/user").mkdir(parents=True)
+        unit = self.directory / "openrazer-daemon.service"
+        binary = self.directory / "bin"
+        binary.mkdir()
+        log = self.directory / "systemctl.jsonl"
+        systemctl = binary / "systemctl"
+        systemctl.write_text("""#!/usr/bin/env python3
+import json
+import os
+import sys
+from pathlib import Path
+args = sys.argv[1:]
+with Path(os.environ['SYSTEMCTL_TEST_LOG']).open('a') as stream:
+    stream.write(json.dumps(args) + '\\n')
+if 'show' in args:
+    print('LoadState=loaded\\nActiveState=inactive\\nUnitFileState=disabled')
+if 'is-enabled' in args:
+    print('disabled')
+    sys.exit(1)
+""")
+        systemctl.chmod(0o755)
+        cases = {
+            "razer group and installed unit": (["21_steam", "25_razer"], True, True),
+            "gaming without a Razer device": (["21_steam"], True, False),
+            "razer group before the package": (["21_steam", "25_razer"], False, False),
+        }
+        for label, (groups, installed, enabled) in cases.items():
+            with self.subTest(label):
+                log.write_text("")
+                unit.unlink(missing_ok=True)
+                if installed:
+                    unit.write_text("[Unit]\nDescription=OpenRazer\n")
+                plays = [
+                    {
+                        "hosts": "localhost",
+                        "connection": "local",
+                        "gather_facts": False,
+                        "environment": {
+                            "PATH": f"{binary}:{os.environ['PATH']}",
+                            "SYSTEMCTL_TEST_LOG": str(log),
+                        },
+                        "vars": {
+                            "dotfiles_source_root": str(self.directory / "source"),
+                            "dotfiles_home": str(self.directory / "target"),
+                            "dotfiles_systemd_graphical_units": [],
+                            "dotfiles_openrazer_unit": str(unit),
+                            "packages_selected_groups": groups,
+                        },
+                        "tasks": [
+                            {
+                                "ansible.builtin.include_role": {
+                                    "name": str(ROLES / "dotfiles"),
+                                    "tasks_from": "user_systemd",
+                                }
+                            }
+                        ],
+                    }
+                ]
+                self.run_play(plays)
+                calls = [
+                    json.loads(line)
+                    for line in log.read_text().splitlines()
+                    if "openrazer-daemon.service" in line
+                ]
+                enables = [call for call in calls if "enable" in call]
+                self.assertEqual(bool(enables), enabled, calls)
+                if enabled:
+                    self.assertIn("--user", enables[0])
+                # Starting it before the plugdev login would only fail.
+                self.assertFalse(
+                    [call for call in calls if {"start", "restart"} & set(call)],
+                    calls,
+                )
+
+    def test_razer_group_installs_the_dkms_driver_and_joins_plugdev(self):
+        groups = yaml.safe_load((ROLES / "packages/vars/archlinux.yml").read_text())
+        razer = groups["packages_family_groups"]["Archlinux"]["25_razer"]
+        # dkms_kernel_headers reads only the desired list, not dependencies.
+        self.assertIn("openrazer-driver-dkms", razer)
+        self.assertIn("python-openrazer", razer)
+        services = yaml.safe_load(
+            (ROLES / "package_services/defaults/main.yml").read_text()
+        )
+        by_group = services["package_services_user_groups_by_group"]["Archlinux"]
+        self.assertEqual(by_group["25_razer"], ["plugdev"])
+        defaults = yaml.safe_load((ROLES / "packages/defaults/main.yml").read_text())
+        self.assertEqual(defaults["packages_razer_usb_vendor_id"], "1532")
+
+    def test_obsolete_user_unit_links_are_not_shipped(self):
+        # Deployment links the shipped units, then removes the obsolete ones:
+        # a path in both lists would be recreated and deleted on every run.
+        user_units = ROLES / "dotfiles/files/home/.config/systemd/user"
+        defaults = yaml.safe_load((ROLES / "dotfiles/defaults/main.yml").read_text())
+        shipped = [
+            name
+            for name in defaults["dotfiles_obsolete_user_unit_links"]
+            if (user_units / name).is_symlink() or (user_units / name).exists()
+        ]
+        self.assertEqual(shipped, [])

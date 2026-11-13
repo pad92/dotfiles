@@ -139,6 +139,24 @@
     - not dotfiles_hypridle_enabled
     - dotfiles_hypridle_service.status.LoadState | default('not-found') != 'not-found'
 
+- name: Find the OpenRazer user unit
+  ansible.builtin.stat:
+    path: '{{ dotfiles_openrazer_unit }}'
+    get_checksum: false
+  register: dotfiles_openrazer_unit_state
+  when: dotfiles_openrazer_enabled | bool
+
+# Enabled only: the daemon refuses to start until the user's session includes
+# the plugdev group, which takes a new login after package_services adds it.
+- name: Enable the OpenRazer daemon for a detected Razer device
+  ansible.builtin.systemd_service:
+    name: '{{ dotfiles_openrazer_unit | basename }}'
+    enabled: true
+    scope: user
+  when:
+    - dotfiles_openrazer_enabled | bool
+    - dotfiles_openrazer_unit_state.stat.exists | default(false)
+
 - name: Apply pending user systemd unit changes
   ansible.builtin.meta: flush_handlers
 

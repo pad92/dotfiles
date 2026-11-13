@@ -16,6 +16,11 @@ GRAPHICS_GROUPS = {
     "09_nvidia_legacy",
     "09_nvidia_modern",
 }
+# The Razer group is added only to a gaming selection, on a host where a
+# Razer USB device was detected.
+GAMING_GROUP = "21_steam"
+RAZER_GROUP = "25_razer"
+USB_VENDOR_ID = re.compile(r"^[0-9a-f]{4}$")
 PROTECTED_PACKAGES = {
     "base",
     "base-devel",
@@ -65,6 +70,42 @@ def select_package_groups(
         selected = [group for group in selected if group not in GRAPHICS_GROUPS]
         selected += list(detected_graphics_groups)
     return selected
+
+
+def usb_vendor_present(vendor_ids: Any, vendor_id: Any) -> bool | None:
+    """Whether a USB device of vendor_id is connected, or None when unknown.
+
+    vendor_ids holds the idVendor values read from /sys/bus/usb/devices, one
+    per line. The USB root hubs are always listed, so an empty listing means
+    sysfs was not read: like an unreadable value or a malformed vendor_id, it
+    gives None rather than False.
+    """
+    if not isinstance(vendor_ids, str) or not isinstance(vendor_id, str):
+        return None
+    wanted = vendor_id.strip().lower()
+    found = [line.strip().lower() for line in vendor_ids.splitlines() if line.strip()]
+    if not USB_VENDOR_ID.fullmatch(wanted) or not found:
+        return None
+    if any(not USB_VENDOR_ID.fullmatch(value) for value in found):
+        return None
+    return wanted in found
+
+
+def add_razer_group(selected: Any, explicit: Any, razer_present: Any) -> Any:
+    """Add the Razer group to a gaming selection when a Razer device is present.
+
+    An explicit one-run selection stays unchanged, and neither an absent nor an
+    unknown device adds the group: the host can still list it itself.
+    """
+    if (
+        explicit is not None
+        or razer_present is not True
+        or not isinstance(selected, list)
+        or GAMING_GROUP not in selected
+        or RAZER_GROUP in selected
+    ):
+        return selected
+    return [*selected, RAZER_GROUP]
 
 
 def dkms_kernel_headers(desired: Any, kernel_package: Any) -> list[str]:
@@ -473,6 +514,8 @@ class FilterModule:
         return {
             "valid_package_name": valid_package_name,
             "select_package_groups": select_package_groups,
+            "usb_vendor_present": usb_vendor_present,
+            "add_razer_group": add_razer_group,
             "dkms_kernel_headers": dkms_kernel_headers,
             "recorded_package_groups": recorded_package_groups,
             "parse_package_state": parse_package_state,

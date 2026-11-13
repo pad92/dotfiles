@@ -166,6 +166,49 @@
          | select_package_groups(packages_host_groups, packages_group_defaults,
                                 packages_detected_graphics_groups | default([])) }}
 
+# Ansible facts list no USB devices. sysfs exposes each one's idVendor, which
+# lsusb also reads, without depending on usbutils. Exit 3: no USB bus to read.
+- name: Read USB vendor identifiers from sysfs
+  ansible.builtin.command:
+    argv:
+      - sh
+      - -c
+      - >-
+        [ -d /sys/bus/usb/devices ] || exit 3;
+        for vendor in /sys/bus/usb/devices/*/idVendor; do
+        [ -r "$vendor" ] && cat "$vendor"; done; exit 0
+  register: packages_usb_vendors
+  changed_when: false
+  failed_when: packages_usb_vendors.rc not in [0, 3]
+  check_mode: false
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - "'21_steam' in packages_selected_groups"
+
+- name: Record whether a Razer device is connected
+  ansible.builtin.set_fact:
+    packages_razer_present: >-
+      {{ packages_usb_vendors.stdout | default(none)
+         | usb_vendor_present(packages_razer_usb_vendor_id) }}
+  when: packages_usb_vendors.rc | default(none) == 0
+
+- name: Report a Razer detection that could not run
+  ansible.builtin.debug:
+    msg: >-
+      No Razer device could be detected from /sys/bus/usb/devices, so
+      25_razer is not added. List it in packages_host_groups to install
+      OpenRazer anyway.
+  when:
+    - packages_usb_vendors is not skipped
+    - packages_razer_present | default(none) is none
+
+- name: Add the Razer group to a gaming selection
+  ansible.builtin.set_fact:
+    packages_selected_groups: >-
+      {{ packages_selected_groups
+         | add_razer_group(packages_group_selection | default(none),
+                           packages_razer_present | default(none)) }}
+
 - name: Validate selected package groups
   ansible.builtin.assert:
     that:

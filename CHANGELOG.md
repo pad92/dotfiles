@@ -6,6 +6,15 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Razer devices**: a `21_steam` host with a Razer USB device plugged in gets
+  the new `25_razer` group (`openrazer-daemon`, `openrazer-driver-dkms`,
+  `python-openrazer`). Detection reads the `idVendor` files in
+  `/sys/bus/usb/devices` and adds nothing when sysfs cannot be read. The users
+  join `plugdev` and the `openrazer-daemon` user unit is enabled, to start at
+  the next login. The repository no longer ships the
+  `default.target.wants/openrazer-daemon.service` link, which enabled the unit
+  on every host whether OpenRazer was installed or not.
+
 - **Makefile**:
   - Add `make clean`, which removes the dotfile backups and the leftovers of
     earlier migrations: broken links under the paths the `dotfiles` role
@@ -376,6 +385,11 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **systemd user units**: the repository no longer ships the
+  `timers.target.wants/arch-update.timer` link. No role installs
+  `arch-update`, so the link pointed at nothing and `make clean` reported it
+  as a broken link it had to keep. Deployment now removes it from the home
+  directory when it is still a symlink.
 - **tmux**: true color works again. The `terminal-overrides` line for mouse
   scrolling replaced the list instead of appending to it, which dropped the
   `RGB` override set at the top of `.tmux.conf`.
