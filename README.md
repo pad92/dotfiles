@@ -397,6 +397,11 @@ then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
 | `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |
 | `make screenshot`   | Render the desktop showcase at the top of this page (`RES`, `SETTLE`, ...). |
 
+The pre-commit hook runs `make coverage` and the shell tests, as the CI does, so
+a commit that lowers the coverage below the `.coveragerc` floor is refused
+locally. It needs coverage.py (`python-coverage`, installed with the
+`10_sre_devops` packages).
+
 GitLab, GitHub, and Gitea share the scripts in [`scripts/ci/`](./scripts/ci/);
 see the [GitHub workflows](./.github/workflows/README.md) and
 [GitLab CI](./.gitlab/README.md) documentation. Pushing a `v*` tag publishes a

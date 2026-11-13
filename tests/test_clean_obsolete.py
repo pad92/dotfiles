@@ -1,10 +1,12 @@
 import importlib.util
+import io
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -73,6 +75,11 @@ class HomeBrokenLinkTests(HomeTestCase):
 
         self.assertEqual(clean.home_broken_links(self.home, self.config()), [])
 
+    def test_lists_a_managed_file_that_is_a_broken_link(self):
+        zshrc = self.link(".zshrc", "../.dotfiles/zshrc")
+
+        self.assertEqual(clean.home_broken_links(self.home, self.config()), [zshrc])
+
 
 class BackupTests(HomeTestCase):
     def backup(self) -> Path:
@@ -128,6 +135,50 @@ class BackupTests(HomeTestCase):
         self.assertFalse(tree.exists())
         self.assertFalse(link.is_symlink())
         self.assertEqual(target.read_text(), "kept")
+
+    def test_end_of_input_at_the_prompt_keeps_the_backups(self):
+        backup = self.backup()
+        plan = clean.Plan(backups=[backup])
+
+        def closed_input(_):
+            raise EOFError
+
+        with redirect_stdout(io.StringIO()):
+            clean.confirm_removal(plan, prompt=closed_input, interactive=True)
+        clean.apply(plan, self.home)
+
+        self.assertTrue(backup.exists())
+        self.assertIn("not confirmed", plan.kept[0])
+
+    def test_terminal_is_detected_from_standard_input(self):
+        backup = self.backup()
+        plan = clean.Plan(backups=[backup])
+
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            redirect_stdout(io.StringIO()),
+        ):
+            clean.confirm_removal(plan, prompt=self.fail)
+
+        self.assertIn("no terminal", plan.kept[0])
+
+    def test_nothing_to_confirm_does_not_prompt(self):
+        plan = clean.Plan(paths=[self.home / "__pycache__"])
+
+        clean.confirm_removal(plan, prompt=self.fail, interactive=True)
+
+        self.assertEqual(plan.kept, [])
+
+    def test_paths_gone_or_repaired_before_apply_are_left_alone(self):
+        vanished_backup = self.home / ".zshrc.bak"
+        vanished_cache = self.home / "__pycache__"
+        repaired = self.link(".vimrc", str(self.root / "vimrc"))
+        plan = clean.Plan(backups=[vanished_backup], paths=[vanished_cache, repaired])
+        (self.root / "vimrc").write_text("")
+
+        clean.apply(plan, self.home)
+
+        self.assertTrue(repaired.is_symlink())
 
 
 class RepositoryTests(HomeTestCase):
@@ -238,6 +289,167 @@ class RepositoryTests(HomeTestCase):
 
         self.assertEqual(plan.submodule_directories, [])
         self.assertIn("no remote branch or tag holds", plan.kept[0])
+
+    def test_clone_with_its_checkout_still_present_is_kept(self):
+        git_directory = self.retired_submodule("dotbot")
+        config = str(git_directory / "config")
+        worktree = git(self.root, "config", "--file", config, "core.worktree")
+        checkout = (git_directory / worktree).resolve()
+        checkout.mkdir(parents=True)
+        (checkout / "install").write_text("")
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_directories, [])
+        self.assertIn("still exists", plan.kept[0])
+
+    def test_clone_without_a_worktree_setting_is_removed(self):
+        git_directory = self.retired_submodule("dotbot")
+        config = str(git_directory / "config")
+        git(self.root, "config", "--file", config, "--unset", "core.worktree")
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_directories, [git_directory.resolve()])
+
+    def test_unreadable_clone_is_kept(self):
+        git_directory = self.retired_submodule("dotbot")
+        shutil.rmtree(git_directory / "objects")
+        (git_directory / "objects").mkdir()
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_directories, [])
+        self.assertIn("Git cannot read", plan.kept[0])
+
+    def test_section_whose_name_leaves_git_modules_is_kept(self):
+        git(self.repository, "config", "submodule.../../escape.url", "x")
+
+        plan = self.plan()
+
+        self.assertEqual(plan.submodule_sections, [])
+        self.assertIn("leaves .git/modules", plan.kept[0])
+
+    def test_linked_worktree_leaves_submodules_to_the_main_one(self):
+        self.retired_submodule("dotbot")
+        worktree = self.root / "linked"
+        git(self.repository, "worktree", "add", "-q", str(worktree))
+
+        plan = clean.Plan()
+        clean.submodule_leftovers(worktree, plan)
+
+        self.assertEqual(plan.submodule_sections, [])
+        self.assertIn("main worktree", plan.kept[0])
+
+    def test_removing_one_clone_keeps_its_sibling_and_their_parent(self):
+        removed = self.retired_submodule("zsh/plugins/a")
+        kept = self.retired_submodule("zsh/plugins/b", local_commit=True)
+
+        clean.apply(self.plan(), self.repository)
+
+        self.assertFalse(removed.exists())
+        self.assertTrue(kept.is_dir())
+
+    def test_section_already_gone_at_apply_stops_the_removal(self):
+        self.retired_submodule("dotbot")
+        plan = self.plan()
+        git(self.repository, "config", "--remove-section", "submodule.dotbot")
+
+        with self.assertRaisesRegex(RuntimeError, "submodule.dotbot"):
+            clean.apply(plan, self.repository)
+
+    def test_git_failures_stop_with_an_error(self):
+        not_a_repository = self.root / "plain"
+        not_a_repository.mkdir()
+        (not_a_repository / "config").write_text("[broken\n")
+        (not_a_repository / ".gitmodules").write_text("[broken\n")
+
+        self.assertFalse(clean.is_main_worktree(not_a_repository))
+        with self.assertRaisesRegex(RuntimeError, "not a Git repository"):
+            clean.git_common_directory(not_a_repository)
+        with self.assertRaisesRegex(RuntimeError, "submodules of the Git config"):
+            clean.configured_submodules(not_a_repository)
+        with self.assertRaisesRegex(RuntimeError, ".gitmodules"):
+            clean.declared_submodules(not_a_repository)
+        with self.assertRaisesRegex(RuntimeError, "prunable worktrees"):
+            clean.prunable_worktrees(not_a_repository)
+        with self.assertRaisesRegex(RuntimeError, "worktree prune failed"):
+            clean.apply(clean.Plan(prunable_worktrees=["x"]), not_a_repository)
+
+    def test_report_lists_every_kind_of_item(self):
+        plan = clean.Plan(
+            backups=[Path("/h/.zshrc.bak")],
+            paths=[Path("/h/link")],
+            submodule_sections=["dotbot"],
+            submodule_directories=[Path("/r/.git/modules/dotbot")],
+            prunable_worktrees=["Removing worktrees/gone"],
+            kept=["submodule vim: reason"],
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            clean.report(plan, dry_run=False)
+            clean.report(clean.Plan(), dry_run=True)
+
+        self.assertEqual(
+            output.getvalue().splitlines(),
+            [
+                "remove backup /h/.zshrc.bak",
+                "remove /h/link",
+                "remove /r/.git/modules/dotbot",
+                'remove [submodule "dotbot"] from the Git config',
+                "remove worktree record: Removing worktrees/gone",
+                "keep submodule vim: reason",
+                "Nothing to clean.",
+            ],
+        )
+
+    def main(self, *options: str, repository: Path | None = None) -> int:
+        arguments = [
+            "clean_obsolete.py",
+            "--root",
+            str(self.home),
+            "--repository",
+            str(repository or self.repository),
+            *options,
+        ]
+        with (
+            patch.object(
+                clean.managed, "load_configuration", return_value=self.config()
+            ),
+            patch("sys.argv", arguments),
+            patch("sys.stdin.isatty", return_value=False),
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()) as errors,
+        ):
+            status = clean.main()
+        self.errors = errors.getvalue()
+        return status
+
+    def test_run_without_a_terminal_removes_caches_and_keeps_backups(self):
+        backup = self.home / ".zshrc.bak"
+        backup.write_text("previous .zshrc")
+        cache = self.repository / "__pycache__"
+        cache.mkdir()
+
+        self.assertEqual(self.main(), 0)
+
+        self.assertEqual(backup.read_text(), "previous .zshrc")
+        self.assertFalse(cache.exists())
+
+    def test_run_outside_a_repository_stops_with_an_error(self):
+        plain = self.root / "plain"
+        plain.mkdir()
+
+        self.assertEqual(self.main(repository=plain), 1)
+        self.assertIn("clean stopped", self.errors)
+
+    def test_home_must_be_a_directory(self):
+        self.home.rmdir()
+
+        with self.assertRaises(SystemExit) as raised:
+            self.main()
+        self.assertEqual(raised.exception.code, 2)
 
     def test_main_worktree_path_may_contain_spaces(self):
         spaced = self.root / "dot files"
