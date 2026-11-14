@@ -244,6 +244,10 @@ Release history and changes planned for the next version.
     installs `razer-cli` (AUR) for the GTA V mouse DPI.
   - The DOOM label says mouse smoothing off: `m_smooth 0` never turned off
     VSync.
+  - BattlEye profiles (GTA V, GTA V Enhanced) only set
+    `PROTON_BATTLEYE_RUNTIME`, as in the working ProtonDB reports for GTA V
+    Enhanced. Proton 11.0, GE-Proton11 and proton-cachyos never read
+    `PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY` or `_LEGACY_EXEC`.
 - **Tests**:
   - Tests run from a linked worktree no longer rewrite this repository's
     `.git/config`: `make` drops Git's repository variables.

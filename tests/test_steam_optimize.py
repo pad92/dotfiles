@@ -146,6 +146,31 @@ class SteamOptimizeTests(unittest.TestCase):
         self.assertNotIn("AMD_VULKAN_ICD", environment)
         self.assertNotIn("RADV_PERFTEST", environment)
 
+    def test_gta_enhanced_sets_only_the_battleye_runtime_proton_reads(self):
+        failed = SimpleNamespace(returncode=1, stdout="")
+        with (
+            mock.patch.dict(os.environ, {"HOME": "/home/player"}, clear=True),
+            mock.patch("subprocess.run", return_value=failed),
+            mock.patch("os.path.isdir", return_value=False),
+        ):
+            name, _cmd, _profile = self.script["apply_game_overrides"](
+                "3240220", ["game"]
+            )
+            battleye_variables = {
+                key: value
+                for key, value in os.environ.items()
+                if key.startswith("PROTON_BATTLEYE")
+            }
+
+        self.assertEqual(name, "Grand Theft Auto V Enhanced")
+        self.assertEqual(
+            battleye_variables,
+            {
+                "PROTON_BATTLEYE_RUNTIME": "/home/player/.local/share/Steam"
+                "/steamapps/common/Proton BattlEye Runtime"
+            },
+        )
+
     def test_hyprland_keeps_valid_inherited_session(self):
         expected_path = "/run/user/1000/hypr/current-session"
 
