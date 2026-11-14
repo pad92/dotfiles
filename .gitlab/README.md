@@ -47,13 +47,16 @@ log ends with the slowest tests.
 
 ### `pages`
 
-This job runs on `alpine:latest`, installs `python3` and `py3-markdown`, and
+This job runs on `alpine:latest`, installs `python3`, `py3-markdown` and
+`py3-pygments`, and
 calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script.
 Every Markdown file of the repository becomes a page, and relative links to
-other files point to the GitLab file browser at `CI_COMMIT_SHA`. The page
-layout and link rules are described with
-[`deploy-pages.yml`](../.github/workflows/README.md#deploy-pagesyml).
+other files point to the GitLab file browser at `CI_COMMIT_SHA`. The canonical
+URLs, `sitemap.xml` and `robots.txt` use `https://dotfiles.depad.fr/`, the
+domain `CI_PAGES_URL` redirects to (`url` in `scripts/ci/pages.json`). The
+[`deploy-pages.yml`](../.github/workflows/README.md#deploy-pagesyml) section
+describes the page layout, the link rules and the site settings.
 
 The `pages` job deploys documentation from the default branch when a Markdown
 file or the page generator changes, and from `vX.Y.Z` release tags. The `build_pages_review` job builds
@@ -69,7 +72,7 @@ review job explicitly skips tag pipelines
 
 > [!NOTE]
 > `build_pages.sh` uses POSIX `sh` and does not require Git, so it runs on the
-> minimal `alpine` image without extra packages. Without Git, `gen_pages.py`
+> minimal `alpine` image with only the Python packages above. Without Git, `gen_pages.py`
 > finds the Markdown files by walking the checkout and skips the submodules
 > listed in `.gitmodules`.
 
@@ -91,7 +94,7 @@ to extract that version's section from `CHANGELOG.md`, then passes the notes to
 | -------------------------- | ------------------------------------------------------------------- |
 | `build_pages.sh`           | GitLab `pages`, GitHub `deploy-pages.yml`, local `post-commit` hook |
 | `extract_release_notes.sh` | GitLab `create_release`, GitHub `release.yml`                       |
-| `gen_pages.py`             | `build_pages.sh`                                                    |
+| `gen_pages.py`             | `build_pages.sh`, with the settings of `pages.json`                 |
 
 Both shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
 the `alpine` job.

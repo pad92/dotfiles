@@ -1,4 +1,10 @@
-/* Catppuccin Mocha theme for the generated documentation pages. */
+/* Gruvbox theme for the generated documentation pages, matching the desktop.
+   The dark theme takes its background, text and accent colours from
+   ansible/roles/dotfiles/templates/home/.config/hypr/hyprtoolkit.conf.j2
+   (test_gen_pages.py checks they stay in sync). Browsers that ask for a light
+   theme, or pick Light in the Theme menu, get Gruvbox Light, with the same
+   hues in their darker variants: gen_pages.py sets data-theme on <html>. All
+   colours are variables in the two :root blocks below. */
 
 /* Offset anchor jumps so headings aren't hidden behind the sticky navbar. */
 html {
@@ -11,9 +17,9 @@ html {
   z-index: 1030;
 }
 
-/* Theme the top navigation menu to match the Catppuccin palette. */
+/* Theme the top navigation menu to match the Gruvbox palette. */
 .navbar.bg-dark {
-  background-color: #181825 !important; /* Catppuccin Mantle */
+  background-color: var(--surface-color) !important;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -22,8 +28,103 @@ html {
   font-weight: 600;
 }
 
+.navbar {
+  --bs-navbar-color: var(--muted-color);
+  --bs-navbar-hover-color: var(--text-color);
+  --bs-navbar-active-color: var(--accent-color);
+  --bs-navbar-brand-color: var(--accent-color);
+  --bs-navbar-brand-hover-color: var(--accent-color);
+  --bs-navbar-toggler-border-color: var(--border-color);
+}
+
 .navbar .nav-link.active {
   color: var(--accent-color);
+}
+
+/* Section dropdowns of the menu. Deeper levels are nested lists indented
+   under their parent, so the menu needs no hover submenus (unusable on
+   touch screens). A long menu scrolls instead of leaving the screen. */
+.navbar .dropdown-menu {
+  --bs-dropdown-bg: var(--surface-color);
+  --bs-dropdown-border-color: var(--border-color);
+  --bs-dropdown-link-color: var(--text-color);
+  --bs-dropdown-link-hover-color: var(--text-color);
+  --bs-dropdown-link-hover-bg: var(--code-inline-bg);
+  --bs-dropdown-link-active-color: var(--bg-color);
+  --bs-dropdown-link-active-bg: var(--accent-color);
+  --bs-dropdown-header-color: var(--muted-color);
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+}
+
+/* With a mouse, the dropdowns of the wide menu open on hover, without a
+   click. The menu touches its button so the pointer can reach it. Touch
+   screens and the collapsed menu keep opening them with a click. */
+@media (hover: hover) and (min-width: 768px) {
+  .navbar .dropdown:hover > .dropdown-menu {
+    display: block;
+    margin-top: 0;
+  }
+
+  .navbar .dropdown-menu-end {
+    right: 0;
+    left: auto;
+  }
+}
+
+/* Theme menu: the button shows the icon of the current choice, in the accent
+   colour, and each choice has its icon before its name. */
+.navbar .theme-menu .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-color);
+}
+
+.navbar .theme-menu .theme-current,
+.navbar .theme-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+}
+
+.navbar .theme-menu .dropdown-item {
+  gap: 0.5rem;
+}
+
+.navbar .theme-menu .theme-icon {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.navbar .dropdown-header {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 0.75rem;
+}
+
+.navbar .nav-sub {
+  list-style: none;
+  margin: 0;
+  padding-left: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .navbar .dropdown-menu-wide {
+    min-width: 26rem;
+  }
+
+  .navbar .nav-sub.nav-columns {
+    columns: 2;
+    column-gap: 0;
+  }
+
+  .navbar .nav-sub.nav-columns > li {
+    break-inside: avoid;
+  }
 }
 
 #toc.sticky-top {
@@ -33,20 +134,51 @@ html {
 }
 
 :root {
-  --bg-color: #1e1e2e;
-  /* Base */
-  --text-color: #cdd6f4;
-  /* Text */
-  --accent-color: #cba6f7;
-  /* Mauve */
-  --code-bg: #313244;
-  /* Surface0 */
-  --border-color: #45475a;
-  /* Surface1 */
-  --link-color: #89b4fa;
-  /* Blue */
-  --highlight-bg: #313244;
-  /* Surface0 */
+  --bg-color: #1d2021; /* hyprtoolkit background (bg0_h) */
+  --surface-color: #282828; /* hyprtoolkit base (bg0) */
+  --text-color: #ebdbb2; /* hyprtoolkit text (fg1) */
+  --muted-color: #a89984; /* fg4 */
+  --accent-color: #83a598; /* hyprtoolkit accent (blue) */
+  --link-color: #83a598; /* hyprtoolkit accent (blue), like the headings */
+  --code-bg: #282828; /* bg0 */
+  --code-inline-bg: #3c3836; /* hyprtoolkit alternate_base (bg1) */
+  --code-color: #fe8019; /* orange */
+  --border-color: #504945; /* bg2 */
+  --highlight-bg: #282828; /* bg0 */
+  --quote-color: #d5c4a1; /* fg2 */
+  --alert-note: #83a598; /* blue */
+  --alert-tip: #b8bb26; /* green */
+  --alert-important: #8ec07c; /* aqua */
+  --alert-warning: #fabd2f; /* yellow */
+  --alert-caution: #fb4934; /* red */
+  color-scheme: dark;
+}
+
+/* Gruvbox Light, chosen in the Theme menu or, on Auto, by the desktop. */
+:root[data-theme='light'] {
+  --bg-color: #fbf1c7; /* bg0 */
+  --surface-color: #ebdbb2; /* bg1 */
+  --text-color: #3c3836; /* fg1 */
+  --muted-color: #7c6f64; /* fg4 */
+  --accent-color: #076678; /* faded blue */
+  --link-color: #427b58; /* faded aqua */
+  --code-bg: #f2e5bc; /* bg0_s */
+  --code-inline-bg: #ebdbb2; /* bg1 */
+  --code-color: #af3a03; /* faded orange */
+  --border-color: #d5c4a1; /* bg2 */
+  --highlight-bg: #f2e5bc; /* bg0_s */
+  --quote-color: #504945; /* fg2 */
+  --alert-note: #076678;
+  --alert-tip: #79740e;
+  --alert-important: #427b58;
+  --alert-warning: #b57614;
+  --alert-caution: #9d0006;
+  color-scheme: light;
+}
+
+/* navbar-dark draws a white toggler icon, invisible on the light bar. */
+:root[data-theme='light'] .navbar {
+  --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%233c3836' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
 body {
@@ -132,9 +264,8 @@ pre {
 }
 
 code {
-  background-color: var(--code-bg);
-  color: #f5e0dc;
-  /* Rosewater */
+  background-color: var(--code-inline-bg);
+  color: var(--code-color);
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 85%;
@@ -146,7 +277,7 @@ pre {
   overflow: auto;
   border-radius: 6px;
   border: 1px solid var(--border-color);
-  color: #cdd6f4;
+  color: var(--text-color);
 }
 
 pre code {
@@ -159,8 +290,7 @@ pre code {
 blockquote {
   margin: 1rem 0;
   padding: 0 0 0 1em;
-  color: #bac2de;
-  /* Subtext1 */
+  color: var(--quote-color);
   border-left: 0.25em solid var(--border-color);
 }
 
@@ -187,10 +317,10 @@ img {
   border-radius: 6px;
 }
 
-/* Custom styling for bootstrap-toc in Catppuccin theme */
+/* Custom styling for bootstrap-toc in the Gruvbox theme */
 #toc {
   margin-top: 2rem;
-  background-color: var(--code-bg);
+  background-color: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem;
@@ -198,7 +328,7 @@ img {
 }
 
 #toc .nav-link {
-  color: rgba(205, 214, 244, 0.7);
+  color: color-mix(in srgb, var(--text-color) 70%, transparent);
   padding: 0.25rem 0.75rem;
   border-left: 2px solid transparent;
   transition: all 0.2s ease-in-out;
@@ -209,7 +339,7 @@ img {
   color: var(--accent-color);
   border-left-color: var(--accent-color);
   padding-left: 0.9rem;
-  background-color: rgba(203, 166, 247, 0.05);
+  background-color: color-mix(in srgb, var(--accent-color) 8%, transparent);
   text-decoration: none;
 }
 
@@ -217,7 +347,7 @@ img {
   color: var(--accent-color);
   font-weight: 600;
   border-left-color: var(--accent-color);
-  background-color: rgba(203, 166, 247, 0.1);
+  background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
 }
 
 #toc .nav .nav {
@@ -230,12 +360,13 @@ img {
   display: none !important;
 }
 
-/* GitLab-like Alerts/Admonitions styled for Catppuccin Macchiato theme */
+/* GitHub-like alerts in Gruvbox colours. Important uses aqua rather than
+   GitHub's purple, which Gruvbox renders as pink. */
 .markdown-alert {
   margin: 1.5rem 0;
   padding: 1rem 1.25rem;
   border-left: 4px solid var(--border-color);
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: color-mix(in srgb, var(--text-color) 2%, transparent);
   border-radius: 6px;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
@@ -264,47 +395,47 @@ img {
 
 /* Specific styles for note */
 .markdown-alert-note {
-  border-left-color: #89b4fa; /* Catppuccin Blue */
-  background-color: rgba(137, 180, 250, 0.08);
+  border-left-color: var(--alert-note);
+  background-color: color-mix(in srgb, var(--alert-note) 8%, transparent);
 }
 .markdown-alert-note .markdown-alert-title {
-  color: #89b4fa;
+  color: var(--alert-note);
 }
 
 /* Specific styles for tip */
 .markdown-alert-tip {
-  border-left-color: #a6e3a1; /* Catppuccin Green */
-  background-color: rgba(166, 227, 161, 0.08);
+  border-left-color: var(--alert-tip);
+  background-color: color-mix(in srgb, var(--alert-tip) 8%, transparent);
 }
 .markdown-alert-tip .markdown-alert-title {
-  color: #a6e3a1;
+  color: var(--alert-tip);
 }
 
 /* Specific styles for important */
 .markdown-alert-important {
-  border-left-color: #cba6f7; /* Catppuccin Mauve */
-  background-color: rgba(203, 166, 247, 0.08);
+  border-left-color: var(--alert-important);
+  background-color: color-mix(in srgb, var(--alert-important) 8%, transparent);
 }
 .markdown-alert-important .markdown-alert-title {
-  color: #cba6f7;
+  color: var(--alert-important);
 }
 
 /* Specific styles for warning */
 .markdown-alert-warning {
-  border-left-color: #f9e2af; /* Catppuccin Yellow */
-  background-color: rgba(249, 226, 175, 0.08);
+  border-left-color: var(--alert-warning);
+  background-color: color-mix(in srgb, var(--alert-warning) 8%, transparent);
 }
 .markdown-alert-warning .markdown-alert-title {
-  color: #f9e2af;
+  color: var(--alert-warning);
 }
 
 /* Specific styles for caution */
 .markdown-alert-caution {
-  border-left-color: #f38ba8; /* Catppuccin Red */
-  background-color: rgba(243, 139, 168, 0.08);
+  border-left-color: var(--alert-caution);
+  background-color: color-mix(in srgb, var(--alert-caution) 8%, transparent);
 }
 .markdown-alert-caution .markdown-alert-title {
-  color: #f38ba8;
+  color: var(--alert-caution);
 }
 
 /* ---------------------------------------------------------------------------

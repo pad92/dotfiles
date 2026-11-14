@@ -1,18 +1,27 @@
+import argparse
+import filecmp
+import fnmatch
+import functools
 import html as _html
+import json
 import os
 import posixpath
 import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Mapping
+import xml.etree.ElementTree as etree
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, field, fields
 from urllib.parse import quote, unquote
 
 import markdown
+from markdown.blockprocessors import BlockProcessor
+from markdown.extensions import Extension
 
 try:
     from pygments import highlight as _pyg_highlight
-    from pygments.formatters import HtmlFormatter as _PygHtmlFormatter
+    from pygments.formatters.html import HtmlFormatter as _PygHtmlFormatter
     from pygments.lexers import get_lexer_by_name as _pyg_lexer
     from pygments.util import ClassNotFound as _PygClassNotFound
 
@@ -22,44 +31,200 @@ except ImportError:  # pragma: no cover - pygments is optional
 
 # Every Markdown file of the repository becomes a page. Its output path mirrors
 # the source path (`docs/x.md` -> `docs/x.md/index.html`) so relative links
-# written for the forge keep the same shape on the published site.
-HOME_SOURCE = "README.md"
+# written for the forge keep the same shape on the published site. What to
+# publish and how to label it comes from the JSON file that build_pages.sh
+# passes (see Config); this script only holds the page template.
 STYLE_FILE = "style.css"
 NOJEKYLL_FILE = ".nojekyll"
+SITEMAP_FILE = "sitemap.xml"
+ROBOTS_FILE = "robots.txt"
+# Icons of the site, kept next to this script and published at the site root:
+# the .ico for old browsers, a 192 px PNG for the others, 180 px for iOS.
+FAVICON_ICO = "favicon.ico"
+FAVICON_PNG = "favicon.png"
+APPLE_TOUCH_ICON = "apple-touch-icon.png"
+SITE_ICONS = (FAVICON_ICO, FAVICON_PNG, APPLE_TOUCH_ICON)
 
-# actions/upload-pages-artifact drops .git and .github from the deployed
-# tarball, so pages from .github/ are published under github/ instead.
-RENAMED_PREFIXES = {".github/": "github/"}
+# The README of a directory is its page in the menu, as on the forges.
+NAV_INDEX = "README.md"
+# A submenu with more entries than this is laid out in two columns.
+NAV_COLUMNS_MIN = 10
+# Search engines show about 160 characters of a description.
+DESCRIPTION_LENGTH = 160
 
-# Directories never scanned when Git is unavailable (CI images without git).
-SKIPPED_DIRS = {
-    ".ansible",
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "__pycache__",
-    "node_modules",
-    "public",
-    "venv",
+NavTarget = str | tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Config:
+    """Settings of one site, read from JSON by load_config.
+
+    title: site name, in the navbar and as the home page title;
+    url: public URL of the site, for canonical URLs, the sitemap and
+      robots.txt (`SITE_URL` overrides it);
+    home: the Markdown source published as index.html;
+    image: preview image of shared links (Open Graph), when a page links it;
+    nav: top-level menu sections in order, (label, target). A target is one
+      page, a tuple of pages shown as a dropdown, or a directory (ending
+      with "/") whose pages become a dropdown that mirrors the tree;
+    nav_labels: menu labels that replace a page's first heading or a
+      directory's name;
+    nav_exclude: fnmatch patterns (`*` also matches `/`) of pages left out of
+      the menu; they are still published and reachable through links;
+    renamed_prefixes: source prefixes published under another name;
+    skipped_dirs: directory names never scanned when Git is unavailable;
+    asset_extensions: linked local files copied next to the pages; any other
+      linked file points to the repository browser instead.
+    """
+
+    title: str
+    url: str
+    home: str
+    image: str | None
+    nav: tuple[tuple[str, NavTarget], ...]
+    nav_labels: Mapping[str, str]
+    nav_exclude: tuple[str, ...]
+    renamed_prefixes: Mapping[str, str]
+    skipped_dirs: frozenset[str]
+    asset_extensions: frozenset[str]
+
+    def published_path(self, path: str) -> str:
+        """Return where a repository file is published, relative to the site root."""
+        for prefix, replacement in self.renamed_prefixes.items():
+            if path.startswith(prefix):
+                return replacement + path[len(prefix) :]
+        return path
+
+    def page_output_path(self, source: str) -> str:
+        """Return the page path, relative to the site root, for a Markdown source."""
+        if source == self.home:
+            return "index.html"
+        return f"{self.published_path(source)}/index.html"
+
+    def nav_excluded(self, source: str) -> bool:
+        return any(fnmatch.fnmatchcase(source, p) for p in self.nav_exclude)
+
+    def title_for(self, source: str, heading: str | None) -> str:
+        """Use the site title for the home page, then the heading, then the path."""
+        return self.title if source == self.home else heading or source
+
+
+def _expect(value: object, kind: type, key: str) -> None:
+    if not isinstance(value, kind):
+        raise ValueError(f"{key}: expected {kind.__name__}, got {value!r}")
+
+
+def _str_list(value: object, key: str) -> tuple[str, ...]:
+    _expect(value, list, key)
+    assert isinstance(value, list)
+    for item in value:
+        _expect(item, str, key)
+    return tuple(value)
+
+
+def _str_map(value: object, key: str) -> dict[str, str]:
+    _expect(value, dict, key)
+    assert isinstance(value, dict)
+    for item in value.values():
+        _expect(item, str, key)
+    return dict(value)
+
+
+def _nav_section(entry: object) -> tuple[str, NavTarget]:
+    _expect(entry, dict, "nav")
+    assert isinstance(entry, dict)
+    if set(entry) != {"label", "target"}:
+        raise ValueError(f"nav: each section needs label and target only: {entry!r}")
+    _expect(entry["label"], str, "nav label")
+    target = entry["target"]
+    if isinstance(target, list):
+        return entry["label"], _str_list(target, "nav target")
+    _expect(target, str, "nav target")
+    return entry["label"], target
+
+
+def parse_config(data: object) -> Config:
+    """Return the Config of decoded JSON; raises ValueError on a bad setting."""
+    _expect(data, dict, "config")
+    assert isinstance(data, dict)
+    keys = {f.name for f in fields(Config)}
+    if set(data) != keys:
+        missing, unknown = keys - set(data), set(data) - keys
+        raise ValueError(
+            f"config: missing {sorted(missing)}, unknown {sorted(unknown)}"
+        )
+    for key in ("title", "url", "home"):
+        _expect(data[key], str, key)
+    if not data["url"].startswith(("https://", "http://")):
+        raise ValueError(f"url: expected an http(s) URL, got {data['url']!r}")
+    if data["image"] is not None:
+        _expect(data["image"], str, "image")
+    _expect(data["nav"], list, "nav")
+    return Config(
+        title=data["title"],
+        url=data["url"].rstrip("/") + "/",
+        home=data["home"],
+        image=data["image"],
+        nav=tuple(_nav_section(entry) for entry in data["nav"]),
+        nav_labels=_str_map(data["nav_labels"], "nav_labels"),
+        nav_exclude=_str_list(data["nav_exclude"], "nav_exclude"),
+        renamed_prefixes=_str_map(data["renamed_prefixes"], "renamed_prefixes"),
+        skipped_dirs=frozenset(_str_list(data["skipped_dirs"], "skipped_dirs")),
+        asset_extensions=frozenset(
+            ext.lower()
+            for ext in _str_list(data["asset_extensions"], "asset_extensions")
+        ),
+    )
+
+
+def load_config(path: str) -> Config:
+    """Read the site settings from a JSON file (see Config)."""
+    with open(path, "r", encoding="utf-8") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{path}: {error}") from error
+    try:
+        return parse_config(data)
+    except ValueError as error:
+        raise ValueError(f"{path}: {error}") from error
+
+
+# CDN resources, pinned with Subresource Integrity: a changed file (e.g. a
+# moved Git tag behind cdn.jsdelivr.net/gh/) is refused by the browser.
+# Recompute a hash with:
+#   curl -fsSL URL | openssl dgst -sha384 -binary | openssl base64 -A
+CDN_INTEGRITY = {
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css": (
+        "sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css": (
+        "sha384-oJyFk/zeMJXNIGMVvmH262FT6dbSYss66WJHHgp1RlUk4/LfONQTzkAsHHwfcqat"  # pragma: allowlist secret
+    ),
+    "https://code.jquery.com/jquery-3.7.1.slim.min.js": (
+        "sha384-5AkRS45j4ukf+JbWAfHL8P4onPA9p0KwwP7pUdjSQA3ss9edbJUJc/XcYAiheSSz"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js": (
+        "sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js": (
+        "sha384-OGf04BRlCdmgZXHhCupHT3BIkznbahjfhX8DKSIEXyU9PvSO0/8iMiiVJPcA5vi7"  # pragma: allowlist secret
+    ),
 }
 
-# Linked local files with these extensions are copied next to the pages;
-# any other linked file points to the repository browser instead.
-ASSET_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 
-# Site navigation menu: (label, source Markdown file).
-SITE_NAV = [
-    ("Home", HOME_SOURCE),
-    ("Ansible", "ansible/README.md"),
-    ("Installation", "dist/arch/install.md"),
-    ("Changelog", "CHANGELOG.md"),
-    ("CI Workflows", ".github/workflows/README.md"),
-    ("GitLab CI", ".gitlab/README.md"),
-]
-SITE_TITLE = "Pad's Dotfiles"
+def cdn_tags(extension: str) -> str:
+    """Return the <link> or <script> tags of the CDN_INTEGRITY files of extension."""
+    tag = {
+        ".css": '<link rel="stylesheet" href="{url}" integrity="{sri}" crossorigin="anonymous">',
+        ".js": '<script src="{url}" integrity="{sri}" crossorigin="anonymous"></script>',
+    }[extension]
+    return "\n".join(
+        tag.format(url=url, sri=sri)
+        for url, sri in CDN_INTEGRITY.items()
+        if url.endswith(extension)
+    )
+
 
 _URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # Only real tags are matched: Markdown escapes `<` in code spans, so an
@@ -70,44 +235,198 @@ _LINK_ATTR_RE = re.compile(
 )
 _HTML_HEADING_RE = re.compile(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", re.DOTALL)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_HTML_OPEN_TAG_RE = re.compile(r"<[A-Za-z][^>]*>")
+_HTML_ANCHOR_RE = re.compile(r"""\s(?:id|name)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+# A fence may sit in a blockquote: (quote markers, indent, fence, info string).
+_FENCE_OPEN_RE = re.compile(r"^((?:[ \t]*>[ \t]?)*)([ \t]*)(`{3,}|~{3,})(.*)$")
+_QUOTE_MARKER_RE = re.compile(r"[ \t]*>[ \t]?")
+# GitHub drops every character but letters, digits, `_`, `-` and spaces.
+_SLUG_DROP_RE = re.compile(r"[^\w\- ]")
+_FENCE_LANG_RE = re.compile(r"[\w+-]+")
+# GitLab's table-of-contents markers, honoured only alone on their line.
+_TOC_MARKER_RE = re.compile(r"^[ \t]*\[\[(?:TOC|_TOC_)\]\][ \t]*$", re.MULTILINE)
 
 
-def published_path(path: str) -> str:
-    """Return where a repository file is published, relative to the site root."""
-    for prefix, replacement in RENAMED_PREFIXES.items():
-        if path.startswith(prefix):
-            return replacement + path[len(prefix) :]
-    return path
+@dataclass
+class NavNode:
+    """One menu entry: a page (source) or a heading (no source), with children."""
+
+    label: str
+    source: str | None = None
+    children: list["NavNode"] = field(default_factory=list)
+
+    def contains(self, source: str) -> bool:
+        """Return whether source is this entry's page or one of its children's."""
+        return self.source == source or any(c.contains(source) for c in self.children)
 
 
-def page_output_path(source: str) -> str:
-    """Return the page path, relative to the site root, for a Markdown source."""
-    if source == HOME_SOURCE:
-        return "index.html"
-    return f"{published_path(source)}/index.html"
+def _label_key(node: NavNode) -> str:
+    return node.label.casefold()
 
 
-def build_nav(output_rel: str) -> tuple[str, str]:
-    """Return (brand_href, nav_items_html) with links relative to output_rel.
+def page_nav_label(
+    config: Config, source: str, titles: Mapping[str, str | None]
+) -> str:
+    """Use the config's nav_labels, then the page's first heading, then its file name.
 
-    Relative links keep the site working under a subpath (e.g. project
-    GitHub/GitLab Pages served from /<repo>/).
+    A README falls back to the name of its directory.
     """
-    cur_dir = posixpath.dirname(output_rel) or "."
+    directory, name = posixpath.split(source)
+    if name == NAV_INDEX and directory:
+        fallback = posixpath.basename(directory)
+    else:
+        fallback = posixpath.splitext(name)[0]
+    return config.nav_labels.get(source) or titles.get(source) or fallback
+
+
+def directory_nav(
+    config: Config,
+    directory: str,
+    sources: Collection[str],
+    titles: Mapping[str, str | None],
+) -> list[NavNode]:
+    """Return the menu entries below directory (a path ending with "/").
+
+    Pages of the directory come first, then its subdirectories, each sorted by
+    label. The directory's own README is left to the caller.
+    """
+    pages = []
+    subdirs: dict[str, list[str]] = {}
+    for source in sources:
+        if not source.startswith(directory):
+            continue
+        rest = source[len(directory) :]
+        if "/" in rest:
+            subdirs.setdefault(rest.split("/", 1)[0], []).append(source)
+        elif rest != NAV_INDEX:
+            pages.append(NavNode(page_nav_label(config, source, titles), source))
+    dirs = [
+        _directory_node(config, f"{directory}{name}/", name, below, titles)
+        for name, below in subdirs.items()
+    ]
+    return sorted(pages, key=_label_key) + sorted(dirs, key=_label_key)
+
+
+def _directory_node(
+    config: Config,
+    directory: str,
+    name: str,
+    sources: list[str],
+    titles: Mapping[str, str | None],
+) -> NavNode:
+    """Return the entry of a subdirectory: its README, or a heading without one.
+
+    A directory with no page of its own and a single subdirectory, itself
+    without a README, is folded into it (`a/b`), so the menu shows no empty
+    levels. A directory named in nav_labels is never folded.
+    """
+    while directory.rstrip("/") not in config.nav_labels:
+        rests = [source[len(directory) :] for source in sources]
+        firsts = {rest.split("/", 1)[0] for rest in rests}
+        if any("/" not in rest for rest in rests) or len(firsts) != 1:
+            break
+        sub = firsts.pop()
+        if f"{directory}{sub}/{NAV_INDEX}" in sources:
+            break
+        directory, name = f"{directory}{sub}/", f"{name}/{sub}"
+    index = directory + NAV_INDEX
+    page = index if index in sources else None
+    label = (
+        config.nav_labels.get(directory.rstrip("/"))
+        or (page and page_nav_label(config, page, titles))
+        or name
+    )
+    return NavNode(label, page, directory_nav(config, directory, sources, titles))
+
+
+def build_nav_tree(
+    config: Config, sources: Collection[str], titles: Mapping[str, str | None]
+) -> list[NavNode]:
+    """Return the top-level menu entries of the config's nav that have pages.
+
+    titles maps a source to its first heading (None without one). Pages
+    matching nav_exclude are left out of every section.
+    """
+    sources = [source for source in sources if not config.nav_excluded(source)]
+    nodes = []
+    for label, target in config.nav:
+        if isinstance(target, tuple):
+            children = [
+                NavNode(page_nav_label(config, source, titles), source)
+                for source in target
+                if source in sources
+            ]
+            if children:
+                nodes.append(NavNode(label, None, children))
+        elif target.endswith("/"):
+            children = directory_nav(config, target, sources, titles)
+            if target + NAV_INDEX in sources:
+                children.insert(0, NavNode("Overview", target + NAV_INDEX))
+            if children:
+                nodes.append(NavNode(label, None, children))
+        elif target in sources:
+            nodes.append(NavNode(label, target))
+    return nodes
+
+
+def build_nav(
+    nodes: list[NavNode], pages: Mapping[str, str], source: str
+) -> tuple[str, str]:
+    """Return (brand_href, nav_items_html) for the page of source.
+
+    Links are relative to the page, so the site works under a subpath (e.g.
+    project GitHub/GitLab Pages served from /<repo>/). The section holding the
+    page is highlighted and the page's own entry is marked as current.
+    """
+    cur_dir = posixpath.dirname(pages[source]) or "."
+
+    def href(target: str) -> str:
+        path = quote(posixpath.relpath(pages[target], cur_dir), safe="/")
+        return _html.escape(path)
+
+    def link(node: NavNode, css: str) -> str:
+        assert node.source is not None
+        label = _html.escape(node.label)
+        if node.source == source:
+            return (
+                f'<a class="{css} active" aria-current="page" '
+                f'href="{href(node.source)}">{label}</a>'
+            )
+        return f'<a class="{css}" href="{href(node.source)}">{label}</a>'
+
+    def entry(node: NavNode) -> str:
+        if node.source is not None:
+            head = link(node, "dropdown-item")
+        else:
+            head = f'<span class="dropdown-header">{_html.escape(node.label)}</span>'
+        if node.children:
+            columns = " nav-columns" if len(node.children) > NAV_COLUMNS_MIN else ""
+            subs = "".join(entry(child) for child in node.children)
+            head += f'<ul class="nav-sub{columns}">{subs}</ul>'
+        return f"<li>{head}</li>"
+
+    def wide(node: NavNode) -> bool:
+        return len(node.children) > NAV_COLUMNS_MIN or any(
+            wide(child) for child in node.children
+        )
 
     items = []
-    for label, source in SITE_NAV:
-        target = page_output_path(source)
-        href = posixpath.relpath(target, cur_dir)
-        if target == output_rel:
-            items.append(
-                f'<li class="nav-item"><a class="nav-link active" '
-                f'aria-current="page" href="{href}">{label}</a></li>'
-            )
-        else:
-            items.append(
-                f'<li class="nav-item"><a class="nav-link" href="{href}">{label}</a></li>'
-            )
+    for node in nodes:
+        if not node.children:
+            items.append(f'<li class="nav-item">{link(node, "nav-link")}</li>')
+            continue
+        active = " active" if node.contains(source) else ""
+        menu = "dropdown-menu dropdown-menu-end"
+        if any(wide(child) for child in node.children):
+            menu += " dropdown-menu-wide"
+        entries = "".join(entry(child) for child in node.children)
+        items.append(
+            f'<li class="nav-item dropdown">'
+            f'<a class="nav-link dropdown-toggle{active}" href="#" role="button" '
+            f'data-bs-toggle="dropdown" aria-expanded="false">'
+            f"{_html.escape(node.label)}</a>"
+            f'<ul class="{menu}">{entries}</ul></li>'
+        )
 
     brand_href = posixpath.relpath("index.html", cur_dir)
     return brand_href, "\n".join(items)
@@ -123,8 +442,8 @@ def minify_css(css):
 
 
 def minify_html(html):
-    """Collapse whitespace in HTML while preserving blocks where whitespace is
-    significant (code, scripts, inline styles)."""
+    """Collapse whitespace runs in HTML to one space, except in blocks where
+    whitespace is significant (code, scripts, inline styles)."""
     protected = []
 
     def _stash(match):
@@ -137,12 +456,19 @@ def minify_html(html):
         html,
         flags=re.DOTALL | re.IGNORECASE,
     )
-    html = re.sub(r">\s+<", "><", html)
+    # Whitespace between tags is collapsed, not removed: between inline
+    # elements (`<strong>a</strong> <a>`) it is a visible space.
     html = re.sub(r"\s+", " ", html).strip()
 
     for i, block in enumerate(protected):
         html = html.replace(f"\x00{i}\x00", block)
     return html
+
+
+def copy_if_changed(source: str, dest: str) -> None:
+    """Copy a file only when dest is missing or differs, keeping its timestamp."""
+    if not (os.path.isfile(dest) and filecmp.cmp(source, dest, shallow=False)):
+        shutil.copyfile(source, dest)
 
 
 def write_if_changed(path, content):
@@ -196,6 +522,85 @@ def get_alert_resources(alert_type):
     return icons.get(alert_type, (None, alert_type))
 
 
+# Gruvbox, like style.css and the Hyprland desktop. The light style applies
+# under LIGHT_THEME, as the light block of style.css does.
+PYGMENTS_STYLE = "gruvbox-dark"
+PYGMENTS_LIGHT_STYLE = "gruvbox-light"
+LIGHT_THEME = ':root[data-theme="light"]'
+
+# Theme switcher. THEME_INIT_JS runs in <head>, before the page is drawn, and
+# sets data-theme on <html> to "light" or "dark" from the saved choice ("auto"
+# by default, which follows the desktop). THEME_MENU_JS drives the
+# Light/Dark/Auto entries of the menu, saves the choice in localStorage,
+# shows the icon of the choice on the menu button and follows desktop changes
+# while the choice is "auto". Without JavaScript the site stays dark.
+THEME_CHOICES = ("light", "dark", "auto")
+# Icons of the choices, drawn with the text colour: a sun, a crescent moon and
+# a half-filled circle.
+_ICON = (
+    '<svg class="theme-icon" viewBox="0 0 16 16" width="1em" height="1em" '
+    'fill="none" stroke="currentColor" stroke-width="1.5" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
+)
+THEME_ICONS = {
+    "light": _ICON.format(
+        '<circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5'
+        "M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95"
+        'l1.06-1.06M11.89 4.11l1.06-1.06"/>'
+    ),
+    "dark": _ICON.format('<path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z"/>'),
+    "auto": _ICON.format(
+        '<circle cx="8" cy="8" r="6.25"/>'
+        '<path d="M8 1.75a6.25 6.25 0 0 0 0 12.5z" fill="currentColor"/>'
+    ),
+}
+THEME_INIT_JS = (
+    "(function(){var c;try{c=localStorage.getItem('theme')}catch(e){}"
+    "if(c!=='light'&&c!=='dark')c='auto';var d=document.documentElement;"
+    "d.dataset.themeChoice=c;d.dataset.theme=c==='auto'?"
+    "(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):c})();"
+)
+THEME_MENU_JS = (
+    "(function(){var d=document.documentElement,"
+    "m=matchMedia('(prefers-color-scheme: light)'),"
+    "items=document.querySelectorAll('button[data-theme-choice]'),"
+    "t=document.querySelector('.theme-menu .theme-current');"
+    "function apply(c){d.dataset.themeChoice=c;"
+    "d.dataset.theme=c==='auto'?(m.matches?'light':'dark'):c;"
+    "items.forEach(function(b){var on=b.dataset.themeChoice===c;"
+    "b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));"
+    "if(on&&t)t.innerHTML=b.querySelector('svg').outerHTML})}"
+    "items.forEach(function(b){b.addEventListener('click',function(){"
+    "var c=b.dataset.themeChoice;try{localStorage.setItem('theme',c)}catch(e){}"
+    "apply(c)})});"
+    "m.addEventListener('change',function(){"
+    "if(d.dataset.themeChoice==='auto')apply('auto')});"
+    "apply(d.dataset.themeChoice||'auto')})();"
+)
+
+
+def theme_menu():
+    """The Light/Dark/Auto dropdown, last item of the menu.
+
+    Its button shows the icon of the current choice, Auto until the script
+    runs.
+    """
+    items = "".join(
+        f'<li><button class="dropdown-item" type="button" '
+        f'data-theme-choice="{choice}" aria-pressed="false">'
+        f"{THEME_ICONS[choice]}{choice.capitalize()}</button></li>"
+        for choice in THEME_CHOICES
+    )
+    return (
+        '<li class="nav-item dropdown theme-menu">'
+        '<button class="nav-link dropdown-toggle" type="button" '
+        'data-bs-toggle="dropdown" aria-expanded="false" '
+        'aria-label="Colour theme">'
+        f'<span class="theme-current">{THEME_ICONS["auto"]}</span></button>'
+        f'<ul class="dropdown-menu dropdown-menu-end">{items}</ul></li>'
+    )
+
+
 def pygments_css():
     """Syntax-highlighting colours for `.codehilite`, themed for the dark pages.
 
@@ -205,8 +610,30 @@ def pygments_css():
     """
     if not _HAVE_PYGMENTS:
         return ""
-    defs = _PygHtmlFormatter(style="dracula").get_style_defs(".codehilite")
-    return "\n" + defs + "\n.codehilite{background:transparent}\n"
+    dark = _PygHtmlFormatter(style=PYGMENTS_STYLE).get_style_defs(".codehilite")
+    light = _PygHtmlFormatter(style=PYGMENTS_LIGHT_STYLE).get_style_defs(
+        f"{LIGHT_THEME} .codehilite"
+    )
+    # The light style leaves some tokens (punctuation, YAML scalars...) to the
+    # text colour, but the dark rules for them still match: reset them first.
+    token_rule = re.compile(r"^(?:.* )?\.codehilite (\.[\w-]+) \{", re.M)
+    dark_only = sorted(set(token_rule.findall(dark)) - set(token_rule.findall(light)))
+    reset = (
+        ",".join(f"{LIGHT_THEME} .codehilite {token}" for token in dark_only)
+        + "{color:inherit;background-color:transparent;font-weight:inherit;"
+        + "font-style:inherit;text-decoration:inherit}\n"
+        if dark_only
+        else ""
+    )
+    return (
+        "\n"
+        + dark
+        + "\n"
+        + reset
+        + light
+        # Same specificity as the light rule, later: wins over both styles.
+        + "\n.codehilite,:root[data-theme] .codehilite{background:transparent}\n"
+    )
 
 
 def render_code_block(code, lang):
@@ -222,56 +649,106 @@ def render_code_block(code, lang):
     return f'<div class="codehilite"><pre><code{cls}>{_html.escape(code)}</code></pre></div>'
 
 
-def stash_code_blocks(text, store):
+def stash_code_blocks(text: str, store: list[str]) -> str:
     """Replace fenced code blocks with placeholders and render them ourselves.
 
     python-markdown's `fenced_code` does not recognise fences nested inside list
     items (it turns them into inline code), so we extract every fenced block
-    here — dedenting by the opening fence's indentation — render it, and reinsert
-    the HTML after Markdown conversion. The placeholder keeps the fence's indent
-    so it stays within its list item.
+    here, dedenting by the opening fence's indentation, render it, and reinsert
+    the HTML after Markdown conversion (see restore_code_blocks). The
+    placeholder keeps the fence's indent so it stays within its list item.
+
+    As in CommonMark, a fence is three or more backticks or tildes, followed by
+    an info string whose first word is the language, and it is closed only by
+    a run of the same character at least as long: a ```` fence can show a
+    ``` fence as code. A fence inside a blockquote (alerts included) has its
+    `>` markers removed from the code and kept before the placeholder. A fence
+    never closed, or whose blockquote ends first, is left to python-markdown.
     """
-    pattern = re.compile(
-        r"^([ \t]*)```([\w+-]*)[ \t]*\n(.*?)\n[ \t]*```[ \t]*$",
-        re.MULTILINE | re.DOTALL,
-    )
-
-    def repl(match):
-        indent, lang, body = match.group(1), match.group(2), match.group(3)
+    lines = text.split("\n")
+    output = []
+    # (fence character, quote depth) -> shortest fence already scanned to the
+    # end of the text without a closing line. A later fence of that kind, at
+    # least as long, cannot close either: its scan is skipped, which keeps a
+    # file full of stray fences linear.
+    unclosed: dict[tuple[str, int], int] = {}
+    i = 0
+    while i < len(lines):
+        opening = _FENCE_OPEN_RE.match(lines[i])
+        end = None
+        if opening is not None:
+            quote, _indent, fence, _info = opening.groups()
+            kind = (fence[0], quote.count(">"))
+            if len(fence) < unclosed.get(kind, sys.maxsize):
+                end, at_end = _closing_fence_index(lines, i, opening)
+                if at_end:
+                    unclosed[kind] = len(fence)
+        if opening is None or end is None:
+            output.append(lines[i])
+            i += 1
+            continue
+        quote, indent, _fence, info = opening.groups()
+        depth = quote.count(">")
         n = len(indent)
-        code = "\n".join(
-            line[n:] if line[:n].strip() == "" else line for line in body.split("\n")
-        )
-        token = f"xxcodeblock{len(store)}xx"
-        store.append(render_code_block(code, lang))
-        return indent + token
+        body = [_strip_quote(line, depth) or "" for line in lines[i + 1 : end]]
+        code = "\n".join(line[n:] if line[:n].strip() == "" else line for line in body)
+        lang_match = _FENCE_LANG_RE.match(info.strip())
+        store.append(render_code_block(code, lang_match.group(0) if lang_match else ""))
+        output.append(quote + indent + code_block_token(len(store) - 1))
+        i = end + 1
+    return "\n".join(output)
 
-    return pattern.sub(repl, text)
+
+def _strip_quote(line: str, depth: int) -> str | None:
+    """Return line without its first depth `>` markers, None if it has fewer."""
+    pos = 0
+    for _ in range(depth):
+        marker = _QUOTE_MARKER_RE.match(line, pos)
+        if marker is None:
+            return None
+        pos = marker.end()
+    return line[pos:]
 
 
-def preprocess_markdown(text):
-    # Regex to find fenced code blocks that may be indented (e.g. inside list items)
-    pattern = re.compile(
-        r"^(\s*)```([a-zA-Z0-9_+-]+)[ \t]*\n(.*?)\n\1```[ \t]*$",
-        re.MULTILINE | re.DOTALL,
-    )
+@functools.cache
+def _closing_fence_re(char: str, length: int) -> re.Pattern[str]:
+    """Match a line closing a fence of length char: as long or longer, alone."""
+    return re.compile(rf"^[ \t]*{re.escape(char)}{{{length},}}[ \t]*$")
 
-    def replace_fenced_code(match):
-        indent = match.group(1)
-        lang = match.group(2)
-        code = match.group(3)
 
-        if not indent:
-            return match.group(0)
+def _closing_fence_index(
+    lines: list[str], start: int, opening: re.Match[str]
+) -> tuple[int | None, bool]:
+    """Return (index of the line closing the fence opened at start, at_end).
 
-        lines = code.split("\n")
-        # Prepend 4 extra spaces of indentation to make it a standard indented code block
-        indented_lines = ["    " + line for line in lines]
-        # Prepend 4 spaces of indentation and ::: to specify the language for codehilite
-        header = indent + "    " + f":::{lang}"
-        return f"\n{header}\n" + "\n".join(indented_lines) + "\n"
+    The index is None when the fence is never closed, or when a line without
+    the opening's `>` markers ends its blockquote first; at_end tells whether
+    the scan went to the last line without finding a closing one.
+    """
+    quote, _indent, fence, info = opening.groups()
+    if fence[0] == "`" and "`" in info:
+        return None, False  # Not a fence: a backtick info string has no backtick.
+    depth = quote.count(">")
+    closing = _closing_fence_re(fence[0], len(fence))
+    for j in range(start + 1, len(lines)):
+        rest = _strip_quote(lines[j], depth)
+        if rest is None:
+            return None, False
+        if closing.match(rest):
+            return j, False
+    return None, True
 
-    return pattern.sub(replace_fenced_code, text)
+
+def code_block_token(index: int) -> str:
+    return f"xxcodeblock{index}xx"
+
+
+def restore_code_blocks(html: str, store: list[str]) -> str:
+    """Put the stashed code blocks back, dropping any <p> wrapper Markdown added."""
+    for i, block in enumerate(store):
+        token = code_block_token(i)
+        html = html.replace(f"<p>{token}</p>", block).replace(token, block)
+    return html
 
 
 def normalize_nested_list_indentation(text):
@@ -327,69 +804,116 @@ def normalize_nested_list_indentation(text):
     return "\n".join(normalized)
 
 
-def render_markdown(text):
-    """Render Markdown using the compact nested-list style used by the docs."""
-    text = normalize_nested_list_indentation(preprocess_markdown(text))
-    return markdown.markdown(text, extensions=["extra", "codehilite", "toc"])
+class HeadingSlugger:
+    """Build heading ids as GitHub does, unique across one page.
+
+    The text is lowercased, punctuation is dropped (accents and other letters
+    stay) and each space becomes a hyphen, without merging runs: `A & B` gives
+    `a--b`. A repeated id gets `-1`, `-2`... in document order.
+    """
+
+    def __init__(self) -> None:
+        self.occurrences: dict[str, int] = {}
+
+    def __call__(self, value: str, separator: str) -> str:
+        base = _SLUG_DROP_RE.sub("", value.strip().lower()).replace(" ", separator)
+        slug = base
+        while slug in self.occurrences:
+            self.occurrences[base] += 1
+            slug = f"{base}{separator}{self.occurrences[base]}"
+        self.occurrences[slug] = 0
+        return slug
 
 
-def parse_alerts(text):
-    lines = text.split("\n")
-    new_lines = []
-    i = 0
-    n = len(lines)
+# Class of the title paragraph of an alert; page_description skips it.
+ALERT_TITLE_CLASS = "markdown-alert-title"
+# A line of a blockquote, and the first line of an alert (`> [!NOTE] text`).
+_QUOTE_LINE_RE = re.compile(r"^[ ]{0,3}>[ ]?(.*)$")
+_ALERT_START_RE = re.compile(
+    r"^[ ]{0,3}>[ \t]*\[!(TIP|NOTE|WARNING|IMPORTANT|CAUTION)\][ \t]*(.*)$",
+    re.IGNORECASE,
+)
 
-    while i < n:
-        line = lines[i]
-        match = re.match(
-            r"^(\s*)>\s*\[!(TIP|NOTE|WARNING|IMPORTANT|CAUTION)\](?:\s*(.*))?$",
-            line,
-            re.IGNORECASE,
+
+class AlertProcessor(BlockProcessor):
+    """Render GitHub/GitLab alerts (`> [!NOTE]` blockquotes) as python-markdown
+    blocks.
+
+    An alert is a blockquote whose first line is a marker, optionally followed
+    by text; it ends at the first line without `>`. It is parsed in the page's
+    own pass, so its headings get their ids in document order, as on GitHub,
+    and it works wherever a blockquote does (in list items too). Fenced code
+    inside it is stashed beforehand (stash_code_blocks handles blockquotes).
+    """
+
+    @staticmethod
+    def _start(block: str) -> tuple[int, re.Match[str]] | None:
+        """Return (offset, marker match) of the alert opening the block's quote."""
+        offset = 0
+        for line in block.split("\n"):
+            if _QUOTE_LINE_RE.match(line):
+                match = _ALERT_START_RE.match(line)
+                return (offset, match) if match else None
+            offset += len(line) + 1
+        return None
+
+    def test(self, parent: etree.Element, block: str) -> bool:
+        return self._start(block) is not None
+
+    def run(self, parent: etree.Element, blocks: list[str]) -> None:
+        block = blocks.pop(0)
+        start = self._start(block)
+        assert start is not None  # test() accepted the block.
+        offset, marker = start
+        if offset:
+            # Lines before the quote, such as a paragraph it interrupts.
+            self.parser.parseBlocks(parent, [block[:offset]])
+        lines = block[offset:].split("\n")
+        body = [marker.group(2)] if marker.group(2).strip() else []
+        end = 1
+        while end < len(lines):
+            quoted = _QUOTE_LINE_RE.match(lines[end])
+            if quoted is None:
+                break
+            body.append(quoted.group(1))
+            end += 1
+        if end < len(lines):
+            blocks.insert(0, "\n".join(lines[end:]))
+
+        alert_type = marker.group(1).upper()
+        icon_svg, title_text = get_alert_resources(alert_type)
+        alert = etree.SubElement(
+            parent,
+            "div",
+            {"class": f"markdown-alert markdown-alert-{alert_type.lower()}"},
         )
-        if match:
-            indent = match.group(1)
-            alert_type = match.group(2).upper()
-            first_line_content = match.group(3)
+        title = etree.SubElement(alert, "p", {"class": ALERT_TITLE_CLASS})
+        # The icon is raw SVG: the stash puts it back after serialisation.
+        icon = self.parser.md.htmlStash.store(icon_svg) if icon_svg else ""
+        title.text = icon + title_text
+        # As in a blockquote, list items inside get their <p> tags.
+        self.parser.state.set("blockquote")
+        self.parser.parseChunk(alert, "\n".join(body))
+        self.parser.state.reset()
 
-            alert_lines = []
-            if first_line_content and first_line_content.strip():
-                alert_lines.append(first_line_content)
 
-            i += 1
-            while i < n:
-                next_line = lines[i]
-                next_match = re.match(r"^\s*>\s?(.*)$", next_line)
-                if next_match:
-                    alert_lines.append(next_match.group(1))
-                    i += 1
-                else:
-                    break
+class AlertExtension(Extension):
+    def extendMarkdown(self, md: markdown.Markdown) -> None:
+        # Above the blockquote processor (20), which would take the block.
+        md.parser.blockprocessors.register(AlertProcessor(md.parser), "alert", 21)
 
-            compiled_content = render_markdown("\n".join(alert_lines))
 
-            icon_svg, title_text = get_alert_resources(alert_type)
+def render_markdown(text: str) -> str:
+    """Render Markdown using the compact nested-list style used by the docs.
 
-            alert_html = (
-                f'<div class="markdown-alert markdown-alert-{alert_type.lower()}">\n'
-                f'<p class="markdown-alert-title">{icon_svg}{title_text}</p>\n'
-                f"{compiled_content}\n"
-                f"</div>"
-            )
-
-            indented_lines = []
-            for segment in alert_html.split("\n"):
-                if segment.strip():
-                    indented_lines.append(indent + segment)
-                else:
-                    indented_lines.append(segment)
-            alert_html = "\n".join(indented_lines)
-
-            new_lines.append(alert_html)
-        else:
-            new_lines.append(line)
-            i += 1
-
-    return "\n".join(new_lines)
+    Alerts are part of the pass, and heading ids are unique across the page.
+    """
+    text = normalize_nested_list_indentation(text)
+    return markdown.markdown(
+        text,
+        extensions=["extra", "codehilite", "toc", AlertExtension()],
+        extension_configs={"toc": {"slugify": HeadingSlugger()}},
+    )
 
 
 def submodule_paths(root: str) -> set[str]:
@@ -421,7 +945,7 @@ def env_for_root_repository() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k not in names}
 
 
-def discover_markdown(root: str) -> list[str]:
+def discover_markdown(root: str, skipped_dirs: Collection[str]) -> list[str]:
     """List Markdown sources (POSIX paths relative to root), sorted.
 
     Git is preferred so ignored or untracked local files are not published;
@@ -445,7 +969,7 @@ def discover_markdown(root: str) -> list[str]:
             dirs[:] = sorted(
                 d
                 for d in dirs
-                if d not in SKIPPED_DIRS
+                if d not in skipped_dirs
                 and posixpath.normpath(posixpath.join(rel_dir, d)) not in submodules
             )
             for name in files:
@@ -458,6 +982,89 @@ def discover_markdown(root: str) -> list[str]:
         path
         for path in listed.split("\0")
         if path and os.path.isfile(os.path.join(root, path))
+    )
+
+
+def site_url_from_env(env: Mapping[str, str], default: str) -> str:
+    """Return the public URL of the site, ending with `/`.
+
+    `SITE_URL` wins when it is an http(s) URL, else default. Every
+    build, the local preview included, gets canonical URLs and a sitemap.
+    """
+    url = env.get("SITE_URL", "")
+    if not url.startswith(("https://", "http://")):
+        url = default
+    return url.rstrip("/") + "/"
+
+
+def page_url(site_url: str, output_rel: str) -> str:
+    """Absolute URL of a page: its directory, without `index.html`."""
+    directory = posixpath.dirname(output_rel)
+    return site_url + (quote(directory, safe="/") + "/" if directory else "")
+
+
+def page_description(html_content: str) -> str | None:
+    """First paragraph of rendered HTML as plain text, cut for search results.
+
+    Paragraphs without text, such as a row of badges, and alert titles
+    ("Note"...) are skipped. A text longer than DESCRIPTION_LENGTH is cut at a
+    word and ends with `...`.
+    """
+    for attributes, paragraph in re.findall(
+        r"<p\b([^>]*)>(.*?)</p>", html_content, re.S
+    ):
+        if ALERT_TITLE_CLASS in attributes:
+            continue
+        text = " ".join(_html.unescape(_HTML_TAG_RE.sub("", paragraph)).split())
+        if not text:
+            continue
+        if len(text) > DESCRIPTION_LENGTH:
+            text = (
+                text[: DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0].rstrip(",;:") + "..."
+            )
+        return text
+    return None
+
+
+def seo_head(site: "Site", source: str, title: str, html_content: str) -> str:
+    """Description, canonical URL and Open Graph tags of a page's <head>."""
+    esc = _html.escape
+    description = page_description(html_content)
+    tags = []
+    if description:
+        tags.append(f'<meta name="description" content="{esc(description)}">')
+    tags += [
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{esc(site.config.title)}">',
+        f'<meta property="og:title" content="{esc(title)}">',
+    ]
+    if description:
+        tags.append(f'<meta property="og:description" content="{esc(description)}">')
+    card = "summary"
+    if site.site_url:
+        url = page_url(site.site_url, site.pages[source])
+        tags.append(f'<link rel="canonical" href="{esc(url)}">')
+        tags.append(f'<meta property="og:url" content="{esc(url)}">')
+        image_source = site.config.image
+        if image_source and image_source in site.assets:
+            path = site.config.published_path(image_source)
+            image = site.site_url + quote(path, safe="/")
+            tags.append(f'<meta property="og:image" content="{esc(image)}">')
+            card = "summary_large_image"
+    tags.append(f'<meta name="twitter:card" content="{card}">')
+    return "\n    ".join(tags)
+
+
+def sitemap_xml(site: "Site") -> str:
+    """sitemaps.org list of every page, home page first."""
+    urls = sorted(
+        page_url(site.site_url or "", output) for output in site.pages.values()
+    )
+    entries = "".join(f"  <url><loc>{_html.escape(url)}</loc></url>\n" for url in urls)
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{entries}</urlset>\n"
     )
 
 
@@ -483,23 +1090,38 @@ class Site:
     """Pages of one build plus the state needed to resolve links between them."""
 
     def __init__(
-        self, root: str, out_dir: str, sources: list[str], repo_url: str | None
+        self,
+        config: Config,
+        root: str,
+        out_dir: str,
+        sources: list[str],
+        repo_url: str | None,
     ) -> None:
+        self.config = config
         self.root = root
         self.out_dir = out_dir
         self.repo_url = repo_url
-        self.pages = {source: page_output_path(source) for source in sources}
+        # Public URL of the site, ending with "/" (see site_url_from_env).
+        self.site_url: str | None = None
+        self.pages = {source: config.page_output_path(source) for source in sources}
         self.assets: set[str] = set()
         self.missing_links: list[tuple[str, str]] = []
+        # (source, url, target source, fragment), checked once every page has
+        # been rendered and its ids are known (see check_anchors).
+        self.anchor_links: list[tuple[str, str, str, str]] = []
 
     def rewrite_url(self, url: str, source: str, output_rel: str) -> str:
         """Map a link written for the forge to its location on the site.
 
         Links to Markdown files go to their page, images are copied into the
         site, and other repository files go to the repository browser (or, for
-        a local preview, to the file in the checkout next to public/).
+        a local preview, to the file in the checkout next to public/). A path
+        starting with `/` is relative to the repository root, as on the forges.
         """
-        if not url or url.startswith(("#", "?", "/")) or _URL_SCHEME_RE.match(url):
+        if url.startswith("#"):
+            self.anchor_links.append((source, url, source, url[1:]))
+            return url
+        if not url or url.startswith(("?", "//")) or _URL_SCHEME_RE.match(url):
             return url
         rest, has_fragment, fragment = url.partition("#")
         raw_path, has_query, query = rest.partition("?")
@@ -508,12 +1130,15 @@ class Site:
             f"#{fragment}" if has_fragment else ""
         )
         path = unquote(raw_path)
-        target = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+        base = "" if path.startswith("/") else posixpath.dirname(source)
+        target = posixpath.normpath(posixpath.join(base, path.lstrip("/")))
         if target == ".." or target.startswith("../"):
             return url
 
         cur_dir = posixpath.dirname(output_rel) or "."
         if target in self.pages:
+            if has_fragment:
+                self.anchor_links.append((source, url, target, fragment))
             return posixpath.relpath(self.pages[target], cur_dir) + anchor
 
         local = os.path.join(self.root, target)
@@ -521,9 +1146,11 @@ class Site:
             self.missing_links.append((source, url))
             return url
         is_dir = os.path.isdir(local)
-        if not is_dir and posixpath.splitext(target)[1].lower() in ASSET_EXTENSIONS:
+        extension = posixpath.splitext(target)[1].lower()
+        if not is_dir and extension in self.config.asset_extensions:
             self.assets.add(target)
-            return posixpath.relpath(published_path(target), cur_dir) + anchor
+            published = self.config.published_path(target)
+            return posixpath.relpath(published, cur_dir) + anchor
         if self.repo_url:
             kind = "tree" if is_dir else "blob"
             path_part = "" if target == "." else quote(target)
@@ -531,6 +1158,15 @@ class Site:
 
         page_dir = os.path.join(self.out_dir, cur_dir)
         return os.path.relpath(local, page_dir).replace(os.sep, "/") + anchor
+
+    def check_anchors(self, anchors: Mapping[str, set[str]]) -> None:
+        """Report links to a heading or anchor missing from their target page.
+
+        anchors maps each source to the ids and names of its rendered page.
+        """
+        for source, url, target, fragment in self.anchor_links:
+            if fragment and unquote(fragment) not in anchors.get(target, set()):
+                self.missing_links.append((source, url))
 
     def rewrite_links(self, html: str, source: str, output_rel: str) -> str:
         def attr(match: re.Match[str]) -> str:
@@ -544,55 +1180,69 @@ class Site:
         return _LINK_TAG_RE.sub(tag, html)
 
 
-def page_title(source: str, html_content: str) -> str:
-    """Use the navigation label, then the first heading, then the source path.
+def page_anchors(html: str) -> set[str]:
+    """Return the id and name attributes of the tags of a rendered body.
+
+    Only attributes inside a tag count: `id="x"` written in prose is text.
+    """
+    return {
+        _html.unescape(m.group(1) if m.group(1) is not None else m.group(2))
+        for tag in _HTML_OPEN_TAG_RE.findall(html)
+        for m in _HTML_ANCHOR_RE.finditer(tag)
+    }
+
+
+def heading_text(html_content: str) -> str | None:
+    """Return the text of the first heading of rendered HTML, if any.
 
     The heading is read from the rendered HTML, so `#` lines inside code
     blocks are ignored and inline Markdown (code, links) is reduced to text.
     """
-    for label, nav_source in SITE_NAV:
-        if nav_source == source:
-            return SITE_TITLE if source == HOME_SOURCE else label
     match = _HTML_HEADING_RE.search(html_content)
     if match:
         text = _html.unescape(_HTML_TAG_RE.sub("", match.group(1))).strip()
         if text:
             return text
-    return source
+    return None
 
 
-def render_page(site: Site, source: str) -> str:
-    """Render one Markdown source to a complete, minified HTML page."""
+def render_body(site: Site, source: str) -> tuple[str, str | None]:
+    """Render one Markdown source to (HTML body, first heading text)."""
     with open(os.path.join(site.root, source), "r", encoding="utf-8") as f:
         text = f.read()
     output_rel = site.pages[source]
 
     # Pull fenced code blocks out before any other processing (handles fences
     # nested in list items, which python-markdown mishandles).
-    code_blocks = []
+    code_blocks: list[str] = []
     text = stash_code_blocks(text, code_blocks)
 
-    # Replace [[TOC]] and [[_TOC_]] with [TOC] so python-markdown's toc extension recognizes them
-    text = text.replace("[[TOC]]", "[TOC]").replace("[[_TOC_]]", "[TOC]")
-
-    # Parse alerts (GitLab-style blockquotes)
-    text = parse_alerts(text)
+    # GitLab's [[TOC]] and [[_TOC_]] become the toc extension's [TOC].
+    text = _TOC_MARKER_RE.sub("[TOC]", text)
 
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
     html_content = site.rewrite_links(render_markdown(text), source, output_rel)
-    title = page_title(source, html_content)
+    heading = heading_text(html_content)
+    return restore_code_blocks(html_content, code_blocks), heading
 
-    # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
-    for i, block in enumerate(code_blocks):
-        token = f"xxcodeblock{i}xx"
-        html_content = html_content.replace(f"<p>{token}</p>", block).replace(
-            token, block
-        )
 
+def page_document(
+    site: Site,
+    source: str,
+    html_content: str,
+    heading: str | None,
+    nav: list[NavNode],
+) -> str:
+    """Wrap a rendered body into the site template, with its menu."""
+    output_rel = site.pages[source]
+    title = site.config.title_for(source, heading)
     cur_dir = posixpath.dirname(output_rel) or "."
     css_path = posixpath.relpath(STYLE_FILE, cur_dir)
-    brand_href, nav_items = build_nav(output_rel)
+    ico_path, png_path, apple_path = (
+        posixpath.relpath(icon, cur_dir) for icon in SITE_ICONS
+    )
+    brand_href, nav_items = build_nav(nav, site.pages, source)
 
     template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -600,20 +1250,27 @@ def render_page(site: Site, source: str) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{_html.escape(title)}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css">
+    {seo_head(site, source, title, html_content)}
+    <meta name="theme-color" content="#1d2021" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#fbf1c7" media="(prefers-color-scheme: light)">
+    <script>{THEME_INIT_JS}</script>
+    <link rel="icon" href="{ico_path}" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="{png_path}" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{apple_path}">
+    {cdn_tags(".css")}
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
     <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="{brand_href}">{_html.escape(SITE_TITLE)}</a>
+            <a class="navbar-brand" href="{brand_href}">{_html.escape(site.config.title)}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav" aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="site-nav">
                 <ul class="navbar-nav ms-auto">
                     {nav_items}
+                    {theme_menu()}
                 </ul>
             </div>
         </div>
@@ -628,9 +1285,8 @@ def render_page(site: Site, source: str) -> str:
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js"></script>
+    {cdn_tags(".js")}
+    <script>{THEME_MENU_JS}</script>
     <script>
         $(function() {{
             // Skip the "Table of contents" heading in the bootstrap-toc and hide it
@@ -657,21 +1313,20 @@ def render_page(site: Site, source: str) -> str:
     return minify_html(template)
 
 
-def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) -> Site:
+def build_site(
+    config: Config, root: str, out_dir: str, env: Mapping[str, str] | None = None
+) -> Site:
     """Render every Markdown file of root into out_dir and copy linked assets.
 
     Files a previous build left in out_dir and this one did not produce are
     removed. Raises ValueError when out_dir contains root.
     """
-    sources = discover_markdown(root)
-    if HOME_SOURCE not in sources:
-        raise FileNotFoundError(f"{HOME_SOURCE} not found in {root}")
-    site = Site(
-        root,
-        out_dir,
-        sources,
-        repository_url_template(os.environ if env is None else env),
-    )
+    sources = discover_markdown(root, config.skipped_dirs)
+    if config.home not in sources:
+        raise FileNotFoundError(f"{config.home} not found in {root}")
+    env = os.environ if env is None else env
+    site = Site(config, root, out_dir, sources, repository_url_template(env))
+    site.site_url = site_url_from_env(env, config.url)
 
     root_real = os.path.realpath(root)
     out_real = os.path.realpath(out_dir)
@@ -682,25 +1337,48 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         os.path.join(out_dir, NOJEKYLL_FILE)
     )
 
-    built = {STYLE_FILE, NOJEKYLL_FILE}
+    built = {STYLE_FILE, NOJEKYLL_FILE, *SITE_ICONS}
+    # Every body is rendered first: the menu of each page needs every title.
+    bodies = {source: render_body(site, source) for source in sources}
+    titles = {s: heading for s, (_, heading) in bodies.items()}
+    nav = build_nav_tree(config, sources, titles)
+    anchors = {}
     for source in sources:
         output_rel = site.pages[source]
         output_file = os.path.join(out_dir, output_rel)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        write_if_changed(output_file, render_page(site, source))
+        html_content, heading = bodies[source]
+        page = page_document(site, source, html_content, heading, nav)
+        # The body only: the template's ids and names are not link targets.
+        anchors[source] = page_anchors(html_content)
+        write_if_changed(output_file, page)
         built.add(output_rel)
+    site.check_anchors(anchors)
 
     for asset in sorted(site.assets):
-        asset_rel = published_path(asset)
+        asset_rel = config.published_path(asset)
         dest = os.path.join(out_dir, asset_rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-        shutil.copyfile(os.path.join(root, asset), dest)
+        # Like the pages, an unchanged asset keeps its file and timestamp.
+        copy_if_changed(os.path.join(root, asset), dest)
         built.add(asset_rel)
 
-    css_source = os.path.join(os.path.dirname(os.path.abspath(__file__)), STYLE_FILE)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    for icon in SITE_ICONS:
+        copy_if_changed(os.path.join(script_dir, icon), os.path.join(out_dir, icon))
+
+    css_source = os.path.join(script_dir, STYLE_FILE)
     with open(css_source, "r", encoding="utf-8") as src:
         minified_css = minify_css(src.read() + pygments_css())
     write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
+
+    # robots.txt is only read at the root of a host: the config's url is one.
+    write_if_changed(os.path.join(out_dir, SITEMAP_FILE), sitemap_xml(site))
+    write_if_changed(
+        os.path.join(out_dir, ROBOTS_FILE),
+        f"User-agent: *\nAllow: /\nSitemap: {site.site_url}{SITEMAP_FILE}\n",
+    )
+    built.update({SITEMAP_FILE, ROBOTS_FILE})
 
     # Serve dot-directories (e.g. .gitlab/) verbatim on GitHub Pages (no Jekyll).
     open(os.path.join(out_dir, NOJEKYLL_FILE), "a", encoding="utf-8").close()
@@ -725,12 +1403,21 @@ def remove_stale_outputs(out_dir: str, built: set[str]) -> None:
             os.rmdir(current)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python3 gen_pages.py <repository_root> <output_dir>")
-        sys.exit(1)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Render the Markdown files of a repository into a static site."
+    )
+    parser.add_argument("--config", required=True, help="JSON site settings")
+    parser.add_argument("root", help="repository root")
+    parser.add_argument("output", help="output directory")
+    args = parser.parse_args(argv)
+    try:
+        config = load_config(args.config)
+    except (OSError, ValueError) as error:
+        print(f"gen_pages: {error}", file=sys.stderr)
+        return 2
 
-    built = build_site(sys.argv[1], sys.argv[2])
+    built = build_site(config, args.root, args.output)
     print(f"gen_pages: {len(built.pages)} pages, {len(built.assets)} assets")
     # A missing target is a broken link on the site: fail the Pages jobs.
     for missing_source, missing_url in built.missing_links:
@@ -738,5 +1425,8 @@ if __name__ == "__main__":
             f"gen_pages: {missing_source}: link target not found: {missing_url}",
             file=sys.stderr,
         )
-    if built.missing_links:
-        sys.exit(1)
+    return 1 if built.missing_links else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
