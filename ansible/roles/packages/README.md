@@ -54,7 +54,8 @@ make deploy BECOME_PASS=1 ANSIBLE_ARGS="-e '{\"packages_group_selection\":[\"01_
 ### Gaming packages
 
 `21_steam` selects Steam, Gamescope, MangoHud, `ananicy-cpp`,
-`power-profiles-daemon` and `python-gobject` on Arch Linux and CachyOS. On
+`power-profiles-daemon`, `python-gobject` and `python-vdf` (for the
+`steam-optimize --install` configurator) on Arch Linux and CachyOS. On
 CachyOS it also selects Proton CachyOS SLR, `cachyos-ananicy-rules` and
 `cachyos-settings`, which provides `game-performance`. These packages are added
 only when the facts identify CachyOS, and they must come from the configured
@@ -71,8 +72,10 @@ removed by a reconcile only if the role owns it.
 A Razer mouse or keyboard needs OpenRazer for `razer_dpi.py`. When the
 selection holds `21_steam`, the role reads the `idVendor` of each USB device and
 adds `25_razer` if one reports Razer's vendor ID. The group installs
-`openrazer-daemon`, `openrazer-driver-dkms` and `python-openrazer`; the DKMS
-driver brings the headers of the running kernel with it.
+`openrazer-daemon`, `openrazer-driver-dkms`, `python-openrazer` and
+`razer-cli` (AUR), which `steam-optimize` uses to set and restore the mouse DPI
+of a game profile. The DKMS driver brings the headers of the running kernel
+with it.
 
 The device has to be plugged in for the first run. Once the saved state
 records `25_razer`, the group stays selected while the device is unplugged or

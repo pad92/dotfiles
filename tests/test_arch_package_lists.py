@@ -51,6 +51,15 @@ VAULT_TOGGLE_COMMAND_PACKAGES = {
     "ansible-config": "ansible-core",
     "git": "git",
 }
+STEAM_OPTIMIZE_SCRIPT = (
+    Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
+)
+# Package providing each optional runtime of steam-optimize, and the group that
+# installs it: the installer imports vdf, the mouse DPI profiles run razer-cli.
+STEAM_OPTIMIZE_RUNTIME_PACKAGES = {
+    "import vdf": ("21_steam", "python-vdf"),
+    '"razer-cli"': ("25_razer", "razer-cli"),
+}
 CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
 SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
@@ -214,6 +223,13 @@ class ArchPackageGroupTests(unittest.TestCase):
         family = font.rsplit(" ", 1)[0]
         self.assertIn(family, FONT_FAMILY_PACKAGES)
         self.assertIn(FONT_FAMILY_PACKAGES[family], self.default_group_packages())
+
+    def test_steam_groups_install_the_steam_optimize_runtime(self):
+        script = STEAM_OPTIMIZE_SCRIPT.read_text(encoding="utf-8")
+        for usage, (group, package) in STEAM_OPTIMIZE_RUNTIME_PACKAGES.items():
+            with self.subTest(package=package):
+                self.assertIn(usage, script)
+                self.assertIn(package, self.groups[group])
 
     def test_cachyos_only_gaming_packages_are_distribution_overrides(self):
         overrides = yaml.safe_load(CACHYOS_VARS.read_text(encoding="utf-8"))[

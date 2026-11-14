@@ -108,7 +108,7 @@ GAME_PROFILES = {
         "env": {"mesa_glthread": "true"},
         "pop_env": ["PROTON_ENABLE_WAYLAND"],
         "cmd_args": ["+com_skipIntroVideo", "1", "+set", "m_smooth", "0"],
-        "override_label": "GLThread, Skip intro, VSync off",
+        "override_label": "GLThread, Skip intro, Mouse smoothing off",
     },
     "13240": {
         "name": "Unreal Tournament GOTY",
@@ -379,7 +379,9 @@ def setup_global_env():
                 "NVIDIA GPU detected (nvidia module loaded) — applying proprietary optimizations"
             )
         os.environ.update(NVIDIA_ENV_VARS)
-        # Remove Intel Vulkan driver restrictions inherited from UWSM
+        # A VK_DRIVER_FILES limited to the integrated GPU's ICD would hide the
+        # NVIDIA driver from Vulkan; the session leaves it unset, but a shell
+        # or launcher may still pass one.
         os.environ.pop("VK_DRIVER_FILES", None)
         gpu_detected = True
         collector.gpu = "NVIDIA (Proprietary driver)"
@@ -438,6 +440,61 @@ def setup_hyprland_env():
         log_warn(f"Failed to discover the active Hyprland session: {e}")
 
 
+def query_hyprctl_json(*args: str) -> list[dict] | None:
+    """Return the JSON list printed by `hyprctl <args> -j`, or None on failure."""
+    try:
+        res = subprocess.run(
+            ["hyprctl", *args, "-j"], capture_output=True, text=True, check=False
+        )
+        if res.returncode != 0 or not res.stdout:
+            return None
+        data = json.loads(res.stdout)
+    except (OSError, UnicodeError, json.JSONDecodeError) as e:
+        log_warn(f"Failed to query hyprctl {' '.join(args)}: {e}")
+        return None
+    return data if isinstance(data, list) else None
+
+
+def monitor_matches_rule(monitor: dict, rule_monitor: str) -> bool:
+    """Match a monitor against a workspace rule's monitor (name or desc:<prefix>)."""
+    if rule_monitor.startswith("desc:"):
+        prefix = rule_monitor.removeprefix("desc:").strip()
+        return bool(prefix) and str(monitor.get("description", "")).startswith(prefix)
+    return monitor.get("name") == rule_monitor
+
+
+def find_workspace_monitor(monitors: list[dict], ws_id: int) -> dict | None:
+    """Return the monitor hosting workspace ws_id, even when it is not shown.
+
+    An existing workspace stays on the monitor it was opened on; a workspace
+    that does not exist yet opens on the monitor of its workspace rule.
+    """
+    workspace = next(
+        (w for w in query_hyprctl_json("workspaces") or [] if w.get("id") == ws_id),
+        None,
+    )
+    if workspace:
+        monitor = next(
+            (m for m in monitors if m.get("name") == workspace.get("monitor")), None
+        )
+        if monitor:
+            return monitor
+
+    rule = next(
+        (
+            r
+            for r in query_hyprctl_json("workspacerules") or []
+            if r.get("workspaceString") == str(ws_id) and r.get("monitor")
+        ),
+        None,
+    )
+    if rule:
+        return next(
+            (m for m in monitors if monitor_matches_rule(m, rule["monitor"])), None
+        )
+    return None
+
+
 def get_gamescope_args(monitor_selector, gamescope_supports_output):
     args = ["-f", "--force-grab-cursor"]
 
@@ -445,17 +502,9 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
         collector.gamescope = "Enabled (Default settings)"
         return args
 
-    try:
-        res = subprocess.run(
-            ["hyprctl", "monitors", "-j"], capture_output=True, text=True, check=False
-        )
-        if res.returncode != 0 or not res.stdout:
-            collector.gamescope = "Enabled (Default, query failed)"
-            return args
-        monitors = json.loads(res.stdout)
-    except (OSError, UnicodeError, json.JSONDecodeError) as e:
-        log_warn(f"Failed to query hyprctl: {e}")
-        collector.gamescope = "Enabled (Default, query error)"
+    monitors = query_hyprctl_json("monitors")
+    if monitors is None:
+        collector.gamescope = "Enabled (Default, query failed)"
         return args
 
     target_monitor = None
@@ -464,16 +513,10 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output):
     elif monitor_selector.startswith("workspace:"):
         try:
             ws_id = int(monitor_selector.split(":")[1])
-            target_monitor = next(
-                (
-                    m
-                    for m in monitors
-                    if m.get("activeWorkspace", {}).get("id") == ws_id
-                ),
-                None,
-            )
-        except (ValueError, TypeError, AttributeError) as e:
-            log_warn(f"Failed to select workspace monitor '{monitor_selector}': {e}")
+        except (ValueError, IndexError) as e:
+            log_warn(f"Invalid workspace selector '{monitor_selector}': {e}")
+        else:
+            target_monitor = find_workspace_monitor(monitors, ws_id)
     else:
         target_monitor = next(
             (m for m in monitors if m.get("name") == monitor_selector), None

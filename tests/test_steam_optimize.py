@@ -1,3 +1,4 @@
+import json
 import os
 import runpy
 import tempfile
@@ -9,6 +10,31 @@ from unittest import mock
 SCRIPT_PATH = (
     Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
 )
+
+
+# hyprctl -j replies modelled on PadsTower: Dell on DP-2, ASUS on DP-3.
+MONITORS = [
+    {
+        "name": "DP-2",
+        "description": "Dell Inc. DELL P2423DE 3PJ4CN3",
+        "width": 2560,
+        "height": 1440,
+        "refreshRate": 59.95,
+        "activeWorkspace": {"id": 2},
+    },
+    {
+        "name": "DP-3",
+        "description": "ASUSTek COMPUTER INC XG32WCS TALMAS012758",
+        "width": 3840,
+        "height": 2160,
+        "refreshRate": 143.9,
+        "activeWorkspace": {"id": 5},
+    },
+]
+WORKSPACE_RULES = [
+    {"workspaceString": "1", "monitor": "desc:ASUSTek COMPUTER INC XG32WCS"},
+    {"workspaceString": "2", "monitor": "desc:Dell Inc. DELL P2423DE"},
+]
 
 
 class SteamOptimizeTests(unittest.TestCase):
@@ -140,6 +166,42 @@ class SteamOptimizeTests(unittest.TestCase):
             selected_session = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
 
         self.assertEqual(selected_session, "current-session")
+
+    def gamescope_args_with(self, workspaces):
+        replies = {
+            "monitors": MONITORS,
+            "workspaces": workspaces,
+            "workspacerules": WORKSPACE_RULES,
+        }
+
+        def run(command, **_kwargs):
+            return SimpleNamespace(returncode=0, stdout=json.dumps(replies[command[1]]))
+
+        self.script["log_warn"] = lambda _message: None
+        with (
+            mock.patch.dict(
+                os.environ, {"HYPRLAND_INSTANCE_SIGNATURE": "session"}, clear=True
+            ),
+            mock.patch("subprocess.run", side_effect=run),
+        ):
+            return self.script["get_gamescope_args"]("workspace:1", True)
+
+    def test_workspace_selector_uses_rule_monitor_when_workspace_is_hidden(self):
+        # Workspace 1 does not exist and the ASUS shows workspace 5: the rule
+        # still places workspace 1, and the game window, on the ASUS.
+        args = self.gamescope_args_with(
+            [{"id": 2, "monitor": "DP-2"}, {"id": 5, "monitor": "DP-3"}]
+        )
+
+        self.assertEqual(args[:4], ["-W", "3840", "-H", "2160"])
+        self.assertEqual(args[-4:], ["-r", "144", "-O", "DP-3"])
+
+    def test_workspace_selector_follows_an_existing_workspace(self):
+        args = self.gamescope_args_with(
+            [{"id": 1, "monitor": "DP-2"}, {"id": 5, "monitor": "DP-3"}]
+        )
+
+        self.assertEqual(args[-2:], ["-O", "DP-2"])
 
     def test_mouse_dpi_ignores_numbers_in_diagnostic_text(self):
         output = "Device Razer Viper 8K has no DPI setter\n1600\n"
