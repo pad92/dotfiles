@@ -326,13 +326,13 @@ class FaviconTests(unittest.TestCase):
 
     def test_pages_link_the_icons_relative_to_their_directory(self):
         home = (self.public / "index.html").read_text(encoding="utf-8")
-        page = (self.public / "docs/a.md/index.html").read_text(encoding="utf-8")
+        page = (self.public / "docs/a.html").read_text(encoding="utf-8")
 
         self.assertIn('<link rel="icon" href="favicon.ico"', home)
-        self.assertIn('<link rel="icon" href="../../favicon.ico"', page)
-        self.assertIn('href="../../favicon.png" type="image/png"', page)
+        self.assertIn('<link rel="icon" href="../favicon.ico"', page)
+        self.assertIn('href="../favicon.png" type="image/png"', page)
         self.assertIn(
-            '<link rel="apple-touch-icon" href="../../apple-touch-icon.png">', page
+            '<link rel="apple-touch-icon" href="../apple-touch-icon.png">', page
         )
 
 
@@ -394,7 +394,7 @@ class SeoTests(unittest.TestCase):
     def test_page_head_has_description_canonical_and_open_graph(self):
         public = self.build({"SITE_URL": "https://example.org/dotfiles"})
         home = (public / "index.html").read_text(encoding="utf-8")
-        page = (public / "docs/a b.md/index.html").read_text(encoding="utf-8")
+        page = (public / "docs/a b.html").read_text(encoding="utf-8")
 
         self.assertIn(
             '<meta name="description" content="The &lt;home&gt; &amp; intro.">', home
@@ -403,7 +403,7 @@ class SeoTests(unittest.TestCase):
             '<link rel="canonical" href="https://example.org/dotfiles/">', home
         )
         self.assertIn(
-            '<link rel="canonical" href="https://example.org/dotfiles/docs/a%20b.md/">',
+            '<link rel="canonical" href="https://example.org/dotfiles/docs/a%20b.html">',
             page,
         )
         self.assertIn('<meta property="og:title" content="A">', page)
@@ -422,8 +422,8 @@ class SeoTests(unittest.TestCase):
             re.findall(r"<loc>(.*?)</loc>", sitemap),
             [
                 "https://example.org/dotfiles/",
-                "https://example.org/dotfiles/docs/a%20b.md/",
-                "https://example.org/dotfiles/x.md/",
+                "https://example.org/dotfiles/docs/a%20b.html",
+                "https://example.org/dotfiles/x.html",
             ],
         )
         self.assertIn(
@@ -437,7 +437,7 @@ class SeoTests(unittest.TestCase):
         sitemap = (public / "sitemap.xml").read_text(encoding="utf-8")
 
         self.assertIn('<link rel="canonical" href="https://dotfiles.depad.fr/">', home)
-        self.assertIn("<loc>https://dotfiles.depad.fr/x.md/</loc>", sitemap)
+        self.assertIn("<loc>https://dotfiles.depad.fr/x.html</loc>", sitemap)
         self.assertEqual(
             (public / "robots.txt").read_text(encoding="utf-8"),
             "User-agent: *\nAllow: /\nSitemap: https://dotfiles.depad.fr/sitemap.xml\n",
@@ -554,13 +554,13 @@ class PageOutputPathTests(unittest.TestCase):
     def test_nested_page_mirrors_its_source_path(self):
         self.assertEqual(
             CONFIG.page_output_path("dist/arch/install.md"),
-            "dist/arch/install.md/index.html",
+            "dist/arch/install.html",
         )
 
     def test_github_directory_is_published_without_its_dot(self):
         self.assertEqual(
             CONFIG.page_output_path(".github/workflows/README.md"),
-            "github/workflows/README.md/index.html",
+            "github/workflows/README.html",
         )
 
 
@@ -587,20 +587,18 @@ class RewriteUrlTests(unittest.TestCase):
         return site.rewrite_url(url, source, CONFIG.page_output_path(source))
 
     def test_sibling_markdown_link_targets_its_page(self):
-        self.assertEqual(
-            self.rewrite(self.site(), "./b.md#part"), "../b.md/index.html#part"
-        )
+        self.assertEqual(self.rewrite(self.site(), "./b.md#part"), "b.html#part")
 
     def test_link_to_github_page_uses_published_path(self):
         self.assertEqual(
             self.rewrite(self.site(), "./.github/x.md", source="README.md"),
-            "github/x.md/index.html",
+            "github/x.html",
         )
 
     def test_image_is_copied_and_linked_relatively(self):
         site = self.site()
 
-        self.assertEqual(self.rewrite(site, "shot.webp"), "../shot.webp")
+        self.assertEqual(self.rewrite(site, "shot.webp"), "shot.webp")
         self.assertEqual(site.assets, {"docs/shot.webp"})
 
     def test_repository_file_and_directory_use_repository_browser(self):
@@ -619,7 +617,7 @@ class RewriteUrlTests(unittest.TestCase):
     def test_repository_file_without_ci_points_to_the_checkout(self):
         self.assertEqual(
             self.rewrite(self.site(), "../scripts/run.sh"),
-            "../../../scripts/run.sh",
+            "../../scripts/run.sh",
         )
 
     def test_external_and_anchor_links_are_untouched(self):
@@ -632,10 +630,8 @@ class RewriteUrlTests(unittest.TestCase):
     def test_absolute_link_resolves_from_the_repository_root(self):
         site = self.site()
 
-        self.assertEqual(
-            self.rewrite(site, "/docs/b.md#part"), "../b.md/index.html#part"
-        )
-        self.assertEqual(self.rewrite(site, "/README.md"), "../../index.html")
+        self.assertEqual(self.rewrite(site, "/docs/b.md#part"), "b.html#part")
+        self.assertEqual(self.rewrite(site, "/README.md"), "../index.html")
 
     def test_missing_absolute_link_is_reported(self):
         site = self.site()
@@ -685,19 +681,19 @@ class RewriteLinksTests(unittest.TestCase):
     def test_single_quoted_raw_html_attribute_is_rewritten(self):
         html = self.links("<img src='shot.webp' alt='x'>")
 
-        self.assertIn('src="../shot.webp"', html)
+        self.assertIn('src="shot.webp"', html)
 
     def test_query_and_fragment_are_kept(self):
         self.assertEqual(
             self.rewrite(self.site(), "b.md?plain=1#part"),
-            "../b.md/index.html?plain=1#part",
+            "b.html?plain=1#part",
         )
 
     def test_image_under_github_is_published_under_github(self):
         site = self.site()
 
         self.assertEqual(
-            self.rewrite(site, "flow.png", source=".github/x.md"), "../flow.png"
+            self.rewrite(site, "flow.png", source=".github/x.md"), "flow.png"
         )
         self.assertEqual(site.assets, {".github/flow.png"})
         self.assertEqual(CONFIG.published_path(".github/flow.png"), "github/flow.png")
@@ -954,7 +950,7 @@ class BuildNavTests(unittest.TestCase):
 
         self.assertIn('class="nav-link dropdown-toggle active"', html)
         self.assertIn(
-            '<a class="dropdown-item active" aria-current="page" href="index.html">'
+            '<a class="dropdown-item active" aria-current="page" href="README.html">'
             "web</a>",
             html,
         )

@@ -194,6 +194,9 @@ Release history and changes planned for the next version.
 - **Pages**: the site takes the Gruvbox colours of `hyprtoolkit.conf.j2`, with
   a Light, Dark or Auto theme menu. Menus open on hover, and code uses the
   Pygments `gruvbox-dark` and `gruvbox-light` styles.
+  Page URLs drop the `.md/index.html` suffix: `dist/arch/install.md` is
+  published as `dist/arch/install.html`. Links to the old paths no longer
+  resolve.
 - **Scripts**: `hypr-screenshot.sh` also records an animated WebP demo. It
   runs as `demo@dotfiles` in namespaces, so no real user or host shows up,
   and its frames are reproducible.

@@ -30,10 +30,13 @@ except ImportError:  # pragma: no cover - pygments is optional
     _HAVE_PYGMENTS = False
 
 # Every Markdown file of the repository becomes a page. Its output path mirrors
-# the source path (`docs/x.md` -> `docs/x.md/index.html`) so relative links
-# written for the forge keep the same shape on the published site. What to
+# the source path with an .html extension (`docs/x.md` -> `docs/x.html`), so
+# relative links written for the forge keep the same shape on the published
+# site. What to
 # publish and how to label it comes from the JSON file that build_pages.sh
 # passes (see Config); this script only holds the page template.
+INDEX_FILE = "index.html"
+PAGE_EXTENSION = ".html"
 STYLE_FILE = "style.css"
 NOJEKYLL_FILE = ".nojekyll"
 SITEMAP_FILE = "sitemap.xml"
@@ -98,8 +101,8 @@ class Config:
     def page_output_path(self, source: str) -> str:
         """Return the page path, relative to the site root, for a Markdown source."""
         if source == self.home:
-            return "index.html"
-        return f"{self.published_path(source)}/index.html"
+            return INDEX_FILE
+        return posixpath.splitext(self.published_path(source))[0] + PAGE_EXTENSION
 
     def nav_excluded(self, source: str) -> bool:
         return any(fnmatch.fnmatchcase(source, p) for p in self.nav_exclude)
@@ -428,7 +431,7 @@ def build_nav(
             f'<ul class="{menu}">{entries}</ul></li>'
         )
 
-    brand_href = posixpath.relpath("index.html", cur_dir)
+    brand_href = posixpath.relpath(INDEX_FILE, cur_dir)
     return brand_href, "\n".join(items)
 
 
@@ -998,8 +1001,10 @@ def site_url_from_env(env: Mapping[str, str], default: str) -> str:
 
 
 def page_url(site_url: str, output_rel: str) -> str:
-    """Absolute URL of a page: its directory, without `index.html`."""
-    directory = posixpath.dirname(output_rel)
+    """Absolute URL of a page; an `index.html` is served at its directory."""
+    directory, name = posixpath.split(output_rel)
+    if name != INDEX_FILE:
+        return site_url + quote(output_rel, safe="/")
     return site_url + (quote(directory, safe="/") + "/" if directory else "")
 
 
