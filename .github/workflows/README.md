@@ -39,7 +39,21 @@ index, and `.github/`, which is published as `github/` because
 
 Only `href` and `src` attributes of real `<a>`, `<img>` and `<source>` tags
 are rewritten, so tags shown as code stay as written. A page's title is its
-navigation label, else its first heading, else its path.
+first heading, else its path; the home page takes the site title.
+
+The top menu follows `SITE_NAV` in `gen_pages.py`. A section is one page, a
+group of pages, or a directory such as `ansible/`, whose dropdown mirrors the
+tree of its Markdown files: the directory's `README.md` as Overview, its other
+pages, then one entry per subdirectory. A subdirectory links its own
+`README.md`, or shows as a heading without one (`roles/`), and lists its pages
+indented below. Directories with no page of their own and a single
+subdirectory are folded into one entry (`a/b`). Labels come from the first
+heading of each page, or from `NAV_LABELS`, and `NAV_EXCLUDE` keeps role payload
+files out of the menu, while they stay published. The section of the current
+page is highlighted, and a submenu of more than ten entries is laid out in two
+columns on wide screens. With a mouse, the dropdowns open on hover; on touch
+screens and in the collapsed menu they open with a click. A new README in a listed directory appears in the
+menu without editing `gen_pages.py`.
 
 A link whose target does not exist fails the build, and so does a link to a
 heading or anchor that its page lacks: `gen_pages.py` lists the broken links on
@@ -49,9 +63,32 @@ on GitHub and GitLab (`## Présentation` gets `#présentation`). The
 catches them before the commit. Each build also removes the files a previous
 build left in `public/` for renamed or deleted pages.
 
+Each page's `<head>` holds a description taken from its first paragraph with
+text, cut to 160 characters, plus Open Graph and Twitter card tags for link
+previews. When the build knows the public URL of the site, pages also get a
+canonical URL and an `og:image` (`dist/hyprland.webp`), and `gen_pages.py`
+writes `sitemap.xml` and `robots.txt`. The URL comes from `SITE_URL`, then from
+GitLab's `CI_PAGES_URL`. `deploy-pages.yml` sets `SITE_URL` from the
+`base_url` output of `actions/configure-pages`. The local preview has no URL,
+so it gets no canonical link and no sitemap. A project site such as
+`<user>.github.io/<repo>/` is not at the root of its host, so crawlers ignore
+its `robots.txt`. Submit the sitemap in Google Search Console (or Bing
+Webmaster Tools) instead.
+
 Fenced code blocks follow CommonMark: backtick or tilde fences, closed by a
 fence of the same character at least as long, so a four-backtick fence can
-show a three-backtick fence as code. The CDN stylesheets and scripts carry Subresource Integrity hashes;
+show a three-backtick fence as code. The pages use the Gruvbox colours of the
+Hyprland desktop: `style.css` takes its dark background, text and accent from
+`hyprtoolkit.conf.j2`, and a test checks they match. The theme menu, last in
+the navbar, picks Light, Dark or Auto and saves the choice in `localStorage`.
+Its button shows the icon of the current choice (sun, moon or half circle).
+Auto, the default, follows the desktop's light or dark preference. A script
+in `<head>` sets `data-theme` on `<html>` before the page is drawn, and
+Gruvbox Light applies under `data-theme="light"`. Without JavaScript the site
+stays dark. Code blocks use the Pygments `gruvbox-dark` and `gruvbox-light`
+styles. The favicon (`favicon.ico` with 16, 32 and 48 px, `favicon.png` at
+192 px and `apple-touch-icon.png` at 180 px) is kept in `scripts/ci/` next
+to `style.css` and copied to the root of the site. The CDN stylesheets and scripts carry Subresource Integrity hashes;
 `CDN_INTEGRITY` in `gen_pages.py` gives the command to
 recompute one. Without Pygments, code blocks render without highlighting.
 `build_pages.sh` fails when the `markdown` module is missing in CI (`CI` is
@@ -60,6 +97,9 @@ set) and skips the build only for the local hook.
 `gen_pages.py` is the single source for the page list. The local `post-commit`
 preview hook (see `.pre-commit-config.yaml`) and GitLab `pages` job use the same
 script.
+`make pages` builds the site into `public/` with `CI=1`, as the Pages jobs do,
+then opens `public/index.html` with `xdg-open` (`XDG_OPEN` picks another
+command).
 
 ### `package-vim.yml`
 

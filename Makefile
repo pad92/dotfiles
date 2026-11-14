@@ -49,6 +49,8 @@ DRY_RUN ?=
 # Evaluated only when make clean runs.
 ANSIBLE_PYTHON ?= $(or $(shell $(ANSIBLE_PLAYBOOK) --version 2>/dev/null | \
 	sed -n 's/^ *python version = .*(\(.*\))$$/\1/p'),$(PYTHON))
+# Opens the built documentation site (make pages).
+XDG_OPEN ?= xdg-open
 # Output path for the Hyprland showcase screenshot
 SCREENSHOT ?= dist/hyprland.webp
 
@@ -80,7 +82,7 @@ run_playbook = $(if $(and $(filter 1,$(words $(PLAYBOOK))),$(if $(filter-out $(P
 	$(if $(BECOME_PASS),--ask-become-pass) $(1) $(ANSIBLE_ARGS)
 
 .PHONY: help deploy check plan tags tasks install install-obs galaxy galaxy-force \
-	verify lint lint-ansible test test-python test-shell coverage screenshot \
+	verify lint lint-ansible test test-python test-shell coverage pages screenshot \
 	ansible-backup-ls ansible-backup-rm clean
 
 help: ## Show this help
@@ -187,6 +189,14 @@ test-shell: ## Run the shell integration tests
 	zsh tests/arch-clean-no-orphans.zsh
 	zsh tests/git-pull-recursive.zsh
 	zsh tests/zsh-completion.zsh
+
+## Documentation --------------------------------------------------------------
+
+# CI=1 makes build_pages.sh fail, as in the Pages jobs, when the markdown
+# module is missing instead of skipping the build like the post-commit hook.
+pages: ## Build the documentation site into public/ like the Pages jobs, then open it
+	CI=1 sh scripts/ci/build_pages.sh
+	$(XDG_OPEN) "$(CURDIR)/public/index.html"
 
 screenshot: ## Render the Hyprland showcase still and animated demo next to $(SCREENSHOT)
 	@DOTFILES_REPOSITORY="$(CURDIR)" OUT="$(SCREENSHOT)" \

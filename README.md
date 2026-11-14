@@ -87,6 +87,7 @@ the next roles change the host.
 | Upgrade the whole system on Arch     | `make deploy ANSIBLE_ARGS="-e packages_upgrade_system=true"` |
 | Install the pinned collections       | `make galaxy`, or `make galaxy-force` to reinstall them      |
 | Remove backups and leftovers         | `make clean`, or `make clean DRY_RUN=1` to list them only    |
+| Build and open the documentation     | `make pages`                                                 |
 
 `make install` and `make install-obs` remain as aliases of `make deploy` and
 `make deploy PLAYBOOK=obs`.

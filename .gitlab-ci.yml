@@ -155,6 +155,7 @@ pages:
         - '**/*.svg'
         - '**/*.webp'
         - 'scripts/ci/style.css'
+        - 'scripts/ci/favicon.ico'
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/build_pages.sh'
         - '.gitlab-ci.yml'
@@ -177,6 +178,7 @@ build_pages_review:
         - '**/*.svg'
         - '**/*.webp'
         - 'scripts/ci/style.css'
+        - 'scripts/ci/favicon.ico'
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/build_pages.sh'
   artifacts:

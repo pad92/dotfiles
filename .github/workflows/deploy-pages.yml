@@ -14,6 +14,7 @@ on:
       - '**.svg'
       - '**.webp'
       - 'scripts/ci/style.css'
+      - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
       - '.github/workflows/deploy-pages.yml'
@@ -30,6 +31,7 @@ on:
       - '**.svg'
       - '**.webp'
       - 'scripts/ci/style.css'
+      - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
 
@@ -56,7 +58,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Its base_url gives the canonical URLs and the sitemap of the pages.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
       - name: Generate HTML pages
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           pip install --quiet markdown pygments
           sh scripts/ci/build_pages.sh
