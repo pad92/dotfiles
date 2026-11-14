@@ -55,6 +55,12 @@ _FORZA_PROFILE = {
     "override_label": "VKD3D no_upload_hvv, Game drive",
 }
 
+# ProtonDB reports for GTA V Enhanced (3240220, checked 2026-11): story mode
+# runs with no tinkering on Proton 10.0-3, Proton 11, GE-Proton11 and
+# proton-cachyos-11. Working GTA Online setups only point Proton at the
+# BattlEye runtime; public lobbies additionally need BattlEye hosts blocked in
+# /etc/hosts, which is a system choice (ban risk) kept out of this wrapper.
+# The Steam overlay can lock game input until restart (RX 6700 XT report).
 _GTA_PROFILE = {
     "dpi": 800,
     "battleye": True,
@@ -659,9 +665,9 @@ def apply_game_overrides(steam_app_id, game_cmd):
             log_warn(
                 f"Proton BattlEye Runtime not found in Steam libraries. Falling back to default: {be_path}"
             )
+        # Proton (11.0, GE-Proton11, proton-cachyos) reads only this variable;
+        # the former *_ALWAYS_COPY/*_LEGACY_EXEC companions were never read.
         os.environ["PROTON_BATTLEYE_RUNTIME"] = be_path
-        os.environ["PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY"] = "1"
-        os.environ["PROTON_BATTLEYE_RUNTIME_LEGACY_EXEC"] = "1"
         log_info(f"Applying BattlEye overrides for {game_name}")
 
     if profile.get("no_steaminput"):
