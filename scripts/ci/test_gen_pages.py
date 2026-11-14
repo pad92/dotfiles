@@ -58,6 +58,74 @@ class RenderMarkdownTests(unittest.TestCase):
         self.assertIn("<code>print('ok')", rendered)
         self.assertNotIn("<code>  print('ok')", rendered)
 
+    def test_heading_id_keeps_accents_like_the_forges(self):
+        rendered = GEN_PAGES.render_markdown("## Présentation générale")
+
+        self.assertIn('id="présentation-générale"', rendered)
+
+
+class CodeBlockTests(unittest.TestCase):
+    """Fenced code blocks as render_page extracts and reinserts them."""
+
+    def body(self, markdown_text):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        (root / "README.md").write_text(markdown_text, encoding="utf-8")
+        site = GEN_PAGES.Site(str(root), str(root / "public"), ["README.md"], None)
+        return GEN_PAGES.render_page(site, "README.md")
+
+    def test_longer_fence_shows_an_inner_fence_as_code(self):
+        html = self.body("````markdown\n```bash\necho hi\n```\n````\n\nafter\n")
+
+        self.assertEqual(html.count('<div class="codehilite">'), 1)
+        self.assertIn("```bash", html)
+        self.assertIn("<p>after</p>", html)
+
+    def test_tilde_fence_is_a_code_block(self):
+        html = self.body("~~~sh\nls\n~~~\n")
+
+        self.assertIn('<div class="codehilite">', html)
+        self.assertNotIn("~~~", html)
+
+    def test_info_string_after_the_language_keeps_a_block(self):
+        html = self.body('```python title="a.py"\nx = 1\n```\n')
+
+        self.assertIn("<pre>", html)
+        self.assertNotIn("title=", html)
+
+    def test_code_block_inside_an_alert_is_highlighted(self):
+        html = self.body("> [!NOTE]\n> ```sh\n> ls\n>\n> pwd\n> ```\n\nafter\n")
+
+        self.assertIn('<div class="markdown-alert markdown-alert-note">', html)
+        self.assertIn("<pre>", html)
+        self.assertNotIn("```", html)
+        self.assertIn("<p>after</p>", html)
+
+    def test_toc_marker_in_a_code_span_is_kept(self):
+        html = self.body("# T\n\nWrite `[[_TOC_]]` on GitLab.\n")
+
+        self.assertIn("<code>[[_TOC_]]</code>", html)
+
+    def test_toc_marker_on_its_own_line_is_a_toc(self):
+        html = self.body("# T\n\n[[_TOC_]]\n\n## Part\n")
+
+        self.assertIn('class="toc"', html)
+
+
+class MinifyHtmlTests(unittest.TestCase):
+    def test_space_between_inline_elements_is_kept(self):
+        html = GEN_PAGES.minify_html(
+            "<p><strong>Maintainer:</strong> <a href='x'>me</a></p>"
+        )
+
+        self.assertIn("</strong> <a", html)
+
+    def test_whitespace_inside_pre_is_kept(self):
+        html = GEN_PAGES.minify_html("<div>\n  <pre>a\n  b</pre>\n</div>")
+
+        self.assertIn("<pre>a\n  b</pre>", html)
+
 
 GITLAB_ENV = {
     "CI_PROJECT_URL": "https://gitlab.example/group/dotfiles",
@@ -162,8 +230,23 @@ class RewriteUrlTests(unittest.TestCase):
     def test_external_and_anchor_links_are_untouched(self):
         site = self.site()
 
-        for url in ("https://example.org/a.md", "#local", "mailto:a@b.c", "/abs"):
+        for url in ("https://example.org/a.md", "#local", "mailto:a@b.c", "//h/x"):
             self.assertEqual(self.rewrite(site, url), url)
+        self.assertEqual(site.missing_links, [])
+
+    def test_absolute_link_resolves_from_the_repository_root(self):
+        site = self.site()
+
+        self.assertEqual(
+            self.rewrite(site, "/docs/b.md#part"), "../b.md/index.html#part"
+        )
+        self.assertEqual(self.rewrite(site, "/README.md"), "../../index.html")
+
+    def test_missing_absolute_link_is_reported(self):
+        site = self.site()
+
+        self.assertEqual(self.rewrite(site, "/nope.md"), "/nope.md")
+        self.assertEqual(site.missing_links, [("docs/a.md", "/nope.md")])
 
     def test_missing_target_is_reported_and_kept(self):
         site = self.site()
@@ -329,6 +412,70 @@ class SmallSiteTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("docs/a.md: link target not found: missing.md", result.stderr)
+
+    def test_link_to_a_missing_heading_is_reported(self):
+        self.write("README.md", "# Home\n\n## Setup\n\n[ok](#setup) [gone](#nope)\n")
+        self.write(
+            "docs/a.md", "# A\n\n[ok](../README.md#setup) [gone](../README.md#x)\n"
+        )
+
+        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertEqual(
+            sorted(site.missing_links),
+            [("README.md", "#nope"), ("docs/a.md", "../README.md#x")],
+        )
+
+    def test_unchanged_asset_is_not_copied_again(self):
+        (self.root / "docs/shot.png").write_bytes(b"img")
+        self.write("docs/a.md", "# A\n\n![s](shot.png)\n")
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        copied = self.public / "docs/shot.png"
+        os.utime(copied, (0, 0))
+
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertEqual(copied.stat().st_mtime, 0)
+
+    def test_cdn_resources_are_pinned_with_integrity(self):
+        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        html = (self.public / "index.html").read_text(encoding="utf-8")
+
+        tags = re.findall(r"<(?:link|script)\b[^>]*https://[^>]*>", html)
+        self.assertEqual(len(tags), 5)
+        for tag in tags:
+            with self.subTest(tag=tag):
+                self.assertRegex(tag, r'integrity="sha384-[A-Za-z0-9+/=]{64}"')
+                self.assertIn('crossorigin="anonymous"', tag)
+
+
+class BuildPagesScriptTests(unittest.TestCase):
+    """scripts/ci/build_pages.sh when the markdown module is missing."""
+
+    def run_script(self, extra_env):
+        with tempfile.TemporaryDirectory() as tmp:
+            # A python3 without the markdown module, first on PATH.
+            fake = Path(tmp) / "python3"
+            fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            fake.chmod(0o755)
+            env = {k: v for k, v in os.environ.items() if k != "CI"}
+            env.update(extra_env, PATH=f"{tmp}:{os.environ['PATH']}")
+            return subprocess.run(
+                ["sh", str(SCRIPT_PATH.with_name("build_pages.sh"))],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+
+    def test_local_hook_skips_without_failing(self):
+        self.assertEqual(self.run_script({}).returncode, 0)
+
+    def test_ci_job_fails(self):
+        result = self.run_script({"CI": "true"})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("markdown", result.stderr)
 
 
 class BuildSiteTests(unittest.TestCase):

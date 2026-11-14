@@ -58,7 +58,7 @@ jobs:
 
       - name: Generate HTML pages
         run: |
-          pip install --quiet markdown
+          pip install --quiet markdown pygments
           sh scripts/ci/build_pages.sh
 
       - name: Upload Pages artifact

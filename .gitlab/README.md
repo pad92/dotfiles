@@ -47,7 +47,8 @@ log ends with the slowest tests.
 
 ### `pages`
 
-This job runs on `alpine:latest`, installs `python3` and `py3-markdown`, and
+This job runs on `alpine:latest`, installs `python3`, `py3-markdown` and
+`py3-pygments`, and
 calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script.
 Every Markdown file of the repository becomes a page, and relative links to
@@ -69,7 +70,7 @@ review job explicitly skips tag pipelines
 
 > [!NOTE]
 > `build_pages.sh` uses POSIX `sh` and does not require Git, so it runs on the
-> minimal `alpine` image without extra packages. Without Git, `gen_pages.py`
+> minimal `alpine` image with only the Python packages above. Without Git, `gen_pages.py`
 > finds the Markdown files by walking the checkout and skips the submodules
 > listed in `.gitmodules`.
 

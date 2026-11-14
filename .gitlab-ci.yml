@@ -132,7 +132,7 @@ package_nvim:
   stage: pages
   image: alpine:latest
   script:
-    - apk add --no-cache python3 py3-markdown
+    - apk add --no-cache python3 py3-markdown py3-pygments
     - sh scripts/ci/build_pages.sh
   artifacts:
     paths:

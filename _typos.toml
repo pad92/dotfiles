@@ -1,6 +1,11 @@
 # typos configuration — https://github.com/crate-ci/typos
 # Allow French words used in code comments (e.g. .gitlab-ci.yml) that typos
 # otherwise mistakes for English typos.
+[default]
+# Subresource Integrity hashes (scripts/ci/gen_pages.py) are base64: the fixer
+# rewrote `9ndCy` to `9andCy` and broke the Bootstrap stylesheet hash.
+extend-ignore-re = ["sha(?:256|384|512)-[A-Za-z0-9+/=]+"]
+
 [default.extend-words]
 sur = "sur"
 branche = "branche"

@@ -19,7 +19,7 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 
 ### `deploy-pages.yml`
 
-Installs `markdown` and runs [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh).
+Installs `markdown` and `pygments` and runs [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh).
 The script uses [`gen_pages.py`](../../scripts/ci/gen_pages.py) to render every
 Markdown file tracked by Git into `public/`. Each run uploads the artifact; only
 runs on `main` deploy it, and any change to a `.md` file triggers the workflow.
@@ -31,6 +31,7 @@ index, and `.github/`, which is published as `github/` because
 `gen_pages.py` rewrites relative links so they work on the site:
 
 - a link to a Markdown file goes to its page, query and anchor included;
+- a link starting with `/` is relative to the repository root, as on the forges;
 - a linked image is copied into `public/`, under `github/` for `.github/`;
 - a link to any other repository file or directory goes to the forge's file
   browser at the built commit (`GITHUB_SHA` here, `CI_COMMIT_SHA` on GitLab).
@@ -40,11 +41,21 @@ Only `href` and `src` attributes of real `<a>`, `<img>` and `<source>` tags
 are rewritten, so tags shown as code stay as written. A page's title is its
 navigation label, else its first heading, else its path.
 
-A link whose target does not exist fails the build: `gen_pages.py` lists the
-broken links on stderr and exits 1, which stops the Pages jobs. The
+A link whose target does not exist fails the build, and so does a link to a
+heading or anchor that its page lacks: `gen_pages.py` lists the broken links on
+stderr and exits 1, which stops the Pages jobs. Heading ids keep accents, as
+on GitHub and GitLab (`## Présentation` gets `#présentation`). The
 `test-gen-pages` pre-commit hook builds the site on every Markdown change and
 catches them before the commit. Each build also removes the files a previous
 build left in `public/` for renamed or deleted pages.
+
+Fenced code blocks follow CommonMark: backtick or tilde fences, closed by a
+fence of the same character at least as long, so a four-backtick fence can
+show a three-backtick fence as code. The CDN stylesheets and scripts carry Subresource Integrity hashes;
+`CDN_INTEGRITY` in `gen_pages.py` gives the command to
+recompute one. Without Pygments, code blocks render without highlighting.
+`build_pages.sh` fails when the `markdown` module is missing in CI (`CI` is
+set) and skips the build only for the local hook.
 
 `gen_pages.py` is the single source for the page list. The local `post-commit`
 preview hook (see `.pre-commit-config.yaml`) and GitLab `pages` job use the same

@@ -1,3 +1,4 @@
+import filecmp
 import html as _html
 import os
 import posixpath
@@ -9,10 +10,11 @@ from collections.abc import Mapping
 from urllib.parse import quote, unquote
 
 import markdown
+from markdown.extensions.toc import slugify_unicode
 
 try:
     from pygments import highlight as _pyg_highlight
-    from pygments.formatters import HtmlFormatter as _PygHtmlFormatter
+    from pygments.formatters.html import HtmlFormatter as _PygHtmlFormatter
     from pygments.lexers import get_lexer_by_name as _pyg_lexer
     from pygments.util import ClassNotFound as _PygClassNotFound
 
@@ -61,6 +63,29 @@ SITE_NAV = [
 ]
 SITE_TITLE = "Pad's Dotfiles"
 
+# CDN resources, pinned with Subresource Integrity: a changed file (e.g. a
+# moved Git tag behind cdn.jsdelivr.net/gh/) is refused by the browser.
+# Recompute a hash with:
+#   curl -fsSL URL | openssl dgst -sha384 -binary | openssl base64 -A
+CDN_INTEGRITY = {
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css": (
+        "sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css": (
+        "sha384-oJyFk/zeMJXNIGMVvmH262FT6dbSYss66WJHHgp1RlUk4/LfONQTzkAsHHwfcqat"  # pragma: allowlist secret
+    ),
+    "https://code.jquery.com/jquery-3.7.1.slim.min.js": (
+        "sha384-5AkRS45j4ukf+JbWAfHL8P4onPA9p0KwwP7pUdjSQA3ss9edbJUJc/XcYAiheSSz"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js": (
+        "sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"  # pragma: allowlist secret
+    ),
+    "https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js": (
+        "sha384-OGf04BRlCdmgZXHhCupHT3BIkznbahjfhX8DKSIEXyU9PvSO0/8iMiiVJPcA5vi7"  # pragma: allowlist secret
+    ),
+}
+
+
 _URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # Only real tags are matched: Markdown escapes `<` in code spans, so an
 # `<img src="...">` sample shown as code is never taken for a link.
@@ -70,6 +95,11 @@ _LINK_ATTR_RE = re.compile(
 )
 _HTML_HEADING_RE = re.compile(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", re.DOTALL)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_HTML_ANCHOR_RE = re.compile(r"""\s(?:id|name)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+_FENCE_OPEN_RE = re.compile(r"^([ \t]*)(`{3,}|~{3,})(.*)$")
+_FENCE_LANG_RE = re.compile(r"[\w+-]+")
+# GitLab's table-of-contents markers, honoured only alone on their line.
+_TOC_MARKER_RE = re.compile(r"^[ \t]*\[\[(?:TOC|_TOC_)\]\][ \t]*$", re.MULTILINE)
 
 
 def published_path(path: str) -> str:
@@ -123,8 +153,8 @@ def minify_css(css):
 
 
 def minify_html(html):
-    """Collapse whitespace in HTML while preserving blocks where whitespace is
-    significant (code, scripts, inline styles)."""
+    """Collapse whitespace runs in HTML to one space, except in blocks where
+    whitespace is significant (code, scripts, inline styles)."""
     protected = []
 
     def _stash(match):
@@ -137,7 +167,8 @@ def minify_html(html):
         html,
         flags=re.DOTALL | re.IGNORECASE,
     )
-    html = re.sub(r">\s+<", "><", html)
+    # Whitespace between tags is collapsed, not removed: between inline
+    # elements (`<strong>a</strong> <a>`) it is a visible space.
     html = re.sub(r"\s+", " ", html).strip()
 
     for i, block in enumerate(protected):
@@ -222,56 +253,65 @@ def render_code_block(code, lang):
     return f'<div class="codehilite"><pre><code{cls}>{_html.escape(code)}</code></pre></div>'
 
 
-def stash_code_blocks(text, store):
+def stash_code_blocks(text: str, store: list[str]) -> str:
     """Replace fenced code blocks with placeholders and render them ourselves.
 
     python-markdown's `fenced_code` does not recognise fences nested inside list
     items (it turns them into inline code), so we extract every fenced block
-    here — dedenting by the opening fence's indentation — render it, and reinsert
-    the HTML after Markdown conversion. The placeholder keeps the fence's indent
-    so it stays within its list item.
-    """
-    pattern = re.compile(
-        r"^([ \t]*)```([\w+-]*)[ \t]*\n(.*?)\n[ \t]*```[ \t]*$",
-        re.MULTILINE | re.DOTALL,
-    )
+    here, dedenting by the opening fence's indentation, render it, and reinsert
+    the HTML after Markdown conversion (see restore_code_blocks). The
+    placeholder keeps the fence's indent so it stays within its list item.
 
-    def repl(match):
-        indent, lang, body = match.group(1), match.group(2), match.group(3)
+    As in CommonMark, a fence is three or more backticks or tildes, followed by
+    an info string whose first word is the language, and it is closed only by
+    a run of the same character at least as long: a ```` fence can show a
+    ``` fence as code. A fence never closed is left to python-markdown.
+    """
+    lines = text.split("\n")
+    output = []
+    i = 0
+    while i < len(lines):
+        opening = _FENCE_OPEN_RE.match(lines[i])
+        end = _closing_fence_index(lines, i, opening) if opening else None
+        if opening is None or end is None:
+            output.append(lines[i])
+            i += 1
+            continue
+        indent, _fence, info = opening.groups()
         n = len(indent)
         code = "\n".join(
-            line[n:] if line[:n].strip() == "" else line for line in body.split("\n")
+            line[n:] if line[:n].strip() == "" else line for line in lines[i + 1 : end]
         )
-        token = f"xxcodeblock{len(store)}xx"
-        store.append(render_code_block(code, lang))
-        return indent + token
+        lang_match = _FENCE_LANG_RE.match(info.strip())
+        store.append(render_code_block(code, lang_match.group(0) if lang_match else ""))
+        output.append(indent + code_block_token(len(store) - 1))
+        i = end + 1
+    return "\n".join(output)
 
-    return pattern.sub(repl, text)
 
-
-def preprocess_markdown(text):
-    # Regex to find fenced code blocks that may be indented (e.g. inside list items)
-    pattern = re.compile(
-        r"^(\s*)```([a-zA-Z0-9_+-]+)[ \t]*\n(.*?)\n\1```[ \t]*$",
-        re.MULTILINE | re.DOTALL,
+def _closing_fence_index(
+    lines: list[str], start: int, opening: re.Match[str]
+) -> int | None:
+    """Return the index of the line closing the fence opened at start."""
+    fence, info = opening.group(2), opening.group(3)
+    if fence[0] == "`" and "`" in info:
+        return None  # Not a fence: a backtick info string has no backtick.
+    closing = re.compile(rf"^[ \t]*{re.escape(fence[0])}{{{len(fence)},}}[ \t]*$")
+    return next(
+        (j for j in range(start + 1, len(lines)) if closing.match(lines[j])), None
     )
 
-    def replace_fenced_code(match):
-        indent = match.group(1)
-        lang = match.group(2)
-        code = match.group(3)
 
-        if not indent:
-            return match.group(0)
+def code_block_token(index: int) -> str:
+    return f"xxcodeblock{index}xx"
 
-        lines = code.split("\n")
-        # Prepend 4 extra spaces of indentation to make it a standard indented code block
-        indented_lines = ["    " + line for line in lines]
-        # Prepend 4 spaces of indentation and ::: to specify the language for codehilite
-        header = indent + "    " + f":::{lang}"
-        return f"\n{header}\n" + "\n".join(indented_lines) + "\n"
 
-    return pattern.sub(replace_fenced_code, text)
+def restore_code_blocks(html: str, store: list[str]) -> str:
+    """Put the stashed code blocks back, dropping any <p> wrapper Markdown added."""
+    for i, block in enumerate(store):
+        token = code_block_token(i)
+        html = html.replace(f"<p>{token}</p>", block).replace(token, block)
+    return html
 
 
 def normalize_nested_list_indentation(text):
@@ -329,11 +369,23 @@ def normalize_nested_list_indentation(text):
 
 def render_markdown(text):
     """Render Markdown using the compact nested-list style used by the docs."""
-    text = normalize_nested_list_indentation(preprocess_markdown(text))
-    return markdown.markdown(text, extensions=["extra", "codehilite", "toc"])
+    text = normalize_nested_list_indentation(text)
+    # Heading ids keep accents and other letters, as GitHub and GitLab do, so
+    # `#présentation` links written for the forge work on the site.
+    return markdown.markdown(
+        text,
+        extensions=["extra", "codehilite", "toc"],
+        extension_configs={"toc": {"slugify": slugify_unicode}},
+    )
 
 
-def parse_alerts(text):
+def parse_alerts(text: str, store: list[str] | None = None) -> str:
+    """Render GitHub/GitLab alerts (`> [!NOTE]` blockquotes) to HTML.
+
+    Fenced code inside an alert is stashed into store, like the rest of the
+    page; without a store the code blocks are restored here.
+    """
+    code_blocks = [] if store is None else store
     lines = text.split("\n")
     new_lines = []
     i = 0
@@ -365,7 +417,9 @@ def parse_alerts(text):
                 else:
                     break
 
-            compiled_content = render_markdown("\n".join(alert_lines))
+            compiled_content = render_markdown(
+                stash_code_blocks("\n".join(alert_lines), code_blocks)
+            )
 
             icon_svg, title_text = get_alert_resources(alert_type)
 
@@ -389,7 +443,8 @@ def parse_alerts(text):
             new_lines.append(line)
             i += 1
 
-    return "\n".join(new_lines)
+    result = "\n".join(new_lines)
+    return restore_code_blocks(result, code_blocks) if store is None else result
 
 
 def submodule_paths(root: str) -> set[str]:
@@ -491,15 +546,22 @@ class Site:
         self.pages = {source: page_output_path(source) for source in sources}
         self.assets: set[str] = set()
         self.missing_links: list[tuple[str, str]] = []
+        # (source, url, target source, fragment), checked once every page has
+        # been rendered and its ids are known (see check_anchors).
+        self.anchor_links: list[tuple[str, str, str, str]] = []
 
     def rewrite_url(self, url: str, source: str, output_rel: str) -> str:
         """Map a link written for the forge to its location on the site.
 
         Links to Markdown files go to their page, images are copied into the
         site, and other repository files go to the repository browser (or, for
-        a local preview, to the file in the checkout next to public/).
+        a local preview, to the file in the checkout next to public/). A path
+        starting with `/` is relative to the repository root, as on the forges.
         """
-        if not url or url.startswith(("#", "?", "/")) or _URL_SCHEME_RE.match(url):
+        if url.startswith("#"):
+            self.anchor_links.append((source, url, source, url[1:]))
+            return url
+        if not url or url.startswith(("?", "//")) or _URL_SCHEME_RE.match(url):
             return url
         rest, has_fragment, fragment = url.partition("#")
         raw_path, has_query, query = rest.partition("?")
@@ -508,12 +570,15 @@ class Site:
             f"#{fragment}" if has_fragment else ""
         )
         path = unquote(raw_path)
-        target = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+        base = "" if path.startswith("/") else posixpath.dirname(source)
+        target = posixpath.normpath(posixpath.join(base, path.lstrip("/")))
         if target == ".." or target.startswith("../"):
             return url
 
         cur_dir = posixpath.dirname(output_rel) or "."
         if target in self.pages:
+            if has_fragment:
+                self.anchor_links.append((source, url, target, fragment))
             return posixpath.relpath(self.pages[target], cur_dir) + anchor
 
         local = os.path.join(self.root, target)
@@ -532,6 +597,15 @@ class Site:
         page_dir = os.path.join(self.out_dir, cur_dir)
         return os.path.relpath(local, page_dir).replace(os.sep, "/") + anchor
 
+    def check_anchors(self, anchors: Mapping[str, set[str]]) -> None:
+        """Report links to a heading or anchor missing from their target page.
+
+        anchors maps each source to the ids and names of its rendered page.
+        """
+        for source, url, target, fragment in self.anchor_links:
+            if fragment and unquote(fragment) not in anchors.get(target, set()):
+                self.missing_links.append((source, url))
+
     def rewrite_links(self, html: str, source: str, output_rel: str) -> str:
         def attr(match: re.Match[str]) -> str:
             value = match.group(2) if match.group(2) is not None else match.group(3)
@@ -542,6 +616,14 @@ class Site:
             return _LINK_ATTR_RE.sub(attr, match.group(0))
 
         return _LINK_TAG_RE.sub(tag, html)
+
+
+def page_anchors(html: str) -> set[str]:
+    """Return the id and name attributes of a rendered page."""
+    return {
+        _html.unescape(m.group(1) if m.group(1) is not None else m.group(2))
+        for m in _HTML_ANCHOR_RE.finditer(html)
+    }
 
 
 def page_title(source: str, html_content: str) -> str:
@@ -569,26 +651,21 @@ def render_page(site: Site, source: str) -> str:
 
     # Pull fenced code blocks out before any other processing (handles fences
     # nested in list items, which python-markdown mishandles).
-    code_blocks = []
+    code_blocks: list[str] = []
     text = stash_code_blocks(text, code_blocks)
 
-    # Replace [[TOC]] and [[_TOC_]] with [TOC] so python-markdown's toc extension recognizes them
-    text = text.replace("[[TOC]]", "[TOC]").replace("[[_TOC_]]", "[TOC]")
+    # GitLab's [[TOC]] and [[_TOC_]] become the toc extension's [TOC].
+    text = _TOC_MARKER_RE.sub("[TOC]", text)
 
     # Parse alerts (GitLab-style blockquotes)
-    text = parse_alerts(text)
+    text = parse_alerts(text, code_blocks)
 
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
     html_content = site.rewrite_links(render_markdown(text), source, output_rel)
     title = page_title(source, html_content)
 
-    # Reinsert the rendered code blocks, dropping any <p> wrapper Markdown added.
-    for i, block in enumerate(code_blocks):
-        token = f"xxcodeblock{i}xx"
-        html_content = html_content.replace(f"<p>{token}</p>", block).replace(
-            token, block
-        )
+    html_content = restore_code_blocks(html_content, code_blocks)
 
     cur_dir = posixpath.dirname(output_rel) or "."
     css_path = posixpath.relpath(STYLE_FILE, cur_dir)
@@ -600,8 +677,8 @@ def render_page(site: Site, source: str) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{_html.escape(title)}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css']}" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css']}" crossorigin="anonymous">
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
@@ -628,9 +705,9 @@ def render_page(site: Site, source: str) -> str:
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="{CDN_INTEGRITY['https://code.jquery.com/jquery-3.7.1.slim.min.js']}" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js']}" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js']}" crossorigin="anonymous"></script>
     <script>
         $(function() {{
             // Skip the "Table of contents" heading in the bootstrap-toc and hide it
@@ -683,18 +760,27 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
     )
 
     built = {STYLE_FILE, NOJEKYLL_FILE}
+    anchors = {}
     for source in sources:
         output_rel = site.pages[source]
         output_file = os.path.join(out_dir, output_rel)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        write_if_changed(output_file, render_page(site, source))
+        page = render_page(site, source)
+        anchors[source] = page_anchors(page)
+        write_if_changed(output_file, page)
         built.add(output_rel)
+    site.check_anchors(anchors)
 
     for asset in sorted(site.assets):
         asset_rel = published_path(asset)
         dest = os.path.join(out_dir, asset_rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-        shutil.copyfile(os.path.join(root, asset), dest)
+        asset_source = os.path.join(root, asset)
+        # Like the pages, an unchanged asset keeps its file and timestamp.
+        if not (
+            os.path.isfile(dest) and filecmp.cmp(asset_source, dest, shallow=False)
+        ):
+            shutil.copyfile(asset_source, dest)
         built.add(asset_rel)
 
     css_source = os.path.join(os.path.dirname(os.path.abspath(__file__)), STYLE_FILE)
