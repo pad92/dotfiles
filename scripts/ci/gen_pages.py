@@ -1,4 +1,5 @@
 import filecmp
+import fnmatch
 import html as _html
 import os
 import posixpath
@@ -6,7 +7,8 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
 import markdown
@@ -28,6 +30,18 @@ except ImportError:  # pragma: no cover - pygments is optional
 HOME_SOURCE = "README.md"
 STYLE_FILE = "style.css"
 NOJEKYLL_FILE = ".nojekyll"
+SITEMAP_FILE = "sitemap.xml"
+ROBOTS_FILE = "robots.txt"
+# Public URL of the site: GitLab Pages under its own domain, so robots.txt sits
+# at the root of the host. `pad92.gitlab.io/dotfiles` redirects there, and the
+# GitHub copy points its canonical URLs there too. `SITE_URL` overrides it.
+DEFAULT_SITE_URL = "https://dotfiles.depad.fr/"
+# Icons of the site, kept next to this script and published at the site root:
+# the .ico for old browsers, a 192 px PNG for the others, 180 px for iOS.
+FAVICON_ICO = "favicon.ico"
+FAVICON_PNG = "favicon.png"
+APPLE_TOUCH_ICON = "apple-touch-icon.png"
+SITE_ICONS = (FAVICON_ICO, FAVICON_PNG, APPLE_TOUCH_ICON)
 
 # actions/upload-pages-artifact drops .git and .github from the deployed
 # tarball, so pages from .github/ are published under github/ instead.
@@ -52,16 +66,37 @@ SKIPPED_DIRS = {
 # any other linked file points to the repository browser instead.
 ASSET_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 
-# Site navigation menu: (label, source Markdown file).
-SITE_NAV = [
+# Top-level sections of the site navigation menu, in order: (label, target).
+# A target is one page, a tuple of pages shown as a dropdown, or a directory
+# (ending with "/") whose pages become a dropdown that mirrors the tree.
+SITE_NAV: list[tuple[str, str | tuple[str, ...]]] = [
     ("Home", HOME_SOURCE),
-    ("Ansible", "ansible/README.md"),
-    ("Installation", "dist/arch/install.md"),
+    ("Ansible", "ansible/"),
+    ("Arch Linux", "dist/arch/"),
+    ("CI", (".github/workflows/README.md", ".gitlab/README.md")),
     ("Changelog", "CHANGELOG.md"),
-    ("CI Workflows", ".github/workflows/README.md"),
-    ("GitLab CI", ".gitlab/README.md"),
 ]
+# Menu labels that replace a page's first heading or a directory's name.
+NAV_LABELS = {
+    ".github/workflows/README.md": "GitHub Actions",
+    ".gitlab/README.md": "GitLab CI",
+    "ansible/roles": "Roles",
+    "dist/arch/dns-migration.md": "DNS migration",
+    "dist/arch/install.md": "Installation",
+}
+# Pages left out of the menu (fnmatch patterns, `*` also matches `/`). They
+# are still published and reachable through links. Role payload files are
+# installed into the home directory, they are not documentation of the repo.
+NAV_EXCLUDE = ["ansible/roles/*/files/*"]
+# The README of a directory is its page in the menu.
+NAV_INDEX = "README.md"
+# A submenu with more entries than this is laid out in two columns.
+NAV_COLUMNS_MIN = 10
 SITE_TITLE = "Pad's Dotfiles"
+# Preview image of shared links (Open Graph), when the build publishes it.
+SITE_IMAGE = "dist/hyprland.webp"
+# Search engines show about 160 characters of a description.
+DESCRIPTION_LENGTH = 160
 
 # CDN resources, pinned with Subresource Integrity: a changed file (e.g. a
 # moved Git tag behind cdn.jsdelivr.net/gh/) is refused by the browser.
@@ -117,27 +152,184 @@ def page_output_path(source: str) -> str:
     return f"{published_path(source)}/index.html"
 
 
-def build_nav(output_rel: str) -> tuple[str, str]:
-    """Return (brand_href, nav_items_html) with links relative to output_rel.
+@dataclass
+class NavNode:
+    """One menu entry: a page (source) or a heading (no source), with children."""
 
-    Relative links keep the site working under a subpath (e.g. project
-    GitHub/GitLab Pages served from /<repo>/).
+    label: str
+    source: str | None = None
+    children: list["NavNode"] = field(default_factory=list)
+
+    def contains(self, source: str) -> bool:
+        """Return whether source is this entry's page or one of its children's."""
+        return self.source == source or any(c.contains(source) for c in self.children)
+
+
+def nav_excluded(source: str) -> bool:
+    return any(fnmatch.fnmatchcase(source, pattern) for pattern in NAV_EXCLUDE)
+
+
+def _label_key(node: NavNode) -> str:
+    return node.label.casefold()
+
+
+def page_nav_label(source: str, titles: Mapping[str, str | None]) -> str:
+    """Use NAV_LABELS, then the page's first heading, then its file name.
+
+    A README falls back to the name of its directory.
     """
-    cur_dir = posixpath.dirname(output_rel) or "."
+    directory, name = posixpath.split(source)
+    if name == NAV_INDEX and directory:
+        fallback = posixpath.basename(directory)
+    else:
+        fallback = posixpath.splitext(name)[0]
+    return NAV_LABELS.get(source) or titles.get(source) or fallback
+
+
+def directory_nav(
+    directory: str, sources: Collection[str], titles: Mapping[str, str | None]
+) -> list[NavNode]:
+    """Return the menu entries below directory (a path ending with "/").
+
+    Pages of the directory come first, then its subdirectories, each sorted by
+    label. The directory's own README is left to the caller.
+    """
+    pages = []
+    subdirs: dict[str, list[str]] = {}
+    for source in sources:
+        if not source.startswith(directory):
+            continue
+        rest = source[len(directory) :]
+        if "/" in rest:
+            subdirs.setdefault(rest.split("/", 1)[0], []).append(source)
+        elif rest != NAV_INDEX:
+            pages.append(NavNode(page_nav_label(source, titles), source))
+    dirs = [
+        _directory_node(f"{directory}{name}/", name, below, titles)
+        for name, below in subdirs.items()
+    ]
+    return sorted(pages, key=_label_key) + sorted(dirs, key=_label_key)
+
+
+def _directory_node(
+    directory: str, name: str, sources: list[str], titles: Mapping[str, str | None]
+) -> NavNode:
+    """Return the entry of a subdirectory: its README, or a heading without one.
+
+    A directory with no page of its own and a single subdirectory, itself
+    without a README, is folded into it (`a/b`), so the menu shows no empty
+    levels. A directory named in NAV_LABELS is never folded.
+    """
+    while directory.rstrip("/") not in NAV_LABELS:
+        rests = [source[len(directory) :] for source in sources]
+        firsts = {rest.split("/", 1)[0] for rest in rests}
+        if any("/" not in rest for rest in rests) or len(firsts) != 1:
+            break
+        sub = firsts.pop()
+        if f"{directory}{sub}/{NAV_INDEX}" in sources:
+            break
+        directory, name = f"{directory}{sub}/", f"{name}/{sub}"
+    index = directory + NAV_INDEX
+    page = index if index in sources else None
+    label = (
+        NAV_LABELS.get(directory.rstrip("/"))
+        or (page and page_nav_label(page, titles))
+        or name
+    )
+    return NavNode(label, page, directory_nav(directory, sources, titles))
+
+
+def build_nav_tree(
+    sources: Collection[str], titles: Mapping[str, str | None]
+) -> list[NavNode]:
+    """Return the top-level menu entries of SITE_NAV that have pages.
+
+    titles maps a source to its first heading (None without one).
+    """
+    nodes = []
+    for label, target in SITE_NAV:
+        if isinstance(target, tuple):
+            children = [
+                NavNode(page_nav_label(source, titles), source)
+                for source in target
+                if source in sources
+            ]
+            if children:
+                nodes.append(NavNode(label, None, children))
+        elif target.endswith("/"):
+            visible = [
+                source
+                for source in sources
+                if source.startswith(target) and not nav_excluded(source)
+            ]
+            children = directory_nav(target, visible, titles)
+            if target + NAV_INDEX in visible:
+                children.insert(0, NavNode("Overview", target + NAV_INDEX))
+            if children:
+                nodes.append(NavNode(label, None, children))
+        elif target in sources:
+            nodes.append(NavNode(label, target))
+    return nodes
+
+
+def build_nav(
+    nodes: list[NavNode], pages: Mapping[str, str], source: str
+) -> tuple[str, str]:
+    """Return (brand_href, nav_items_html) for the page of source.
+
+    Links are relative to the page, so the site works under a subpath (e.g.
+    project GitHub/GitLab Pages served from /<repo>/). The section holding the
+    page is highlighted and the page's own entry is marked as current.
+    """
+    cur_dir = posixpath.dirname(pages[source]) or "."
+
+    def href(target: str) -> str:
+        path = quote(posixpath.relpath(pages[target], cur_dir), safe="/")
+        return _html.escape(path)
+
+    def link(node: NavNode, css: str) -> str:
+        assert node.source is not None
+        label = _html.escape(node.label)
+        if node.source == source:
+            return (
+                f'<a class="{css} active" aria-current="page" '
+                f'href="{href(node.source)}">{label}</a>'
+            )
+        return f'<a class="{css}" href="{href(node.source)}">{label}</a>'
+
+    def entry(node: NavNode) -> str:
+        if node.source is not None:
+            head = link(node, "dropdown-item")
+        else:
+            head = f'<span class="dropdown-header">{_html.escape(node.label)}</span>'
+        if node.children:
+            columns = " nav-columns" if len(node.children) > NAV_COLUMNS_MIN else ""
+            subs = "".join(entry(child) for child in node.children)
+            head += f'<ul class="nav-sub{columns}">{subs}</ul>'
+        return f"<li>{head}</li>"
+
+    def wide(node: NavNode) -> bool:
+        return len(node.children) > NAV_COLUMNS_MIN or any(
+            wide(child) for child in node.children
+        )
 
     items = []
-    for label, source in SITE_NAV:
-        target = page_output_path(source)
-        href = posixpath.relpath(target, cur_dir)
-        if target == output_rel:
-            items.append(
-                f'<li class="nav-item"><a class="nav-link active" '
-                f'aria-current="page" href="{href}">{label}</a></li>'
-            )
-        else:
-            items.append(
-                f'<li class="nav-item"><a class="nav-link" href="{href}">{label}</a></li>'
-            )
+    for node in nodes:
+        if not node.children:
+            items.append(f'<li class="nav-item">{link(node, "nav-link")}</li>')
+            continue
+        active = " active" if node.contains(source) else ""
+        menu = "dropdown-menu dropdown-menu-end"
+        if any(wide(child) for child in node.children):
+            menu += " dropdown-menu-wide"
+        entries = "".join(entry(child) for child in node.children)
+        items.append(
+            f'<li class="nav-item dropdown">'
+            f'<a class="nav-link dropdown-toggle{active}" href="#" role="button" '
+            f'data-bs-toggle="dropdown" aria-expanded="false">'
+            f"{_html.escape(node.label)}</a>"
+            f'<ul class="{menu}">{entries}</ul></li>'
+        )
 
     brand_href = posixpath.relpath("index.html", cur_dir)
     return brand_href, "\n".join(items)
@@ -227,6 +419,85 @@ def get_alert_resources(alert_type):
     return icons.get(alert_type, (None, alert_type))
 
 
+# Gruvbox, like style.css and the Hyprland desktop. The light style applies
+# under LIGHT_THEME, as the light block of style.css does.
+PYGMENTS_STYLE = "gruvbox-dark"
+PYGMENTS_LIGHT_STYLE = "gruvbox-light"
+LIGHT_THEME = ':root[data-theme="light"]'
+
+# Theme switcher. THEME_INIT_JS runs in <head>, before the page is drawn, and
+# sets data-theme on <html> to "light" or "dark" from the saved choice ("auto"
+# by default, which follows the desktop). THEME_MENU_JS drives the
+# Light/Dark/Auto entries of the menu, saves the choice in localStorage,
+# shows the icon of the choice on the menu button and follows desktop changes
+# while the choice is "auto". Without JavaScript the site stays dark.
+THEME_CHOICES = ("light", "dark", "auto")
+# Icons of the choices, drawn with the text colour: a sun, a crescent moon and
+# a half-filled circle.
+_ICON = (
+    '<svg class="theme-icon" viewBox="0 0 16 16" width="1em" height="1em" '
+    'fill="none" stroke="currentColor" stroke-width="1.5" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
+)
+THEME_ICONS = {
+    "light": _ICON.format(
+        '<circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5'
+        "M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95"
+        'l1.06-1.06M11.89 4.11l1.06-1.06"/>'
+    ),
+    "dark": _ICON.format('<path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z"/>'),
+    "auto": _ICON.format(
+        '<circle cx="8" cy="8" r="6.25"/>'
+        '<path d="M8 1.75a6.25 6.25 0 0 0 0 12.5z" fill="currentColor"/>'
+    ),
+}
+THEME_INIT_JS = (
+    "(function(){var c;try{c=localStorage.getItem('theme')}catch(e){}"
+    "if(c!=='light'&&c!=='dark')c='auto';var d=document.documentElement;"
+    "d.dataset.themeChoice=c;d.dataset.theme=c==='auto'?"
+    "(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):c})();"
+)
+THEME_MENU_JS = (
+    "(function(){var d=document.documentElement,"
+    "m=matchMedia('(prefers-color-scheme: light)'),"
+    "items=document.querySelectorAll('button[data-theme-choice]'),"
+    "t=document.querySelector('.theme-menu .theme-current');"
+    "function apply(c){d.dataset.themeChoice=c;"
+    "d.dataset.theme=c==='auto'?(m.matches?'light':'dark'):c;"
+    "items.forEach(function(b){var on=b.dataset.themeChoice===c;"
+    "b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));"
+    "if(on&&t)t.innerHTML=b.querySelector('svg').outerHTML})}"
+    "items.forEach(function(b){b.addEventListener('click',function(){"
+    "var c=b.dataset.themeChoice;try{localStorage.setItem('theme',c)}catch(e){}"
+    "apply(c)})});"
+    "m.addEventListener('change',function(){"
+    "if(d.dataset.themeChoice==='auto')apply('auto')});"
+    "apply(d.dataset.themeChoice||'auto')})();"
+)
+
+
+def theme_menu():
+    """The Light/Dark/Auto dropdown, last item of the menu.
+
+    Its button shows the icon of the current choice, Auto until the script
+    runs.
+    """
+    items = "".join(
+        f'<li><button class="dropdown-item" type="button" '
+        f'data-theme-choice="{choice}" aria-pressed="false">'
+        f"{THEME_ICONS[choice]}{choice.capitalize()}</button></li>"
+        for choice in THEME_CHOICES
+    )
+    return (
+        '<li class="nav-item dropdown theme-menu">'
+        '<button class="nav-link dropdown-toggle" type="button" '
+        'data-bs-toggle="dropdown" aria-expanded="false" '
+        'aria-label="Colour theme">'
+        f'<span class="theme-current">{THEME_ICONS["auto"]}</span></button>'
+        f'<ul class="dropdown-menu dropdown-menu-end">{items}</ul></li>'
+    )
+
+
 def pygments_css():
     """Syntax-highlighting colours for `.codehilite`, themed for the dark pages.
 
@@ -236,8 +507,30 @@ def pygments_css():
     """
     if not _HAVE_PYGMENTS:
         return ""
-    defs = _PygHtmlFormatter(style="dracula").get_style_defs(".codehilite")
-    return "\n" + defs + "\n.codehilite{background:transparent}\n"
+    dark = _PygHtmlFormatter(style=PYGMENTS_STYLE).get_style_defs(".codehilite")
+    light = _PygHtmlFormatter(style=PYGMENTS_LIGHT_STYLE).get_style_defs(
+        f"{LIGHT_THEME} .codehilite"
+    )
+    # The light style leaves some tokens (punctuation, YAML scalars...) to the
+    # text colour, but the dark rules for them still match: reset them first.
+    token_rule = re.compile(r"^(?:.* )?\.codehilite (\.[\w-]+) \{", re.M)
+    dark_only = sorted(set(token_rule.findall(dark)) - set(token_rule.findall(light)))
+    reset = (
+        ",".join(f"{LIGHT_THEME} .codehilite {token}" for token in dark_only)
+        + "{color:inherit;background-color:transparent;font-weight:inherit;"
+        + "font-style:inherit;text-decoration:inherit}\n"
+        if dark_only
+        else ""
+    )
+    return (
+        "\n"
+        + dark
+        + "\n"
+        + reset
+        + light
+        # Same specificity as the light rule, later: wins over both styles.
+        + "\n.codehilite,:root[data-theme] .codehilite{background:transparent}\n"
+    )
 
 
 def render_code_block(code, lang):
@@ -516,6 +809,82 @@ def discover_markdown(root: str) -> list[str]:
     )
 
 
+def site_url_from_env(env: Mapping[str, str]) -> str:
+    """Return the public URL of the site, ending with `/`.
+
+    `SITE_URL` wins when it is an http(s) URL, else `DEFAULT_SITE_URL`. Every
+    build, the local preview included, gets canonical URLs and a sitemap.
+    """
+    url = env.get("SITE_URL", "")
+    if not url.startswith(("https://", "http://")):
+        url = DEFAULT_SITE_URL
+    return url.rstrip("/") + "/"
+
+
+def page_url(site_url: str, output_rel: str) -> str:
+    """Absolute URL of a page: its directory, without `index.html`."""
+    directory = posixpath.dirname(output_rel)
+    return site_url + (quote(directory, safe="/") + "/" if directory else "")
+
+
+def page_description(html_content: str) -> str | None:
+    """First paragraph of rendered HTML as plain text, cut for search results.
+
+    Paragraphs without text, such as a row of badges, are skipped. A text
+    longer than DESCRIPTION_LENGTH is cut at a word and ends with `...`.
+    """
+    for paragraph in re.findall(r"<p\b[^>]*>(.*?)</p>", html_content, re.S):
+        text = " ".join(_html.unescape(_HTML_TAG_RE.sub("", paragraph)).split())
+        if not text:
+            continue
+        if len(text) > DESCRIPTION_LENGTH:
+            text = (
+                text[: DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0].rstrip(",;:") + "..."
+            )
+        return text
+    return None
+
+
+def seo_head(site: "Site", source: str, title: str, html_content: str) -> str:
+    """Description, canonical URL and Open Graph tags of a page's <head>."""
+    esc = _html.escape
+    description = page_description(html_content)
+    tags = []
+    if description:
+        tags.append(f'<meta name="description" content="{esc(description)}">')
+    tags += [
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{esc(SITE_TITLE)}">',
+        f'<meta property="og:title" content="{esc(title)}">',
+    ]
+    if description:
+        tags.append(f'<meta property="og:description" content="{esc(description)}">')
+    card = "summary"
+    if site.site_url:
+        url = page_url(site.site_url, site.pages[source])
+        tags.append(f'<link rel="canonical" href="{esc(url)}">')
+        tags.append(f'<meta property="og:url" content="{esc(url)}">')
+        if SITE_IMAGE in site.assets:
+            image = site.site_url + quote(published_path(SITE_IMAGE), safe="/")
+            tags.append(f'<meta property="og:image" content="{esc(image)}">')
+            card = "summary_large_image"
+    tags.append(f'<meta name="twitter:card" content="{card}">')
+    return "\n    ".join(tags)
+
+
+def sitemap_xml(site: "Site") -> str:
+    """sitemaps.org list of every page, home page first."""
+    urls = sorted(
+        page_url(site.site_url or "", output) for output in site.pages.values()
+    )
+    entries = "".join(f"  <url><loc>{_html.escape(url)}</loc></url>\n" for url in urls)
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{entries}</urlset>\n"
+    )
+
+
 def repository_url_template(env: Mapping[str, str]) -> str | None:
     """Return a `{kind}`/`{path}` URL template to browse the built commit.
 
@@ -543,6 +912,8 @@ class Site:
         self.root = root
         self.out_dir = out_dir
         self.repo_url = repo_url
+        # Public URL of the site, ending with "/" (see site_url_from_env).
+        self.site_url: str | None = None
         self.pages = {source: page_output_path(source) for source in sources}
         self.assets: set[str] = set()
         self.missing_links: list[tuple[str, str]] = []
@@ -626,25 +997,31 @@ def page_anchors(html: str) -> set[str]:
     }
 
 
-def page_title(source: str, html_content: str) -> str:
-    """Use the navigation label, then the first heading, then the source path.
+def heading_text(html_content: str) -> str | None:
+    """Return the text of the first heading of rendered HTML, if any.
 
     The heading is read from the rendered HTML, so `#` lines inside code
     blocks are ignored and inline Markdown (code, links) is reduced to text.
     """
-    for label, nav_source in SITE_NAV:
-        if nav_source == source:
-            return SITE_TITLE if source == HOME_SOURCE else label
     match = _HTML_HEADING_RE.search(html_content)
     if match:
         text = _html.unescape(_HTML_TAG_RE.sub("", match.group(1))).strip()
         if text:
             return text
-    return source
+    return None
 
 
-def render_page(site: Site, source: str) -> str:
-    """Render one Markdown source to a complete, minified HTML page."""
+def page_title(source: str, html_content: str) -> str:
+    """Use the site title for the home page, then the first heading, then the path."""
+    return title_for(source, heading_text(html_content))
+
+
+def title_for(source: str, heading: str | None) -> str:
+    return SITE_TITLE if source == HOME_SOURCE else heading or source
+
+
+def render_body(site: Site, source: str) -> tuple[str, str | None]:
+    """Render one Markdown source to (HTML body, first heading text)."""
     with open(os.path.join(site.root, source), "r", encoding="utf-8") as f:
         text = f.read()
     output_rel = site.pages[source]
@@ -663,13 +1040,38 @@ def render_page(site: Site, source: str) -> str:
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
     html_content = site.rewrite_links(render_markdown(text), source, output_rel)
-    title = page_title(source, html_content)
+    heading = heading_text(html_content)
+    return restore_code_blocks(html_content, code_blocks), heading
 
-    html_content = restore_code_blocks(html_content, code_blocks)
 
+def render_page(site: Site, source: str, nav: list[NavNode] | None = None) -> str:
+    """Render one Markdown source to a complete, minified HTML page.
+
+    nav is the site menu (build_nav_tree); without it, the menu is built from
+    the site's pages with their file names as labels.
+    """
+    html_content, heading = render_body(site, source)
+    if nav is None:
+        nav = build_nav_tree(site.pages, {})
+    return page_document(site, source, html_content, heading, nav)
+
+
+def page_document(
+    site: Site,
+    source: str,
+    html_content: str,
+    heading: str | None,
+    nav: list[NavNode],
+) -> str:
+    """Wrap a rendered body into the site template, with its menu."""
+    output_rel = site.pages[source]
+    title = title_for(source, heading)
     cur_dir = posixpath.dirname(output_rel) or "."
     css_path = posixpath.relpath(STYLE_FILE, cur_dir)
-    brand_href, nav_items = build_nav(output_rel)
+    ico_path, png_path, apple_path = (
+        posixpath.relpath(icon, cur_dir) for icon in SITE_ICONS
+    )
+    brand_href, nav_items = build_nav(nav, site.pages, source)
 
     template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -677,8 +1079,15 @@ def render_page(site: Site, source: str) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{_html.escape(title)}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css']}" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css']}" crossorigin="anonymous">
+    {seo_head(site, source, title, html_content)}
+    <meta name="theme-color" content="#1d2021" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#fbf1c7" media="(prefers-color-scheme: light)">
+    <script>{THEME_INIT_JS}</script>
+    <link rel="icon" href="{ico_path}" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="{png_path}" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{apple_path}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"]}" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css"]}" crossorigin="anonymous">
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
@@ -691,6 +1100,7 @@ def render_page(site: Site, source: str) -> str:
             <div class="collapse navbar-collapse" id="site-nav">
                 <ul class="navbar-nav ms-auto">
                     {nav_items}
+                    {theme_menu()}
                 </ul>
             </div>
         </div>
@@ -705,9 +1115,10 @@ def render_page(site: Site, source: str) -> str:
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="{CDN_INTEGRITY['https://code.jquery.com/jquery-3.7.1.slim.min.js']}" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js']}" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="{CDN_INTEGRITY['https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js']}" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="{CDN_INTEGRITY["https://code.jquery.com/jquery-3.7.1.slim.min.js"]}" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"]}" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js"]}" crossorigin="anonymous"></script>
+    <script>{THEME_MENU_JS}</script>
     <script>
         $(function() {{
             // Skip the "Table of contents" heading in the bootstrap-toc and hide it
@@ -743,12 +1154,9 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
     sources = discover_markdown(root)
     if HOME_SOURCE not in sources:
         raise FileNotFoundError(f"{HOME_SOURCE} not found in {root}")
-    site = Site(
-        root,
-        out_dir,
-        sources,
-        repository_url_template(os.environ if env is None else env),
-    )
+    env = os.environ if env is None else env
+    site = Site(root, out_dir, sources, repository_url_template(env))
+    site.site_url = site_url_from_env(env)
 
     root_real = os.path.realpath(root)
     out_real = os.path.realpath(out_dir)
@@ -759,13 +1167,17 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         os.path.join(out_dir, NOJEKYLL_FILE)
     )
 
-    built = {STYLE_FILE, NOJEKYLL_FILE}
+    built = {STYLE_FILE, NOJEKYLL_FILE, *SITE_ICONS}
+    # Every body is rendered first: the menu of each page needs every title.
+    bodies = {source: render_body(site, source) for source in sources}
+    nav = build_nav_tree(sources, {s: heading for s, (_, heading) in bodies.items()})
     anchors = {}
     for source in sources:
         output_rel = site.pages[source]
         output_file = os.path.join(out_dir, output_rel)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        page = render_page(site, source)
+        html_content, heading = bodies[source]
+        page = page_document(site, source, html_content, heading, nav)
         anchors[source] = page_anchors(page)
         write_if_changed(output_file, page)
         built.add(output_rel)
@@ -783,10 +1195,25 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
             shutil.copyfile(asset_source, dest)
         built.add(asset_rel)
 
-    css_source = os.path.join(os.path.dirname(os.path.abspath(__file__)), STYLE_FILE)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    for icon in SITE_ICONS:
+        icon_source = os.path.join(script_dir, icon)
+        dest = os.path.join(out_dir, icon)
+        if not (os.path.isfile(dest) and filecmp.cmp(icon_source, dest, shallow=False)):
+            shutil.copyfile(icon_source, dest)
+
+    css_source = os.path.join(script_dir, STYLE_FILE)
     with open(css_source, "r", encoding="utf-8") as src:
         minified_css = minify_css(src.read() + pygments_css())
     write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
+
+    # robots.txt is only read at the root of a host: DEFAULT_SITE_URL is one.
+    write_if_changed(os.path.join(out_dir, SITEMAP_FILE), sitemap_xml(site))
+    write_if_changed(
+        os.path.join(out_dir, ROBOTS_FILE),
+        f"User-agent: *\nAllow: /\nSitemap: {site.site_url}{SITEMAP_FILE}\n",
+    )
+    built.update({SITEMAP_FILE, ROBOTS_FILE})
 
     # Serve dot-directories (e.g. .gitlab/) verbatim on GitHub Pages (no Jekyll).
     open(os.path.join(out_dir, NOJEKYLL_FILE), "a", encoding="utf-8").close()

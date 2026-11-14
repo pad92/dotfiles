@@ -14,6 +14,7 @@ on:
       - '**.svg'
       - '**.webp'
       - 'scripts/ci/style.css'
+      - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
       - '.github/workflows/deploy-pages.yml'
@@ -30,6 +31,7 @@ on:
       - '**.svg'
       - '**.webp'
       - 'scripts/ci/style.css'
+      - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
       - 'scripts/ci/build_pages.sh'
 
@@ -56,6 +58,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Canonical URLs and the sitemap point to DEFAULT_SITE_URL of gen_pages.py.
       - name: Generate HTML pages
         run: |
           pip install --quiet markdown pygments

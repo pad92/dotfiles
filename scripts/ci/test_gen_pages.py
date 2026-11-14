@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -111,6 +112,321 @@ class CodeBlockTests(unittest.TestCase):
         html = self.body("# T\n\n[[_TOC_]]\n\n## Part\n")
 
         self.assertIn('class="toc"', html)
+
+
+class ThemeTests(unittest.TestCase):
+    """The site's colours follow the Gruvbox palette of the Hyprland desktop."""
+
+    HYPRTOOLKIT = (
+        REPO_ROOT
+        / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprtoolkit.conf.j2"
+    )
+
+    @staticmethod
+    def css():
+        return SCRIPT_PATH.with_name("style.css").read_text(encoding="utf-8")
+
+    @staticmethod
+    def variables(block):
+        return dict(re.findall(r"--([\w-]+): (#[0-9a-f]{6});", block))
+
+    def dark_root(self):
+        return re.search(r"^:root \{(.*?)^\}", self.css(), re.M | re.S).group(1)
+
+    def light_root(self):
+        return re.search(
+            r"^:root\[data-theme='light'\] \{(.*?)^\}", self.css(), re.M | re.S
+        ).group(1)
+
+    def test_css_colours_match_the_hyprtoolkit_palette(self):
+        toolkit = dict(
+            re.findall(
+                r"^(\w+) = 0x[0-9A-Fa-f]{2}([0-9A-Fa-f]{6})$",
+                self.HYPRTOOLKIT.read_text(encoding="utf-8"),
+                re.M,
+            )
+        )
+        variables = self.variables(self.dark_root())
+
+        pairs = {
+            "bg-color": "background",
+            "surface-color": "base",
+            "code-inline-bg": "alternate_base",
+            "text-color": "text",
+            "accent-color": "accent",
+            "link-color": "accent",
+        }
+        for variable, key in pairs.items():
+            with self.subTest(variable=variable):
+                self.assertEqual(variables[variable], "#" + toolkit[key].lower())
+
+    def test_light_theme_overrides_every_colour_with_gruvbox_light(self):
+        dark = self.variables(self.dark_root())
+        light = self.variables(self.light_root())
+
+        self.assertEqual(set(light), set(dark))
+        self.assertEqual(light["bg-color"], "#fbf1c7")
+        self.assertEqual(light["text-color"], "#3c3836")
+        self.assertIn("color-scheme: light", self.light_root())
+
+    def test_rules_use_variables_rather_than_literal_colours(self):
+        rules = re.sub(r"^\s*--[\w-]+: [^;]+;", "", self.css(), flags=re.M)
+
+        self.assertEqual(re.findall(r"#[0-9a-fA-F]{6}\b|rgba?\(", rules), [])
+
+    def test_css_keeps_no_catppuccin_colour(self):
+        css = self.css().lower()
+
+        for colour in ("#cba6f7", "#1e1e2e", "#cdd6f4", "#181825", "#f38ba8"):
+            with self.subTest(colour=colour):
+                self.assertNotIn(colour, css)
+
+    @unittest.skipUnless(GEN_PAGES._HAVE_PYGMENTS, "requires pygments")
+    def test_code_highlighting_uses_gruvbox(self):
+        css = GEN_PAGES.pygments_css()
+
+        self.assertIn("#928374", css)  # gruvbox-dark comments
+        self.assertNotIn("#ff79c6", css)  # dracula pink
+        light = "\n".join(
+            line
+            for line in css.lower().splitlines()
+            if line.startswith(GEN_PAGES.LIGHT_THEME + " .codehilite .")
+        )
+        self.assertIn("#928374", light)  # gruvbox-light comments
+        self.assertIn("#9d0006", light)  # gruvbox-light keywords
+
+    @unittest.skipUnless(GEN_PAGES._HAVE_PYGMENTS, "requires pygments")
+    def test_light_theme_resets_tokens_only_the_dark_style_colours(self):
+        reset_line = next(
+            line
+            for line in GEN_PAGES.pygments_css().splitlines()
+            if "color:inherit" in line
+        )
+        reset = reset_line.split("{", 1)[0].split(",")
+        light = GEN_PAGES.LIGHT_THEME + " .codehilite "
+
+        # Punctuation and whitespace are #dddddd in gruvbox-dark only.
+        self.assertIn(light + ".p", reset)
+        self.assertIn(light + ".w", reset)
+        self.assertNotIn(light + ".k", reset)
+
+    @unittest.skipUnless(GEN_PAGES._HAVE_PYGMENTS, "requires pygments")
+    def test_code_box_background_stays_transparent_in_both_themes(self):
+        last = GEN_PAGES.pygments_css().strip().splitlines()[-1]
+
+        self.assertIn(":root[data-theme] .codehilite", last)
+        self.assertIn("background:transparent", last)
+
+
+class FaviconTests(unittest.TestCase):
+    """The site icons are published at the root and linked from every page."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "repo"
+        (root / "docs").mkdir(parents=True)
+        (root / "README.md").write_text("# Home\n", encoding="utf-8")
+        (root / "docs/a.md").write_text("# A\n", encoding="utf-8")
+        self.public = Path(tmp.name) / "public"
+        GEN_PAGES.build_site(str(root), str(self.public), {})
+
+    def test_icons_are_copied_to_the_site_root(self):
+        script_dir = Path(GEN_PAGES.__file__).parent
+        for icon in GEN_PAGES.SITE_ICONS:
+            with self.subTest(icon=icon):
+                self.assertEqual(
+                    (script_dir / icon).read_bytes(),
+                    (self.public / icon).read_bytes(),
+                )
+
+    def test_icons_are_transparent_images(self):
+        script_dir = Path(GEN_PAGES.__file__).parent
+        ico = (script_dir / GEN_PAGES.FAVICON_ICO).read_bytes()
+        self.assertEqual(b"\x00\x00\x01\x00", ico[:4])
+        for png in (GEN_PAGES.FAVICON_PNG, GEN_PAGES.APPLE_TOUCH_ICON):
+            with self.subTest(png=png):
+                data = (script_dir / png).read_bytes()
+                self.assertEqual(b"\x89PNG\r\n\x1a\n", data[:8])
+                # IHDR colour type 6: RGBA, so the corners stay transparent.
+                self.assertEqual(6, data[25])
+
+    def test_pages_link_the_icons_relative_to_their_directory(self):
+        home = (self.public / "index.html").read_text(encoding="utf-8")
+        page = (self.public / "docs/a.md/index.html").read_text(encoding="utf-8")
+
+        self.assertIn('<link rel="icon" href="favicon.ico"', home)
+        self.assertIn('<link rel="icon" href="../../favicon.ico"', page)
+        self.assertIn('href="../../favicon.png" type="image/png"', page)
+        self.assertIn(
+            '<link rel="apple-touch-icon" href="../../apple-touch-icon.png">', page
+        )
+
+
+class SeoTests(unittest.TestCase):
+    """Description, canonical URL, Open Graph tags, sitemap and robots.txt."""
+
+    def build(self, env):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "repo"
+        (root / "docs").mkdir(parents=True)
+        (root / "README.md").write_text(
+            "# Home\n\n[![b](b.png)](x.md)\n\nThe `<home>` & intro.\n\n"
+            "![Demo](dist/hyprland.webp)\n",
+            encoding="utf-8",
+        )
+        (root / "x.md").write_text("# X\n", encoding="utf-8")
+        (root / "b.png").write_bytes(b"png")
+        (root / "dist").mkdir()
+        (root / "dist/hyprland.webp").write_bytes(b"webp")
+        (root / "docs/a b.md").write_text("# A\n\n" + "word " * 60, encoding="utf-8")
+        public = Path(tmp.name) / "public"
+        GEN_PAGES.build_site(str(root), str(public), env)
+        return public
+
+    def test_site_url_defaults_to_the_public_domain(self):
+        url = GEN_PAGES.site_url_from_env
+
+        self.assertEqual(url({"SITE_URL": "https://a.io/d"}), "https://a.io/d/")
+        self.assertEqual(url({}), "https://dotfiles.depad.fr/")
+        self.assertEqual(
+            url({"CI_PAGES_URL": "https://b.gitlab.io/d/"}),
+            "https://dotfiles.depad.fr/",
+        )
+        self.assertEqual(
+            url({"SITE_URL": "javascript:alert(1)"}), "https://dotfiles.depad.fr/"
+        )
+
+    def test_description_skips_badges_and_is_cut_at_a_word(self):
+        describe = GEN_PAGES.page_description
+
+        self.assertEqual(
+            describe(
+                '<p><a href="x"><img alt="b" src="b"></a></p><p>Intro <b>text</b>.</p>'
+            ),
+            "Intro text.",
+        )
+        long = describe("<p>" + "word " * 60 + "</p>")
+        self.assertLessEqual(len(long), GEN_PAGES.DESCRIPTION_LENGTH)
+        self.assertTrue(long.endswith("word..."))
+        self.assertIsNone(describe("<h1>Only a title</h1>"))
+
+    def test_page_head_has_description_canonical_and_open_graph(self):
+        public = self.build({"SITE_URL": "https://example.org/dotfiles"})
+        home = (public / "index.html").read_text(encoding="utf-8")
+        page = (public / "docs/a b.md/index.html").read_text(encoding="utf-8")
+
+        self.assertIn(
+            '<meta name="description" content="The &lt;home&gt; &amp; intro.">', home
+        )
+        self.assertIn(
+            '<link rel="canonical" href="https://example.org/dotfiles/">', home
+        )
+        self.assertIn(
+            '<link rel="canonical" href="https://example.org/dotfiles/docs/a%20b.md/">',
+            page,
+        )
+        self.assertIn('<meta property="og:title" content="A">', page)
+        self.assertIn(
+            '<meta property="og:image" '
+            'content="https://example.org/dotfiles/dist/hyprland.webp">',
+            page,
+        )
+        self.assertIn('<meta name="twitter:card" content="summary_large_image">', page)
+
+    def test_sitemap_and_robots_list_every_page(self):
+        public = self.build({"SITE_URL": "https://example.org/dotfiles/"})
+        sitemap = (public / "sitemap.xml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            re.findall(r"<loc>(.*?)</loc>", sitemap),
+            [
+                "https://example.org/dotfiles/",
+                "https://example.org/dotfiles/docs/a%20b.md/",
+                "https://example.org/dotfiles/x.md/",
+            ],
+        )
+        self.assertIn(
+            "Sitemap: https://example.org/dotfiles/sitemap.xml",
+            (public / "robots.txt").read_text(encoding="utf-8"),
+        )
+
+    def test_local_build_gets_sitemap_and_robots_on_the_public_domain(self):
+        public = self.build({})
+        home = (public / "index.html").read_text(encoding="utf-8")
+        sitemap = (public / "sitemap.xml").read_text(encoding="utf-8")
+
+        self.assertIn('<link rel="canonical" href="https://dotfiles.depad.fr/">', home)
+        self.assertIn("<loc>https://dotfiles.depad.fr/x.md/</loc>", sitemap)
+        self.assertEqual(
+            (public / "robots.txt").read_text(encoding="utf-8"),
+            "User-agent: *\nAllow: /\nSitemap: https://dotfiles.depad.fr/sitemap.xml\n",
+        )
+        self.assertIn('<meta name="description" content=', home)
+
+
+class ThemeMenuTests(unittest.TestCase):
+    """The Theme menu at the right end of the navbar picks Light, Dark or Auto."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "repo"
+        root.mkdir()
+        (root / "README.md").write_text("# Home\n", encoding="utf-8")
+        public = Path(tmp.name) / "public"
+        GEN_PAGES.build_site(str(root), str(public), {})
+        self.page = (public / "index.html").read_text(encoding="utf-8")
+
+    def test_theme_is_set_before_the_stylesheets_load(self):
+        head = self.page.split("</head>", 1)[0]
+
+        self.assertIn(GEN_PAGES.THEME_INIT_JS, head)
+        first_stylesheet = re.search(r'<link\b[^>]*rel="stylesheet"', head)
+        self.assertLess(head.index(GEN_PAGES.THEME_INIT_JS), first_stylesheet.start())
+
+    def test_theme_menu_is_the_last_menu_item(self):
+        menu = self.page.split('<ul class="navbar-nav ms-auto">', 1)[1]
+        menu = menu.split("</nav>", 1)[0]
+
+        last_item = menu[menu.rindex('<li class="nav-item') :]
+        self.assertTrue(last_item.startswith(GEN_PAGES.theme_menu()))
+        choices = re.findall(r'data-theme-choice="(\w+)"', menu)
+        self.assertEqual(choices, ["light", "dark", "auto"])
+
+    def test_choices_and_button_show_icons(self):
+        menu = GEN_PAGES.theme_menu()
+
+        for choice in GEN_PAGES.THEME_CHOICES:
+            with self.subTest(choice=choice):
+                icon = GEN_PAGES.THEME_ICONS[choice]
+                self.assertIn(
+                    f'data-theme-choice="{choice}" aria-pressed="false">{icon}',
+                    menu,
+                )
+        # Auto is the default, until the script shows the saved choice.
+        self.assertIn(
+            f'<span class="theme-current">{GEN_PAGES.THEME_ICONS["auto"]}</span>',
+            menu,
+        )
+        self.assertIn(".theme-current", GEN_PAGES.THEME_MENU_JS)
+        self.assertNotIn(">Theme<", menu)
+
+    def test_dropdowns_open_on_hover_only_with_a_mouse(self):
+        css = (Path(GEN_PAGES.__file__).parent / "style.css").read_text(
+            encoding="utf-8"
+        )
+        hover = css.split("@media (hover: hover) and (min-width: 768px) {", 1)[1]
+
+        self.assertIn(
+            ".navbar .dropdown:hover > .dropdown-menu", hover.split("}", 1)[0]
+        )
+
+    def test_menu_script_saves_the_choice_and_follows_the_desktop(self):
+        self.assertIn(GEN_PAGES.THEME_MENU_JS, self.page)
+        self.assertIn("localStorage.setItem('theme'", GEN_PAGES.THEME_MENU_JS)
+        self.assertIn("addEventListener('change'", GEN_PAGES.THEME_MENU_JS)
 
 
 class MinifyHtmlTests(unittest.TestCase):
@@ -322,6 +638,222 @@ class PageTitleTests(unittest.TestCase):
         self.assertEqual(GEN_PAGES.page_title("p.md", "<p>text</p>"), "p.md")
 
 
+def nav_shape(nodes):
+    """Reduce menu entries to nested (label, source, children) tuples."""
+    return [(n.label, n.source, nav_shape(n.children)) for n in nodes]
+
+
+class NavTreeTests(unittest.TestCase):
+    """build_nav_tree: the menu mirrors the tree of the Markdown files."""
+
+    def setUp(self):
+        for name, value in {
+            "SITE_NAV": [("Docs", "docs/")],
+            "NAV_LABELS": {"docs/roles": "Roles"},
+            "NAV_EXCLUDE": ["docs/roles/*/files/*"],
+        }.items():
+            patcher = mock.patch.object(GEN_PAGES, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def tree(self, sources, titles=None):
+        return nav_shape(GEN_PAGES.build_nav_tree(sources, titles or {}))
+
+    def test_directory_section_mirrors_the_tree(self):
+        sources = [
+            "docs/README.md",
+            "docs/PLAYBOOKS.md",
+            "docs/roles/web/README.md",
+            "docs/roles/db/README.md",
+        ]
+        titles = {"docs/PLAYBOOKS.md": "Playbooks", "docs/roles/db/README.md": "db"}
+
+        self.assertEqual(
+            self.tree(sources, titles),
+            [
+                (
+                    "Docs",
+                    None,
+                    [
+                        ("Overview", "docs/README.md", []),
+                        ("Playbooks", "docs/PLAYBOOKS.md", []),
+                        (
+                            "Roles",
+                            None,
+                            [
+                                ("db", "docs/roles/db/README.md", []),
+                                ("web", "docs/roles/web/README.md", []),
+                            ],
+                        ),
+                    ],
+                )
+            ],
+        )
+
+    def test_excluded_pages_stay_out_of_the_menu(self):
+        sources = ["docs/roles/web/README.md", "docs/roles/web/files/zsh/README.md"]
+
+        self.assertEqual(
+            self.tree(sources),
+            [("Docs", None, [("Roles", None, [("web", sources[0], [])])])],
+        )
+
+    def test_directory_with_a_readme_links_it_above_its_children(self):
+        sources = ["docs/guide/README.md", "docs/guide/setup.md"]
+
+        self.assertEqual(
+            self.tree(sources, {"docs/guide/README.md": "The guide"}),
+            [
+                (
+                    "Docs",
+                    None,
+                    [("The guide", sources[0], [("setup", sources[1], [])])],
+                )
+            ],
+        )
+
+    def test_directories_without_pages_are_folded(self):
+        sources = ["docs/a/b/c/one.md", "docs/a/b/c/two.md"]
+
+        self.assertEqual(
+            self.tree(sources),
+            [
+                (
+                    "Docs",
+                    None,
+                    [
+                        (
+                            "a/b/c",
+                            None,
+                            [("one", sources[0], []), ("two", sources[1], [])],
+                        )
+                    ],
+                )
+            ],
+        )
+
+    def test_folding_stops_above_a_directory_with_a_readme(self):
+        sources = ["docs/a/b/README.md"]
+
+        self.assertEqual(
+            self.tree(sources),
+            [("Docs", None, [("a", None, [("b", sources[0], [])])])],
+        )
+
+    def test_pages_come_before_directories_sorted_by_label(self):
+        sources = ["docs/zeta/x.md", "docs/beta.md", "docs/Alpha.md"]
+
+        self.assertEqual(
+            [entry[0] for entry in self.tree(sources)[0][2]],
+            ["Alpha", "beta", "zeta"],
+        )
+
+    def test_label_prefers_nav_labels_then_heading_then_file_name(self):
+        sources = ["docs/a.md", "docs/b.md", "docs/c.md"]
+        titles = {"docs/a.md": "Heading A", "docs/b.md": "Heading B"}
+
+        with mock.patch.object(GEN_PAGES, "NAV_LABELS", {"docs/a.md": "Label A"}):
+            labels = [entry[0] for entry in self.tree(sources, titles)[0][2]]
+
+        self.assertEqual(labels, ["c", "Heading B", "Label A"])
+
+    def test_page_and_group_sections_skip_missing_pages(self):
+        nav = [
+            ("Home", "README.md"),
+            ("Gone", "gone.md"),
+            ("CI", ("ci/a.md", "ci/missing.md")),
+            ("Empty", "empty/"),
+        ]
+        with mock.patch.object(GEN_PAGES, "SITE_NAV", nav):
+            tree = self.tree(["README.md", "ci/a.md"])
+
+        self.assertEqual(
+            tree,
+            [("Home", "README.md", []), ("CI", None, [("a", "ci/a.md", [])])],
+        )
+
+
+class BuildNavTests(unittest.TestCase):
+    """build_nav: the menu HTML of one page."""
+
+    def setUp(self):
+        self.nav = [
+            GEN_PAGES.NavNode("Home", "README.md"),
+            GEN_PAGES.NavNode(
+                "Docs",
+                None,
+                [
+                    GEN_PAGES.NavNode("Overview", "docs/README.md"),
+                    GEN_PAGES.NavNode(
+                        "<Roles>",
+                        None,
+                        [GEN_PAGES.NavNode("web", "docs/roles/web/README.md")],
+                    ),
+                ],
+            ),
+        ]
+        self.pages = {
+            source: GEN_PAGES.page_output_path(source)
+            for source in ("README.md", "docs/README.md", "docs/roles/web/README.md")
+        }
+
+    def menu(self, source):
+        return GEN_PAGES.build_nav(self.nav, self.pages, source)[1]
+
+    def test_links_are_relative_to_the_page(self):
+        page = self.pages["docs/roles/web/README.md"]
+
+        for href in re.findall(
+            r'href="([^"#]+)"', self.menu("docs/roles/web/README.md")
+        ):
+            with self.subTest(href=href):
+                target = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(page), href)
+                )
+                self.assertIn(target, self.pages.values())
+
+    def test_section_of_a_deep_page_is_active(self):
+        html = self.menu("docs/roles/web/README.md")
+
+        self.assertIn('class="nav-link dropdown-toggle active"', html)
+        self.assertIn(
+            '<a class="dropdown-item active" aria-current="page" href="index.html">'
+            "web</a>",
+            html,
+        )
+        self.assertNotIn('class="nav-link active"', html)
+
+    def test_page_outside_a_section_leaves_it_inactive(self):
+        html = self.menu("README.md")
+
+        self.assertIn('class="nav-link dropdown-toggle"', html)
+        self.assertIn('<a class="nav-link active" aria-current="page"', html)
+
+    def test_labels_are_escaped(self):
+        html = self.menu("README.md")
+
+        self.assertIn("&lt;Roles&gt;", html)
+        self.assertNotIn("<Roles>", html)
+
+    def test_long_submenu_uses_two_columns(self):
+        roles = self.nav[1].children[1]
+        roles.children = [
+            GEN_PAGES.NavNode(f"r{i}", "docs/roles/web/README.md")
+            for i in range(GEN_PAGES.NAV_COLUMNS_MIN + 1)
+        ]
+
+        html = self.menu("README.md")
+
+        self.assertIn('class="nav-sub nav-columns"', html)
+        self.assertIn("dropdown-menu-wide", html)
+
+    def test_short_submenu_keeps_one_column(self):
+        html = self.menu("README.md")
+
+        self.assertNotIn("nav-columns", html)
+        self.assertNotIn("dropdown-menu-wide", html)
+
+
 class DiscoverMarkdownTests(unittest.TestCase):
     def test_walk_without_git_skips_submodules_and_build_output(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -441,7 +973,11 @@ class SmallSiteTests(unittest.TestCase):
         GEN_PAGES.build_site(str(self.root), str(self.public), {})
         html = (self.public / "index.html").read_text(encoding="utf-8")
 
-        tags = re.findall(r"<(?:link|script)\b[^>]*https://[^>]*>", html)
+        tags = [
+            tag
+            for tag in re.findall(r"<(?:link|script)\b[^>]*https://[^>]*>", html)
+            if 'rel="canonical"' not in tag
+        ]
         self.assertEqual(len(tags), 5)
         for tag in tags:
             with self.subTest(tag=tag):
@@ -494,6 +1030,32 @@ class BuildSiteTests(unittest.TestCase):
         for source in GEN_PAGES.discover_markdown(str(REPO_ROOT)):
             with self.subTest(source=source):
                 self.assertTrue((public / site.pages[source]).is_file())
+
+    def test_every_menu_section_has_pages(self):
+        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT))
+        sections = {node.label for node in GEN_PAGES.build_nav_tree(sources, {})}
+
+        self.assertEqual(sections, {label for label, _ in GEN_PAGES.SITE_NAV})
+
+    def test_menu_lists_the_ansible_playbooks_and_roles(self):
+        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT))
+        ansible = next(
+            node
+            for node in GEN_PAGES.build_nav_tree(sources, {})
+            if node.label == "Ansible"
+        )
+        listed = {source for _, source, _ in nav_shape(ansible.children)}
+        roles = next(node for node in ansible.children if node.label == "Roles")
+
+        self.assertIn("ansible/PLAYBOOKS.md", listed)
+        self.assertEqual(
+            {node.source for node in roles.children},
+            {
+                source
+                for source in sources
+                if re.fullmatch(r"ansible/roles/[^/]+/README\.md", source)
+            },
+        )
 
     def test_published_site_has_no_broken_relative_link(self):
         for env in (GITLAB_ENV, {}):

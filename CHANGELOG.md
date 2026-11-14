@@ -32,6 +32,26 @@ Release history and changes planned for the next version.
     It also removes the files a role no longer ships (`audio_obsolete_files`)
     while they hold the shipped content, without asking; an edited copy or a
     link is kept and reported, as during deployment.
+  - Add `make pages`, which builds the documentation site into `public/` like
+    the Pages jobs (`CI=1`), then opens `public/index.html` with `xdg-open`
+    (`XDG_OPEN` picks another command).
+- **Pages**:
+  - The top menu mirrors the tree of the Markdown files. Ansible, Arch Linux
+    and CI become dropdowns; Ansible lists its overview, the playbooks and
+    every role README under a Roles heading, in two columns on wide screens. A
+    new README under `ansible/` or `dist/arch/` appears without editing
+    `gen_pages.py`. The section of the current page is highlighted, and role
+    payload files (`ansible/roles/*/files/`) stay out of the menu. Page titles
+    now come from the first heading only (`Ansible setup` instead of
+    `Ansible`).
+  - Each page gets a description (its first paragraph), Open Graph and Twitter
+    card tags and a canonical URL. Every build, the local preview included,
+    writes `sitemap.xml` and `robots.txt`. The URLs point to
+    `https://dotfiles.depad.fr/` (`DEFAULT_SITE_URL`), the GitLab Pages
+    domain, from the GitHub copy too; `SITE_URL` overrides it.
+  - The site has a favicon: three Gruvbox tiles in a master and stack
+    layout with a terminal chevron, as `favicon.ico`, a 192 px PNG and an
+    `apple-touch-icon.png`, on a transparent background.
 - **Zsh**:
   - Complete the commands that only ship a bash completion (`wg`,
     `wg-quick`, `fdisk`, `flock`, `taskset`, `virt-install`, `mkfs`, ...)
@@ -163,6 +183,17 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Pages**: the documentation site uses the Gruvbox Dark colours of the
+  Hyprland desktop instead of Catppuccin Mocha. Background, text and the blue
+  accent of headings and links come from `hyprtoolkit.conf.j2`, and a test
+  fails when the stylesheet drifts from that file. A theme menu at the right
+  end of the navbar picks Light, Dark or Auto, each with its icon, and its
+  button shows the icon of the current choice. The choice is saved in the
+  browser; Auto, the default, follows the desktop, and Light is Gruvbox Light.
+  With a mouse, the menus of the navbar open on hover, without a click. Code blocks
+  are highlighted with the
+  Pygments `gruvbox-dark` style, or `gruvbox-light`, instead of `dracula`, and
+  the Important alert is aqua instead of purple.
 - **Audio**:
   - Rename the PipeWire nodes to `voice.<name>`, with `voice.<name>.capture`
     for the stream that feeds each one: `Mic_Clean` becomes `voice.clean`,
