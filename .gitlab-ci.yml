@@ -147,7 +147,7 @@ pages:
       changes:
         # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
         - '**/*.md'
-        # Les images liées sont aussi copiées dans le site (ASSET_EXTENSIONS).
+        # Les images liées sont aussi copiées dans le site (asset_extensions de scripts/ci/pages.json).
         - '**/*.gif'
         - '**/*.jpeg'
         - '**/*.jpg'
@@ -157,6 +157,7 @@ pages:
         - 'scripts/ci/style.css'
         - 'scripts/ci/favicon.ico'
         - 'scripts/ci/gen_pages.py'
+        - 'scripts/ci/pages.json'
         - 'scripts/ci/build_pages.sh'
         - '.gitlab-ci.yml'
 
@@ -170,7 +171,7 @@ build_pages_review:
       changes:
         # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
         - '**/*.md'
-        # Les images liées sont aussi copiées dans le site (ASSET_EXTENSIONS).
+        # Les images liées sont aussi copiées dans le site (asset_extensions de scripts/ci/pages.json).
         - '**/*.gif'
         - '**/*.jpeg'
         - '**/*.jpg'
@@ -180,6 +181,7 @@ build_pages_review:
         - 'scripts/ci/style.css'
         - 'scripts/ci/favicon.ico'
         - 'scripts/ci/gen_pages.py'
+        - 'scripts/ci/pages.json'
         - 'scripts/ci/build_pages.sh'
   artifacts:
     paths:

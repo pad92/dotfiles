@@ -29,7 +29,7 @@ repos:
         language: system
         entry: python3 scripts/ci/test_gen_pages.py
         # Markdown too: the tests build the real site and reject broken links.
-        files: (^scripts/ci/(gen_pages|test_gen_pages)\.py|\.md)$
+        files: (^scripts/ci/(gen_pages\.py|test_gen_pages\.py|pages\.json|build_pages\.sh)|\.md)$
         pass_filenames: false
         stages: [pre-commit]
 

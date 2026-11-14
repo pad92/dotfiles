@@ -40,15 +40,22 @@ Release history and changes planned for the next version.
     and CI become dropdowns; Ansible lists its overview, the playbooks and
     every role README under a Roles heading, in two columns on wide screens. A
     new README under `ansible/` or `dist/arch/` appears without editing
-    `gen_pages.py`. The section of the current page is highlighted, and role
+    the site settings. The section of the current page is highlighted, and role
     payload files (`ansible/roles/*/files/`) stay out of the menu. Page titles
     now come from the first heading only (`Ansible setup` instead of
     `Ansible`).
   - Each page gets a description (its first paragraph), Open Graph and Twitter
     card tags and a canonical URL. Every build, the local preview included,
     writes `sitemap.xml` and `robots.txt`. The URLs point to
-    `https://dotfiles.depad.fr/` (`DEFAULT_SITE_URL`), the GitLab Pages
-    domain, from the GitHub copy too; `SITE_URL` overrides it.
+    `https://dotfiles.depad.fr/`, the GitLab Pages domain, from the GitHub
+    copy too; `SITE_URL` overrides it.
+  - `gen_pages.py` holds no setting of this repository any more:
+    `build_pages.sh` passes `--config scripts/ci/pages.json`, which gives the
+    site title and URL, the preview image, the home page, the menu sections,
+    labels and exclusions, the renamed `.github/` prefix, the directories
+    skipped without Git and the image extensions copied into the site. A
+    missing or invalid setting stops the build with exit code 2. The Pages
+    jobs also run when `pages.json` changes.
   - The site has a favicon: three Gruvbox tiles in a master and stack
     layout with a terminal chevron, as `favicon.ico`, a 192 px PNG and an
     `apple-touch-icon.png`, on a transparent background.

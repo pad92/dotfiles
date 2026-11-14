@@ -25,7 +25,8 @@ fi
 # Every Markdown file becomes a page whose path mirrors its source path, and
 # relative links are rewritten for the site (see gen_pages.py). Linked images
 # are copied into public/; other linked files point to the repository browser
-# in GitLab CI and GitHub Actions.
-python3 scripts/ci/gen_pages.py . public
+# in GitLab CI and GitHub Actions. The site's title, URL, menu and the other
+# settings of this repository come from pages.json.
+python3 scripts/ci/gen_pages.py --config scripts/ci/pages.json . public
 
 echo "build_pages: regenerated public/"

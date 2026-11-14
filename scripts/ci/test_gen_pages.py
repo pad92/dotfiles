@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import posixpath
 import re
@@ -6,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -16,6 +18,9 @@ if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Could not load {SCRIPT_PATH}")
 GEN_PAGES = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GEN_PAGES)
+# The settings build_pages.sh passes for this repository.
+CONFIG_PATH = SCRIPT_PATH.with_name("pages.json")
+CONFIG = GEN_PAGES.load_config(str(CONFIG_PATH))
 
 
 class RenderMarkdownTests(unittest.TestCase):
@@ -85,7 +90,9 @@ class CodeBlockTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
         (root / "README.md").write_text(markdown_text, encoding="utf-8")
-        site = GEN_PAGES.Site(str(root), str(root / "public"), ["README.md"], None)
+        site = GEN_PAGES.Site(
+            CONFIG, str(root), str(root / "public"), ["README.md"], None
+        )
         return GEN_PAGES.render_page(site, "README.md")
 
     def test_longer_fence_shows_an_inner_fence_as_code(self):
@@ -260,7 +267,7 @@ class FaviconTests(unittest.TestCase):
         (root / "README.md").write_text("# Home\n", encoding="utf-8")
         (root / "docs/a.md").write_text("# A\n", encoding="utf-8")
         self.public = Path(tmp.name) / "public"
-        GEN_PAGES.build_site(str(root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(root), str(self.public), {})
 
     def test_icons_are_copied_to_the_site_root(self):
         script_dir = Path(GEN_PAGES.__file__).parent
@@ -313,11 +320,12 @@ class SeoTests(unittest.TestCase):
         (root / "dist/hyprland.webp").write_bytes(b"webp")
         (root / "docs/a b.md").write_text("# A\n\n" + "word " * 60, encoding="utf-8")
         public = Path(tmp.name) / "public"
-        GEN_PAGES.build_site(str(root), str(public), env)
+        GEN_PAGES.build_site(CONFIG, str(root), str(public), env)
         return public
 
     def test_site_url_defaults_to_the_public_domain(self):
-        url = GEN_PAGES.site_url_from_env
+        def url(env):
+            return GEN_PAGES.site_url_from_env(env, CONFIG.url)
 
         self.assertEqual(url({"SITE_URL": "https://a.io/d"}), "https://a.io/d/")
         self.assertEqual(url({}), "https://dotfiles.depad.fr/")
@@ -407,7 +415,7 @@ class ThemeMenuTests(unittest.TestCase):
         root.mkdir()
         (root / "README.md").write_text("# Home\n", encoding="utf-8")
         public = Path(tmp.name) / "public"
-        GEN_PAGES.build_site(str(root), str(public), {})
+        GEN_PAGES.build_site(CONFIG, str(root), str(public), {})
         self.page = (public / "index.html").read_text(encoding="utf-8")
 
     def test_theme_is_set_before_the_stylesheets_load(self):
@@ -501,17 +509,17 @@ def broken_relative_links(public):
 
 class PageOutputPathTests(unittest.TestCase):
     def test_home_is_the_site_index(self):
-        self.assertEqual(GEN_PAGES.page_output_path("README.md"), "index.html")
+        self.assertEqual(CONFIG.page_output_path("README.md"), "index.html")
 
     def test_nested_page_mirrors_its_source_path(self):
         self.assertEqual(
-            GEN_PAGES.page_output_path("dist/arch/install.md"),
+            CONFIG.page_output_path("dist/arch/install.md"),
             "dist/arch/install.md/index.html",
         )
 
     def test_github_directory_is_published_without_its_dot(self):
         self.assertEqual(
-            GEN_PAGES.page_output_path(".github/workflows/README.md"),
+            CONFIG.page_output_path(".github/workflows/README.md"),
             "github/workflows/README.md/index.html",
         )
 
@@ -532,11 +540,11 @@ class RewriteUrlTests(unittest.TestCase):
 
     def site(self, repo_url=None):
         return GEN_PAGES.Site(
-            str(self.root), str(self.root / "public"), self.sources, repo_url
+            CONFIG, str(self.root), str(self.root / "public"), self.sources, repo_url
         )
 
     def rewrite(self, site, url, source="docs/a.md"):
-        return site.rewrite_url(url, source, GEN_PAGES.page_output_path(source))
+        return site.rewrite_url(url, source, CONFIG.page_output_path(source))
 
     def test_sibling_markdown_link_targets_its_page(self):
         self.assertEqual(
@@ -625,7 +633,7 @@ class RewriteLinksTests(unittest.TestCase):
         return self.site().rewrite_links(
             GEN_PAGES.render_markdown(markdown_text),
             source,
-            GEN_PAGES.page_output_path(source),
+            CONFIG.page_output_path(source),
         )
 
     def test_code_span_showing_a_tag_is_left_alone(self):
@@ -652,9 +660,7 @@ class RewriteLinksTests(unittest.TestCase):
             self.rewrite(site, "flow.png", source=".github/x.md"), "../flow.png"
         )
         self.assertEqual(site.assets, {".github/flow.png"})
-        self.assertEqual(
-            GEN_PAGES.published_path(".github/flow.png"), "github/flow.png"
-        )
+        self.assertEqual(CONFIG.published_path(".github/flow.png"), "github/flow.png")
 
 
 class PageTitleTests(unittest.TestCase):
@@ -663,10 +669,54 @@ class PageTitleTests(unittest.TestCase):
             "Intro\n\n    # install deps\n\n## The `foo` [plugin](x.md)\n"
         )
 
-        self.assertEqual(GEN_PAGES.page_title("p.md", html), "The foo plugin")
+        self.assertEqual(GEN_PAGES.page_title(CONFIG, "p.md", html), "The foo plugin")
 
     def test_page_without_heading_uses_its_path(self):
-        self.assertEqual(GEN_PAGES.page_title("p.md", "<p>text</p>"), "p.md")
+        self.assertEqual(GEN_PAGES.page_title(CONFIG, "p.md", "<p>text</p>"), "p.md")
+
+
+class ConfigTests(unittest.TestCase):
+    """The settings of the site come from the JSON file build_pages.sh passes."""
+
+    def data(self, **changes):
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        data.update(changes)
+        return data
+
+    def test_repository_config_is_complete(self):
+        self.assertEqual(CONFIG.home, "README.md")
+        self.assertEqual(CONFIG.url, "https://dotfiles.depad.fr/")
+        self.assertIn(
+            ("CI", (".github/workflows/README.md", ".gitlab/README.md")), CONFIG.nav
+        )
+
+    def test_url_gets_a_trailing_slash_and_extensions_are_lowercase(self):
+        config = GEN_PAGES.parse_config(
+            self.data(url="https://a.io/d", asset_extensions=[".PNG"])
+        )
+
+        self.assertEqual(config.url, "https://a.io/d/")
+        self.assertEqual(config.asset_extensions, {".png"})
+
+    def test_bad_settings_are_rejected(self):
+        bad = {
+            "unknown key": self.data(extra=1),
+            "missing key": {k: v for k, v in self.data().items() if k != "home"},
+            "url without scheme": self.data(url="dotfiles.depad.fr"),
+            "nav section without target": self.data(nav=[{"label": "Home"}]),
+            "nav target of numbers": self.data(nav=[{"label": "A", "target": [1]}]),
+            "labels not strings": self.data(nav_labels={"a.md": 1}),
+            "list given as string": self.data(nav_exclude="a/*"),
+        }
+        for name, data in bad.items():
+            with self.subTest(name), self.assertRaises(ValueError):
+                GEN_PAGES.parse_config(data)
+
+    def test_build_pages_passes_the_config(self):
+        script = (SCRIPT_PATH.with_name("build_pages.sh")).read_text(encoding="utf-8")
+
+        self.assertIn("gen_pages.py --config scripts/ci/pages.json", script)
 
 
 def nav_shape(nodes):
@@ -678,17 +728,15 @@ class NavTreeTests(unittest.TestCase):
     """build_nav_tree: the menu mirrors the tree of the Markdown files."""
 
     def setUp(self):
-        for name, value in {
-            "SITE_NAV": [("Docs", "docs/")],
-            "NAV_LABELS": {"docs/roles": "Roles"},
-            "NAV_EXCLUDE": ["docs/roles/*/files/*"],
-        }.items():
-            patcher = mock.patch.object(GEN_PAGES, name, value)
-            patcher.start()
-            self.addCleanup(patcher.stop)
+        self.config = replace(
+            CONFIG,
+            nav=(("Docs", "docs/"),),
+            nav_labels={"docs/roles": "Roles"},
+            nav_exclude=("docs/roles/*/files/*",),
+        )
 
     def tree(self, sources, titles=None):
-        return nav_shape(GEN_PAGES.build_nav_tree(sources, titles or {}))
+        return nav_shape(GEN_PAGES.build_nav_tree(self.config, sources, titles or {}))
 
     def test_directory_section_mirrors_the_tree(self):
         sources = [
@@ -783,20 +831,20 @@ class NavTreeTests(unittest.TestCase):
         sources = ["docs/a.md", "docs/b.md", "docs/c.md"]
         titles = {"docs/a.md": "Heading A", "docs/b.md": "Heading B"}
 
-        with mock.patch.object(GEN_PAGES, "NAV_LABELS", {"docs/a.md": "Label A"}):
-            labels = [entry[0] for entry in self.tree(sources, titles)[0][2]]
+        self.config = replace(self.config, nav_labels={"docs/a.md": "Label A"})
+        labels = [entry[0] for entry in self.tree(sources, titles)[0][2]]
 
         self.assertEqual(labels, ["c", "Heading B", "Label A"])
 
     def test_page_and_group_sections_skip_missing_pages(self):
-        nav = [
+        nav = (
             ("Home", "README.md"),
             ("Gone", "gone.md"),
             ("CI", ("ci/a.md", "ci/missing.md")),
             ("Empty", "empty/"),
-        ]
-        with mock.patch.object(GEN_PAGES, "SITE_NAV", nav):
-            tree = self.tree(["README.md", "ci/a.md"])
+        )
+        self.config = replace(self.config, nav=nav)
+        tree = self.tree(["README.md", "ci/a.md"])
 
         self.assertEqual(
             tree,
@@ -824,7 +872,7 @@ class BuildNavTests(unittest.TestCase):
             ),
         ]
         self.pages = {
-            source: GEN_PAGES.page_output_path(source)
+            source: CONFIG.page_output_path(source)
             for source in ("README.md", "docs/README.md", "docs/roles/web/README.md")
         }
 
@@ -903,7 +951,8 @@ class DiscoverMarkdownTests(unittest.TestCase):
 
             # tmp is not a Git work tree, so discovery falls back to the walk.
             self.assertEqual(
-                GEN_PAGES.discover_markdown(str(root)), ["README.md", "docs/a.md"]
+                GEN_PAGES.discover_markdown(str(root), CONFIG.skipped_dirs),
+                ["README.md", "docs/a.md"],
             )
 
     def test_inherited_git_dir_does_not_replace_the_root_repository(self):
@@ -921,7 +970,10 @@ class DiscoverMarkdownTests(unittest.TestCase):
             (root / "README.md").write_text("# t\n", encoding="utf-8")
 
             with mock.patch.dict(os.environ, {"GIT_DIR": str(other / ".git")}):
-                self.assertEqual(GEN_PAGES.discover_markdown(str(root)), ["README.md"])
+                self.assertEqual(
+                    GEN_PAGES.discover_markdown(str(root), CONFIG.skipped_dirs),
+                    ["README.md"],
+                )
 
 
 class SmallSiteTests(unittest.TestCase):
@@ -941,11 +993,11 @@ class SmallSiteTests(unittest.TestCase):
         (self.root / name).write_text(text, encoding="utf-8")
 
     def test_page_of_a_removed_source_is_deleted(self):
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
         (self.root / "docs/a.md").unlink()
         self.write("README.md", "# Home\n")
 
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertFalse((self.public / "docs").exists())
         self.assertTrue((self.public / "index.html").is_file())
@@ -954,27 +1006,50 @@ class SmallSiteTests(unittest.TestCase):
         self.public.mkdir()
         (self.public / "keep.txt").write_text("mine", encoding="utf-8")
 
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertTrue((self.public / "keep.txt").is_file())
 
     def test_output_directory_containing_the_sources_is_refused(self):
         with self.assertRaises(ValueError):
-            GEN_PAGES.build_site(str(self.root), str(self.root.parent), {})
+            GEN_PAGES.build_site(CONFIG, str(self.root), str(self.root.parent), {})
         self.assertTrue((self.root / "docs/a.md").is_file())
 
     def test_command_fails_on_a_broken_link(self):
         self.write("docs/a.md", "# A\n\n[gone](missing.md)\n")
 
-        result = subprocess.run(
-            [sys.executable, str(SCRIPT_PATH), str(self.root), str(self.public)],
+        result = self.run_command("--config", str(CONFIG_PATH))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("docs/a.md: link target not found: missing.md", result.stderr)
+
+    def run_command(self, *options):
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT_PATH),
+                *options,
+                str(self.root),
+                str(self.public),
+            ],
             capture_output=True,
             text=True,
             check=False,
         )
 
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("docs/a.md: link target not found: missing.md", result.stderr)
+    def test_command_needs_a_config(self):
+        self.assertEqual(self.run_command().returncode, 2)
+        self.assertFalse(self.public.exists())
+
+    def test_command_reports_a_bad_config(self):
+        bad = self.root.parent / "bad.json"
+        bad.write_text('{"title": "x"}', encoding="utf-8")
+
+        result = self.run_command("--config", str(bad))
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("bad.json: config: missing", result.stderr)
+        self.assertFalse(self.public.exists())
 
     def test_link_to_a_missing_heading_is_reported(self):
         self.write("README.md", "# Home\n\n## Setup\n\n[ok](#setup) [gone](#nope)\n")
@@ -982,7 +1057,7 @@ class SmallSiteTests(unittest.TestCase):
             "docs/a.md", "# A\n\n[ok](../README.md#setup) [gone](../README.md#x)\n"
         )
 
-        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        site = GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertEqual(
             sorted(site.missing_links),
@@ -992,30 +1067,30 @@ class SmallSiteTests(unittest.TestCase):
     def test_id_written_in_prose_is_not_an_anchor(self):
         self.write("README.md", '# Home\n\nSet id="main" on it. [x](#main)\n')
 
-        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        site = GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertEqual(site.missing_links, [("README.md", "#main")])
 
     def test_template_ids_are_not_anchors(self):
         self.write("README.md", "# Home\n\n[x](#viewport)\n")
 
-        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        site = GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertEqual(site.missing_links, [("README.md", "#viewport")])
 
     def test_unchanged_asset_is_not_copied_again(self):
         (self.root / "docs/shot.png").write_bytes(b"img")
         self.write("docs/a.md", "# A\n\n![s](shot.png)\n")
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
         copied = self.public / "docs/shot.png"
         os.utime(copied, (0, 0))
 
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
 
         self.assertEqual(copied.stat().st_mtime, 0)
 
     def test_cdn_resources_are_pinned_with_integrity(self):
-        GEN_PAGES.build_site(str(self.root), str(self.public), {})
+        GEN_PAGES.build_site(CONFIG, str(self.root), str(self.public), {})
         html = (self.public / "index.html").read_text(encoding="utf-8")
 
         tags = [
@@ -1066,27 +1141,29 @@ class BuildSiteTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         public = Path(tmp.name) / "public"
-        site = GEN_PAGES.build_site(str(REPO_ROOT), str(public), env)
+        site = GEN_PAGES.build_site(CONFIG, str(REPO_ROOT), str(public), env)
         return site, public
 
     def test_every_markdown_file_is_published(self):
         site, public = self.build(GITLAB_ENV)
 
-        for source in GEN_PAGES.discover_markdown(str(REPO_ROOT)):
+        for source in GEN_PAGES.discover_markdown(str(REPO_ROOT), CONFIG.skipped_dirs):
             with self.subTest(source=source):
                 self.assertTrue((public / site.pages[source]).is_file())
 
     def test_every_menu_section_has_pages(self):
-        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT))
-        sections = {node.label for node in GEN_PAGES.build_nav_tree(sources, {})}
+        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT), CONFIG.skipped_dirs)
+        sections = {
+            node.label for node in GEN_PAGES.build_nav_tree(CONFIG, sources, {})
+        }
 
-        self.assertEqual(sections, {label for label, _ in GEN_PAGES.SITE_NAV})
+        self.assertEqual(sections, {label for label, _ in CONFIG.nav})
 
     def test_menu_lists_the_ansible_playbooks_and_roles(self):
-        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT))
+        sources = GEN_PAGES.discover_markdown(str(REPO_ROOT), CONFIG.skipped_dirs)
         ansible = next(
             node
-            for node in GEN_PAGES.build_nav_tree(sources, {})
+            for node in GEN_PAGES.build_nav_tree(CONFIG, sources, {})
             if node.label == "Ansible"
         )
         listed = {source for _, source, _ in nav_shape(ansible.children)}

@@ -6,7 +6,7 @@ on:
     paths:
       # Every Markdown file is published (see scripts/ci/gen_pages.py).
       - '**.md'
-      # Linked images are copied into the site too (ASSET_EXTENSIONS).
+      # Linked images are copied into the site too (asset_extensions in scripts/ci/pages.json).
       - '**.gif'
       - '**.jpeg'
       - '**.jpg'
@@ -16,6 +16,7 @@ on:
       - 'scripts/ci/style.css'
       - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
+      - 'scripts/ci/pages.json'
       - 'scripts/ci/build_pages.sh'
       - '.github/workflows/deploy-pages.yml'
   pull_request:
@@ -23,7 +24,7 @@ on:
     paths:
       # Every Markdown file is published (see scripts/ci/gen_pages.py).
       - '**.md'
-      # Linked images are copied into the site too (ASSET_EXTENSIONS).
+      # Linked images are copied into the site too (asset_extensions in scripts/ci/pages.json).
       - '**.gif'
       - '**.jpeg'
       - '**.jpg'
@@ -33,6 +34,7 @@ on:
       - 'scripts/ci/style.css'
       - 'scripts/ci/favicon.ico'
       - 'scripts/ci/gen_pages.py'
+      - 'scripts/ci/pages.json'
       - 'scripts/ci/build_pages.sh'
 
 concurrency:
@@ -58,7 +60,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Canonical URLs and the sitemap point to DEFAULT_SITE_URL of gen_pages.py.
+      # Canonical URLs and the sitemap point to the url of scripts/ci/pages.json.
       - name: Generate HTML pages
         run: |
           pip install --quiet markdown pygments

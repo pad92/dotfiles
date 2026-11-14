@@ -1,0 +1,39 @@
+{
+  "title": "Pad's Dotfiles",
+  "url": "https://dotfiles.depad.fr/",
+  "home": "README.md",
+  "image": "dist/hyprland.webp",
+  "nav": [
+    { "label": "Home", "target": "README.md" },
+    { "label": "Ansible", "target": "ansible/" },
+    { "label": "Arch Linux", "target": "dist/arch/" },
+    {
+      "label": "CI",
+      "target": [".github/workflows/README.md", ".gitlab/README.md"]
+    },
+    { "label": "Changelog", "target": "CHANGELOG.md" }
+  ],
+  "nav_labels": {
+    ".github/workflows/README.md": "GitHub Actions",
+    ".gitlab/README.md": "GitLab CI",
+    "ansible/roles": "Roles",
+    "dist/arch/dns-migration.md": "DNS migration",
+    "dist/arch/install.md": "Installation"
+  },
+  "nav_exclude": ["ansible/roles/*/files/*"],
+  "renamed_prefixes": { ".github/": "github/" },
+  "skipped_dirs": [
+    ".ansible",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    "public",
+    "venv"
+  ],
+  "asset_extensions": [".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"]
+}

@@ -1,6 +1,8 @@
+import argparse
 import filecmp
 import fnmatch
 import html as _html
+import json
 import os
 import posixpath
 import re
@@ -8,7 +10,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from urllib.parse import quote, unquote
 
 import markdown
@@ -25,16 +27,13 @@ except ImportError:  # pragma: no cover - pygments is optional
 
 # Every Markdown file of the repository becomes a page. Its output path mirrors
 # the source path (`docs/x.md` -> `docs/x.md/index.html`) so relative links
-# written for the forge keep the same shape on the published site.
-HOME_SOURCE = "README.md"
+# written for the forge keep the same shape on the published site. What to
+# publish and how to label it comes from the JSON file that build_pages.sh
+# passes (see Config); this script only holds the page template.
 STYLE_FILE = "style.css"
 NOJEKYLL_FILE = ".nojekyll"
 SITEMAP_FILE = "sitemap.xml"
 ROBOTS_FILE = "robots.txt"
-# Public URL of the site: GitLab Pages under its own domain, so robots.txt sits
-# at the root of the host. `pad92.gitlab.io/dotfiles` redirects there, and the
-# GitHub copy points its canonical URLs there too. `SITE_URL` overrides it.
-DEFAULT_SITE_URL = "https://dotfiles.depad.fr/"
 # Icons of the site, kept next to this script and published at the site root:
 # the .ico for old browsers, a 192 px PNG for the others, 180 px for iOS.
 FAVICON_ICO = "favicon.ico"
@@ -42,60 +41,150 @@ FAVICON_PNG = "favicon.png"
 APPLE_TOUCH_ICON = "apple-touch-icon.png"
 SITE_ICONS = (FAVICON_ICO, FAVICON_PNG, APPLE_TOUCH_ICON)
 
-# actions/upload-pages-artifact drops .git and .github from the deployed
-# tarball, so pages from .github/ are published under github/ instead.
-RENAMED_PREFIXES = {".github/": "github/"}
-
-# Directories never scanned when Git is unavailable (CI images without git).
-SKIPPED_DIRS = {
-    ".ansible",
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "__pycache__",
-    "node_modules",
-    "public",
-    "venv",
-}
-
-# Linked local files with these extensions are copied next to the pages;
-# any other linked file points to the repository browser instead.
-ASSET_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
-
-# Top-level sections of the site navigation menu, in order: (label, target).
-# A target is one page, a tuple of pages shown as a dropdown, or a directory
-# (ending with "/") whose pages become a dropdown that mirrors the tree.
-SITE_NAV: list[tuple[str, str | tuple[str, ...]]] = [
-    ("Home", HOME_SOURCE),
-    ("Ansible", "ansible/"),
-    ("Arch Linux", "dist/arch/"),
-    ("CI", (".github/workflows/README.md", ".gitlab/README.md")),
-    ("Changelog", "CHANGELOG.md"),
-]
-# Menu labels that replace a page's first heading or a directory's name.
-NAV_LABELS = {
-    ".github/workflows/README.md": "GitHub Actions",
-    ".gitlab/README.md": "GitLab CI",
-    "ansible/roles": "Roles",
-    "dist/arch/dns-migration.md": "DNS migration",
-    "dist/arch/install.md": "Installation",
-}
-# Pages left out of the menu (fnmatch patterns, `*` also matches `/`). They
-# are still published and reachable through links. Role payload files are
-# installed into the home directory, they are not documentation of the repo.
-NAV_EXCLUDE = ["ansible/roles/*/files/*"]
-# The README of a directory is its page in the menu.
+# The README of a directory is its page in the menu, as on the forges.
 NAV_INDEX = "README.md"
 # A submenu with more entries than this is laid out in two columns.
 NAV_COLUMNS_MIN = 10
-SITE_TITLE = "Pad's Dotfiles"
-# Preview image of shared links (Open Graph), when the build publishes it.
-SITE_IMAGE = "dist/hyprland.webp"
 # Search engines show about 160 characters of a description.
 DESCRIPTION_LENGTH = 160
+
+NavTarget = str | tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Config:
+    """Settings of one site, read from JSON by load_config.
+
+    title: site name, in the navbar and as the home page title;
+    url: public URL of the site, for canonical URLs, the sitemap and
+      robots.txt (`SITE_URL` overrides it);
+    home: the Markdown source published as index.html;
+    image: preview image of shared links (Open Graph), when a page links it;
+    nav: top-level menu sections in order, (label, target). A target is one
+      page, a tuple of pages shown as a dropdown, or a directory (ending
+      with "/") whose pages become a dropdown that mirrors the tree;
+    nav_labels: menu labels that replace a page's first heading or a
+      directory's name;
+    nav_exclude: fnmatch patterns (`*` also matches `/`) of pages left out of
+      the menu; they are still published and reachable through links;
+    renamed_prefixes: source prefixes published under another name;
+    skipped_dirs: directory names never scanned when Git is unavailable;
+    asset_extensions: linked local files copied next to the pages; any other
+      linked file points to the repository browser instead.
+    """
+
+    title: str
+    url: str
+    home: str
+    image: str | None
+    nav: tuple[tuple[str, NavTarget], ...]
+    nav_labels: Mapping[str, str]
+    nav_exclude: tuple[str, ...]
+    renamed_prefixes: Mapping[str, str]
+    skipped_dirs: frozenset[str]
+    asset_extensions: frozenset[str]
+
+    def published_path(self, path: str) -> str:
+        """Return where a repository file is published, relative to the site root."""
+        for prefix, replacement in self.renamed_prefixes.items():
+            if path.startswith(prefix):
+                return replacement + path[len(prefix) :]
+        return path
+
+    def page_output_path(self, source: str) -> str:
+        """Return the page path, relative to the site root, for a Markdown source."""
+        if source == self.home:
+            return "index.html"
+        return f"{self.published_path(source)}/index.html"
+
+    def nav_excluded(self, source: str) -> bool:
+        return any(fnmatch.fnmatchcase(source, p) for p in self.nav_exclude)
+
+    def title_for(self, source: str, heading: str | None) -> str:
+        """Use the site title for the home page, then the heading, then the path."""
+        return self.title if source == self.home else heading or source
+
+
+def _expect(value: object, kind: type, key: str) -> None:
+    if not isinstance(value, kind):
+        raise ValueError(f"{key}: expected {kind.__name__}, got {value!r}")
+
+
+def _str_list(value: object, key: str) -> tuple[str, ...]:
+    _expect(value, list, key)
+    assert isinstance(value, list)
+    for item in value:
+        _expect(item, str, key)
+    return tuple(value)
+
+
+def _str_map(value: object, key: str) -> dict[str, str]:
+    _expect(value, dict, key)
+    assert isinstance(value, dict)
+    for item in value.values():
+        _expect(item, str, key)
+    return dict(value)
+
+
+def _nav_section(entry: object) -> tuple[str, NavTarget]:
+    _expect(entry, dict, "nav")
+    assert isinstance(entry, dict)
+    if set(entry) != {"label", "target"}:
+        raise ValueError(f"nav: each section needs label and target only: {entry!r}")
+    _expect(entry["label"], str, "nav label")
+    target = entry["target"]
+    if isinstance(target, list):
+        return entry["label"], _str_list(target, "nav target")
+    _expect(target, str, "nav target")
+    return entry["label"], target
+
+
+def parse_config(data: object) -> Config:
+    """Return the Config of decoded JSON; raises ValueError on a bad setting."""
+    _expect(data, dict, "config")
+    assert isinstance(data, dict)
+    keys = {f.name for f in fields(Config)}
+    if set(data) != keys:
+        missing, unknown = keys - set(data), set(data) - keys
+        raise ValueError(
+            f"config: missing {sorted(missing)}, unknown {sorted(unknown)}"
+        )
+    for key in ("title", "url", "home"):
+        _expect(data[key], str, key)
+    if not data["url"].startswith(("https://", "http://")):
+        raise ValueError(f"url: expected an http(s) URL, got {data['url']!r}")
+    if data["image"] is not None:
+        _expect(data["image"], str, "image")
+    _expect(data["nav"], list, "nav")
+    return Config(
+        title=data["title"],
+        url=data["url"].rstrip("/") + "/",
+        home=data["home"],
+        image=data["image"],
+        nav=tuple(_nav_section(entry) for entry in data["nav"]),
+        nav_labels=_str_map(data["nav_labels"], "nav_labels"),
+        nav_exclude=_str_list(data["nav_exclude"], "nav_exclude"),
+        renamed_prefixes=_str_map(data["renamed_prefixes"], "renamed_prefixes"),
+        skipped_dirs=frozenset(_str_list(data["skipped_dirs"], "skipped_dirs")),
+        asset_extensions=frozenset(
+            ext.lower()
+            for ext in _str_list(data["asset_extensions"], "asset_extensions")
+        ),
+    )
+
+
+def load_config(path: str) -> Config:
+    """Read the site settings from a JSON file (see Config)."""
+    with open(path, "r", encoding="utf-8") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{path}: {error}") from error
+    try:
+        return parse_config(data)
+    except ValueError as error:
+        raise ValueError(f"{path}: {error}") from error
+
 
 # CDN resources, pinned with Subresource Integrity: a changed file (e.g. a
 # moved Git tag behind cdn.jsdelivr.net/gh/) is refused by the browser.
@@ -154,21 +243,6 @@ _FENCE_LANG_RE = re.compile(r"[\w+-]+")
 _TOC_MARKER_RE = re.compile(r"^[ \t]*\[\[(?:TOC|_TOC_)\]\][ \t]*$", re.MULTILINE)
 
 
-def published_path(path: str) -> str:
-    """Return where a repository file is published, relative to the site root."""
-    for prefix, replacement in RENAMED_PREFIXES.items():
-        if path.startswith(prefix):
-            return replacement + path[len(prefix) :]
-    return path
-
-
-def page_output_path(source: str) -> str:
-    """Return the page path, relative to the site root, for a Markdown source."""
-    if source == HOME_SOURCE:
-        return "index.html"
-    return f"{published_path(source)}/index.html"
-
-
 @dataclass
 class NavNode:
     """One menu entry: a page (source) or a heading (no source), with children."""
@@ -182,16 +256,14 @@ class NavNode:
         return self.source == source or any(c.contains(source) for c in self.children)
 
 
-def nav_excluded(source: str) -> bool:
-    return any(fnmatch.fnmatchcase(source, pattern) for pattern in NAV_EXCLUDE)
-
-
 def _label_key(node: NavNode) -> str:
     return node.label.casefold()
 
 
-def page_nav_label(source: str, titles: Mapping[str, str | None]) -> str:
-    """Use NAV_LABELS, then the page's first heading, then its file name.
+def page_nav_label(
+    config: Config, source: str, titles: Mapping[str, str | None]
+) -> str:
+    """Use the config's nav_labels, then the page's first heading, then its file name.
 
     A README falls back to the name of its directory.
     """
@@ -200,11 +272,14 @@ def page_nav_label(source: str, titles: Mapping[str, str | None]) -> str:
         fallback = posixpath.basename(directory)
     else:
         fallback = posixpath.splitext(name)[0]
-    return NAV_LABELS.get(source) or titles.get(source) or fallback
+    return config.nav_labels.get(source) or titles.get(source) or fallback
 
 
 def directory_nav(
-    directory: str, sources: Collection[str], titles: Mapping[str, str | None]
+    config: Config,
+    directory: str,
+    sources: Collection[str],
+    titles: Mapping[str, str | None],
 ) -> list[NavNode]:
     """Return the menu entries below directory (a path ending with "/").
 
@@ -220,24 +295,28 @@ def directory_nav(
         if "/" in rest:
             subdirs.setdefault(rest.split("/", 1)[0], []).append(source)
         elif rest != NAV_INDEX:
-            pages.append(NavNode(page_nav_label(source, titles), source))
+            pages.append(NavNode(page_nav_label(config, source, titles), source))
     dirs = [
-        _directory_node(f"{directory}{name}/", name, below, titles)
+        _directory_node(config, f"{directory}{name}/", name, below, titles)
         for name, below in subdirs.items()
     ]
     return sorted(pages, key=_label_key) + sorted(dirs, key=_label_key)
 
 
 def _directory_node(
-    directory: str, name: str, sources: list[str], titles: Mapping[str, str | None]
+    config: Config,
+    directory: str,
+    name: str,
+    sources: list[str],
+    titles: Mapping[str, str | None],
 ) -> NavNode:
     """Return the entry of a subdirectory: its README, or a heading without one.
 
     A directory with no page of its own and a single subdirectory, itself
     without a README, is folded into it (`a/b`), so the menu shows no empty
-    levels. A directory named in NAV_LABELS is never folded.
+    levels. A directory named in nav_labels is never folded.
     """
-    while directory.rstrip("/") not in NAV_LABELS:
+    while directory.rstrip("/") not in config.nav_labels:
         rests = [source[len(directory) :] for source in sources]
         firsts = {rest.split("/", 1)[0] for rest in rests}
         if any("/" not in rest for rest in rests) or len(firsts) != 1:
@@ -249,25 +328,25 @@ def _directory_node(
     index = directory + NAV_INDEX
     page = index if index in sources else None
     label = (
-        NAV_LABELS.get(directory.rstrip("/"))
-        or (page and page_nav_label(page, titles))
+        config.nav_labels.get(directory.rstrip("/"))
+        or (page and page_nav_label(config, page, titles))
         or name
     )
-    return NavNode(label, page, directory_nav(directory, sources, titles))
+    return NavNode(label, page, directory_nav(config, directory, sources, titles))
 
 
 def build_nav_tree(
-    sources: Collection[str], titles: Mapping[str, str | None]
+    config: Config, sources: Collection[str], titles: Mapping[str, str | None]
 ) -> list[NavNode]:
-    """Return the top-level menu entries of SITE_NAV that have pages.
+    """Return the top-level menu entries of the config's nav that have pages.
 
     titles maps a source to its first heading (None without one).
     """
     nodes = []
-    for label, target in SITE_NAV:
+    for label, target in config.nav:
         if isinstance(target, tuple):
             children = [
-                NavNode(page_nav_label(source, titles), source)
+                NavNode(page_nav_label(config, source, titles), source)
                 for source in target
                 if source in sources
             ]
@@ -277,9 +356,9 @@ def build_nav_tree(
             visible = [
                 source
                 for source in sources
-                if source.startswith(target) and not nav_excluded(source)
+                if source.startswith(target) and not config.nav_excluded(source)
             ]
-            children = directory_nav(target, visible, titles)
+            children = directory_nav(config, target, visible, titles)
             if target + NAV_INDEX in visible:
                 children.insert(0, NavNode("Overview", target + NAV_INDEX))
             if children:
@@ -830,7 +909,7 @@ def env_for_root_repository() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k not in names}
 
 
-def discover_markdown(root: str) -> list[str]:
+def discover_markdown(root: str, skipped_dirs: Collection[str]) -> list[str]:
     """List Markdown sources (POSIX paths relative to root), sorted.
 
     Git is preferred so ignored or untracked local files are not published;
@@ -854,7 +933,7 @@ def discover_markdown(root: str) -> list[str]:
             dirs[:] = sorted(
                 d
                 for d in dirs
-                if d not in SKIPPED_DIRS
+                if d not in skipped_dirs
                 and posixpath.normpath(posixpath.join(rel_dir, d)) not in submodules
             )
             for name in files:
@@ -870,15 +949,15 @@ def discover_markdown(root: str) -> list[str]:
     )
 
 
-def site_url_from_env(env: Mapping[str, str]) -> str:
+def site_url_from_env(env: Mapping[str, str], default: str) -> str:
     """Return the public URL of the site, ending with `/`.
 
-    `SITE_URL` wins when it is an http(s) URL, else `DEFAULT_SITE_URL`. Every
+    `SITE_URL` wins when it is an http(s) URL, else default. Every
     build, the local preview included, gets canonical URLs and a sitemap.
     """
     url = env.get("SITE_URL", "")
     if not url.startswith(("https://", "http://")):
-        url = DEFAULT_SITE_URL
+        url = default
     return url.rstrip("/") + "/"
 
 
@@ -915,7 +994,7 @@ def seo_head(site: "Site", source: str, title: str, html_content: str) -> str:
         tags.append(f'<meta name="description" content="{esc(description)}">')
     tags += [
         '<meta property="og:type" content="website">',
-        f'<meta property="og:site_name" content="{esc(SITE_TITLE)}">',
+        f'<meta property="og:site_name" content="{esc(site.config.title)}">',
         f'<meta property="og:title" content="{esc(title)}">',
     ]
     if description:
@@ -925,8 +1004,10 @@ def seo_head(site: "Site", source: str, title: str, html_content: str) -> str:
         url = page_url(site.site_url, site.pages[source])
         tags.append(f'<link rel="canonical" href="{esc(url)}">')
         tags.append(f'<meta property="og:url" content="{esc(url)}">')
-        if SITE_IMAGE in site.assets:
-            image = site.site_url + quote(published_path(SITE_IMAGE), safe="/")
+        image_source = site.config.image
+        if image_source and image_source in site.assets:
+            path = site.config.published_path(image_source)
+            image = site.site_url + quote(path, safe="/")
             tags.append(f'<meta property="og:image" content="{esc(image)}">')
             card = "summary_large_image"
     tags.append(f'<meta name="twitter:card" content="{card}">')
@@ -968,14 +1049,20 @@ class Site:
     """Pages of one build plus the state needed to resolve links between them."""
 
     def __init__(
-        self, root: str, out_dir: str, sources: list[str], repo_url: str | None
+        self,
+        config: Config,
+        root: str,
+        out_dir: str,
+        sources: list[str],
+        repo_url: str | None,
     ) -> None:
+        self.config = config
         self.root = root
         self.out_dir = out_dir
         self.repo_url = repo_url
         # Public URL of the site, ending with "/" (see site_url_from_env).
         self.site_url: str | None = None
-        self.pages = {source: page_output_path(source) for source in sources}
+        self.pages = {source: config.page_output_path(source) for source in sources}
         self.assets: set[str] = set()
         self.missing_links: list[tuple[str, str]] = []
         # (source, url, target source, fragment), checked once every page has
@@ -1018,9 +1105,11 @@ class Site:
             self.missing_links.append((source, url))
             return url
         is_dir = os.path.isdir(local)
-        if not is_dir and posixpath.splitext(target)[1].lower() in ASSET_EXTENSIONS:
+        extension = posixpath.splitext(target)[1].lower()
+        if not is_dir and extension in self.config.asset_extensions:
             self.assets.add(target)
-            return posixpath.relpath(published_path(target), cur_dir) + anchor
+            published = self.config.published_path(target)
+            return posixpath.relpath(published, cur_dir) + anchor
         if self.repo_url:
             kind = "tree" if is_dir else "blob"
             path_part = "" if target == "." else quote(target)
@@ -1076,13 +1165,9 @@ def heading_text(html_content: str) -> str | None:
     return None
 
 
-def page_title(source: str, html_content: str) -> str:
+def page_title(config: Config, source: str, html_content: str) -> str:
     """Use the site title for the home page, then the first heading, then the path."""
-    return title_for(source, heading_text(html_content))
-
-
-def title_for(source: str, heading: str | None) -> str:
-    return SITE_TITLE if source == HOME_SOURCE else heading or source
+    return config.title_for(source, heading_text(html_content))
 
 
 def render_body(site: Site, source: str) -> tuple[str, str | None]:
@@ -1121,7 +1206,7 @@ def render_page(site: Site, source: str, nav: list[NavNode] | None = None) -> st
     """
     html_content, heading = render_body(site, source)
     if nav is None:
-        nav = build_nav_tree(site.pages, {})
+        nav = build_nav_tree(site.config, site.pages, {})
     return page_document(site, source, html_content, heading, nav)
 
 
@@ -1134,7 +1219,7 @@ def page_document(
 ) -> str:
     """Wrap a rendered body into the site template, with its menu."""
     output_rel = site.pages[source]
-    title = title_for(source, heading)
+    title = site.config.title_for(source, heading)
     cur_dir = posixpath.dirname(output_rel) or "."
     css_path = posixpath.relpath(STYLE_FILE, cur_dir)
     ico_path, png_path, apple_path = (
@@ -1161,7 +1246,7 @@ def page_document(
 <body data-bs-spy="scroll" data-bs-target="#toc">
     <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="{brand_href}">{_html.escape(SITE_TITLE)}</a>
+            <a class="navbar-brand" href="{brand_href}">{_html.escape(site.config.title)}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav" aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -1211,18 +1296,20 @@ def page_document(
     return minify_html(template)
 
 
-def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) -> Site:
+def build_site(
+    config: Config, root: str, out_dir: str, env: Mapping[str, str] | None = None
+) -> Site:
     """Render every Markdown file of root into out_dir and copy linked assets.
 
     Files a previous build left in out_dir and this one did not produce are
     removed. Raises ValueError when out_dir contains root.
     """
-    sources = discover_markdown(root)
-    if HOME_SOURCE not in sources:
-        raise FileNotFoundError(f"{HOME_SOURCE} not found in {root}")
+    sources = discover_markdown(root, config.skipped_dirs)
+    if config.home not in sources:
+        raise FileNotFoundError(f"{config.home} not found in {root}")
     env = os.environ if env is None else env
-    site = Site(root, out_dir, sources, repository_url_template(env))
-    site.site_url = site_url_from_env(env)
+    site = Site(config, root, out_dir, sources, repository_url_template(env))
+    site.site_url = site_url_from_env(env, config.url)
 
     root_real = os.path.realpath(root)
     out_real = os.path.realpath(out_dir)
@@ -1236,7 +1323,8 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
     built = {STYLE_FILE, NOJEKYLL_FILE, *SITE_ICONS}
     # Every body is rendered first: the menu of each page needs every title.
     bodies = {source: render_body(site, source) for source in sources}
-    nav = build_nav_tree(sources, {s: heading for s, (_, heading) in bodies.items()})
+    titles = {s: heading for s, (_, heading) in bodies.items()}
+    nav = build_nav_tree(config, sources, titles)
     anchors = {}
     for source in sources:
         output_rel = site.pages[source]
@@ -1251,7 +1339,7 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
     site.check_anchors(anchors)
 
     for asset in sorted(site.assets):
-        asset_rel = published_path(asset)
+        asset_rel = config.published_path(asset)
         dest = os.path.join(out_dir, asset_rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         asset_source = os.path.join(root, asset)
@@ -1274,7 +1362,7 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         minified_css = minify_css(src.read() + pygments_css())
     write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
 
-    # robots.txt is only read at the root of a host: DEFAULT_SITE_URL is one.
+    # robots.txt is only read at the root of a host: the config's url is one.
     write_if_changed(os.path.join(out_dir, SITEMAP_FILE), sitemap_xml(site))
     write_if_changed(
         os.path.join(out_dir, ROBOTS_FILE),
@@ -1305,12 +1393,21 @@ def remove_stale_outputs(out_dir: str, built: set[str]) -> None:
             os.rmdir(current)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python3 gen_pages.py <repository_root> <output_dir>")
-        sys.exit(1)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Render the Markdown files of a repository into a static site."
+    )
+    parser.add_argument("--config", required=True, help="JSON site settings")
+    parser.add_argument("root", help="repository root")
+    parser.add_argument("output", help="output directory")
+    args = parser.parse_args(argv)
+    try:
+        config = load_config(args.config)
+    except (OSError, ValueError) as error:
+        print(f"gen_pages: {error}", file=sys.stderr)
+        return 2
 
-    built = build_site(sys.argv[1], sys.argv[2])
+    built = build_site(config, args.root, args.output)
     print(f"gen_pages: {len(built.pages)} pages, {len(built.assets)} assets")
     # A missing target is a broken link on the site: fail the Pages jobs.
     for missing_source, missing_url in built.missing_links:
@@ -1318,5 +1415,8 @@ if __name__ == "__main__":
             f"gen_pages: {missing_source}: link target not found: {missing_url}",
             file=sys.stderr,
         )
-    if built.missing_links:
-        sys.exit(1)
+    return 1 if built.missing_links else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

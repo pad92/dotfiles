@@ -19,91 +19,114 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 
 ### `deploy-pages.yml`
 
-Installs `markdown` and `pygments` and runs [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh).
-The script uses [`gen_pages.py`](../../scripts/ci/gen_pages.py) to render every
-Markdown file tracked by Git into `public/`. Each run uploads the artifact; only
-runs on `main` deploy it, and any change to a `.md` file triggers the workflow.
+The workflow installs `markdown` and `pygments`, then runs
+[`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh), which renders
+every Markdown file tracked by Git into `public/` with
+[`gen_pages.py`](../../scripts/ci/gen_pages.py). Any change to a `.md` file
+triggers it. Every run uploads the artifact, but only runs on `main` deploy
+it. The GitLab `pages` job and the local `post-commit` preview hook call the
+same script. `make pages` builds the site with `CI=1`, as the Pages jobs do,
+and opens `public/index.html` with `xdg-open` (`XDG_OPEN` picks another
+command).
 
-Each page keeps its source path (`dist/arch/install.md` becomes
-`dist/arch/install.md/index.html`), except `README.md`, which becomes the site
-index, and `.github/`, which is published as `github/` because
-`actions/upload-pages-artifact` drops `.github` from the artifact.
-`gen_pages.py` rewrites relative links so they work on the site:
+#### Site settings
+
+`gen_pages.py` holds only the page template. `build_pages.sh` passes it
+`--config` [`scripts/ci/pages.json`](../../scripts/ci/pages.json), which sets:
+
+| Key                | Meaning                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `title`            | Site name, in the navbar and as the home page title                           |
+| `url`              | Public URL for canonical links, `sitemap.xml` and `robots.txt`                |
+| `home`             | Markdown file published as `index.html`                                       |
+| `image`            | Open Graph preview image, used when a page links it (`null` for none)         |
+| `nav`              | Menu sections in order, each a `label` and a `target`                         |
+| `nav_labels`       | Menu labels that replace a page's first heading or a directory name           |
+| `nav_exclude`      | Pages kept out of the menu (`fnmatch`, `*` also matches `/`), still published |
+| `renamed_prefixes` | Source prefixes published under another name                                  |
+| `skipped_dirs`     | Directories never scanned when Git is missing                                 |
+| `asset_extensions` | Linked files copied into the site instead of pointing to the forge            |
+
+A missing, unknown or mistyped key stops the build with exit code 2.
+
+#### Pages and links
+
+Each page keeps its source path: `dist/arch/install.md` becomes
+`dist/arch/install.md/index.html`. The `home` page becomes the site index, and
+`.github/` is published as `github/` because `actions/upload-pages-artifact`
+drops `.github` from the artifact. A page's title is its first heading, else
+its path; the home page takes the site title.
+
+`gen_pages.py` rewrites the `href` and `src` of real `<a>`, `<img>` and
+`<source>` tags, so tags shown as code stay as written:
 
 - a link to a Markdown file goes to its page, query and anchor included;
 - a link starting with `/` is relative to the repository root, as on the forges;
 - a linked image is copied into `public/`, under `github/` for `.github/`;
-- a link to any other repository file or directory goes to the forge's file
-  browser at the built commit (`GITHUB_SHA` here, `CI_COMMIT_SHA` on GitLab).
-  The local preview links to the file in the checkout instead.
+- a link to any other file or directory goes to the forge's file browser at
+  the built commit (`GITHUB_SHA` here, `CI_COMMIT_SHA` on GitLab). The local
+  preview links to the file in the checkout instead.
 
-Only `href` and `src` attributes of real `<a>`, `<img>` and `<source>` tags
-are rewritten, so tags shown as code stay as written. A page's title is its
-first heading, else its path; the home page takes the site title.
+A link to a missing file, or to a heading or anchor its page lacks, fails the
+build: `gen_pages.py` lists the broken links on stderr and exits 1. The
+`test-gen-pages` pre-commit hook builds the site on every Markdown change, so
+they are caught before the commit. Only the `id` and `name` attributes of the
+page body count; `id="x"` written in a paragraph does not. Heading ids follow
+GitHub: accents stay (`## Présentation` gets `#présentation`), punctuation
+goes, each space becomes a hyphen (`## Install & configure` gets
+`#install--configure`) and a repeated heading gets `-1`, `-2`. GitLab merges
+runs of hyphens, so a link written for GitLab may fail the build.
 
-The top menu follows `SITE_NAV` in `gen_pages.py`. A section is one page, a
-group of pages, or a directory such as `ansible/`, whose dropdown mirrors the
-tree of its Markdown files: the directory's `README.md` as Overview, its other
-pages, then one entry per subdirectory. A subdirectory links its own
-`README.md`, or shows as a heading without one (`roles/`), and lists its pages
-indented below. Directories with no page of their own and a single
-subdirectory are folded into one entry (`a/b`). Labels come from the first
-heading of each page, or from `NAV_LABELS`, and `NAV_EXCLUDE` keeps role payload
-files out of the menu, while they stay published. The section of the current
-page is highlighted, and a submenu of more than ten entries is laid out in two
-columns on wide screens. With a mouse, the dropdowns open on hover; on touch
-screens and in the collapsed menu they open with a click. A new README in a listed directory appears in the
-menu without editing `gen_pages.py`.
+Fenced code follows CommonMark: backtick or tilde fences, closed by a fence of
+the same character at least as long, so a four-backtick fence can show a
+three-backtick one. A fence inside a blockquote or an alert is a code block
+too. Without Pygments, code renders without highlighting. Each build also
+deletes what a previous build left in `public/` for renamed or deleted pages.
 
-A link whose target does not exist fails the build, and so does a link to a
-heading or anchor that its page lacks: `gen_pages.py` lists the broken links on
-stderr and exits 1, which stops the Pages jobs. Heading ids follow GitHub:
-accents stay (`## Présentation` gets `#présentation`), punctuation goes, each
-space becomes a hyphen (`## Install & configure` gets `#install--configure`)
-and a repeated heading gets `-1`, `-2`. GitLab merges runs of hyphens, so a
-link written for GitLab may fail the build. Only `id` and `name` attributes
-of the page body count; text such as `id="x"` in a paragraph does not. The
-`test-gen-pages` pre-commit hook builds the site on every Markdown change and
-catches them before the commit. Each build also removes the files a previous
-build left in `public/` for renamed or deleted pages.
+#### Menu
 
-Each page's `<head>` holds a description taken from its first paragraph with
-text, cut to 160 characters, plus Open Graph and Twitter card tags for link
-previews, a canonical URL and an `og:image` (`dist/hyprland.webp`). Every
-build, the local preview included, also writes `sitemap.xml` and `robots.txt`.
-Their URLs start with `DEFAULT_SITE_URL` (`https://dotfiles.depad.fr/`), the
-GitLab Pages domain, where `robots.txt` sits at the root of the host. The
-GitHub copy points its canonical URLs there too, so search engines index one
-site. `SITE_URL` overrides the default. On a project site such as
-`<user>.github.io/<repo>/`, crawlers ignore `robots.txt`: submit the sitemap in
-Google Search Console (or Bing Webmaster Tools).
+A `nav` target is one page, a list of pages shown as a dropdown, or a
+directory such as `ansible/`. A directory's dropdown mirrors its tree: its
+`README.md` as Overview, its other pages, then one entry per subdirectory. A
+subdirectory links its own `README.md`, or shows as a heading without one
+(`roles/`), with its pages indented below. A directory with no page and a
+single subdirectory is folded into one entry (`a/b`). Labels come from
+`nav_labels`, else the page's first heading. A new README in a listed
+directory therefore appears without any setting change.
 
-Fenced code blocks follow CommonMark: backtick or tilde fences, closed by a
-fence of the same character at least as long, so a four-backtick fence can
-show a three-backtick fence as code. A fence inside a blockquote or an alert
-is a code block too. The pages use the Gruvbox colours of the
-Hyprland desktop: `style.css` takes its dark background, text and accent from
-`hyprtoolkit.conf.j2`, and a test checks they match. The theme menu, last in
-the navbar, picks Light, Dark or Auto and saves the choice in `localStorage`.
-Its button shows the icon of the current choice (sun, moon or half circle).
-Auto, the default, follows the desktop's light or dark preference. A script
-in `<head>` sets `data-theme` on `<html>` before the page is drawn, and
-Gruvbox Light applies under `data-theme="light"`. Without JavaScript the site
-stays dark. Code blocks use the Pygments `gruvbox-dark` and `gruvbox-light`
-styles. The favicon (`favicon.ico` with 16, 32 and 48 px, `favicon.png` at
-192 px and `apple-touch-icon.png` at 180 px) is kept in `scripts/ci/` next
-to `style.css` and copied to the root of the site. The CDN stylesheets and scripts carry Subresource
-Integrity hashes: `gen_pages.py` builds their tags from `CDN_INTEGRITY`, which
-also gives the command to recompute a hash. Without Pygments, code blocks render without highlighting.
+The current section is highlighted, and a submenu of more than ten entries
+takes two columns on wide screens. Dropdowns open on hover with a mouse, and
+on click on touch screens or in the collapsed menu.
+
+#### SEO and theme
+
+Each `<head>` has a description from the page's first paragraph with text,
+cut to 160 characters, Open Graph and Twitter card tags, a canonical URL and
+the `og:image`. Every build, the local preview included, writes `sitemap.xml`
+and `robots.txt`. Their URLs start with `url`, the GitLab Pages domain
+`https://dotfiles.depad.fr/`, where `robots.txt` sits at the root of the
+host. The GitHub copy points there too, so search engines index one site, and
+`SITE_URL` overrides it. Crawlers ignore `robots.txt` on a project site such
+as `<user>.github.io/<repo>/`: submit the sitemap in Google Search Console or
+Bing Webmaster Tools instead.
+
+The pages use the Gruvbox colours of the Hyprland desktop: `style.css` takes
+its dark background, text and accent from `hyprtoolkit.conf.j2`, and a test
+checks they match. The theme menu, last in the navbar, picks Light, Dark or
+Auto (the default, which follows the desktop) and saves the choice in
+`localStorage`; its button shows a sun, a moon or a half circle. A script in
+`<head>` sets `data-theme` on `<html>` before the page is drawn, and Gruvbox
+Light applies under `data-theme="light"`. Without JavaScript the site stays
+dark. Code uses the Pygments `gruvbox-dark` and `gruvbox-light` styles.
+
+The favicon files (`favicon.ico` at 16, 32 and 48 px, `favicon.png` at 192 px
+and `apple-touch-icon.png` at 180 px) sit next to `style.css` in
+`scripts/ci/` and are copied to the site root. The CDN stylesheets and
+scripts carry Subresource Integrity hashes: `gen_pages.py` builds their tags
+from `CDN_INTEGRITY`, which also gives the command to recompute a hash.
+
 `build_pages.sh` fails when the `markdown` module is missing in CI (`CI` is
 set) and skips the build only for the local hook.
-
-`gen_pages.py` is the single source for the page list. The local `post-commit`
-preview hook (see `.pre-commit-config.yaml`) and GitLab `pages` job use the same
-script.
-`make pages` builds the site into `public/` with `CI=1`, as the Pages jobs do,
-then opens `public/index.html` with `xdg-open` (`XDG_OPEN` picks another
-command).
 
 ### `package-vim.yml`
 
@@ -141,7 +164,7 @@ workflow to publish releases on either forge.
 | -------------------------- | ------------------------------------------------------------ |
 | `build_pages.sh`           | `deploy-pages.yml`, GitLab `pages`, local `post-commit` hook |
 | `extract_release_notes.sh` | `release.yml`, GitLab `create_release`                       |
-| `gen_pages.py`             | `build_pages.sh`                                             |
+| `gen_pages.py`             | `build_pages.sh`, with the settings of `pages.json`          |
 
 Both shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
 GitLab's Alpine image.
