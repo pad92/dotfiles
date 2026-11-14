@@ -64,6 +64,18 @@ class RenderMarkdownTests(unittest.TestCase):
 
         self.assertIn('id="présentation-générale"', rendered)
 
+    def test_heading_id_keeps_each_space_like_github(self):
+        rendered = GEN_PAGES.render_markdown("## Install & configure")
+
+        self.assertIn('id="install--configure"', rendered)
+
+    def test_repeated_heading_id_is_numbered_like_github(self):
+        rendered = GEN_PAGES.render_markdown("## Setup\n\n## Setup\n\n## Setup-1")
+
+        self.assertIn('id="setup"', rendered)
+        self.assertIn('id="setup-1"', rendered)
+        self.assertIn('id="setup-1-1"', rendered)
+
 
 class CodeBlockTests(unittest.TestCase):
     """Fenced code blocks as render_page extracts and reinserts them."""
@@ -102,6 +114,25 @@ class CodeBlockTests(unittest.TestCase):
         self.assertIn("<pre>", html)
         self.assertNotIn("```", html)
         self.assertIn("<p>after</p>", html)
+
+    def test_code_block_inside_a_plain_blockquote_is_a_block(self):
+        html = self.body("> ```sh\n> ls\n>\n> pwd\n> ```\n\nafter\n")
+
+        self.assertIn("<blockquote>", html)
+        self.assertIn("<pre>", html)
+        self.assertNotIn("```", html)
+        self.assertIn("<p>after</p>", html)
+
+    def test_fence_whose_blockquote_ends_is_not_a_block(self):
+        html = self.body("> ```sh\n> ls\n\n```\n")
+
+        self.assertNotIn("xxcodeblock", html)
+
+    def test_alert_and_page_headings_share_ids(self):
+        html = self.body("## Setup\n\n> [!NOTE]\n> ## Setup\n")
+
+        self.assertEqual(html.count('id="setup"'), 1)
+        self.assertIn('id="setup-1"', html)
 
     def test_toc_marker_in_a_code_span_is_kept(self):
         html = self.body("# T\n\nWrite `[[_TOC_]]` on GitLab.\n")
@@ -957,6 +988,20 @@ class SmallSiteTests(unittest.TestCase):
             sorted(site.missing_links),
             [("README.md", "#nope"), ("docs/a.md", "../README.md#x")],
         )
+
+    def test_id_written_in_prose_is_not_an_anchor(self):
+        self.write("README.md", '# Home\n\nSet id="main" on it. [x](#main)\n')
+
+        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertEqual(site.missing_links, [("README.md", "#main")])
+
+    def test_template_ids_are_not_anchors(self):
+        self.write("README.md", "# Home\n\n[x](#viewport)\n")
+
+        site = GEN_PAGES.build_site(str(self.root), str(self.public), {})
+
+        self.assertEqual(site.missing_links, [("README.md", "#viewport")])
 
     def test_unchanged_asset_is_not_copied_again(self):
         (self.root / "docs/shot.png").write_bytes(b"img")

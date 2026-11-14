@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
 import markdown
-from markdown.extensions.toc import slugify_unicode
 
 try:
     from pygments import highlight as _pyg_highlight
@@ -121,6 +120,19 @@ CDN_INTEGRITY = {
 }
 
 
+def cdn_tags(extension: str) -> str:
+    """Return the <link> or <script> tags of the CDN_INTEGRITY files of extension."""
+    tag = {
+        ".css": '<link rel="stylesheet" href="{url}" integrity="{sri}" crossorigin="anonymous">',
+        ".js": '<script src="{url}" integrity="{sri}" crossorigin="anonymous"></script>',
+    }[extension]
+    return "\n".join(
+        tag.format(url=url, sri=sri)
+        for url, sri in CDN_INTEGRITY.items()
+        if url.endswith(extension)
+    )
+
+
 _URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # Only real tags are matched: Markdown escapes `<` in code spans, so an
 # `<img src="...">` sample shown as code is never taken for a link.
@@ -130,8 +142,13 @@ _LINK_ATTR_RE = re.compile(
 )
 _HTML_HEADING_RE = re.compile(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", re.DOTALL)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_HTML_OPEN_TAG_RE = re.compile(r"<[A-Za-z][^>]*>")
 _HTML_ANCHOR_RE = re.compile(r"""\s(?:id|name)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
-_FENCE_OPEN_RE = re.compile(r"^([ \t]*)(`{3,}|~{3,})(.*)$")
+# A fence may sit in a blockquote: (quote markers, indent, fence, info string).
+_FENCE_OPEN_RE = re.compile(r"^((?:[ \t]*>[ \t]?)*)([ \t]*)(`{3,}|~{3,})(.*)$")
+_QUOTE_MARKER_RE = re.compile(r"[ \t]*>[ \t]?")
+# GitHub drops every character but letters, digits, `_`, `-` and spaces.
+_SLUG_DROP_RE = re.compile(r"[^\w\- ]")
 _FENCE_LANG_RE = re.compile(r"[\w+-]+")
 # GitLab's table-of-contents markers, honoured only alone on their line.
 _TOC_MARKER_RE = re.compile(r"^[ \t]*\[\[(?:TOC|_TOC_)\]\][ \t]*$", re.MULTILINE)
@@ -558,7 +575,9 @@ def stash_code_blocks(text: str, store: list[str]) -> str:
     As in CommonMark, a fence is three or more backticks or tildes, followed by
     an info string whose first word is the language, and it is closed only by
     a run of the same character at least as long: a ```` fence can show a
-    ``` fence as code. A fence never closed is left to python-markdown.
+    ``` fence as code. A fence inside a blockquote (alerts included) has its
+    `>` markers removed from the code and kept before the placeholder. A fence
+    never closed, or whose blockquote ends first, is left to python-markdown.
     """
     lines = text.split("\n")
     output = []
@@ -570,29 +589,49 @@ def stash_code_blocks(text: str, store: list[str]) -> str:
             output.append(lines[i])
             i += 1
             continue
-        indent, _fence, info = opening.groups()
+        quote, indent, _fence, info = opening.groups()
+        depth = quote.count(">")
         n = len(indent)
-        code = "\n".join(
-            line[n:] if line[:n].strip() == "" else line for line in lines[i + 1 : end]
-        )
+        body = [_strip_quote(line, depth) or "" for line in lines[i + 1 : end]]
+        code = "\n".join(line[n:] if line[:n].strip() == "" else line for line in body)
         lang_match = _FENCE_LANG_RE.match(info.strip())
         store.append(render_code_block(code, lang_match.group(0) if lang_match else ""))
-        output.append(indent + code_block_token(len(store) - 1))
+        output.append(quote + indent + code_block_token(len(store) - 1))
         i = end + 1
     return "\n".join(output)
+
+
+def _strip_quote(line: str, depth: int) -> str | None:
+    """Return line without its first depth `>` markers, None if it has fewer."""
+    pos = 0
+    for _ in range(depth):
+        marker = _QUOTE_MARKER_RE.match(line, pos)
+        if marker is None:
+            return None
+        pos = marker.end()
+    return line[pos:]
 
 
 def _closing_fence_index(
     lines: list[str], start: int, opening: re.Match[str]
 ) -> int | None:
-    """Return the index of the line closing the fence opened at start."""
-    fence, info = opening.group(2), opening.group(3)
+    """Return the index of the line closing the fence opened at start.
+
+    Returns None when the fence is never closed, or when a line without the
+    opening's `>` markers ends its blockquote first.
+    """
+    quote, _indent, fence, info = opening.groups()
     if fence[0] == "`" and "`" in info:
         return None  # Not a fence: a backtick info string has no backtick.
+    depth = quote.count(">")
     closing = re.compile(rf"^[ \t]*{re.escape(fence[0])}{{{len(fence)},}}[ \t]*$")
-    return next(
-        (j for j in range(start + 1, len(lines)) if closing.match(lines[j])), None
-    )
+    for j in range(start + 1, len(lines)):
+        rest = _strip_quote(lines[j], depth)
+        if rest is None:
+            return None
+        if closing.match(rest):
+            return j
+    return None
 
 
 def code_block_token(index: int) -> str:
@@ -660,25 +699,50 @@ def normalize_nested_list_indentation(text):
     return "\n".join(normalized)
 
 
-def render_markdown(text):
-    """Render Markdown using the compact nested-list style used by the docs."""
+class HeadingSlugger:
+    """Build heading ids as GitHub does, unique across one page.
+
+    The text is lowercased, punctuation is dropped (accents and other letters
+    stay) and each space becomes a hyphen, without merging runs: `A & B` gives
+    `a--b`. A repeated id gets `-1`, `-2`... Alerts are rendered in their own
+    Markdown pass, so every pass of a page shares one slugger; an alert's
+    headings are numbered before the page's, which differs from GitHub only
+    when an alert repeats a heading of the page.
+    """
+
+    def __init__(self) -> None:
+        self.occurrences: dict[str, int] = {}
+
+    def __call__(self, value: str, separator: str) -> str:
+        base = _SLUG_DROP_RE.sub("", value.strip().lower()).replace(" ", separator)
+        slug = base
+        while slug in self.occurrences:
+            self.occurrences[base] += 1
+            slug = f"{base}{separator}{self.occurrences[base]}"
+        self.occurrences[slug] = 0
+        return slug
+
+
+def render_markdown(text: str, slugify: HeadingSlugger | None = None) -> str:
+    """Render Markdown using the compact nested-list style used by the docs.
+
+    Heading ids come from slugify, which a page shares between its passes.
+    """
     text = normalize_nested_list_indentation(text)
-    # Heading ids keep accents and other letters, as GitHub and GitLab do, so
-    # `#présentation` links written for the forge work on the site.
     return markdown.markdown(
         text,
         extensions=["extra", "codehilite", "toc"],
-        extension_configs={"toc": {"slugify": slugify_unicode}},
+        extension_configs={"toc": {"slugify": slugify or HeadingSlugger()}},
     )
 
 
-def parse_alerts(text: str, store: list[str] | None = None) -> str:
+def parse_alerts(text: str, slugify: HeadingSlugger | None = None) -> str:
     """Render GitHub/GitLab alerts (`> [!NOTE]` blockquotes) to HTML.
 
-    Fenced code inside an alert is stashed into store, like the rest of the
-    page; without a store the code blocks are restored here.
+    Fenced code inside an alert must already be stashed (stash_code_blocks
+    handles fences in blockquotes).
     """
-    code_blocks = [] if store is None else store
+    slugify = slugify or HeadingSlugger()
     lines = text.split("\n")
     new_lines = []
     i = 0
@@ -710,9 +774,7 @@ def parse_alerts(text: str, store: list[str] | None = None) -> str:
                 else:
                     break
 
-            compiled_content = render_markdown(
-                stash_code_blocks("\n".join(alert_lines), code_blocks)
-            )
+            compiled_content = render_markdown("\n".join(alert_lines), slugify)
 
             icon_svg, title_text = get_alert_resources(alert_type)
 
@@ -736,8 +798,7 @@ def parse_alerts(text: str, store: list[str] | None = None) -> str:
             new_lines.append(line)
             i += 1
 
-    result = "\n".join(new_lines)
-    return restore_code_blocks(result, code_blocks) if store is None else result
+    return "\n".join(new_lines)
 
 
 def submodule_paths(root: str) -> set[str]:
@@ -990,10 +1051,14 @@ class Site:
 
 
 def page_anchors(html: str) -> set[str]:
-    """Return the id and name attributes of a rendered page."""
+    """Return the id and name attributes of the tags of a rendered body.
+
+    Only attributes inside a tag count: `id="x"` written in prose is text.
+    """
     return {
         _html.unescape(m.group(1) if m.group(1) is not None else m.group(2))
-        for m in _HTML_ANCHOR_RE.finditer(html)
+        for tag in _HTML_OPEN_TAG_RE.findall(html)
+        for m in _HTML_ANCHOR_RE.finditer(tag)
     }
 
 
@@ -1034,12 +1099,16 @@ def render_body(site: Site, source: str) -> tuple[str, str | None]:
     # GitLab's [[TOC]] and [[_TOC_]] become the toc extension's [TOC].
     text = _TOC_MARKER_RE.sub("[TOC]", text)
 
-    # Parse alerts (GitLab-style blockquotes)
-    text = parse_alerts(text, code_blocks)
+    # Parse alerts (GitLab-style blockquotes); their headings and the page's
+    # share one set of ids.
+    slugify = HeadingSlugger()
+    text = parse_alerts(text, slugify)
 
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
-    html_content = site.rewrite_links(render_markdown(text), source, output_rel)
+    html_content = site.rewrite_links(
+        render_markdown(text, slugify), source, output_rel
+    )
     heading = heading_text(html_content)
     return restore_code_blocks(html_content, code_blocks), heading
 
@@ -1086,8 +1155,7 @@ def page_document(
     <link rel="icon" href="{ico_path}" sizes="16x16 32x32 48x48">
     <link rel="icon" href="{png_path}" type="image/png" sizes="192x192">
     <link rel="apple-touch-icon" href="{apple_path}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"]}" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.css"]}" crossorigin="anonymous">
+    {cdn_tags('.css')}
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
@@ -1115,9 +1183,7 @@ def page_document(
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="{CDN_INTEGRITY["https://code.jquery.com/jquery-3.7.1.slim.min.js"]}" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"]}" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="{CDN_INTEGRITY["https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js"]}" crossorigin="anonymous"></script>
+    {cdn_tags('.js')}
     <script>{THEME_MENU_JS}</script>
     <script>
         $(function() {{
@@ -1178,7 +1244,8 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         html_content, heading = bodies[source]
         page = page_document(site, source, html_content, heading, nav)
-        anchors[source] = page_anchors(page)
+        # The body only: the template's ids and names are not link targets.
+        anchors[source] = page_anchors(html_content)
         write_if_changed(output_file, page)
         built.add(output_rel)
     site.check_anchors(anchors)

@@ -607,14 +607,18 @@ Release history and changes planned for the next version.
   - Fenced code follows CommonMark: a four-backtick fence shows an inner
     three-backtick fence as code, `~~~` fences work, and a language followed
     by more text (`python title="a.py"`) no longer turns the block into
-    inline code. Fenced code inside an alert takes the same path.
+    inline code. Fenced code inside an alert or a plain blockquote takes the
+    same path.
   - `[[_TOC_]]` and `[[TOC]]` become a table of contents only alone on their
     line, as on GitLab, not inside a code span.
   - A link starting with `/` resolves from the repository root, as on the
     forges, and fails the build when its target is missing. It was left as is
     and broke under the `/<repo>/` subpath.
   - A link to a heading or anchor missing from its page now fails the build.
-    Heading ids keep accents (`#présentation`), as GitHub and GitLab do.
+    Heading ids follow GitHub: accents stay (`#présentation`), each space
+    becomes a hyphen (`#install--configure`) and a repeated heading gets
+    `-1`. An alert's headings share the page's ids. Only tags of the page
+    body count as anchors, not `id="x"` written in prose.
   - The Bootstrap, jQuery and bootstrap-toc files loaded from CDNs are pinned
     with Subresource Integrity hashes.
   - Both Pages jobs install Pygments, so the published code blocks are

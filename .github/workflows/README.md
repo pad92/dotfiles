@@ -57,8 +57,12 @@ menu without editing `gen_pages.py`.
 
 A link whose target does not exist fails the build, and so does a link to a
 heading or anchor that its page lacks: `gen_pages.py` lists the broken links on
-stderr and exits 1, which stops the Pages jobs. Heading ids keep accents, as
-on GitHub and GitLab (`## Présentation` gets `#présentation`). The
+stderr and exits 1, which stops the Pages jobs. Heading ids follow GitHub:
+accents stay (`## Présentation` gets `#présentation`), punctuation goes, each
+space becomes a hyphen (`## Install & configure` gets `#install--configure`)
+and a repeated heading gets `-1`, `-2`. GitLab merges runs of hyphens, so a
+link written for GitLab may fail the build. Only `id` and `name` attributes
+of the page body count; text such as `id="x"` in a paragraph does not. The
 `test-gen-pages` pre-commit hook builds the site on every Markdown change and
 catches them before the commit. Each build also removes the files a previous
 build left in `public/` for renamed or deleted pages.
@@ -76,7 +80,8 @@ Google Search Console (or Bing Webmaster Tools).
 
 Fenced code blocks follow CommonMark: backtick or tilde fences, closed by a
 fence of the same character at least as long, so a four-backtick fence can
-show a three-backtick fence as code. The pages use the Gruvbox colours of the
+show a three-backtick fence as code. A fence inside a blockquote or an alert
+is a code block too. The pages use the Gruvbox colours of the
 Hyprland desktop: `style.css` takes its dark background, text and accent from
 `hyprtoolkit.conf.j2`, and a test checks they match. The theme menu, last in
 the navbar, picks Light, Dark or Auto and saves the choice in `localStorage`.
@@ -87,9 +92,9 @@ Gruvbox Light applies under `data-theme="light"`. Without JavaScript the site
 stays dark. Code blocks use the Pygments `gruvbox-dark` and `gruvbox-light`
 styles. The favicon (`favicon.ico` with 16, 32 and 48 px, `favicon.png` at
 192 px and `apple-touch-icon.png` at 180 px) is kept in `scripts/ci/` next
-to `style.css` and copied to the root of the site. The CDN stylesheets and scripts carry Subresource Integrity hashes;
-`CDN_INTEGRITY` in `gen_pages.py` gives the command to
-recompute one. Without Pygments, code blocks render without highlighting.
+to `style.css` and copied to the root of the site. The CDN stylesheets and scripts carry Subresource
+Integrity hashes: `gen_pages.py` builds their tags from `CDN_INTEGRITY`, which
+also gives the command to recompute a hash. Without Pygments, code blocks render without highlighting.
 `build_pages.sh` fails when the `markdown` module is missing in CI (`CI` is
 set) and skips the build only for the local hook.
 
