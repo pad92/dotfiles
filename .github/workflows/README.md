@@ -70,17 +70,19 @@ its path; the home page takes the site title.
 A link to a missing file, or to a heading or anchor its page lacks, fails the
 build: `gen_pages.py` lists the broken links on stderr and exits 1. The
 `test-gen-pages` pre-commit hook builds the site on every Markdown change, so
-they are caught before the commit. Only the `id` and `name` attributes of the
+they are caught before the commit. It also runs when the stylesheet, an icon
+or the Hyprland palette in `hyprtoolkit.conf.j2` changes. Only the `id` and `name` attributes of the
 page body count; `id="x"` written in a paragraph does not. Heading ids follow
 GitHub: accents stay (`## Présentation` gets `#présentation`), punctuation
 goes, each space becomes a hyphen (`## Install & configure` gets
 `#install--configure`) and a repeated heading gets `-1`, `-2`. GitLab merges
-runs of hyphens, so a link written for GitLab may fail the build.
+runs of hyphens, so a link written for GitLab may fail the build. Headings
+inside an alert are numbered in document order with the rest of the page.
 
 Fenced code follows CommonMark: backtick or tilde fences, closed by a fence of
 the same character at least as long, so a four-backtick fence can show a
 three-backtick one. A fence inside a blockquote or an alert is a code block
-too. Without Pygments, code renders without highlighting. Each build also
+too. Alerts (`> [!NOTE]`) work at the top level and inside list items. Without Pygments, code renders without highlighting. Each build also
 deletes what a previous build left in `public/` for renamed or deleted pages.
 
 #### Menu
@@ -121,7 +123,8 @@ dark. Code uses the Pygments `gruvbox-dark` and `gruvbox-light` styles.
 
 The favicon files (`favicon.ico` at 16, 32 and 48 px, `favicon.png` at 192 px
 and `apple-touch-icon.png` at 180 px) sit next to `style.css` in
-`scripts/ci/` and are copied to the site root. The CDN stylesheets and
+`scripts/ci/` and are copied to the site root. The Pages jobs run when one of
+them changes. The CDN stylesheets and
 scripts carry Subresource Integrity hashes: `gen_pages.py` builds their tags
 from `CDN_INTEGRITY`, which also gives the command to recompute a hash.
 

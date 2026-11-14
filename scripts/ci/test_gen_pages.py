@@ -38,7 +38,7 @@ class RenderMarkdownTests(unittest.TestCase):
         self.assertEqual(rendered.count("<ol>"), 2)
 
     def test_alert_supports_compact_nested_lists(self):
-        rendered = GEN_PAGES.parse_alerts("> [!NOTE]\n> - parent\n>   - child")
+        rendered = GEN_PAGES.render_markdown("> [!NOTE]\n> - parent\n>   - child")
 
         self.assertEqual(rendered.count("<ul>"), 2)
 
@@ -83,7 +83,7 @@ class RenderMarkdownTests(unittest.TestCase):
 
 
 class CodeBlockTests(unittest.TestCase):
-    """Fenced code blocks as render_page extracts and reinserts them."""
+    """Fenced code blocks as render_body extracts and reinserts them."""
 
     def body(self, markdown_text):
         tmp = tempfile.TemporaryDirectory()
@@ -93,7 +93,7 @@ class CodeBlockTests(unittest.TestCase):
         site = GEN_PAGES.Site(
             CONFIG, str(root), str(root / "public"), ["README.md"], None
         )
-        return GEN_PAGES.render_page(site, "README.md")
+        return GEN_PAGES.render_body(site, "README.md")[0]
 
     def test_longer_fence_shows_an_inner_fence_as_code(self):
         html = self.body("````markdown\n```bash\necho hi\n```\n````\n\nafter\n")
@@ -135,11 +135,46 @@ class CodeBlockTests(unittest.TestCase):
 
         self.assertNotIn("xxcodeblock", html)
 
-    def test_alert_and_page_headings_share_ids(self):
+    def test_alert_and_page_headings_share_ids_in_document_order(self):
         html = self.body("## Setup\n\n> [!NOTE]\n> ## Setup\n")
 
         self.assertEqual(html.count('id="setup"'), 1)
-        self.assertIn('id="setup-1"', html)
+        # As on GitHub, the page's heading comes first and keeps the bare id.
+        self.assertLess(html.index('id="setup"'), html.index('id="setup-1"'))
+
+    def test_alert_inside_a_list_item_is_an_alert(self):
+        html = self.body("- item\n\n    > [!TIP]\n    > Hint\n")
+
+        self.assertIn('<div class="markdown-alert markdown-alert-tip">', html)
+        self.assertIn("<p>Hint</p>", html)
+        self.assertNotIn("[!TIP]", html)
+
+    def test_quote_whose_second_line_is_a_marker_is_not_an_alert(self):
+        html = self.body("> quoted\n> [!NOTE]\n")
+
+        self.assertIn("<blockquote>", html)
+        self.assertNotIn("markdown-alert", html)
+
+    def test_unclosed_fences_are_scanned_once(self):
+        text = "~~~ not closed\n" * 300
+        scan = mock.patch.object(
+            GEN_PAGES, "_strip_quote", wraps=GEN_PAGES._strip_quote
+        )
+
+        with scan as strip_quote:
+            self.assertEqual(GEN_PAGES.stash_code_blocks(text, []), text)
+
+        # One scan to the end of the file, not one per opening line.
+        self.assertLess(strip_quote.call_count, 1000)
+
+    def test_shorter_fence_after_an_unclosed_one_still_closes(self):
+        store = []
+        text = "````a\n```b\nx\n```\n"
+
+        self.assertEqual(
+            GEN_PAGES.stash_code_blocks(text, store), "````a\nxxcodeblock0xx\n"
+        )
+        self.assertEqual(len(store), 1)
 
     def test_toc_marker_in_a_code_span_is_kept(self):
         html = self.body("# T\n\nWrite `[[_TOC_]]` on GitLab.\n")
@@ -350,6 +385,11 @@ class SeoTests(unittest.TestCase):
         self.assertLessEqual(len(long), GEN_PAGES.DESCRIPTION_LENGTH)
         self.assertTrue(long.endswith("word..."))
         self.assertIsNone(describe("<h1>Only a title</h1>"))
+
+    def test_description_of_a_page_opening_with_an_alert_is_its_text(self):
+        html = GEN_PAGES.render_markdown("# T\n\n> [!NOTE]\n> Read this first.\n")
+
+        self.assertEqual(GEN_PAGES.page_description(html), "Read this first.")
 
     def test_page_head_has_description_canonical_and_open_graph(self):
         public = self.build({"SITE_URL": "https://example.org/dotfiles"})
@@ -669,10 +709,17 @@ class PageTitleTests(unittest.TestCase):
             "Intro\n\n    # install deps\n\n## The `foo` [plugin](x.md)\n"
         )
 
-        self.assertEqual(GEN_PAGES.page_title(CONFIG, "p.md", html), "The foo plugin")
+        self.assertEqual(GEN_PAGES.heading_text(html), "The foo plugin")
+        self.assertEqual(CONFIG.title_for("p.md", "The foo plugin"), "The foo plugin")
 
     def test_page_without_heading_uses_its_path(self):
-        self.assertEqual(GEN_PAGES.page_title(CONFIG, "p.md", "<p>text</p>"), "p.md")
+        heading = GEN_PAGES.heading_text("<p>text</p>")
+
+        self.assertIsNone(heading)
+        self.assertEqual(CONFIG.title_for("p.md", heading), "p.md")
+
+    def test_home_page_uses_the_site_title(self):
+        self.assertEqual(CONFIG.title_for(CONFIG.home, "Heading"), CONFIG.title)
 
 
 class ConfigTests(unittest.TestCase):
@@ -849,6 +896,17 @@ class NavTreeTests(unittest.TestCase):
         self.assertEqual(
             tree,
             [("Home", "README.md", []), ("CI", None, [("a", "ci/a.md", [])])],
+        )
+
+    def test_excluded_pages_stay_out_of_page_and_group_sections(self):
+        nav = (("Home", "README.md"), ("CI", ("ci/a.md", "ci/b.md")))
+        self.config = replace(
+            self.config, nav=nav, nav_exclude=("ci/b.md", "README.md")
+        )
+
+        self.assertEqual(
+            self.tree(["README.md", "ci/a.md", "ci/b.md"]),
+            [("CI", None, [("a", "ci/a.md", [])])],
         )
 
 
@@ -1103,6 +1161,50 @@ class SmallSiteTests(unittest.TestCase):
             with self.subTest(tag=tag):
                 self.assertRegex(tag, r'integrity="sha384-[A-Za-z0-9+/=]{64}"')
                 self.assertIn('crossorigin="anonymous"', tag)
+
+
+class PagesTriggerTests(unittest.TestCase):
+    """The Pages jobs and the pre-commit hook run when a site input changes."""
+
+    # Files of scripts/ci/ that end up in the site or decide its contents.
+    SITE_INPUTS = tuple(
+        f"scripts/ci/{name}"
+        for name in (
+            GEN_PAGES.STYLE_FILE,
+            *GEN_PAGES.SITE_ICONS,
+            "gen_pages.py",
+            "pages.json",
+            "build_pages.sh",
+        )
+    )
+    PALETTE = "ansible/roles/dotfiles/templates/home/.config/hypr/hyprtoolkit.conf.j2"
+
+    def quoted_paths(self, name):
+        text = (REPO_ROOT / name).read_text(encoding="utf-8")
+        return re.findall(r"^\s*- '([^']+)'$", text, re.MULTILINE)
+
+    def test_pages_jobs_run_when_a_site_input_changes(self):
+        for workflow, jobs in (
+            (".github/workflows/deploy-pages.yml", 2),
+            (".gitlab-ci.yml", 2),
+        ):
+            paths = self.quoted_paths(workflow)
+            for name in self.SITE_INPUTS:
+                with self.subTest(workflow=workflow, name=name):
+                    self.assertEqual(paths.count(name), jobs)
+
+    def test_pre_commit_hook_runs_when_a_tested_input_changes(self):
+        config = (REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+        hook = config.split("id: test-gen-pages", 1)[1]
+        pattern = re.search(r"^\s*files: (.+)$", hook, re.MULTILINE).group(1)
+        for name in [
+            *self.SITE_INPUTS,
+            "scripts/ci/test_gen_pages.py",
+            self.PALETTE,
+            "x/a.md",
+        ]:
+            with self.subTest(name=name):
+                self.assertIsNotNone(re.search(pattern, name))
 
 
 class BuildPagesScriptTests(unittest.TestCase):

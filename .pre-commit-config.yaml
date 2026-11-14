@@ -29,7 +29,9 @@ repos:
         language: system
         entry: python3 scripts/ci/test_gen_pages.py
         # Markdown too: the tests build the real site and reject broken links.
-        files: (^scripts/ci/(gen_pages\.py|test_gen_pages\.py|pages\.json|build_pages\.sh)|\.md)$
+        # The stylesheet, the icons and the Hyprland palette it copies are
+        # checked as well (test_gen_pages.py PagesTriggerTests).
+        files: (^scripts/ci/(gen_pages\.py|test_gen_pages\.py|pages\.json|build_pages\.sh|style\.css|favicon\.ico|favicon\.png|apple-touch-icon\.png)|^ansible/roles/dotfiles/templates/home/\.config/hypr/hyprtoolkit\.conf\.j2|\.md)$
         pass_filenames: false
         stages: [pre-commit]
 

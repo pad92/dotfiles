@@ -1,6 +1,7 @@
 import argparse
 import filecmp
 import fnmatch
+import functools
 import html as _html
 import json
 import os
@@ -9,11 +10,14 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as etree
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, fields
 from urllib.parse import quote, unquote
 
 import markdown
+from markdown.blockprocessors import BlockProcessor
+from markdown.extensions import Extension
 
 try:
     from pygments import highlight as _pyg_highlight
@@ -340,8 +344,10 @@ def build_nav_tree(
 ) -> list[NavNode]:
     """Return the top-level menu entries of the config's nav that have pages.
 
-    titles maps a source to its first heading (None without one).
+    titles maps a source to its first heading (None without one). Pages
+    matching nav_exclude are left out of every section.
     """
+    sources = [source for source in sources if not config.nav_excluded(source)]
     nodes = []
     for label, target in config.nav:
         if isinstance(target, tuple):
@@ -353,13 +359,8 @@ def build_nav_tree(
             if children:
                 nodes.append(NavNode(label, None, children))
         elif target.endswith("/"):
-            visible = [
-                source
-                for source in sources
-                if source.startswith(target) and not config.nav_excluded(source)
-            ]
-            children = directory_nav(config, target, visible, titles)
-            if target + NAV_INDEX in visible:
+            children = directory_nav(config, target, sources, titles)
+            if target + NAV_INDEX in sources:
                 children.insert(0, NavNode("Overview", target + NAV_INDEX))
             if children:
                 nodes.append(NavNode(label, None, children))
@@ -462,6 +463,12 @@ def minify_html(html):
     for i, block in enumerate(protected):
         html = html.replace(f"\x00{i}\x00", block)
     return html
+
+
+def copy_if_changed(source: str, dest: str) -> None:
+    """Copy a file only when dest is missing or differs, keeping its timestamp."""
+    if not (os.path.isfile(dest) and filecmp.cmp(source, dest, shallow=False)):
+        shutil.copyfile(source, dest)
 
 
 def write_if_changed(path, content):
@@ -660,10 +667,22 @@ def stash_code_blocks(text: str, store: list[str]) -> str:
     """
     lines = text.split("\n")
     output = []
+    # (fence character, quote depth) -> shortest fence already scanned to the
+    # end of the text without a closing line. A later fence of that kind, at
+    # least as long, cannot close either: its scan is skipped, which keeps a
+    # file full of stray fences linear.
+    unclosed: dict[tuple[str, int], int] = {}
     i = 0
     while i < len(lines):
         opening = _FENCE_OPEN_RE.match(lines[i])
-        end = _closing_fence_index(lines, i, opening) if opening else None
+        end = None
+        if opening is not None:
+            quote, _indent, fence, _info = opening.groups()
+            kind = (fence[0], quote.count(">"))
+            if len(fence) < unclosed.get(kind, sys.maxsize):
+                end, at_end = _closing_fence_index(lines, i, opening)
+                if at_end:
+                    unclosed[kind] = len(fence)
         if opening is None or end is None:
             output.append(lines[i])
             i += 1
@@ -691,26 +710,33 @@ def _strip_quote(line: str, depth: int) -> str | None:
     return line[pos:]
 
 
+@functools.cache
+def _closing_fence_re(char: str, length: int) -> re.Pattern[str]:
+    """Match a line closing a fence of length char: as long or longer, alone."""
+    return re.compile(rf"^[ \t]*{re.escape(char)}{{{length},}}[ \t]*$")
+
+
 def _closing_fence_index(
     lines: list[str], start: int, opening: re.Match[str]
-) -> int | None:
-    """Return the index of the line closing the fence opened at start.
+) -> tuple[int | None, bool]:
+    """Return (index of the line closing the fence opened at start, at_end).
 
-    Returns None when the fence is never closed, or when a line without the
-    opening's `>` markers ends its blockquote first.
+    The index is None when the fence is never closed, or when a line without
+    the opening's `>` markers ends its blockquote first; at_end tells whether
+    the scan went to the last line without finding a closing one.
     """
     quote, _indent, fence, info = opening.groups()
     if fence[0] == "`" and "`" in info:
-        return None  # Not a fence: a backtick info string has no backtick.
+        return None, False  # Not a fence: a backtick info string has no backtick.
     depth = quote.count(">")
-    closing = re.compile(rf"^[ \t]*{re.escape(fence[0])}{{{len(fence)},}}[ \t]*$")
+    closing = _closing_fence_re(fence[0], len(fence))
     for j in range(start + 1, len(lines)):
         rest = _strip_quote(lines[j], depth)
         if rest is None:
-            return None
+            return None, False
         if closing.match(rest):
-            return j
-    return None
+            return j, False
+    return None, True
 
 
 def code_block_token(index: int) -> str:
@@ -783,10 +809,7 @@ class HeadingSlugger:
 
     The text is lowercased, punctuation is dropped (accents and other letters
     stay) and each space becomes a hyphen, without merging runs: `A & B` gives
-    `a--b`. A repeated id gets `-1`, `-2`... Alerts are rendered in their own
-    Markdown pass, so every pass of a page shares one slugger; an alert's
-    headings are numbered before the page's, which differs from GitHub only
-    when an alert repeats a heading of the page.
+    `a--b`. A repeated id gets `-1`, `-2`... in document order.
     """
 
     def __init__(self) -> None:
@@ -802,82 +825,95 @@ class HeadingSlugger:
         return slug
 
 
-def render_markdown(text: str, slugify: HeadingSlugger | None = None) -> str:
+# Class of the title paragraph of an alert; page_description skips it.
+ALERT_TITLE_CLASS = "markdown-alert-title"
+# A line of a blockquote, and the first line of an alert (`> [!NOTE] text`).
+_QUOTE_LINE_RE = re.compile(r"^[ ]{0,3}>[ ]?(.*)$")
+_ALERT_START_RE = re.compile(
+    r"^[ ]{0,3}>[ \t]*\[!(TIP|NOTE|WARNING|IMPORTANT|CAUTION)\][ \t]*(.*)$",
+    re.IGNORECASE,
+)
+
+
+class AlertProcessor(BlockProcessor):
+    """Render GitHub/GitLab alerts (`> [!NOTE]` blockquotes) as python-markdown
+    blocks.
+
+    An alert is a blockquote whose first line is a marker, optionally followed
+    by text; it ends at the first line without `>`. It is parsed in the page's
+    own pass, so its headings get their ids in document order, as on GitHub,
+    and it works wherever a blockquote does (in list items too). Fenced code
+    inside it is stashed beforehand (stash_code_blocks handles blockquotes).
+    """
+
+    @staticmethod
+    def _start(block: str) -> tuple[int, re.Match[str]] | None:
+        """Return (offset, marker match) of the alert opening the block's quote."""
+        offset = 0
+        for line in block.split("\n"):
+            if _QUOTE_LINE_RE.match(line):
+                match = _ALERT_START_RE.match(line)
+                return (offset, match) if match else None
+            offset += len(line) + 1
+        return None
+
+    def test(self, parent: etree.Element, block: str) -> bool:
+        return self._start(block) is not None
+
+    def run(self, parent: etree.Element, blocks: list[str]) -> None:
+        block = blocks.pop(0)
+        start = self._start(block)
+        assert start is not None  # test() accepted the block.
+        offset, marker = start
+        if offset:
+            # Lines before the quote, such as a paragraph it interrupts.
+            self.parser.parseBlocks(parent, [block[:offset]])
+        lines = block[offset:].split("\n")
+        body = [marker.group(2)] if marker.group(2).strip() else []
+        end = 1
+        while end < len(lines):
+            quoted = _QUOTE_LINE_RE.match(lines[end])
+            if quoted is None:
+                break
+            body.append(quoted.group(1))
+            end += 1
+        if end < len(lines):
+            blocks.insert(0, "\n".join(lines[end:]))
+
+        alert_type = marker.group(1).upper()
+        icon_svg, title_text = get_alert_resources(alert_type)
+        alert = etree.SubElement(
+            parent,
+            "div",
+            {"class": f"markdown-alert markdown-alert-{alert_type.lower()}"},
+        )
+        title = etree.SubElement(alert, "p", {"class": ALERT_TITLE_CLASS})
+        # The icon is raw SVG: the stash puts it back after serialisation.
+        icon = self.parser.md.htmlStash.store(icon_svg) if icon_svg else ""
+        title.text = icon + title_text
+        # As in a blockquote, list items inside get their <p> tags.
+        self.parser.state.set("blockquote")
+        self.parser.parseChunk(alert, "\n".join(body))
+        self.parser.state.reset()
+
+
+class AlertExtension(Extension):
+    def extendMarkdown(self, md: markdown.Markdown) -> None:
+        # Above the blockquote processor (20), which would take the block.
+        md.parser.blockprocessors.register(AlertProcessor(md.parser), "alert", 21)
+
+
+def render_markdown(text: str) -> str:
     """Render Markdown using the compact nested-list style used by the docs.
 
-    Heading ids come from slugify, which a page shares between its passes.
+    Alerts are part of the pass, and heading ids are unique across the page.
     """
     text = normalize_nested_list_indentation(text)
     return markdown.markdown(
         text,
-        extensions=["extra", "codehilite", "toc"],
-        extension_configs={"toc": {"slugify": slugify or HeadingSlugger()}},
+        extensions=["extra", "codehilite", "toc", AlertExtension()],
+        extension_configs={"toc": {"slugify": HeadingSlugger()}},
     )
-
-
-def parse_alerts(text: str, slugify: HeadingSlugger | None = None) -> str:
-    """Render GitHub/GitLab alerts (`> [!NOTE]` blockquotes) to HTML.
-
-    Fenced code inside an alert must already be stashed (stash_code_blocks
-    handles fences in blockquotes).
-    """
-    slugify = slugify or HeadingSlugger()
-    lines = text.split("\n")
-    new_lines = []
-    i = 0
-    n = len(lines)
-
-    while i < n:
-        line = lines[i]
-        match = re.match(
-            r"^(\s*)>\s*\[!(TIP|NOTE|WARNING|IMPORTANT|CAUTION)\](?:\s*(.*))?$",
-            line,
-            re.IGNORECASE,
-        )
-        if match:
-            indent = match.group(1)
-            alert_type = match.group(2).upper()
-            first_line_content = match.group(3)
-
-            alert_lines = []
-            if first_line_content and first_line_content.strip():
-                alert_lines.append(first_line_content)
-
-            i += 1
-            while i < n:
-                next_line = lines[i]
-                next_match = re.match(r"^\s*>\s?(.*)$", next_line)
-                if next_match:
-                    alert_lines.append(next_match.group(1))
-                    i += 1
-                else:
-                    break
-
-            compiled_content = render_markdown("\n".join(alert_lines), slugify)
-
-            icon_svg, title_text = get_alert_resources(alert_type)
-
-            alert_html = (
-                f'<div class="markdown-alert markdown-alert-{alert_type.lower()}">\n'
-                f'<p class="markdown-alert-title">{icon_svg}{title_text}</p>\n'
-                f"{compiled_content}\n"
-                f"</div>"
-            )
-
-            indented_lines = []
-            for segment in alert_html.split("\n"):
-                if segment.strip():
-                    indented_lines.append(indent + segment)
-                else:
-                    indented_lines.append(segment)
-            alert_html = "\n".join(indented_lines)
-
-            new_lines.append(alert_html)
-        else:
-            new_lines.append(line)
-            i += 1
-
-    return "\n".join(new_lines)
 
 
 def submodule_paths(root: str) -> set[str]:
@@ -970,10 +1006,15 @@ def page_url(site_url: str, output_rel: str) -> str:
 def page_description(html_content: str) -> str | None:
     """First paragraph of rendered HTML as plain text, cut for search results.
 
-    Paragraphs without text, such as a row of badges, are skipped. A text
-    longer than DESCRIPTION_LENGTH is cut at a word and ends with `...`.
+    Paragraphs without text, such as a row of badges, and alert titles
+    ("Note"...) are skipped. A text longer than DESCRIPTION_LENGTH is cut at a
+    word and ends with `...`.
     """
-    for paragraph in re.findall(r"<p\b[^>]*>(.*?)</p>", html_content, re.S):
+    for attributes, paragraph in re.findall(
+        r"<p\b([^>]*)>(.*?)</p>", html_content, re.S
+    ):
+        if ALERT_TITLE_CLASS in attributes:
+            continue
         text = " ".join(_html.unescape(_HTML_TAG_RE.sub("", paragraph)).split())
         if not text:
             continue
@@ -1165,11 +1206,6 @@ def heading_text(html_content: str) -> str | None:
     return None
 
 
-def page_title(config: Config, source: str, html_content: str) -> str:
-    """Use the site title for the home page, then the first heading, then the path."""
-    return config.title_for(source, heading_text(html_content))
-
-
 def render_body(site: Site, source: str) -> tuple[str, str | None]:
     """Render one Markdown source to (HTML body, first heading text)."""
     with open(os.path.join(site.root, source), "r", encoding="utf-8") as f:
@@ -1184,30 +1220,11 @@ def render_body(site: Site, source: str) -> tuple[str, str | None]:
     # GitLab's [[TOC]] and [[_TOC_]] become the toc extension's [TOC].
     text = _TOC_MARKER_RE.sub("[TOC]", text)
 
-    # Parse alerts (GitLab-style blockquotes); their headings and the page's
-    # share one set of ids.
-    slugify = HeadingSlugger()
-    text = parse_alerts(text, slugify)
-
     # Convert markdown to html, then fix links before code blocks come back so
     # code samples are never rewritten.
-    html_content = site.rewrite_links(
-        render_markdown(text, slugify), source, output_rel
-    )
+    html_content = site.rewrite_links(render_markdown(text), source, output_rel)
     heading = heading_text(html_content)
     return restore_code_blocks(html_content, code_blocks), heading
-
-
-def render_page(site: Site, source: str, nav: list[NavNode] | None = None) -> str:
-    """Render one Markdown source to a complete, minified HTML page.
-
-    nav is the site menu (build_nav_tree); without it, the menu is built from
-    the site's pages with their file names as labels.
-    """
-    html_content, heading = render_body(site, source)
-    if nav is None:
-        nav = build_nav_tree(site.config, site.pages, {})
-    return page_document(site, source, html_content, heading, nav)
 
 
 def page_document(
@@ -1240,7 +1257,7 @@ def page_document(
     <link rel="icon" href="{ico_path}" sizes="16x16 32x32 48x48">
     <link rel="icon" href="{png_path}" type="image/png" sizes="192x192">
     <link rel="apple-touch-icon" href="{apple_path}">
-    {cdn_tags('.css')}
+    {cdn_tags(".css")}
     <link rel="stylesheet" href="{css_path}">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#toc">
@@ -1268,7 +1285,7 @@ def page_document(
             </div>
         </div>
     </div>
-    {cdn_tags('.js')}
+    {cdn_tags(".js")}
     <script>{THEME_MENU_JS}</script>
     <script>
         $(function() {{
@@ -1342,20 +1359,13 @@ def build_site(
         asset_rel = config.published_path(asset)
         dest = os.path.join(out_dir, asset_rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-        asset_source = os.path.join(root, asset)
         # Like the pages, an unchanged asset keeps its file and timestamp.
-        if not (
-            os.path.isfile(dest) and filecmp.cmp(asset_source, dest, shallow=False)
-        ):
-            shutil.copyfile(asset_source, dest)
+        copy_if_changed(os.path.join(root, asset), dest)
         built.add(asset_rel)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     for icon in SITE_ICONS:
-        icon_source = os.path.join(script_dir, icon)
-        dest = os.path.join(out_dir, icon)
-        if not (os.path.isfile(dest) and filecmp.cmp(icon_source, dest, shallow=False)):
-            shutil.copyfile(icon_source, dest)
+        copy_if_changed(os.path.join(script_dir, icon), os.path.join(out_dir, icon))
 
     css_source = os.path.join(script_dir, STYLE_FILE)
     with open(css_source, "r", encoding="utf-8") as src:
