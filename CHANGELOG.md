@@ -236,6 +236,14 @@ Release history and changes planned for the next version.
     highlight code with Pygments.
 - **Scripts**: `hypr-screenshot.sh` no longer runs the Hyprland autostart in
   the live session, and its terminal shows fastfetch again.
+- **Steam Optimize**:
+  - `workspace:N` finds the monitor that holds workspace N, or the one its
+    workspace rule names, even when another workspace is shown there.
+    Gamescope used to start at its default resolution in that case.
+  - `21_steam` installs `python-vdf` for the installer, and `25_razer`
+    installs `razer-cli` (AUR) for the GTA V mouse DPI.
+  - The DOOM label says mouse smoothing off: `m_smooth 0` never turned off
+    VSync.
 - **Tests**:
   - Tests run from a linked worktree no longer rewrite this repository's
     `.git/config`: `make` drops Git's repository variables.

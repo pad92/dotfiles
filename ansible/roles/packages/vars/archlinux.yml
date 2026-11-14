@@ -282,6 +282,8 @@ packages_family_groups:
       - mangohud
       - power-profiles-daemon
       - python-gobject
+      # Steam config parser for the steam-optimize installer.
+      - python-vdf
       - steam
     # Standalone OBS profile (ansible/obs.yml): OBS, its Wayland/PipeWire
     # runtime and the virtual camera. Overlaps with 01_base and 11_hyprland
@@ -317,6 +319,8 @@ packages_family_groups:
       - openrazer-daemon
       - openrazer-driver-dkms
       - python-openrazer
+      # AUR. steam-optimize reads and restores the mouse DPI with it.
+      - razer-cli
     # LADSPA plugins of the voice effect microphones (audio role).
     26_voice_effects:
       - swh-plugins

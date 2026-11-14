@@ -12,6 +12,7 @@ packages_distribution_family_group_overrides:
       - power-profiles-daemon
       - proton-cachyos-slr
       - python-gobject
+      - python-vdf
       - steam
 
 packages_cachyos_repository_packages:
