@@ -51,8 +51,8 @@ A missing, unknown or mistyped key stops the build with exit code 2.
 
 #### Pages and links
 
-Each page keeps its source path: `dist/arch/install.md` becomes
-`dist/arch/install.md/index.html`. The `home` page becomes the site index, and
+Each page keeps its source path with an `.html` extension:
+`dist/arch/install.md` becomes `dist/arch/install.html`. The `home` page becomes the site index, and
 `.github/` is published as `github/` because `actions/upload-pages-artifact`
 drops `.github` from the artifact. A page's title is its first heading, else
 its path; the home page takes the site title.
