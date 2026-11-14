@@ -4,10 +4,12 @@ packages_host_groups: "{{ packages_workstation_groups + ['23_vpn'] }}"
 hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
 
-# The laptop panel sits under the Dell.
+# The laptop panel sits under the Dell. Like the ASUS, it is a wide-gamut
+# HDR panel that takes a 10-bit framebuffer.
 dotfiles_hypr_monitors: >-
   {{ dotfiles_hypr_shared_monitors +
-     [{'name': 'laptop', 'internal': true, 'below': 'dell'}] }}
+     [{'name': 'laptop', 'internal': true, 'below': 'dell',
+       'bitdepth': 10}] }}
 dotfiles_hypr_workspace_rules: >-
   {{ dotfiles_hypr_shared_workspace_rules +
      [{'workspace': 8, 'monitor': 'laptop', 'default': true}] }}

@@ -56,7 +56,8 @@ for _, call in ipairs(calls) do
     value.mode or value.workspace or "",
     value.position or "",
     value.input and value.input.touchdevice and value.input.touchdevice.output or "",
-    value.decoration and tostring(value.decoration.blur.enabled) or "")
+    value.decoration and tostring(value.decoration.blur.enabled) or "",
+    value.bitdepth and tostring(value.bitdepth) or "")
 end
 """
 # A resolution, a refresh rate or a position written in the settings: the
@@ -222,6 +223,9 @@ class HostTemplateTests(unittest.TestCase):
                     ("DP-3", "preferred", "2560x0"),
                 ],
             )
+            # The panel and the ASUS both take a 10-bit framebuffer.
+            bitdepths = {call[1]: call[6] for call in calls if call[0] == "monitor"}
+            self.assertEqual(bitdepths, {"eDP-1": "10", "DP-2": "", "DP-3": "10"})
             workspaces = [
                 (call[2], call[1]) for call in calls if call[0] == "workspace_rule"
             ]
@@ -233,8 +237,8 @@ class HostTemplateTests(unittest.TestCase):
                     ("8", "eDP-1"),
                 ],
             )
-            self.assertIn(["config", "", "", "", "", "false"], calls)
-            self.assertIn(["config", "", "", "", "eDP-1", ""], calls)
+            self.assertIn(["config", "", "", "", "", "false", ""], calls)
+            self.assertIn(["config", "", "", "", "eDP-1", "", ""], calls)
 
     # "Nothing hard-coded": the machine settings give relations and identities,
     # never a resolution, a refresh rate, a scale or a position.
