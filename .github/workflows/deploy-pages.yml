@@ -58,14 +58,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Its base_url gives the canonical URLs and the sitemap of the pages.
-      - name: Configure Pages
-        id: pages
-        uses: actions/configure-pages@v5
-
+      # Canonical URLs and the sitemap point to DEFAULT_SITE_URL of gen_pages.py.
       - name: Generate HTML pages
-        env:
-          SITE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           pip install --quiet markdown pygments
           sh scripts/ci/build_pages.sh

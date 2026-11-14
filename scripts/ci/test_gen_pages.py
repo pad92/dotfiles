@@ -285,17 +285,18 @@ class SeoTests(unittest.TestCase):
         GEN_PAGES.build_site(str(root), str(public), env)
         return public
 
-    def test_site_url_comes_from_site_url_then_gitlab(self):
+    def test_site_url_defaults_to_the_public_domain(self):
         url = GEN_PAGES.site_url_from_env
 
         self.assertEqual(url({"SITE_URL": "https://a.io/d"}), "https://a.io/d/")
+        self.assertEqual(url({}), "https://dotfiles.depad.fr/")
         self.assertEqual(
-            url({"SITE_URL": "https://a.io/", "CI_PAGES_URL": "https://b.io"}),
-            "https://a.io/",
+            url({"CI_PAGES_URL": "https://b.gitlab.io/d/"}),
+            "https://dotfiles.depad.fr/",
         )
-        self.assertEqual(url({"CI_PAGES_URL": "https://b.io/d/"}), "https://b.io/d/")
-        self.assertIsNone(url({}))
-        self.assertIsNone(url({"SITE_URL": "javascript:alert(1)"}))
+        self.assertEqual(
+            url({"SITE_URL": "javascript:alert(1)"}), "https://dotfiles.depad.fr/"
+        )
 
     def test_description_skips_badges_and_is_cut_at_a_word(self):
         describe = GEN_PAGES.page_description
@@ -351,15 +352,17 @@ class SeoTests(unittest.TestCase):
             (public / "robots.txt").read_text(encoding="utf-8"),
         )
 
-    def test_local_build_has_no_absolute_url_and_no_sitemap(self):
+    def test_local_build_gets_sitemap_and_robots_on_the_public_domain(self):
         public = self.build({})
         home = (public / "index.html").read_text(encoding="utf-8")
+        sitemap = (public / "sitemap.xml").read_text(encoding="utf-8")
 
-        self.assertFalse((public / "sitemap.xml").exists())
-        self.assertFalse((public / "robots.txt").exists())
-        self.assertNotIn("canonical", home)
-        self.assertNotIn("og:image", home)
-        self.assertIn('<meta name="twitter:card" content="summary">', home)
+        self.assertIn('<link rel="canonical" href="https://dotfiles.depad.fr/">', home)
+        self.assertIn("<loc>https://dotfiles.depad.fr/x.md/</loc>", sitemap)
+        self.assertEqual(
+            (public / "robots.txt").read_text(encoding="utf-8"),
+            "User-agent: *\nAllow: /\nSitemap: https://dotfiles.depad.fr/sitemap.xml\n",
+        )
         self.assertIn('<meta name="description" content=', home)
 
 
@@ -380,7 +383,8 @@ class ThemeMenuTests(unittest.TestCase):
         head = self.page.split("</head>", 1)[0]
 
         self.assertIn(GEN_PAGES.THEME_INIT_JS, head)
-        self.assertLess(head.index(GEN_PAGES.THEME_INIT_JS), head.index("<link"))
+        first_stylesheet = re.search(r'<link\b[^>]*rel="stylesheet"', head)
+        self.assertLess(head.index(GEN_PAGES.THEME_INIT_JS), first_stylesheet.start())
 
     def test_theme_menu_is_the_last_menu_item(self):
         menu = self.page.split('<ul class="navbar-nav ms-auto">', 1)[1]
@@ -969,7 +973,11 @@ class SmallSiteTests(unittest.TestCase):
         GEN_PAGES.build_site(str(self.root), str(self.public), {})
         html = (self.public / "index.html").read_text(encoding="utf-8")
 
-        tags = re.findall(r"<(?:link|script)\b[^>]*https://[^>]*>", html)
+        tags = [
+            tag
+            for tag in re.findall(r"<(?:link|script)\b[^>]*https://[^>]*>", html)
+            if 'rel="canonical"' not in tag
+        ]
         self.assertEqual(len(tags), 5)
         for tag in tags:
             with self.subTest(tag=tag):

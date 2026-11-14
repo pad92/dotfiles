@@ -65,15 +65,14 @@ build left in `public/` for renamed or deleted pages.
 
 Each page's `<head>` holds a description taken from its first paragraph with
 text, cut to 160 characters, plus Open Graph and Twitter card tags for link
-previews. When the build knows the public URL of the site, pages also get a
-canonical URL and an `og:image` (`dist/hyprland.webp`), and `gen_pages.py`
-writes `sitemap.xml` and `robots.txt`. The URL comes from `SITE_URL`, then from
-GitLab's `CI_PAGES_URL`. `deploy-pages.yml` sets `SITE_URL` from the
-`base_url` output of `actions/configure-pages`. The local preview has no URL,
-so it gets no canonical link and no sitemap. A project site such as
-`<user>.github.io/<repo>/` is not at the root of its host, so crawlers ignore
-its `robots.txt`. Submit the sitemap in Google Search Console (or Bing
-Webmaster Tools) instead.
+previews, a canonical URL and an `og:image` (`dist/hyprland.webp`). Every
+build, the local preview included, also writes `sitemap.xml` and `robots.txt`.
+Their URLs start with `DEFAULT_SITE_URL` (`https://dotfiles.depad.fr/`), the
+GitLab Pages domain, where `robots.txt` sits at the root of the host. The
+GitHub copy points its canonical URLs there too, so search engines index one
+site. `SITE_URL` overrides the default. On a project site such as
+`<user>.github.io/<repo>/`, crawlers ignore `robots.txt`: submit the sitemap in
+Google Search Console (or Bing Webmaster Tools).
 
 Fenced code blocks follow CommonMark: backtick or tilde fences, closed by a
 fence of the same character at least as long, so a four-backtick fence can

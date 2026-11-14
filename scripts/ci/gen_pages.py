@@ -32,6 +32,10 @@ STYLE_FILE = "style.css"
 NOJEKYLL_FILE = ".nojekyll"
 SITEMAP_FILE = "sitemap.xml"
 ROBOTS_FILE = "robots.txt"
+# Public URL of the site: GitLab Pages under its own domain, so robots.txt sits
+# at the root of the host. `pad92.gitlab.io/dotfiles` redirects there, and the
+# GitHub copy points its canonical URLs there too. `SITE_URL` overrides it.
+DEFAULT_SITE_URL = "https://dotfiles.depad.fr/"
 # Icons of the site, kept next to this script and published at the site root:
 # the .ico for old browsers, a 192 px PNG for the others, 180 px for iOS.
 FAVICON_ICO = "favicon.ico"
@@ -805,16 +809,15 @@ def discover_markdown(root: str) -> list[str]:
     )
 
 
-def site_url_from_env(env: Mapping[str, str]) -> str | None:
-    """Return the public URL of the site, ending with `/`, or None.
+def site_url_from_env(env: Mapping[str, str]) -> str:
+    """Return the public URL of the site, ending with `/`.
 
-    `SITE_URL` wins (the GitHub job passes the URL of `actions/configure-pages`),
-    then GitLab's `CI_PAGES_URL`. Without one, as in the local preview, pages
-    get no canonical URL and no sitemap is written.
+    `SITE_URL` wins when it is an http(s) URL, else `DEFAULT_SITE_URL`. Every
+    build, the local preview included, gets canonical URLs and a sitemap.
     """
-    url = env.get("SITE_URL") or env.get("CI_PAGES_URL")
-    if not url or not url.startswith(("https://", "http://")):
-        return None
+    url = env.get("SITE_URL", "")
+    if not url.startswith(("https://", "http://")):
+        url = DEFAULT_SITE_URL
     return url.rstrip("/") + "/"
 
 
@@ -1204,16 +1207,13 @@ def build_site(root: str, out_dir: str, env: Mapping[str, str] | None = None) ->
         minified_css = minify_css(src.read() + pygments_css())
     write_if_changed(os.path.join(out_dir, STYLE_FILE), minified_css)
 
-    # Search engines need absolute URLs: without the public URL of the site,
-    # as in the local preview, there is no sitemap. robots.txt is only read at
-    # the root of a host, so it counts only if the site is served there.
-    if site.site_url:
-        write_if_changed(os.path.join(out_dir, SITEMAP_FILE), sitemap_xml(site))
-        write_if_changed(
-            os.path.join(out_dir, ROBOTS_FILE),
-            f"User-agent: *\nAllow: /\nSitemap: {site.site_url}{SITEMAP_FILE}\n",
-        )
-        built.update({SITEMAP_FILE, ROBOTS_FILE})
+    # robots.txt is only read at the root of a host: DEFAULT_SITE_URL is one.
+    write_if_changed(os.path.join(out_dir, SITEMAP_FILE), sitemap_xml(site))
+    write_if_changed(
+        os.path.join(out_dir, ROBOTS_FILE),
+        f"User-agent: *\nAllow: /\nSitemap: {site.site_url}{SITEMAP_FILE}\n",
+    )
+    built.update({SITEMAP_FILE, ROBOTS_FILE})
 
     # Serve dot-directories (e.g. .gitlab/) verbatim on GitHub Pages (no Jekyll).
     open(os.path.join(out_dir, NOJEKYLL_FILE), "a", encoding="utf-8").close()

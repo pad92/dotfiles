@@ -52,8 +52,9 @@ This job runs on `alpine:latest`, installs `python3`, `py3-markdown` and
 calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script.
 Every Markdown file of the repository becomes a page, and relative links to
-other files point to the GitLab file browser at `CI_COMMIT_SHA`. The pages
-take their canonical URLs and the `sitemap.xml` entries from `CI_PAGES_URL`.
+other files point to the GitLab file browser at `CI_COMMIT_SHA`. The canonical
+URLs, `sitemap.xml` and `robots.txt` use `https://dotfiles.depad.fr/`
+(`DEFAULT_SITE_URL` in `gen_pages.py`), the domain `CI_PAGES_URL` redirects to.
 The page
 layout and link rules are described with
 [`deploy-pages.yml`](../.github/workflows/README.md#deploy-pagesyml).

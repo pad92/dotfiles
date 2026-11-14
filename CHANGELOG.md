@@ -45,11 +45,10 @@ Release history and changes planned for the next version.
     now come from the first heading only (`Ansible setup` instead of
     `Ansible`).
   - Each page gets a description (its first paragraph), Open Graph and Twitter
-    card tags and, once the public URL is known, a canonical URL. The Pages
-    jobs also write `sitemap.xml` and `robots.txt`. GitLab gives the URL in
-    `CI_PAGES_URL`, GitHub through `actions/configure-pages`, and `SITE_URL`
-    overrides both. The local preview has no URL, so it gets neither the
-    canonical links nor the sitemap.
+    card tags and a canonical URL. Every build, the local preview included,
+    writes `sitemap.xml` and `robots.txt`. The URLs point to
+    `https://dotfiles.depad.fr/` (`DEFAULT_SITE_URL`), the GitLab Pages
+    domain, from the GitHub copy too; `SITE_URL` overrides it.
   - The site has a favicon: three Gruvbox tiles in a master and stack
     layout with a terminal chevron, as `favicon.ico`, a 192 px PNG and an
     `apple-touch-icon.png`, on a transparent background.
