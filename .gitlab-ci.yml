@@ -41,27 +41,21 @@ stages:
 
 .alpine_test_tools:
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4 tar
 
-# La suite Python est répartie en deux tranches (`parallel`) équilibrées d'après
-# les durées du cache ; unit_tests_report vérifie que les tranches couvrent
-# chaque test une fois et publie la couverture globale. Python 3.14 et le coeur
-# sysmon de coverage allègent le traçage ; les tests lancés en sous-processus
-# ne sont pas tracés (voir .coveragerc).
+# Python 3.14 et le coeur sysmon de coverage allègent le traçage ; les tests
+# lancés en sous-processus ne sont pas tracés (voir .coveragerc). Le partage en
+# deux tranches a été essayé : elles se disputaient les CPU du même runner et
+# durèrent plus longtemps que le job unique.
 unit_tests:
   stage: test
   image: python:3.14-alpine
-  parallel: 2
   rules: !reference [.unit_test_rules, rules]
   variables:
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
     COVERAGE_CORE: sysmon
-    # Un fichier par tranche : unit_tests_report les fusionne.
-    COVERAGE_FILE: .coverage.shard$CI_NODE_INDEX
   # The runner keeps these between jobs. The test durations let the runner
-  # start the longest tests first; the key is shared by every branch. Shards
-  # only read them so that all of them split the suite the same way;
-  # unit_tests_report writes the new durations.
+  # start the longest tests first; the key is shared by every branch.
   cache:
     - key:
         files: [requirements-test.txt]
@@ -71,7 +65,7 @@ unit_tests:
       paths: [.ansible/collections/]
     - key: unit-test-durations
       paths: [.cache/unit-tests/]
-      policy: pull
+      when: always
   before_script:
     - !reference [.alpine_test_tools, before_script]
     - python3 -m pip install -r requirements-test.txt
@@ -82,21 +76,22 @@ unit_tests:
   script:
     # Longest tests first on every usable CPU; see the script docstring.
     - python3 scripts/ci/test_run_unit_tests.py
-    - >-
-      scripts/ci/run_unit_tests.py --coverage
-      --shard "$CI_NODE_INDEX/$CI_NODE_TOTAL"
-      --report "test-report-$CI_NODE_INDEX.json"
+    - scripts/ci/run_unit_tests.py --coverage
+    - python3 -m coverage report
+    - python3 -m coverage xml -o coverage.xml
+  coverage: '/^TOTAL.+?(\d+(?:\.\d+)?)%$/'
   artifacts:
     when: always
-    paths:
-      - .coverage.shard*
-      - test-report-*.json
-    expire_in: 1 day
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
-unit_tests_report:
-  stage: validate
-  image: python:3.14-alpine
-  needs: [unit_tests]
+# Les tests shell n'ont besoin que d'ansible-vault : ils tournent en même temps
+# que la suite Python au lieu de la suivre.
+shell_tests:
+  stage: test
+  image: python:3.13-alpine
   rules: !reference [.unit_test_rules, rules]
   variables:
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
@@ -104,30 +99,9 @@ unit_tests_report:
     - key:
         files: [requirements-test.txt]
       paths: [.cache/pip/]
-    - key: unit-test-durations
-      paths: [.cache/unit-tests/]
-  before_script:
-    - python3 -m pip install "$(grep '^coverage==' requirements-test.txt)"
-  script:
-    - scripts/ci/run_unit_tests.py --combine test-report-*.json
-    - python3 -m coverage combine .coverage.shard*
-    - python3 -m coverage report
-    - python3 -m coverage xml -o coverage.xml
-  coverage: '/^TOTAL.+?(\d+(?:\.\d+)?)%$/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
-# Les tests shell n'ont pas besoin de pip ni d'Ansible : ils tournent en même
-# temps que la suite Python au lieu de la suivre.
-shell_tests:
-  stage: test
-  image: python:3.13-alpine
-  rules: !reference [.unit_test_rules, rules]
   before_script:
     - !reference [.alpine_test_tools, before_script]
+    - python3 -m pip install "$(grep '^ansible-core==' requirements-test.txt)"
   script:
     - bash tests/awww-monitor-scale.sh
     - bash tests/hyprlock-playerctlock.sh

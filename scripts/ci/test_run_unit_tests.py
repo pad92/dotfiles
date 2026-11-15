@@ -2,8 +2,6 @@
 """Check how run_unit_tests.py splits, orders and sizes the test run."""
 
 import importlib.util
-import io
-import json
 import sys
 import tempfile
 import unittest
@@ -121,105 +119,6 @@ class SummarizeTests(unittest.TestCase):
             (logs / "fast.log").write_text("Ran 12 tests in 0.3s\n\nOK (skipped=1)\n")
             (logs / "plain.log").write_text("Ran 3 tests in 0.1s\n\nOK\n")
             self.assertEqual(RUNNER.summarize(logs), (16, 3))
-
-
-class ShardTests(unittest.TestCase):
-    def units(self, estimates):
-        return [
-            RUNNER.Unit(f"u{i}", [f"t.C.test_{i}"], seconds)
-            for i, seconds in enumerate(estimates)
-        ]
-
-    def test_shards_partition_the_units_and_balance_the_load(self):
-        units = self.units([90, 60, 50, 40, 10, 5, 1])
-        shards = [RUNNER.shard_units(units, i, 2) for i in (1, 2)]
-        names = [unit.name for shard in shards for unit in shard]
-        self.assertCountEqual(names, [unit.name for unit in units])
-        loads = [sum(unit.estimate for unit in shard) for shard in shards]
-        self.assertLessEqual(abs(loads[0] - loads[1]), 10)
-
-    def test_a_single_shard_keeps_every_unit_in_order(self):
-        units = self.units([3, 2, 1])
-        self.assertEqual(RUNNER.shard_units(units, 1, 1), units)
-
-    def test_shard_argument_rejects_out_of_range_values(self):
-        self.assertEqual(RUNNER.parse_shard("2/3"), (2, 3))
-        for value in ("0/2", "3/2", "x/2", "2"):
-            with self.subTest(value=value), self.assertRaises(Exception):
-                RUNNER.parse_shard(value)
-
-
-class CombineReportsTests(unittest.TestCase):
-    def combine(self, reports, durations=None):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            paths = []
-            for number, report in enumerate(reports):
-                path = root / f"report{number}.json"
-                path.write_text(json.dumps(report))
-                paths.append(path)
-            history = root / "durations.json"
-            history.write_text(json.dumps(durations or {}))
-            with (
-                mock.patch.object(sys, "stdout", io.StringIO()),
-                mock.patch.object(sys, "stderr", io.StringIO()) as stderr,
-            ):
-                code = RUNNER.combine_reports(paths, history)
-            return code, stderr.getvalue(), RUNNER.load_durations(history)
-
-    def report(self, index, ran, measured=None, discovered=("a", "b", "c"), total=2):
-        return {
-            "shard": [index, total],
-            "discovered": list(discovered),
-            "ran": ran,
-            "measured": measured or {},
-        }
-
-    def test_complete_shards_record_their_durations(self):
-        code, _, durations = self.combine(
-            [
-                self.report(1, ["a", "c"], {"a": 1.5}),
-                self.report(2, ["b"], {"b": 2.5}),
-            ],
-            {"a": 9.0, "gone": 4.0},
-        )
-        self.assertEqual(code, 0)
-        self.assertEqual(durations, {"a": 1.5, "b": 2.5})
-
-    def test_a_test_never_run_fails_and_keeps_the_history(self):
-        code, error, durations = self.combine(
-            [self.report(1, ["a"]), self.report(2, ["b"])], {"a": 9.0}
-        )
-        self.assertEqual(code, 1)
-        self.assertIn("never run: c", error)
-        self.assertEqual(durations, {"a": 9.0})
-
-    def test_a_test_run_twice_fails(self):
-        code, error, _ = self.combine(
-            [self.report(1, ["a", "b"]), self.report(2, ["b", "c"])]
-        )
-        self.assertEqual(code, 1)
-        self.assertIn("run twice: b", error)
-
-    def test_a_missing_shard_fails(self):
-        code, error, _ = self.combine([self.report(1, ["a", "b", "c"])])
-        self.assertEqual(code, 1)
-        self.assertIn("shards found: [1]", error)
-
-    def test_shards_that_discovered_different_tests_fail(self):
-        code, error, _ = self.combine(
-            [
-                self.report(1, ["a", "b"]),
-                self.report(2, ["c"], discovered=("a", "b", "c", "d")),
-            ]
-        )
-        self.assertEqual(code, 1)
-        self.assertIn("discovered different tests", error)
-
-    def test_no_report_fails(self):
-        code, error, _ = self.combine([])
-        self.assertEqual(code, 1)
-        self.assertIn("no shard report", error)
 
 
 if __name__ == "__main__":
