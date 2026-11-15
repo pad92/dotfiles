@@ -60,6 +60,44 @@ machine you run `make` from, and that clone can be deleted once deployed:
 machine first gets an inventory entry; see
 [Per-host settings](./ansible/README.md#per-host-settings).
 
+## Editor packages
+
+The Neovim, Vim and Zsh configurations are published as standalone archives,
+built by the GitLab pipeline. They need neither Ansible nor a clone of this
+repository, only `curl` (or `wget`) and `tar`.
+
+Back up your current configuration first: extraction replaces files with the
+same names. Without `curl`, use `wget -qO-` in place of `curl -fsSL`. To list
+an archive instead of extracting it, replace `tar -xz -C ~` with `tar -tz`.
+
+### Neovim
+
+Installs `~/.config/nvim`.
+
+```sh
+curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' | tar -xz -C ~
+```
+
+### Vim
+
+Installs `~/.vim` and `~/.vimrc`, with the plugins at the pinned commits. The
+script refuses to run when either already exists.
+
+```sh
+curl -fsSL https://gitlab.com/pad92/dotfiles/-/raw/main/scripts/vim.sh | bash
+```
+
+### Zsh
+
+Installs `~/.zshenv`, `~/.zshrc` and `~/.local/share/dotfiles/zsh`, with the
+plugins at the pinned commits and a `.zshrc` rendered for any home directory.
+`~/.zprofile`, which starts the Hyprland session from a login shell, is left
+out.
+
+```sh
+curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.gz?job=package_zsh' | tar -xz -C ~
+```
+
 ## Common tasks
 
 `make help` lists the targets and their variables. `deploy`, `check`, `plan`,
@@ -92,31 +130,16 @@ the next roles change the host.
 | Build and open the documentation     | `make pages`                                                 |
 
 `make install` and `make install-obs` remain as aliases of `make deploy` and
-`make deploy PLAYBOOK=obs`.
+`make deploy PLAYBOOK=obs`. Reconciliation previews the removals and asks for
+confirmation.
 
-Reconciliation previews the removals and asks for confirmation.
-
-`make clean` removes what deployments and earlier versions left behind. In the
-home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
-`dotfiles` role made next to the paths it manages (`<path>.bak` and
-`<path>.<pid>.<date>@<time>~`). It also deletes the broken links
-under the paths the role deploys, such as a link into a deleted `~/.dotfiles` clone
-or a `.wants` link to a unit that is gone, and leaves other broken links in
-the home alone. It deletes the files a role no longer ships, such as the
-`audio` role's former `10-realtime.conf`, while they still hold the shipped
-content; an edited copy or a link is kept and reported. In the repository it removes the Git metadata of the retired
-submodules (Vundle, tpm, dotbot, the Zsh plugins: their `[submodule]` sections
-and their clones under `.git/modules`), the records of worktrees whose
-directory is gone, the Python tool caches and untracked broken links. It does
-not look into nested Git checkouts or Python virtual environments. A
-submodule clone with a commit that no remote branch or tag holds, or whose
-checkout still exists, is kept and reported. Everything is listed before
-anything changes. The backups, the submodule metadata and the worktree records
-go only after you type `REMOVE` on a terminal; without a terminal they stay.
-Caches, broken links and unchanged obsolete files go without asking. `DRY_RUN` accepts only `1` (list)
-and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
-as aliases of `make clean DRY_RUN=1` and `make clean`, and
-`ANSIBLE_BACKUP_ROOT` still selects the home.
+`make clean` removes what deployments and earlier versions left behind: the
+`.bak` backups of managed paths, broken links under deployed paths, files a
+role no longer ships, retired submodule metadata and Python caches. It lists
+everything first and asks you to type `REMOVE` before deleting backups; see
+[Cleaning up](./ansible/README.md#cleaning-up). `make ansible-backup-ls` and
+`make ansible-backup-rm` remain as aliases of `make clean DRY_RUN=1` and
+`make clean`.
 
 <details>
 <summary>Package selection and Arch specifics</summary>
@@ -216,9 +239,6 @@ startup, GNOME Keyring PAM, UWSM, and the systemd session.
 Volume, media, brightness and screenshot keys also work on the lock screen.
 Caps Lock shows its state in an on-screen indicator.
 
-Adding `CTRL` to a screenshot key records a video instead, and `SHIFT` widens
-the recording to the whole screen.
-
 Mako shows up to five notifications in the top-right corner, newest first, and
 draws them above fullscreen windows. `steam-optimize` turns on do-not-disturb
 during games; critical alerts still appear and stay until dismissed.
@@ -245,7 +265,7 @@ with `HYPR_RECORD_VAAPI_DEVICE` encodes on the GPU, falling back to libx264 if
 the encoder does not start.
 
 Hyprlock shows the time, battery, and current media. Its carousel option uses
-the AWWW sources; see the
+the `awww` sources; see the
 [Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
 
 ## Gaming and GPUs
@@ -259,10 +279,8 @@ and `cachyos-settings`, which provides `game-performance`. `steam-optimize`
 works without `game-performance` and sets shader-cache limits for AMD and
 NVIDIA.
 
-The `amd_cpu_performance` tag applies `balance_performance` EPP through the
-`powersave` governor, only when AMD P-State is active and no known power
-manager is running. X3D CCD mode is opt-in. A failed EPP update restores the
-original governor and preference.
+The `amd_cpu_performance` tag applies the AMD P-State energy preference on
+supported CPUs; see [AMD options](./ansible/roles/cpu_power/README.md).
 
 The `lact` tag manages `/etc/lact/config.yaml` with the GPU identifiers
 reported by the running LACT daemon. It keeps existing profiles and fan curves,
@@ -270,8 +288,8 @@ backs up changes, and restarts `lactd` when needed. It adds `Auto`, `Adaptive`,
 and `PreferMaximumPerformance` profiles, named after LACT's PowerMizer modes,
 for detected AMD and NVIDIA GPUs. Intel GPU settings are left unchanged.
 
-See [AMD options](./ansible/roles/cpu_power/README.md) and
-[gaming setup](./ansible/roles/gaming/README.md) for overrides and dependencies.
+See the [gaming setup](./ansible/roles/gaming/README.md) for overrides and
+dependencies.
 
 ## Customize
 
@@ -286,70 +304,12 @@ Set your Git identity in the untracked `~/.gitconfig.local`; the managed
 | Notifications      | [`.config/mako/config`](./ansible/roles/dotfiles/templates/home/.config/mako/config.j2)                                                |
 | Terminal and tmux  | [Alacritty](./ansible/roles/dotfiles/files/home/.config/alacritty/) and [`.tmux.conf`](./ansible/roles/dotfiles/files/home/.tmux.conf) |
 | Editors            | [Neovim](./ansible/roles/dotfiles/files/home/.config/nvim/) and [Vim](./ansible/roles/dotfiles/files/home/.vimrc)                      |
-| Wallpaper settings | [AWWW configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                         |
+| Wallpaper settings | [`awww` configuration sample](./ansible/roles/dotfiles/files/home/.config/awww/awww.conf-sample)                                       |
 
 Static files are copied from `ansible/roles/dotfiles/files/` and host-aware
 files are rendered from `ansible/roles/dotfiles/templates/`. Managed paths that
 conflict are backed up before replacement. Unit symlinks stay links; deployment
 stops if a regular file or directory occupies one of their destinations.
-
-## Editor packages
-
-The Neovim, Vim and Zsh configurations are also published as standalone
-archives, built by the GitLab pipeline. They need neither Ansible nor a clone of this
-repository, only `curl` or `wget` and `tar`.
-
-Back up your current configuration first: extraction replaces files with the
-same names. To see what an archive contains before extracting it, replace
-`tar -xz -C ~` with `tar -tz`.
-
-| Package | Installs                                                   |
-| :------ | :--------------------------------------------------------- |
-| Neovim  | `~/.config/nvim`.                                          |
-| Vim     | `~/.vim` and `~/.vimrc`, plugins at the pinned commits.    |
-| Zsh     | `~/.zshenv`, `~/.zshrc` and `~/.local/share/dotfiles/zsh`. |
-
-Neovim, with `curl` or `wget`:
-
-```sh
-curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' | tar -xz -C ~
-```
-
-```sh
-wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' | tar -xz -C ~
-```
-
-Vim, with `curl` or `wget`:
-
-```sh
-curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' | tar -xz -C ~
-```
-
-```sh
-wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' | tar -xz -C ~
-```
-
-Zsh, with `curl` or `wget`:
-
-```sh
-curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.gz?job=package_zsh' | tar -xz -C ~
-```
-
-```sh
-wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.gz?job=package_zsh' | tar -xz -C ~
-```
-
-The Zsh archive ships the third-party plugins at the pinned commits and a
-`~/.zshrc` already rendered for any home directory. It leaves out
-`~/.zprofile`, which starts the Hyprland session from a login shell.
-
-[`scripts/vim.sh`](./scripts/vim.sh) does the Vim install with whichever of
-`curl` or `wget` exists, and refuses to run when `~/.vim` or `~/.vimrc`
-already exists:
-
-```sh
-curl -fsSL https://gitlab.com/pad92/dotfiles/-/raw/main/scripts/vim.sh | bash
-```
 
 ## Shell and editors
 
@@ -397,9 +357,6 @@ to it, because ansible-vault runs an executable password file. Decryption is
 refused when Git tracks the file or does not ignore it; `vault-toggle --force
 FILE` overrides that from a terminal.
 
-The standalone archives for both editors are in
-[Editor packages](#editor-packages).
-
 ## Scripts
 
 The playbook deploys [`~/.bin/`](./ansible/roles/dotfiles/files/home/.bin/) and
@@ -419,26 +376,14 @@ Zsh adds it to `PATH`.
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
 | [`vault-toggle`](./ansible/roles/dotfiles/files/home/.bin/vault-toggle)                                                          | Encrypt or decrypt a file with Ansible Vault.    |
 
-`backup.sh` copies `$HOME` and `/etc` to the NAS with rsync over SSH and
-saves the installed-package list in `dist/<distribution>/`.
+`backup.sh` copies `$HOME` and `/etc` to the NAS with rsync over SSH and saves
+the installed-package list in `dist/<distribution>/`. Options, thresholds and
+exit status are documented at the top of the script.
 
 - `-v`, `--verbose` lists each transferred file.
-- `--clean-packages`, after a successful backup, runs `yay -Sc` on Arch (cleans
-  the package cache) or `sudo apt autoremove --purge` on Debian (removes
-  unneeded packages).
-- `--max-deletions=N` skips a source whose dry run plans more than N deletions
-  (default 1000, or `BACKUP_MAX_DELETIONS`; 0 disables the limit).
-- `--force-delete` lifts that limit, for example after a large change of the
-  exclusions.
-
-The script refuses a missing or empty source. rsync status 24 (files that
-vanished) only warns; any other failure is reported at the end, both sources
-still run, and the exit status is the worst one. As `/etc` is read without
-root, unreadable files give status 23, and rsync then skips deletions for that
-source. Files that were replaced or deleted are not kept on the NAS
-(`--backup-dir` would need its own pruning), `-x` is not used because it would
-skip btrfs subvolumes, and `--partial` is not used so an interrupted run never
-leaves a half-written file under its final name.
+- `--clean-packages` cleans the package cache (Arch) or removes unneeded
+  packages (Debian) after a successful backup.
+- `--max-deletions=N` and `--force-delete` bound or lift the deletion check.
 
 ## Development
 
