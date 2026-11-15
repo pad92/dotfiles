@@ -23,18 +23,20 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 ## Jobs
 
-| Job                  | Stage    | Runs when                                                                                                           | Purpose                                                                       |
-| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues.   |
-| `unit_tests`         | test     | Every pipeline                                                                                                      | Run the Python suite under coverage (floor in `.coveragerc`) and shell tests. |
-| `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.    |
-| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.                 |
-| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests                   | Package Neovim configuration as `nvim.tar.gz`.                                |
-| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag                        | Build and deploy the documentation site to `public/`.                         |
-| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                                           | Build the documentation site for review without deploying it.                 |
-| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                                  | Publish a release with notes from `CHANGELOG.md`.                             |
+| Job                  | Stage    | Runs when                                                                                                           | Purpose                                                                                                    |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues.                                |
+| `unit_tests`         | test     | Every default-branch, tag and scheduled pipeline; elsewhere, changes to code, tests, roles, scripts or CI settings  | Run the Python suite in two shards under coverage.                                                         |
+| `unit_tests_report`  | validate | Same as `unit_tests`                                                                                                | Check the shards ran every test once, record durations, enforce the coverage floor and publish the report. |
+| `shell_tests`        | test     | Same as `unit_tests`                                                                                                | Run the shell and zsh test scripts next to the Python suite.                                               |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.                                 |
+| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.                                              |
+| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests                   | Package Neovim configuration as `nvim.tar.gz`.                                                             |
+| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag                        | Build and deploy the documentation site to `public/`.                                                      |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                                           | Build the documentation site for review without deploying it.                                              |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                                  | Publish a release with notes from `CHANGELOG.md`.                                                          |
 
-### `unit_tests`
+### `unit_tests`, `unit_tests_report` and `shell_tests`
 
 [`scripts/ci/run_unit_tests.py`](../scripts/ci/run_unit_tests.py) runs the
 Python tests in parallel. A few tests drive `ansible-playbook` for up to two
@@ -44,6 +46,32 @@ first. The durations of the previous run are kept in the runner cache under
 run starts one process per test class and is slower. The job also caches pip
 downloads and the Ansible collections, keyed on their requirement files. The
 log ends with the slowest tests.
+
+`unit_tests` runs as two parallel jobs (`parallel: 2`). Each one takes the
+slice of the plan that `--shard INDEX/TOTAL` balances from the cached
+durations, records coverage in `.coverage.shardN` and writes
+`test-report-N.json`. Shards only read the durations, so every shard splits the
+suite the same way. `unit_tests_report` then runs `run_unit_tests.py --combine`,
+which fails when a test was run twice or not at all, and stores the new durations
+in the cache. It combines the coverage files and enforces the floor of
+`.coveragerc` on the whole suite, so the floor never applies to one shard. To
+change the number of shards, edit `parallel` in `.gitlab-ci.yml`. More shards
+help only when the runner has spare concurrency, and each one repeats the
+setup (`apk`, `pip`, `make galaxy`).
+
+The job runs on Python 3.14 with `COVERAGE_CORE=sysmon`, which makes branch
+coverage cheaper than the default tracer. Tests started as subprocesses, such as
+`ansible-playbook`, are not traced.
+
+`shell_tests` runs the scripts of `tests/*.sh` and `tests/*.zsh` in parallel
+with the Python shards. They need no pip packages or Ansible collections.
+
+On merge requests and branch pushes, the three jobs run only when a change
+touches `ansible/`, `tests/`, `scripts/`, `requirements-*.txt`, `.coveragerc`,
+`.gitlab-ci.yml`, `Makefile`, `ansible.cfg` or `mypy.ini`. The tests do not read
+Markdown files or `assets/`, so documentation-only changes skip them. A new
+branch has no diff to compare, so GitLab runs them. When a test starts reading
+another path, add it to `.unit_test_rules` in `.gitlab-ci.yml`.
 
 ### `pages`
 

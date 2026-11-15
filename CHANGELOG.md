@@ -149,6 +149,14 @@ Release history and changes planned for the next version.
   - Deployment removes an unedited `10-realtime.conf` and stops before writing
     through a linked PipeWire or WirePlumber directory.
 - **CI**:
+  - `unit_tests` runs on Python 3.14 with coverage's `sysmon` core and splits
+    the Python suite into two parallel shards. A new `unit_tests_report` job
+    checks that the shards ran every test once, enforces the coverage floor on
+    the combined data and publishes the report. The shell tests moved to a
+    `shell_tests` job that runs next to the shards.
+  - The three test jobs are skipped on branches and merge requests whose
+    changes touch only documentation, assets or other files the tests do not
+    read. The default branch, tags and scheduled pipelines still run them.
   - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh`. It spreads
     the tests over `JOBS` workers from the durations of the previous run, and
     fails if fewer tests ran than were discovered. `JOBS` follows the CPUs and

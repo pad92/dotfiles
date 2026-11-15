@@ -15,9 +15,19 @@ floor of the whole run, whatever the CPU count. This runner:
 
 Tests without a recorded duration run one process per class.
 
-Usage: run_unit_tests.py [--coverage]
+Usage: run_unit_tests.py [--coverage] [--shard INDEX/TOTAL] [--report FILE]
+       run_unit_tests.py --combine REPORT...
   --coverage  record with `coverage run -p` and combine the data files; the
-              caller then runs `coverage report`.
+              caller then runs `coverage report`. Set COVERAGE_FILE to keep
+              the data of each shard apart.
+  --shard     run only the INDEX-th (1-based) of TOTAL slices of the plan. The
+              slices are balanced from the recorded durations and are the same
+              in every shard that reads the same durations file.
+  --report    write what this run discovered, ran and measured to FILE.
+  --combine   check that the reports of all shards together ran every
+              discovered test exactly once, then record their durations in
+              DURATIONS for the next pipeline. Shards only read DURATIONS, so a
+              cache refreshed mid-pipeline cannot split them differently.
 
 Environment: JOBS (default: usable CPUs, capped by the cgroup memory limit),
 DURATIONS (default: .cache/unit-tests/durations.json).
@@ -130,6 +140,79 @@ def plan_units(ids: list[str], durations: dict[str, float]) -> list[Unit]:
     return units
 
 
+def parse_shard(value: str) -> tuple[int, int]:
+    """Parse "INDEX/TOTAL" (1-based) into (index, total)."""
+    index, _, total = value.partition("/")
+    try:
+        shard = int(index), int(total)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected INDEX/TOTAL, got {value!r}")
+    if not 1 <= shard[0] <= shard[1]:
+        raise argparse.ArgumentTypeError(f"shard {value} is out of range")
+    return shard
+
+
+def shard_units(units: list[Unit], index: int, total: int) -> list[Unit]:
+    """Units of shard `index` of `total`, balancing the estimated durations.
+
+    Greedy longest-first: each unit goes to the least loaded shard, the lowest
+    index winning ties. The result only depends on the ordered units, so every
+    shard computes the same partition.
+    """
+    loads = [0.0] * total
+    mine: list[Unit] = []
+    for unit in units:
+        target = loads.index(min(loads))
+        loads[target] += unit.estimate
+        if target == index - 1:
+            mine.append(unit)
+    return mine
+
+
+def combine_reports(paths: list[Path], durations_path: Path) -> int:
+    """Check the shard reports cover the discovered tests exactly once."""
+    reports = [json.loads(path.read_text()) for path in paths]
+    if not reports:
+        print("run_unit_tests: no shard report to combine", file=sys.stderr)
+        return 1
+    problems: list[str] = []
+    discovered = reports[0]["discovered"]
+    totals = {report["shard"][1] for report in reports}
+    indexes = sorted(report["shard"][0] for report in reports)
+    if len(totals) != 1 or indexes != list(range(1, totals.pop() + 1)):
+        problems.append(f"shards found: {indexes}")
+    if any(report["discovered"] != discovered for report in reports):
+        problems.append("shards discovered different tests")
+    ran = [test for report in reports for test in report["ran"]]
+    problems += [
+        f"run twice: {test}" for test in sorted({t for t in ran if ran.count(t) > 1})
+    ]
+    problems += [f"never run: {test}" for test in sorted(set(discovered) - set(ran))]
+    problems += [
+        f"unknown test run: {test}" for test in sorted(set(ran) - set(discovered))
+    ]
+    if problems:
+        print("run_unit_tests: shards do not cover the suite:", file=sys.stderr)
+        print("\n".join(f"  {problem}" for problem in problems), file=sys.stderr)
+        return 1
+    measured = {
+        test: seconds
+        for report in reports
+        for test, seconds in report["measured"].items()
+    }
+    known = set(discovered)
+    save_durations(
+        durations_path,
+        {
+            test: seconds
+            for test, seconds in {**load_durations(durations_path), **measured}.items()
+            if test in known
+        },
+    )
+    print(f"run_unit_tests: {len(ran)} tests ran once across {len(reports)} shards")
+    return 0
+
+
 def cgroup_values(name: str) -> list[int] | None:
     """Numbers of a cgroup v2 limit file, or None when absent or unlimited."""
     try:
@@ -195,7 +278,9 @@ def summarize(logs: Path) -> tuple[int, int]:
     return tests, skipped
 
 
-def orchestrate(coverage: bool) -> int:
+def orchestrate(
+    coverage: bool, shard: tuple[int, int] = (1, 1), report: Path | None = None
+) -> int:
     python = sys.executable
     command = [python]
     if coverage:
@@ -209,11 +294,13 @@ def orchestrate(coverage: bool) -> int:
         return 1
     durations_path = Path(os.environ.get("DURATIONS", DEFAULT_DURATIONS))
     durations = load_durations(durations_path)
-    units = plan_units(ids, durations)
+    units = shard_units(plan_units(ids, durations), *shard)
+    expected = sum(len(unit.tests) for unit in units)
     jobs = int(os.environ.get("JOBS") or default_jobs())
     print(
-        f"run_unit_tests: {len(ids)} tests in {len(units)} processes, "
-        f"{jobs} at a time ({len(durations)} known durations)"
+        f"run_unit_tests: shard {shard[0]}/{shard[1]}: {expected} of {len(ids)} "
+        f"tests in {len(units)} processes, {jobs} at a time "
+        f"({len(durations)} known durations)"
     )
 
     started = time.monotonic()
@@ -228,12 +315,25 @@ def orchestrate(coverage: bool) -> int:
             print(f"\n===== FAILED: {unit.name} =====", file=sys.stderr)
             print(unit.log.read_text(errors="replace"), file=sys.stderr)
 
-    # Keep only the tests that still exist, refreshed with this run.
+    if report:
+        report.write_text(
+            json.dumps(
+                {
+                    "shard": list(shard),
+                    "discovered": ids,
+                    "ran": [test for unit in units for test in unit.tests],
+                    "measured": measured,
+                }
+            )
+        )
+    # Keep only the tests that still exist, refreshed with this run. A shard
+    # leaves the file to --combine: the other shards would not see its update.
     known = set(ids)
-    save_durations(
-        durations_path,
-        {test: s for test, s in {**durations, **measured}.items() if test in known},
-    )
+    if shard[1] == 1:
+        save_durations(
+            durations_path,
+            {t: s for t, s in {**durations, **measured}.items() if t in known},
+        )
     if coverage:
         subprocess.run(
             [python, "-m", "coverage", "combine", "-q"], cwd=ROOT, check=True
@@ -248,9 +348,9 @@ def orchestrate(coverage: bool) -> int:
         f"Ran {tests} tests ({skipped} skipped) in "
         f"{time.monotonic() - started:.0f}s wall time"
     )
-    if tests != len(ids):
+    if tests != expected:
         print(
-            f"run_unit_tests: discovered {len(ids)} tests but ran {tests}",
+            f"run_unit_tests: planned {expected} tests but ran {tests}",
             file=sys.stderr,
         )
         return 1
@@ -296,12 +396,18 @@ def work(timings: Path, tests: list[str]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--coverage", action="store_true")
+    parser.add_argument("--shard", type=parse_shard, default=(1, 1))
+    parser.add_argument("--report", type=Path)
+    parser.add_argument("--combine", action="store_true")
     parser.add_argument("--worker", type=Path, help=argparse.SUPPRESS)
-    parser.add_argument("tests", nargs="*", help=argparse.SUPPRESS)
+    parser.add_argument("tests", nargs="*", help="report files with --combine")
     arguments = parser.parse_args()
     if arguments.worker:
         return work(arguments.worker, arguments.tests)
-    return orchestrate(arguments.coverage)
+    if arguments.combine:
+        durations = Path(os.environ.get("DURATIONS", DEFAULT_DURATIONS))
+        return combine_reports([Path(path) for path in arguments.tests], durations)
+    return orchestrate(arguments.coverage, arguments.shard, arguments.report)
 
 
 if __name__ == "__main__":
