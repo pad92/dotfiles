@@ -141,7 +141,7 @@ ansible_lint:
     paths:
       - '$PACKAGE_ARCHIVE'
 
-# Les archives Vim et Neovim sont maintenues sur la branche par défaut pour
+# Les archives Vim, Zsh et Neovim sont maintenues sur la branche par défaut pour
 # alimenter leurs URLs publiques ; ailleurs, elles ne sont construites que si
 # leur configuration change.
 package_vim:
@@ -168,6 +168,33 @@ package_vim:
         - 'scripts/ci/fetch_vim_plugins.py'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
       changes: *package_vim_changes
+
+package_zsh:
+  extends: .package_config
+  image: python:3.13-alpine
+  variables:
+    PACKAGE_ARCHIVE: zsh.tar.gz
+  before_script:
+    - apk add --no-cache git tar
+    - python3 -m pip install --no-cache-dir PyYAML==6.0.3
+  # L'arbre Zsh, .zshrc rendu sans Jinja et les plugins épinglés dans le rôle
+  # dotfiles, sans leur dossier .git.
+  script:
+    - mkdir package
+    - python3 scripts/ci/build_zsh_package.py package
+    - tar -czf "$PACKAGE_ARCHIVE" -C package .zshenv .zshrc .local
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: &package_zsh_changes
+        - 'ansible/roles/dotfiles/files/home/zsh/**/*'
+        - 'ansible/roles/dotfiles/files/home/.zshenv'
+        - 'ansible/roles/dotfiles/templates/home/.zshrc.j2'
+        - 'ansible/roles/dotfiles/defaults/main.yml'
+        - 'scripts/ci/build_zsh_package.py'
+        - 'scripts/ci/fetch_vim_plugins.py'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
+      changes: *package_zsh_changes
 
 package_nvim:
   extends: .package_config

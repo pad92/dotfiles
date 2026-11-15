@@ -1,0 +1,52 @@
+name: Package Zsh Configuration
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'ansible/roles/dotfiles/files/home/zsh/**'
+      - 'ansible/roles/dotfiles/files/home/.zshenv'
+      - 'ansible/roles/dotfiles/templates/home/.zshrc.j2'
+      - 'ansible/roles/dotfiles/defaults/main.yml'
+      - 'scripts/ci/build_zsh_package.py'
+      - 'scripts/ci/fetch_vim_plugins.py'
+      - '.github/workflows/package-zsh.yml'
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'ansible/roles/dotfiles/files/home/zsh/**'
+      - 'ansible/roles/dotfiles/files/home/.zshenv'
+      - 'ansible/roles/dotfiles/templates/home/.zshrc.j2'
+      - 'ansible/roles/dotfiles/defaults/main.yml'
+      - 'scripts/ci/build_zsh_package.py'
+      - 'scripts/ci/fetch_vim_plugins.py'
+
+concurrency:
+  group: zsh-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    # Skip on non-GitHub forges (e.g. Gitea, which also scans .github/workflows).
+    if: ${{ github.server_url == 'https://github.com' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # The plugins pinned in the dotfiles role, without their .git directory.
+      - name: Package Zsh configuration and plugins
+        run: |
+          pip install --quiet PyYAML==6.0.3
+          mkdir package
+          python3 scripts/ci/build_zsh_package.py package
+          tar -czf zsh.tar.gz -C package .zshenv .zshrc .local
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: zsh-package
+          path: zsh.tar.gz

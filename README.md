@@ -22,6 +22,8 @@ full-size still.
 - Mako notifications in the top-right corner, silenced while `steam-optimize`
   runs a game, except for critical alerts.
 - Zsh with Oh My Zsh, Neovim 0.7.2+ with native LSP, Vim, Alacritty, and tmux.
+- Standalone Neovim, Vim and Zsh packages, installed with one `curl` or `wget`
+  command and no Ansible: see [Editor packages](#editor-packages).
 - A Gruvbox Dark palette shared by Hyprland, Waybar, Mako, Hyprlock, tmux,
   Neovim, and Vim.
 - One Ansible playbook for packages, system settings, and dotfiles on Arch
@@ -291,6 +293,64 @@ files are rendered from `ansible/roles/dotfiles/templates/`. Managed paths that
 conflict are backed up before replacement. Unit symlinks stay links; deployment
 stops if a regular file or directory occupies one of their destinations.
 
+## Editor packages
+
+The Neovim, Vim and Zsh configurations are also published as standalone
+archives, built by the GitLab pipeline. They need neither Ansible nor a clone of this
+repository, only `curl` or `wget` and `tar`.
+
+Back up your current configuration first: extraction replaces files with the
+same names. To see what an archive contains before extracting it, replace
+`tar -xz -C ~` with `tar -tz`.
+
+| Package | Installs                                                   |
+| :------ | :--------------------------------------------------------- |
+| Neovim  | `~/.config/nvim`.                                          |
+| Vim     | `~/.vim` and `~/.vimrc`, plugins at the pinned commits.    |
+| Zsh     | `~/.zshenv`, `~/.zshrc` and `~/.local/share/dotfiles/zsh`. |
+
+Neovim, with `curl` or `wget`:
+
+```sh
+curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' | tar -xz -C ~
+```
+
+```sh
+wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' | tar -xz -C ~
+```
+
+Vim, with `curl` or `wget`:
+
+```sh
+curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' | tar -xz -C ~
+```
+
+```sh
+wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' | tar -xz -C ~
+```
+
+Zsh, with `curl` or `wget`:
+
+```sh
+curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.gz?job=package_zsh' | tar -xz -C ~
+```
+
+```sh
+wget -qO- 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.gz?job=package_zsh' | tar -xz -C ~
+```
+
+The Zsh archive ships the third-party plugins at the pinned commits and a
+`~/.zshrc` already rendered for any home directory. It leaves out
+`~/.zprofile`, which starts the Hyprland session from a login shell.
+
+[`scripts/vim.sh`](./scripts/vim.sh) does the Vim install with whichever of
+`curl` or `wget` exists, and refuses to run when `~/.vim` or `~/.vimrc`
+already exists:
+
+```sh
+curl -fsSL https://gitlab.com/pad92/dotfiles/-/raw/main/scripts/vim.sh | bash
+```
+
 ## Shell and editors
 
 Zsh uses Oh My Zsh, autosuggestions, syntax highlighting, and the aliases and
@@ -337,49 +397,8 @@ to it, because ansible-vault runs an executable password file. Decryption is
 refused when Git tracks the file or does not ignore it; `vault-toggle --force
 FILE` overrides that from a terminal.
 
-GitLab publishes standalone configuration archives for both editors. Back up
-your current configuration first: extraction replaces files with the same
-names.
-
-<details>
-<summary>Install the Neovim configuration on its own</summary>
-
-The archive installs `~/.config/nvim`.
-
-```sh
-set -eu
-archive=$(mktemp)
-trap 'rm -f -- "$archive"' EXIT
-curl -fL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/nvim.tar.gz?job=package_nvim' -o "$archive"
-tar -tzf "$archive"
-read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
-[ "$confirm" = y ] || exit 1
-tar -xzf "$archive" -C "$HOME"
-```
-
-</details>
-
-<details>
-<summary>Install the Vim configuration on its own</summary>
-
-The archive installs `~/.vim` and `~/.vimrc` with the plugins, at the
-commits the role pins, under `~/.vim/pack/dotfiles/start/`. Vim loads them at
-startup, so there is nothing else to install.
-[`scripts/vim.sh`](./scripts/vim.sh) does the same download and extraction
-without the confirmation step.
-
-```sh
-set -eu
-archive=$(mktemp)
-trap 'rm -f -- "$archive"' EXIT
-curl -fL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/vim.tar.gz?job=package_vim' -o "$archive"
-tar -tzf "$archive"
-read -r -p 'Extract this archive into your home directory? [y/N] ' confirm
-[ "$confirm" = y ] || exit 1
-tar -xzf "$archive" -C "$HOME"
-```
-
-</details>
+The standalone archives for both editors are in
+[Editor packages](#editor-packages).
 
 ## Scripts
 
