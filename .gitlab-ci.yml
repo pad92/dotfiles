@@ -33,10 +33,12 @@ stages:
         - 'requirements-*.txt'
         - '.coveragerc'
         - '.gitlab-ci.yml'
+        - '.gitmodules'
         - 'Makefile'
         - 'ansible.cfg'
         - 'mypy.ini'
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
+    # A branch with an open merge request already gets a merge request pipeline.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null'
       changes: *unit_test_inputs
 
 .alpine_test_tools:
@@ -91,17 +93,20 @@ unit_tests:
 # que la suite Python au lieu de la suivre.
 shell_tests:
   stage: test
-  image: python:3.13-alpine
+  image: python:3.14-alpine
   rules: !reference [.unit_test_rules, rules]
   variables:
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
+  # Same interpreter and requirements as unit_tests; this job only reads the
+  # cache, so the two concurrent jobs never overwrite each other's archive.
   cache:
     - key:
         files: [requirements-test.txt]
       paths: [.cache/pip/]
+      policy: pull
   before_script:
     - !reference [.alpine_test_tools, before_script]
-    - python3 -m pip install "$(grep '^ansible-core==' requirements-test.txt)"
+    - python3 -m pip install -r requirements-test.txt
   script:
     - bash tests/awww-monitor-scale.sh
     - bash tests/hyprlock-playerctlock.sh

@@ -63,8 +63,9 @@ repos:
       - id: check-json
       - id: check-xml
       - id: check-yaml
-        # GitLab CI uses the custom !reference tag, which PyYAML cannot load.
-        exclude: ^\.gitlab-ci\.yml$
+        # GitLab CI uses the custom !reference tag, which PyYAML cannot load;
+        # --unsafe only parses the syntax, so every file is still checked.
+        args: [--unsafe]
       - id: check-toml
 
       # Whitespace and formatting

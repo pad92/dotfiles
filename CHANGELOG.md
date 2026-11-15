@@ -154,6 +154,11 @@ Release history and changes planned for the next version.
   - The two test jobs are skipped on branches and merge requests whose
     changes touch only documentation, assets or other files the tests do not
     read. The default branch, tags and scheduled pipelines still run them.
+    A branch with an open merge request runs them only in the merge request
+    pipeline, and `shell_tests` shares the Python image and requirements of
+    `unit_tests` and only reads the pip cache.
+  - `check-yaml` runs with `--unsafe` so that it still checks `.gitlab-ci.yml`
+    and its `!reference` tags.
   - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh`. It spreads
     the tests over `JOBS` workers from the durations of the previous run, and
     fails if fewer tests ran than were discovered. `JOBS` follows the CPUs and

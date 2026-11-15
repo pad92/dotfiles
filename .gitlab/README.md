@@ -56,14 +56,16 @@ coverage cheaper than the default tracer. Tests started as subprocesses, such as
 `ansible-playbook`, are not traced.
 
 `shell_tests` runs the scripts of `tests/*.sh` and `tests/*.zsh` next to
-`unit_tests`. They need only `ansible-vault`, installed from the pinned
-`ansible-core`.
+`unit_tests`, on the same Python image and requirements. It only reads the pip
+cache, so the two concurrent jobs never overwrite each other's archive.
 
 On merge requests and branch pushes, the two jobs run only when a change
 touches `ansible/`, `tests/`, `scripts/`, `requirements-*.txt`, `.coveragerc`,
-`.gitlab-ci.yml`, `Makefile`, `ansible.cfg` or `mypy.ini`. The tests do not read
-Markdown files or `assets/`, so documentation-only changes skip them. A new
-branch has no diff to compare, so GitLab runs them. When a test starts reading
+`.gitlab-ci.yml`, `.gitmodules`, `Makefile`, `ansible.cfg` or `mypy.ini`. The
+tests do not read Markdown files or `assets/`, so documentation-only changes
+skip them. A branch with an open merge request runs them only in the merge
+request pipeline, not in the push pipeline. A new branch has no diff to
+compare, so GitLab runs them. When a test starts reading
 another path, add it to `.unit_test_rules` in `.gitlab-ci.yml`.
 
 ### `pages`
