@@ -9,11 +9,19 @@ Release history and changes planned for the next version.
 - **3D printing**: the `24_3dprint` group (PrusaSlicer, F3D) and the `print3d`
   role (`3dprint` tag), which makes F3D thumbnails render in Nautilus.
 - **AI coding agents**:
+  - The `dotfiles_claude` tag merges token-saving settings into
+    `~/.claude/settings.json`: autocompact at 60 %, tool search, the enabled
+    plugins and a `permissions.deny` list for `node_modules`, `.venv` and
+    `__pycache__`. Other entries of those tables are kept and the `OTEL_*`
+    variables are not managed.
+  - The same tag removes the user-scope `caveman` MCP server, whose binary is
+    missing, with `claude mcp remove`.
   - The Claude Code status line shows the context tokens next to its gauge
     (`31% 63k/200k`).
   - The `dotfiles_codex` tag sets the Codex status line in
     `~/.codex/config.toml` and leaves the rest of the file alone.
-  - Install `claude-code`, `claude-desktop` (AUR) and `openai-codex` with
+  - Install `claude-code`, `claude-desktop` (AUR), `openai-codex` and
+    `agent-browser` (DOM snapshots for agents, instead of screenshots) with
     `10_sre_devops`.
 - **Ansible roles** for steps of the Arch install guide that were manual:
   `time_sync` (systemd-timesyncd when no other NTP client runs), `power_save`
