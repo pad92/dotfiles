@@ -405,6 +405,13 @@ if 'is-enabled' in args:
         defaults = yaml.safe_load((ROLES / "packages/defaults/main.yml").read_text())
         self.assertEqual(defaults["packages_razer_usb_vendor_id"], "1532")
 
+    def test_swayosd_libinput_backend_is_enabled_with_hyprland(self):
+        services = yaml.safe_load(
+            (ROLES / "package_services/defaults/main.yml").read_text()
+        )
+        by_group = services["package_services_by_group"]["Archlinux"]
+        self.assertIn("swayosd-libinput-backend.service", by_group["11_hyprland"])
+
     def test_razer_group_name_is_the_same_in_every_role(self):
         # The roles name the group separately; a rename that misses one would
         # silently skip plugdev or the daemon without failing any other test.
