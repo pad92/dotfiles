@@ -100,9 +100,10 @@ class SteamOptimizeTests(unittest.TestCase):
 
     def test_active_localconfig_without_loginusers(self):
         for account_ids in [[], ["1234"], ["1234", "9999"]]:
-            with self.subTest(
-                account_ids=account_ids
-            ), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(account_ids=account_ids),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 steam_root = Path(directory)
                 paths = []
                 for account_id in account_ids:
@@ -236,6 +237,125 @@ class SteamOptimizeTests(unittest.TestCase):
             dpi = self.script["get_current_mouse_dpi"]()
 
         self.assertEqual(dpi, 1600)
+
+    def parse_args_with(self, *args):
+        with (
+            mock.patch("sys.argv", ["steam-optimize", *args]),
+            mock.patch("subprocess.run") as run,
+        ):
+            parsed = self.script["parse_args"]()
+        return parsed, run
+
+    def test_dpi_option_is_parsed_for_the_launch(self):
+        parsed, _run = self.parse_args_with("--dpi", "800", "--", "game")
+
+        self.assertEqual(parsed[-2:], (800, ["game"]))
+
+    def test_invalid_dpi_is_ignored_without_blocking_the_game(self):
+        for value in ("abc", "0", "999999"):
+            with self.subTest(value=value):
+                parsed, _run = self.parse_args_with("--dpi", value, "--", "game")
+
+                self.assertEqual(parsed[-2:], (None, ["game"]))
+
+    def test_missing_dpi_value_keeps_the_game_command(self):
+        parsed, _run = self.parse_args_with("--dpi", "--", "game", "-flag")
+
+        self.assertEqual(parsed[-2:], (None, ["game", "-flag"]))
+
+    def test_mouse_dpi_is_skipped_when_razer_cli_is_missing(self):
+        with (
+            mock.patch("shutil.which", return_value=None),
+            mock.patch("subprocess.run") as run,
+        ):
+            self.script["apply_mouse_dpi"](800)
+
+        razer_calls = [
+            call for call in run.call_args_list if call.args[0][0] == "razer-cli"
+        ]
+        self.assertEqual(razer_calls, [])
+        self.assertFalse(self.script["apply_mouse_dpi"].__globals__["_dpi_changed"])
+
+    def test_game_profiles_never_change_the_mouse_dpi(self):
+        failed = SimpleNamespace(returncode=1, stdout="")
+        with (
+            mock.patch.dict(os.environ, {"HOME": "/home/player"}, clear=True),
+            mock.patch("subprocess.run", return_value=failed) as run,
+            mock.patch("os.path.isdir", return_value=False),
+        ):
+            for appid in self.script["GAME_PROFILES"]:
+                self.script["apply_game_overrides"](appid, ["game"])
+
+        commands = [call.args[0][0] for call in run.call_args_list]
+        self.assertNotIn("razer-cli", commands)
+
+    def test_managed_launch_option_round_trips(self):
+        launch_cls = self.script["ManagedLaunch"]
+        build = self.script["build_managed_option"]
+        parse = self.script["parse_managed_option"]
+        script_path = "/home/player/.bin/steam-optimize"
+
+        for launch in (
+            launch_cls(),
+            launch_cls(mangohud=True),
+            launch_cls(dpi=800),
+            launch_cls(mangohud=True, dpi=1600),
+        ):
+            with self.subTest(launch=launch):
+                self.assertEqual(parse(build(script_path, launch), script_path), launch)
+
+        self.assertEqual(
+            build(script_path, launch_cls(mangohud=True)),
+            f"{script_path} --mangohud -- %command%",
+        )
+
+    def test_custom_launch_options_are_not_managed(self):
+        parse = self.script["parse_managed_option"]
+        script_path = "/home/player/.bin/steam-optimize"
+
+        for option in (
+            "gamemoderun %command%",
+            f"{script_path} --monitor DP-1 -- %command%",
+            f"{script_path} --dpi 5 -- %command%",
+            f"{script_path} --dpi 800 --dpi 900 -- %command%",
+            f"{script_path} --dpi -- %command%",
+            f"{script_path} -- %command% -novid",
+        ):
+            with self.subTest(option=option):
+                self.assertIsNone(parse(option, script_path))
+
+    def test_toggle_keeps_the_dpi_until_disabled(self):
+        launch_cls = self.script["ManagedLaunch"]
+        toggle = self.script["next_toggle_state"]
+
+        enabled = toggle(launch_cls(dpi=800))
+
+        self.assertEqual(enabled, launch_cls(mangohud=True, dpi=800))
+        self.assertIsNone(toggle(enabled))
+        self.assertEqual(toggle(None), launch_cls())
+
+    def test_disable_all_leaves_custom_launch_options(self):
+        config = {
+            "UserLocalConfigStore": {
+                "Software": {
+                    "Valve": {
+                        "Steam": {
+                            "apps": {
+                                "1": {"LaunchOptions": "managed"},
+                                "2": {"LaunchOptions": "custom"},
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        set_launch_option = self.script["set_launch_option"]
+
+        for appid in ("1", "2"):
+            set_launch_option([config], appid, None, lambda o: o == "managed")
+
+        apps = config["UserLocalConfigStore"]["Software"]["Valve"]["Steam"]["apps"]
+        self.assertEqual(apps, {"1": {}, "2": {"LaunchOptions": "custom"}})
 
 
 if __name__ == "__main__":

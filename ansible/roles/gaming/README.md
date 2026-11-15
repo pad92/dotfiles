@@ -48,7 +48,8 @@ Deselecting Steam does not stop the services.
   12 GB proprietary-driver cache on NVIDIA; game profiles can override them,
   and Arc Raiders uses 20 GB. It reads the most recent account from
   `loginusers.vdf`, and falls back to the only `localconfig.vdf` when there is
-  exactly one.
+  exactly one. The mouse DPI is a per-game launch option: `steam-optimize -i`
+  writes `--dpi <N>` with `[p]`, and it needs `razer-cli` (`25_razer`).
 - Avoid `gamemoderun` while `ananicy-cpp` runs: both change process
   priorities
   ([CachyOS gaming guide](https://wiki.cachyos.org/fr/configuration/gaming/)).

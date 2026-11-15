@@ -319,7 +319,7 @@ packages_family_groups:
       - openrazer-daemon
       - openrazer-driver-dkms
       - python-openrazer
-      # AUR. steam-optimize reads and restores the mouse DPI with it.
+      # AUR. steam-optimize --dpi sets and restores the mouse DPI with it.
       - razer-cli
     # LADSPA plugins of the voice effect microphones (audio role).
     26_voice_effects:
