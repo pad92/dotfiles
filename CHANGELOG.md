@@ -211,6 +211,15 @@ Release history and changes planned for the next version.
 - **Scripts**: `hypr-screenshot.sh` also records an animated WebP demo. It
   runs as `demo@dotfiles` in namespaces, so no real user or host shows up,
   and its frames are reproducible.
+- **Steam Optimize**:
+  - The mouse DPI is set per game with `--dpi <N>` in the Steam launch
+    option, and `steam-optimize -i` sets it with `[p]`. No game profile
+    changes the DPI any more: GTA V and GTA V Enhanced need `[p]` once to
+    keep 800 DPI.
+  - Without `razer-cli`, `--dpi` is logged and ignored and `[p]` is hidden.
+    An invalid `--dpi` value is ignored too; the game still launches.
+  - The installer keeps each game's DPI when it toggles MangoHud or enables
+    every game, and still leaves custom launch options alone.
 
 ### Fixed
 
@@ -252,7 +261,7 @@ Release history and changes planned for the next version.
     workspace rule names, even when another workspace is shown there.
     Gamescope used to start at its default resolution in that case.
   - `21_steam` installs `python-vdf` for the installer, and `25_razer`
-    installs `razer-cli` (AUR) for the GTA V mouse DPI.
+    installs `razer-cli` (AUR) for the mouse DPI.
   - The DOOM label says mouse smoothing off: `m_smooth 0` never turned off
     VSync.
   - BattlEye profiles (GTA V, GTA V Enhanced) only set

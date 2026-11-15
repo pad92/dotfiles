@@ -17,7 +17,8 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, replace
 
 # --- Configuration ---
 
@@ -62,7 +63,6 @@ _FORZA_PROFILE = {
 # /etc/hosts, which is a system choice (ban risk) kept out of this wrapper.
 # The Steam overlay can lock game input until restart (RX 6700 XT report).
 _GTA_PROFILE = {
-    "dpi": 800,
     "battleye": True,
     "no_steaminput": True,
 }
@@ -73,7 +73,6 @@ GAME_PROFILES = {
         "wayland": True,
         # Keep Mesa's shader cache from evicting entries too aggressively.
         "env": {"MESA_SHADER_CACHE_MAX_SIZE": "20G"},
-        # "dpi": 800,
     },
     "526870": {
         "name": "Satisfactory",
@@ -175,7 +174,14 @@ _EXCLUDED_GAME_NAME_PARTS = (
     "steam controller configs",
 )
 
-# --- Mouse DPI Tracking ---
+# --- Mouse DPI ---
+
+# The mouse DPI is a player preference, not a game property: it is set per game
+# with --dpi in the Steam launch option (configured through --install), never
+# in GAME_PROFILES. Bounds reject typos before razer-cli is called.
+MOUSE_DPI_MIN = 100
+MOUSE_DPI_MAX = 50000
+
 _dpi_changed = False
 _original_mouse_dpi = None
 _mako_dnd_added = False
@@ -231,6 +237,45 @@ def get_current_mouse_dpi():
     return values[0] if values else None
 
 
+def parse_dpi(value: str) -> int | None:
+    """Return value as a mouse DPI, or None when it is not an integer in range."""
+    if not value.isdigit():
+        return None
+    dpi = int(value)
+    return dpi if MOUSE_DPI_MIN <= dpi <= MOUSE_DPI_MAX else None
+
+
+def is_mouse_dpi_supported() -> bool:
+    """Return whether razer-cli, the only supported DPI backend, is installed."""
+    return shutil.which("razer-cli") is not None
+
+
+def apply_mouse_dpi(dpi: int) -> None:
+    """Set the mouse DPI, remembering the original value for hyprland_end().
+
+    Without razer-cli the feature is disabled: the request is only logged and
+    the game launches with the mouse left as it is.
+    """
+    global _dpi_changed, _original_mouse_dpi
+    if not is_mouse_dpi_supported():
+        log_msg(
+            "WARN",
+            f"razer-cli not installed; mouse DPI {dpi} ignored",
+            notify=False,
+        )
+        return
+    if _original_mouse_dpi is None:
+        _original_mouse_dpi = get_current_mouse_dpi()
+    if _original_mouse_dpi is None:
+        log_warn("Cannot change mouse DPI: current DPI could not be determined")
+    elif run_silent(["razer-cli", "--dpi", str(dpi)]):
+        _dpi_changed = True
+        collector.mouse_dpi = dpi
+        log_info_silent(f"Mouse DPI set to {dpi} (was {_original_mouse_dpi})")
+    else:
+        log_warn(f"Failed to set mouse DPI to {dpi}")
+
+
 # --- Notification Collector ---
 
 
@@ -246,6 +291,7 @@ class NotificationCollector:
         self.overrides: str | None = None
         self.gamescope: str | None = None
         self.mangohud = False
+        self.mouse_dpi: int | None = None
         self.warnings: list[str] = []
         self.errors: list[str] = []
 
@@ -276,6 +322,8 @@ class NotificationCollector:
             bullets.append(f"  • Overrides: {self.overrides}")
         if self.mangohud:
             bullets.append("  • HUD: MangoHud (horizontal top bar)")
+        if self.mouse_dpi:
+            bullets.append(f"  • Mouse: {self.mouse_dpi} DPI")
 
         lines.extend(bullets)
 
@@ -631,17 +679,6 @@ def apply_game_overrides(steam_app_id, game_cmd):
 
     game_name = profile.get("name", "UnknownGame")
 
-    # Apply mouse DPI
-    dpi = profile.get("dpi")
-    if dpi:
-        global _dpi_changed, _original_mouse_dpi
-        if _original_mouse_dpi is None:
-            _original_mouse_dpi = get_current_mouse_dpi()
-        if _original_mouse_dpi is None:
-            log_warn("Cannot change mouse DPI: current DPI could not be determined")
-        elif run_silent(["razer-cli", "--dpi", str(dpi)]):
-            _dpi_changed = True
-
     # Apply wayland
     if profile.get("wayland"):
         os.environ.pop("SDL_VIDEODRIVER", None)
@@ -698,8 +735,6 @@ def apply_game_overrides(steam_app_id, game_cmd):
             parts.append(f"Wayland{keep_str}")
         if profile.get("battleye"):
             parts.append("BattlEye")
-        if dpi:
-            parts.append(f"mouse DPI {dpi}")
         if env_vars:
             parts.append(f"Env: {', '.join(env_vars)}")
         collector.overrides = ", ".join(parts) if parts else "Custom config"
@@ -917,15 +952,20 @@ def set_launch_option(
     configs: Iterable[dict[str, object]],
     appid: str,
     option: str | None,
-    managed_options: tuple[str, ...] = (),
+    is_managed: Callable[[str], bool] | None = None,
 ) -> bool:
-    """Set or remove an app's launch option across all loaded Steam configs."""
+    """Set or remove an app's launch option across all loaded Steam configs.
+
+    When removing, is_managed restricts removal to options it accepts, so a
+    user's own custom launch options are left untouched.
+    """
     changed = False
     for config in configs:
         if option is None:
             entry = get_app_entry_safe(config, appid)
-            if not entry or (
-                managed_options and entry.get("LaunchOptions") not in managed_options
+            current = entry.get("LaunchOptions") if entry else None
+            if not isinstance(current, str) or (
+                is_managed and not is_managed(current)
             ):
                 continue
             entry.pop("LaunchOptions", None)
@@ -963,6 +1003,74 @@ def save_vdf_config(path, config, vdf_module):
                 os.unlink(temporary_path)
 
 
+@dataclass(frozen=True)
+class ManagedLaunch:
+    """Per-game settings stored in a steam-optimize Steam launch option."""
+
+    mangohud: bool = False
+    dpi: int | None = None
+
+
+_COMMAND_SUFFIX = "-- %command%"
+
+
+def build_managed_option(script_path: str, launch: ManagedLaunch) -> str:
+    """Render the Steam launch option for launch; parse_managed_option inverts it."""
+    parts = [script_path]
+    if launch.mangohud:
+        parts.append("--mangohud")
+    if launch.dpi is not None:
+        parts += ["--dpi", str(launch.dpi)]
+    parts.append(_COMMAND_SUFFIX)
+    return " ".join(parts)
+
+
+def parse_managed_option(option: str, script_path: str) -> ManagedLaunch | None:
+    """Return the settings of a launch option written by build_managed_option.
+
+    Anything else (another wrapper, extra flags, an invalid DPI) returns None so
+    the installer reports it as a custom option and never rewrites it silently.
+    """
+    prefix = f"{script_path} "
+    if not option.startswith(prefix) or not option.endswith(_COMMAND_SUFFIX):
+        return None
+    flags = option[len(prefix) : len(option) - len(_COMMAND_SUFFIX)].split()
+
+    mangohud = False
+    dpi = None
+    idx = 0
+    while idx < len(flags):
+        flag = flags[idx]
+        if flag == "--mangohud" and not mangohud:
+            mangohud = True
+            idx += 1
+        elif flag == "--dpi" and dpi is None and idx + 1 < len(flags):
+            dpi = parse_dpi(flags[idx + 1])
+            if dpi is None:
+                return None
+            idx += 2
+        else:
+            return None
+    return ManagedLaunch(mangohud=mangohud, dpi=dpi)
+
+
+def next_toggle_state(current: ManagedLaunch | None) -> ManagedLaunch | None:
+    """Cycle Off -> On -> On + MangoHud -> Off, keeping the DPI while enabled."""
+    if current is None:
+        return ManagedLaunch()
+    if not current.mangohud:
+        return replace(current, mangohud=True)
+    return None
+
+
+def describe_managed_launch(launch: ManagedLaunch) -> str:
+    """Return the installer status label of a managed launch option."""
+    label = "Optimized + MangoHud" if launch.mangohud else "Optimized"
+    if launch.dpi is not None:
+        label += f" | DPI {launch.dpi}"
+    return f"[{label}]"
+
+
 def run_installer(script_path):
     # Check if the script is in PATH to warn the user if they can't run it globally
     script_name = os.path.basename(script_path)
@@ -983,9 +1091,6 @@ def run_installer(script_path):
         )
         print("Please install it with: pip install vdf", file=sys.stderr)
         sys.exit(1)
-
-    target_option_no_hud = f"{script_path} -- %command%"
-    target_option_hud = f"{script_path} --mangohud -- %command%"
 
     steam_root = find_steam_root()
     if not steam_root:
@@ -1034,6 +1139,29 @@ def run_installer(script_path):
 
     primary_config = next(iter(vdf_configs.values()))
 
+    dpi_supported = is_mouse_dpi_supported()
+
+    def managed_state(option: str) -> ManagedLaunch | None:
+        return parse_managed_option(option, script_path)
+
+    def is_managed(option: str) -> bool:
+        return managed_state(option) is not None
+
+    def write_state(appid: str, state: ManagedLaunch | None) -> bool:
+        option = None if state is None else build_managed_option(script_path, state)
+        return set_launch_option(vdf_configs.values(), appid, option)
+
+    def pause(message: str) -> None:
+        print(f"\n{message}")
+        time.sleep(1)
+
+    def prompt_game_index(prompt: str) -> int | None:
+        raw_index = input(prompt).strip()
+        if raw_index.isdigit() and 1 <= int(raw_index) <= len(games_list):
+            return int(raw_index) - 1
+        pause("Invalid game index.")
+        return None
+
     while True:
         launch_options_by_app = {}
         for appid, _ in games_list:
@@ -1053,10 +1181,9 @@ def run_installer(script_path):
 
         for idx, (appid, name) in enumerate(games_list, 1):
             current_options = launch_options_by_app.get(appid, "")
-            if current_options == target_option_no_hud:
-                status = "\033[92m[Optimized (steam-optimize)]\033[0m"
-            elif current_options == target_option_hud:
-                status = "\033[92m[Optimized + MangoHud]\033[0m"
+            state = managed_state(current_options)
+            if state is not None:
+                status = f"\033[92m{describe_managed_launch(state)}\033[0m"
             elif current_options:
                 status = f"\033[93m[Other: {current_options}]\033[0m"
             else:
@@ -1069,6 +1196,10 @@ def run_installer(script_path):
         print(
             "  \033[96m[t]\033[0m     Toggle optimization for a specific game (Cycles: Off -> On -> On + MangoHud)"
         )
+        if dpi_supported:
+            print(
+                "  \033[96m[p]\033[0m     Set mouse DPI for a specific game (empty = don't touch DPI)"
+            )
         print("  \033[96m[e]\033[0m     Enable optimization for ALL games")
         print("  \033[96m[d]\033[0m     Disable/Remove optimization for ALL games")
         print(
@@ -1078,6 +1209,10 @@ def run_installer(script_path):
         print("  \033[96m[c]\033[0m     Cancel and exit without saving")
         print("=" * 85)
 
+        if not dpi_supported:
+            print(
+                "\033[90mMouse DPI per game disabled: razer-cli is not installed.\033[0m"
+            )
         if dirty:
             print("\033[93m⚠️  You have unsaved changes. Press 's' to save them.\033[0m")
 
@@ -1122,88 +1257,98 @@ def run_installer(script_path):
                 .strip()
                 .lower()
             )
-            target_to_use = (
-                target_option_no_hud if mango_choice == "n" else target_option_hud
-            )
+            use_mangohud = mango_choice != "n"
             for appid, _ in games_list:
-                set_launch_option(vdf_configs.values(), appid, target_to_use)
+                # Keep each game's DPI; custom options are replaced as before.
+                current = managed_state(launch_options_by_app.get(appid, ""))
+                base = current if current is not None else ManagedLaunch()
+                write_state(appid, replace(base, mangohud=use_mangohud))
             dirty = True
-            hud_status = (
-                "with MangoHud"
-                if target_to_use == target_option_hud
-                else "without MangoHud"
-            )
-            print(f"\nEnabled for all games ({hud_status}).")
-            time.sleep(1)
+            hud_status = "with MangoHud" if use_mangohud else "without MangoHud"
+            pause(f"Enabled for all games ({hud_status}).")
 
         elif choice == "d":
             for appid, _ in games_list:
-                set_launch_option(
-                    vdf_configs.values(),
-                    appid,
-                    None,
-                    managed_options=(target_option_no_hud, target_option_hud),
-                )
+                set_launch_option(vdf_configs.values(), appid, None, is_managed)
             dirty = True
-            print("\nDisabled for all games.")
-            time.sleep(1)
+            pause("Disabled for all games.")
 
         elif choice == "m":
             any_changed = False
             for appid, _ in games_list:
-                current_opts = launch_options_by_app.get(appid, "")
-                if current_opts in (target_option_no_hud, target_option_hud):
-                    new_opt = (
-                        target_option_hud
-                        if current_opts == target_option_no_hud
-                        else target_option_no_hud
-                    )
-                    any_changed |= set_launch_option(
-                        vdf_configs.values(), appid, new_opt
+                current = managed_state(launch_options_by_app.get(appid, ""))
+                if current is not None:
+                    any_changed |= write_state(
+                        appid, replace(current, mangohud=not current.mangohud)
                     )
             if any_changed:
                 dirty = True
-                print("\nToggled MangoHud for all optimized games.")
+                pause("Toggled MangoHud for all optimized games.")
             else:
-                print("\nNo optimized games found to toggle.")
-            time.sleep(1)
+                pause("No optimized games found to toggle.")
+
+        elif choice == "p" and dpi_supported:
+            game_index = prompt_game_index("\nEnter game number to set the DPI for: ")
+            if game_index is None:
+                continue
+            appid, name = games_list[game_index]
+            current_options = launch_options_by_app.get(appid, "")
+            current = managed_state(current_options)
+            if current is None and current_options:
+                pause(
+                    f"{name} has custom launch options; use [t] to replace them first."
+                )
+                continue
+            current_dpi = current.dpi if current else None
+            shown_dpi = current_dpi if current_dpi is not None else "unchanged"
+            raw_dpi = input(
+                f"Mouse DPI for {name} ({MOUSE_DPI_MIN}-{MOUSE_DPI_MAX}, "
+                f"empty = don't touch) [{shown_dpi}]: "
+            ).strip()
+            if raw_dpi:
+                new_dpi = parse_dpi(raw_dpi)
+                if new_dpi is None:
+                    pause(
+                        f"Invalid DPI: expected an integer from {MOUSE_DPI_MIN} "
+                        f"to {MOUSE_DPI_MAX}."
+                    )
+                    continue
+            else:
+                new_dpi = None
+            if current is None and new_dpi is None:
+                pause(f"{name} is not optimized; DPI left unchanged.")
+                continue
+            base = current if current is not None else ManagedLaunch()
+            write_state(appid, replace(base, dpi=new_dpi))
+            dirty = True
+            dpi_status = f"set to {new_dpi}" if new_dpi is not None else "unchanged"
+            pause(f"Mouse DPI for {name}: {dpi_status}.")
 
         elif choice == "t" or choice.isdigit():
             if choice == "t":
-                choice_idx = input("\nEnter game number to toggle: ").strip()
+                game_index = prompt_game_index("\nEnter game number to toggle: ")
+            elif 1 <= int(choice) <= len(games_list):
+                game_index = int(choice) - 1
             else:
-                choice_idx = choice
-
-            if choice_idx.isdigit():
-                idx = int(choice_idx)
-                if 1 <= idx <= len(games_list):
-                    appid, name = games_list[idx - 1]
-                    current_opts = launch_options_by_app.get(appid, "")
-
-                    if current_opts == target_option_no_hud:
-                        new_opt = target_option_hud
-                        action = "Enabled with MangoHud"
-                    elif current_opts == target_option_hud:
-                        new_opt = None
-                        action = "Disabled"
-                    else:
-                        new_opt = target_option_no_hud
-                        action = "Enabled without MangoHud"
-
-                    set_launch_option(vdf_configs.values(), appid, new_opt)
-
-                    dirty = True
-                    print(f"\n{action} for {name}.")
-                    time.sleep(1)
-                else:
-                    print("\nInvalid game index.")
-                    time.sleep(1)
+                pause("Invalid game index.")
+                continue
+            if game_index is None:
+                continue
+            appid, name = games_list[game_index]
+            new_state = next_toggle_state(
+                managed_state(launch_options_by_app.get(appid, ""))
+            )
+            write_state(appid, new_state)
+            dirty = True
+            if new_state is None:
+                action = "Disabled"
+            elif new_state.mangohud:
+                action = "Enabled with MangoHud"
             else:
-                print("\nInvalid game index.")
-                time.sleep(1)
+                action = "Enabled without MangoHud"
+            pause(f"{action} for {name}.")
         else:
-            print("\nInvalid option. Please try again.")
-            time.sleep(1)
+            pause("Invalid option. Please try again.")
 
 
 # --- Usage & Main ---
@@ -1225,6 +1370,11 @@ Options:
   -i, --install, --setup    Run the interactive installer to list and configure
                             steam-optimize (and MangoHud) for your games.
   --mangohud                Enable MangoHud with a discrete horizontal top bar.
+  --dpi <N>                 Set the mouse DPI to N ({MOUSE_DPI_MIN}-{MOUSE_DPI_MAX}) while the
+                            game runs, then restore the previous value. Needs
+                            razer-cli; without it, or with an invalid N, the
+                            game launches with the DPI unchanged. Set per game
+                            from --install.
   -a, --app-id <id>         Force the Steam AppID used for game-profile lookup.
                             Useful for non-Steam game shortcuts, where Steam
                             reports a generic SteamAppId (e.g. 480/Spacewar)
@@ -1241,6 +1391,9 @@ Examples:
 
   # Launch with MangoHud enabled
   {script_name} --mangohud -- %command%
+
+  # Play at 800 DPI, restoring the previous DPI afterwards
+  {script_name} --dpi 800 -- %command%
 
   # Use workspace 2's monitor
   {script_name} --monitor workspace:2 -- %command%
@@ -1269,6 +1422,7 @@ def parse_args():
     mangohud = False
     no_gamescope = False
     app_id_override = None
+    mouse_dpi = None
     game_cmd = []
 
     idx = 0
@@ -1292,6 +1446,22 @@ def parse_args():
                 usage()
                 sys.exit(1)
             monitor_selector = argv[idx + 1]
+            idx += 2
+        elif arg == "--dpi":
+            # A bad value must never block the game: it is logged and ignored.
+            # A missing value is not consumed, so "-- %command%" stays intact.
+            if idx + 1 >= len(argv) or argv[idx + 1].startswith("-"):
+                log_msg("WARN", "--dpi requires a value; ignored", notify=False)
+                idx += 1
+                continue
+            mouse_dpi = parse_dpi(argv[idx + 1])
+            if mouse_dpi is None:
+                log_msg(
+                    "WARN",
+                    f"Invalid --dpi value {argv[idx + 1]!r} (expected "
+                    f"{MOUSE_DPI_MIN}-{MOUSE_DPI_MAX}); ignored",
+                    notify=False,
+                )
             idx += 2
         elif arg in ("-a", "--app-id"):
             if idx + 1 >= len(argv):
@@ -1317,6 +1487,7 @@ def parse_args():
         mangohud,
         no_gamescope,
         app_id_override,
+        mouse_dpi,
         game_cmd,
     )
 
@@ -1328,6 +1499,7 @@ def main():
         mangohud,
         no_gamescope,
         app_id_override,
+        mouse_dpi,
         game_cmd,
     ) = parse_args()
 
@@ -1369,6 +1541,8 @@ def main():
     steam_app_id = app_id_override or os.environ.get("SteamAppId", "")
     game_name, cmd, profile = apply_game_overrides(steam_app_id, game_cmd)
     collector.game_name = game_name
+    if mouse_dpi is not None:
+        apply_mouse_dpi(mouse_dpi)
 
     profile_no_gamescope = bool(profile) and profile.get("no_gamescope", False)
     no_gamescope = no_gamescope or profile_no_gamescope

@@ -55,7 +55,7 @@ STEAM_OPTIMIZE_SCRIPT = (
     Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
 )
 # Package providing each optional runtime of steam-optimize, and the group that
-# installs it: the installer imports vdf, the mouse DPI profiles run razer-cli.
+# installs it: the installer imports vdf, --dpi runs razer-cli.
 STEAM_OPTIMIZE_RUNTIME_PACKAGES = {
     "import vdf": ("21_steam", "python-vdf"),
     '"razer-cli"': ("25_razer", "razer-cli"),

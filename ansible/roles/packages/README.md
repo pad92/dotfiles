@@ -73,8 +73,9 @@ A Razer mouse or keyboard needs OpenRazer for `razer_dpi.py`. When the
 selection holds `21_steam`, the role reads the `idVendor` of each USB device and
 adds `25_razer` if one reports Razer's vendor ID. The group installs
 `openrazer-daemon`, `openrazer-driver-dkms`, `python-openrazer` and
-`razer-cli` (AUR), which `steam-optimize` uses to set and restore the mouse DPI
-of a game profile. The DKMS driver brings the headers of the running kernel
+`razer-cli` (AUR), which `steam-optimize --dpi` uses to set and restore the
+mouse DPI of a game. Without it, `--dpi` is ignored and the game launches with
+the DPI unchanged. The DKMS driver brings the headers of the running kernel
 with it.
 
 The device has to be plugged in for the first run. Once the saved state
