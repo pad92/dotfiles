@@ -1,211 +1,98 @@
+# Generic backup exclusions, consumed by backup.sh (rsync --exclude-from).
+#
+# This list is concatenated after ~/.no_backup.txt and is applied to every
+# transfer root of backup.sh: $HOME and /etc share the same rules, and
+# --delete-excluded removes newly excluded files from the destination.
+#
+# Anchoring convention (rsync semantics):
+#   - No slash (name, *.ext)    : matches that name at ANY depth, in $HOME and
+#                                 in /etc. Reserve it for names that are
+#                                 unambiguous junk (.DS_Store, *.swp,
+#                                 __pycache__/, node_modules/).
+#   - Leading "/"               : anchored to the transfer root ($HOME or /etc).
+#   - Slash inside the pattern  : also anchored to the transfer root, so
+#                                 ".config/**/X" only looks under ~/.config.
+#   - Leading "**/"             : any depth, used for tool conventions that
+#                                 live in many places (steamapps/common/,
+#                                 compatdata/, Crashpad/).
+#   - Trailing "/"              : directories only.
+# Over-broad names that also exist in source trees or user documents (dist/,
+# build/, out/, coverage/, target/, venv/, tmp/, cache) are deliberately NOT
+# excluded unanchored. Only unambiguous sub-paths (target/debug/) or
+# top-level directories (/tmp/) are listed.
+#
+# Never list user content here (documents, media, databases, VM images,
+# conversation or history data, SSH/GPG keys, user settings).
+
+# ---- OS and file manager junk ----
 ._*
 .apdisk
 .AppleDB
 .AppleDesktop
 .AppleDouble
-.atom/compile-cache/
-.cache
-.cargo/registry/cache/
-.cargo/registry/src/
-.cargo/git/checkouts/
-.cargo/git/db/
-.ccache/?
-.ccache/tmp
-.cddb
 .CFUserTextEncoding
 .com.apple.timemachine.donotpresent
-.config/**/Application Cache
-.config/**/blob_storage
-.config/**/Cache
-.config/**/CachedData
-.config/**/Code Cache
-.config/**/GPUCache
-.config/**/Service Worker/CacheStorage
-.config/*/Cache
-.config/Atom/*Cache
-.config/BraveSoftware/Brave-Browser/*/Feature Engagement Tracker/
-.config/BraveSoftware/Brave-Browser/*/Service Worker/CacheStorage/
-.config/BraveSoftware/Brave-Browser/Safe Browsing/
-.config/BraveSoftware/Brave-Browser/ShaderCache/
-.config/chromium/*/Application Cache
-.config/chromium/*/History Index *
-.config/chromium/*/Service Worker/CacheStorage
-.config/Code - OSS/logs/
-.config/Code/CachedData/*
-.config/Code/logs/
-.config/freshwrapper-data/Shockwave Flash/WritableRoot/#SharedObjects
-.config/geany/geany_socket_*
-.config/google-chrome/*/Application Cache
-.config/google-chrome/*/History Index *
-.config/google-chrome/*/Service Worker/CacheStorage
-.config/google-chrome/ShaderCache
-.config/libreoffice/4/cache
-.config/scc/daemon.socket
-.config/VirtualBox/VBoxGuestAdditions_*
-.config/VirtualBox/VBoxSVC.log*
-.config/VSCodium/CachedExtensionVSIXs
 .directory
 .DocumentRevisions-V100
 .DS_Store
-.esd_auth
 .fseventsd
 .fuse_hidden*
+.LSOverride
+.nfs*
+.Spotlight-V100
+.TemporaryItems
+.Trash-*
+.Trashes
+.VolumeIcon.icns
+$RECYCLE.BIN/
+[Dd]esktop.ini
+ehthumbs.db
+ehthumbs_vista.db
+Icon[[:cntrl:]]
+Network Trash Folder
+Temporary Items
+Thumbs.db
+Thumbs.db:encryptable
+
+# ---- Session leftovers, sockets, locks, thumbnails ----
+.esd_auth
 .gksu.lock
-.gnome2/epiphany/favicon_cache
+.gvfs
+.ICEauthority
+.pulse
+.pulse-cookie
+.recently-used
+.recently-used.xbel
+.thumb
+.thumbnails
+.VeraCrypt-lock-*
+.wayland-errors
+.Xauthority
+.xsession-errors
+.xsession-errors.old
+.zcompdump*
+recently-used.xbel
 .gnupg/.#*
 .gnupg/*.lock
 .gnupg/gpg-agent-info-*
 .gnupg/random_seed
 .gnupg/rnd
 .gnupg/S.*
-.googleearth/Cache
-.googleearth/Temp
-.gradle/caches
-.guayadeque/cache.db
-.gvfs
-.ICAClient/.tmp
-.ICAClient/cache/zlcache
-.ICAClient/logs
-.ICEauthority
-.icedtea
-.icedteaplugin
-.java/deployment/cache
-.komodoedit/*/*.xmlc
-.komodoedit/*/codeintel/db
-.komodoedit/*/commandments.fifo
-.komodoedit/*/history.sqlite
-.komodoedit/*/history.sqlite.bak
-.komodoedit/*/host-*/*/codeintel
-.komodoedit/*/mutex.lock
-.komodoedit/*/pystderr.log
-.komodoedit/*/pystdout.log
-.komodoedit/*/running.lock
-.komodoedit/*/startup-env.tmp
-.komodoedit/*/XRE/.activatestate/komodo edit/*/Cache
-.komodoedit/*/XRE/.activatestate/komodo edit/*/minidump
-.komodoedit/*/XRE/.activatestate/komodo edit/Crash Reports
-.komodoedit/*/XRE/.parentlock
-.komodoedit/*/XRE/*.sqlite-journal
-.komodoedit/*/XRE/Cache
-.komodoedit/*/XRE/compreg.dat
-.komodoedit/*/XRE/extensions.cache
-.komodoedit/*/XRE/extensions.ini
-.komodoedit/*/XRE/extensions.rdf
-.komodoedit/*/XRE/pluginreg.dat
-.komodoedit/*/XRE/XPC.mfasl
-.komodoedit/*/XRE/xpti.dat
-.komodoedit/*/XUL.mfasl
+.ssh/sockets/
+.config/geany/geany_socket_*
+.config/VirtualBox/VBoxGuestAdditions_*
+.config/VirtualBox/VBoxSVC.log*
+/.cups
+/.dbus
+/.keychain
+/.Trash
+/Trash
 .local/share/baloo
 .local/share/gvfs-metadata
 .local/share/tracker
 .local/share/Trash
-.LSOverride
-.mozilla/firefox/*/.parentlock
-.mozilla/firefox/*/blocklist.xml
-.mozilla/firefox/*/Cache
-.mozilla/firefox/*/compreg.dat
-.mozilla/firefox/*/extensions.cache
-.mozilla/firefox/*/minidumps
-.mozilla/firefox/*/pluginreg.dat
-.mozilla/firefox/*/urlclassifier3.sqlite
-.mozilla/firefox/*/XPC.mfasl
-.mozilla/firefox/*/xpti.dat
-.mozilla/firefox/*/XUL.mfasl
-.mozilla/seamonkey/*/.parentlock
-.mozilla/seamonkey/*/blocklist.xml
-.mozilla/seamonkey/*/Cache
-.mozilla/seamonkey/*/compreg.dat
-.mozilla/seamonkey/*/minidumps
-.mozilla/seamonkey/*/pluginreg.dat
-.mozilla/seamonkey/*/xpti.dat
-.nfs*
-.npm
-.nv/GLCache
-.opera/application_cache
-.opera/cache
-.opera/icons
-.opera/lock
-.opera/opcache
-.opera/temporary_downloads
-.opera/thumbnails
-.opera/widgets/*/cache
-.pulse
-.pulse-cookie
-.purple/icons
-.recently-used
-.recently-used.xbel
-.Spotlight-V100
-.TemporaryItems
-.thumb
-.thumbnails
-.thunderbird/*/Cache
-.Trash-*
-.Trash-1*
-.Trashes
-.var/app/**/Application Cache
-.var/app/**/blob_storage
-.var/app/**/Cache
-.var/app/**/CachedData
-.var/app/**/Code Cache
-.var/app/**/GPUCache
-.var/app/**/Service Worker/CacheStorage
-.var/app/*/.cache
-.var/app/*/cache
-.VeraCrypt-lock-*
-.VolumeIcon.icns
-.wayland-errors
-.Xauthority
-.xsession-errors
-.xsession-errors.old
-.zcompdump*
-[Dd]esktop.ini
-*_override.tf
-*_override.tf.json
-*.retry
-*.stackdump
-# Terraform state and variable files may contain credentials or secrets.
-*.tfstate
-*.tfstate.*
-*.tfvars
-*.tfvars.json
-**/.terraform/*
-*~
-/.cups
-/.dbus
-/.keychain
-/.m2/repository
-/.Trash
-/.virtualenvs
-/snap/chromium/*/.config/chromium/*/Service Worker/CacheStorage
-/snap/chromium/common/.cache
-/Trash
-$RECYCLE.BIN/
-cache
-crash.*.log
-crash.log
-ehthumbs_vista.db
-ehthumbs.db
-go/pkg/mod/cache
-Icon
-Network Trash Folder
-nohup.out
-override.tf
-override.tf.json
-recently-used.xbel
-Temporary Items
-Thumbs.db
-Thumbs.db:encryptable
 
-# Caches in any directory tree
-Cache/
-caches/
-Caches/
-cache2/
-Cache2/
-Temp/
-Temporary/
-
-# Temporary files and editor leftovers
+# ---- Temporary files and editor leftovers ----
 *.sock
 *.tmp
 *.temp
@@ -215,36 +102,130 @@ Temporary/
 *.partial
 *.crdownload
 *.download
+*~
 .#*
-
-# Common temporary and cache directories
+*.retry
+*.stackdump
+nohup.out
 .tmp/
-tmp/
-temp/
-.yarn/cache/
+# Top-level scratch directories only (tmp/ elsewhere may be project content).
+/tmp/
+/temp/
+/Temp/
+
+# ---- Terraform: state and variables may contain credentials, keep them off the
+# ---- backup target. The provider cache is regenerable.
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+**/.terraform/*
+
+# ---- Generic per-user caches ----
+.cache
+.ccache/?
+.ccache/tmp
+.nv/GLCache
+.var/app/*/.cache
+.var/app/*/cache
+/snap/*/common/.cache
+/snap/*/*/.cache
+.config/libreoffice/4/cache
+.java/deployment/cache
+.purple/icons
+.mozilla/firefox/*/.parentlock
+.mozilla/firefox/*/minidumps
+.mozilla/firefox/*/urlclassifier3.sqlite
+# Application caches under the XDG config/data trees and Flatpak sandboxes:
+# any directory whose name ends in "cache" (Cache, GPUCache, Code Cache,
+# GrShaderCache, ShaderCache, DawnCache, images-cache, ...).
+.config/*[Cc]ache/
+.config/**/*[Cc]ache/
+.local/share/*[Cc]ache/
+.local/share/**/*[Cc]ache/
+.var/app/**/*[Cc]ache/
+.mozilla/*[Cc]ache/
+.mozilla/**/*[Cc]ache/
+.thunderbird/*[Cc]ache/
+.thunderbird/**/*[Cc]ache/
+.config/**/CachedData
+.config/*/CachedExtensionVSIXs
+.config/**/Service Worker/CacheStorage
+.config/**/Service Worker/ScriptCache
+.var/app/**/Service Worker/CacheStorage
+.var/app/**/Service Worker/ScriptCache
+caches/
+Caches/
+cache2/
+Cache2/
+
+# ---- Chromium / Electron profile data that is downloaded or rebuilt ----
+.config/**/blob_storage
+.config/**/Crashpad
+.config/**/Crash Reports
+.config/**/component_crx_cache
+.config/**/extensions_crx_cache
+.config/**/Feature Engagement Tracker
+.config/**/History Index *
+.config/**/OptGuideOnDeviceModel
+.config/**/optimization_guide_model_store
+.config/**/Safe Browsing
+.config/**/WasmTtsEngine
+.config/**/WebStorage
+.config/**/WidevineCdm
+.config/*/logs/
+.var/app/**/blob_storage
+.var/app/**/Crashpad
+.var/app/**/OptGuideOnDeviceModel
+.var/app/**/optimization_guide_model_store
+.var/app/**/WebStorage
+# Electron auto-updater unpacked versions (app-1.2.3/).
+.config/*/app-[0-9]*/
+**/.chromium-browser-snapshots/
+
+# ---- Language toolchains, package stores and dependency trees ----
+.rustup/toolchains/
+.rustup/downloads/
+.rustup/tmp/
+.cargo/registry/
+.cargo/git/
+.gradle/caches
+.gradle/wrapper/dists/
+.m2/repository
+.npm
+.nuget/packages/
 .pnpm-store/
+.local/share/pnpm/
+.yarn/cache/
+.bun/install/cache/
+.conda/pkgs/
+.pyenv/versions/
+.rbenv/versions/
+.nvm/versions/
+.asdf/installs/
+.sdkman/candidates/
+.local/share/mise/installs/
+.local/share/fnm/node-versions/
+.local/share/uv/python/
+/.virtualenvs
+go/pkg/mod/
+node_modules/
 .parcel-cache/
 .turbo/
-.ssh/sockets/
-
-# JavaScript and frontend build output
-node_modules/
-dist/
-build/
-out/
 .next/
 .nuxt/
 .svelte-kit/
 .angular/
-coverage/
-
-# Python packaging and bytecode
+# Rust and CMake build output (sub-paths only: a bare target/ or build/ is
+# often a real directory).
+**/target/debug/
+**/target/release/
+CMakeFiles/
+CMakeCache.txt
 .eggs/
 *.egg-info/
 pip-wheel-metadata/
 *.py[cod]
-
-# Python caches and environments
 __pycache__/
 .pytest_cache/
 .mypy_cache/
@@ -252,9 +233,53 @@ __pycache__/
 .tox/
 .nox/
 .venv/
-venv/
+# Code editor extensions are reinstallable from their marketplace.
+.vscode*/extensions/
+.vscode-server/
+.cursor/extensions/
 
-# Java, Kotlin, and native build output
-target/
-CMakeFiles/
-CMakeCache.txt
+# ---- Containers and Flatpak (volumes and user data are kept) ----
+.local/share/containers/storage/overlay/
+.local/share/containers/storage/overlay-images/
+.local/share/containers/storage/overlay-layers/
+.local/share/docker/overlay2/
+.local/share/flatpak/repo/
+.local/share/flatpak/runtime/
+.local/share/flatpak/app/
+.local/share/flatpak/appstream/
+
+# ---- Game launchers, Proton and Wine runtimes ----
+# Game installs, shader caches and downloads can be fetched again. Proton
+# prefixes (compatdata) and Wine system directories are rebuilt on demand;
+# note that a prefix can hold local saves of games without cloud sync.
+**/steamapps/common/
+**/steamapps/shadercache/
+**/steamapps/compatdata/
+**/steamapps/downloading/
+**/steamapps/temp/
+**/steamapps/workshop/content/
+**/compatdata/
+**/compatibilitytools.d/
+.local/share/Steam/appcache/
+.local/share/Steam/depotcache/
+.local/share/Steam/package/
+.local/share/Steam/steamrt*/
+.local/share/Steam/steamui/
+.local/share/Steam/ubuntu12_*/
+.local/share/Steam/config/htmlcache/
+.local/share/umu/
+**/lutris/runners/
+**/lutris/runtime/
+**/heroic/tools/
+**/drive_c/windows/
+
+# ---- Virtual machine disk images ----
+*.qcow2
+
+# ---- Machine learning models (downloaded weights) ----
+*.gguf
+*.safetensors
+*.ckpt
+.ollama/models/
+**/ollama/models/blobs/
+**/huggingface/hub/

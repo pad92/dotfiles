@@ -400,8 +400,26 @@ Zsh adds it to `PATH`.
 | [`vscodium_ext.sh`](./ansible/roles/dotfiles/files/home/.bin/vscodium_ext.sh)                                                    | Install VSCodium extensions.                     |
 | [`vault-toggle`](./ansible/roles/dotfiles/files/home/.bin/vault-toggle)                                                          | Encrypt or decrypt a file with Ansible Vault.    |
 
-`backup.sh` only cleans package caches when you pass `--clean-packages`: it
-then runs `yay -Sc` on Arch or `apt autoremove --purge` on Debian.
+`backup.sh` copies `$HOME` and `/etc` to the NAS with rsync over SSH and
+saves the installed-package list in `dist/<distribution>/`.
+
+- `-v`, `--verbose` lists each transferred file.
+- `--clean-packages`, after a successful backup, runs `yay -Sc` on Arch (cleans
+  the package cache) or `sudo apt autoremove --purge` on Debian (removes
+  unneeded packages).
+- `--max-deletions=N` skips a source whose dry run plans more than N deletions
+  (default 1000, or `BACKUP_MAX_DELETIONS`; 0 disables the limit).
+- `--force-delete` lifts that limit, for example after a large change of the
+  exclusions.
+
+The script refuses a missing or empty source. rsync status 24 (files that
+vanished) only warns; any other failure is reported at the end, both sources
+still run, and the exit status is the worst one. As `/etc` is read without
+root, unreadable files give status 23, and rsync then skips deletions for that
+source. Files that were replaced or deleted are not kept on the NAS
+(`--backup-dir` would need its own pruning), `-x` is not used because it would
+skip btrfs subvolumes, and `--partial` is not used so an interrupted run never
+leaves a half-written file under its final name.
 
 ## Development
 
