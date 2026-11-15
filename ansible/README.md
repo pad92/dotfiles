@@ -175,6 +175,6 @@ and conditions.
 | [`gnome_keyring`](roles/gnome_keyring/README.md)       | Add the `pam_gnome_keyring.so` rules to `/etc/pam.d/login`.                                 |
 | [`dotfiles`](roles/dotfiles/README.md)                 | Deploy the home directory files and the user units.                                         |
 | [`audio`](roles/audio/README.md)                       | Write the PipeWire and WirePlumber user configuration: clean microphone and voice effects.  |
-| [`agent_cli`](roles/agent_cli/README.md)               | Set the Claude Code and Codex status lines.                                                 |
+| [`agent_cli`](roles/agent_cli/README.md)               | Set the Claude Code and Codex status lines and Claude Code token savings.                   |
 | [`obs`](roles/obs/README.md)                           | Configure OBS Studio and its virtual camera for `22_obs`.                                   |
 | [`print3d`](roles/print3d/README.md)                   | Configure F3D thumbnails of 3D files for Nautilus, for `24_3dprint` (tag `3dprint`).        |

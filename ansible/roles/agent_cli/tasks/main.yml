@@ -1,4 +1,8 @@
 ---
+- name: Install RTK
+  ansible.builtin.import_tasks: rtk.yml
+  tags: [dotfiles_claude, dotfiles_rtk]
+
 - name: Configure Claude Code
   ansible.builtin.import_tasks: claude.yml
   tags: [dotfiles_claude]
