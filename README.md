@@ -169,7 +169,7 @@ variables, package ownership, and system settings.
 | `dotfiles`                                 | Run the `dotfiles`, `audio` and `agent_cli` roles.                              |
 | `audio`                                    | Write the PipeWire and WirePlumber configuration: clean mic and voice effects.  |
 | `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
-| `agent_cli`                                | Set the Claude Code and Codex status lines.                                     |
+| `agent_cli`                                | Set the Claude Code and Codex status lines and the Claude Code token savings.   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
 | `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |

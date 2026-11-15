@@ -7,6 +7,42 @@ agent_cli_claude_settings: .claude/settings.json
 agent_cli_claude_statusline:
   type: command
   command: '{{ agent_cli_home }}/.bin/claude-statusline'
+# Token-saving settings merged key by key into settings.json: a key listed
+# here is rewritten on every run, any other key of the same table is kept.
+# OTEL variables and their credentials are not listed, so they stay out of Git.
+agent_cli_claude_env:
+  CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '60'
+  CLAUDE_CODE_DISABLE_1M_CONTEXT: '1'
+  ENABLE_TOOL_SEARCH: 'true'
+# Plugins loaded in every session; each one adds tokens to every turn.
+agent_cli_claude_enabled_plugins:
+  frontend-design@claude-plugins-official: true
+  humanizer@humanizer: true
+# Added to permissions.deny without removing the entries already there.
+agent_cli_claude_permissions_deny:
+  - Read(**/node_modules/**)
+  - Read(**/.venv/**)
+  - Read(**/__pycache__/**)
+# User-scope MCP servers removed with `claude mcp remove`. Claude Code keeps
+# them in ~/.claude.json, which it rewrites itself, so the role never edits it.
+agent_cli_claude_state: .claude.json
+agent_cli_claude_mcp_absent:
+  - caveman
+# RTK (rtk-ai/rtk) filters shell command output before Claude Code reads it.
+# The pinned rtk-oss release (Apache-2.0, no BUSL pipeline engine) is verified
+# against a SHA-256 checksum and installed in ~/.local/bin. Its PreToolUse hook
+# is merged into settings.json without running `rtk init`, which would patch
+# the file outside this role. Telemetry stays off (rtk asks for consent).
+# Only x86_64 Linux is pinned; other architectures skip RTK entirely.
+agent_cli_rtk_enabled: true
+agent_cli_rtk_version: 1.2.0
+agent_cli_rtk_asset: rtk-oss-x86_64-unknown-linux-musl.tar.gz
+agent_cli_rtk_checksum: sha256:a28407dc13038bdc9c2a1f5a047b0c636e0c1d495b15523576e2adb992a06a17
+agent_cli_rtk_url: >-
+  https://github.com/rtk-ai/rtk/releases/download/v{{ agent_cli_rtk_version }}/{{
+  agent_cli_rtk_asset }}
+agent_cli_rtk_bin_dir: '{{ agent_cli_home }}/.local/bin'
+agent_cli_rtk_hook_command: '{{ agent_cli_rtk_bin_dir }}/rtk hook claude'
 # Codex status line: Codex only accepts its own item identifiers, not a
 # command. Written to [tui] status_line of ~/.codex/config.toml only when the
 # binary below is found, leaving every other setting untouched.

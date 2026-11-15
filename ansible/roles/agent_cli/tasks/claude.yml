@@ -1,6 +1,7 @@
 ---
 # ~/.claude/settings.json also holds local permissions and session context
-# that must never be versioned, so only the statusLine key is managed here.
+# that must never be versioned, so only the keys named in the role defaults are
+# managed here, each merged into what the file already holds.
 - name: Look for the Claude Code binary
   ansible.builtin.command:
     # The native installer uses ~/.local/bin, which a non-login PATH may lack.
@@ -49,6 +50,66 @@
           object; fix it by hand before deploying the status line.
         quiet: true
 
+    # A key of another type would make the merge below drop or mangle it.
+    - name: Require the managed Claude Code settings to keep their type
+      ansible.builtin.assert:
+        that:
+          - agent_cli_claude_settings_current.env | default({}) is mapping
+          - agent_cli_claude_settings_current.enabledPlugins | default({}) is mapping
+          - agent_cli_claude_settings_current.permissions | default({}) is mapping
+          - >-
+            (agent_cli_claude_settings_current.permissions | default({})).deny
+            | default([]) is sequence
+          - agent_cli_claude_settings_current.hooks | default({}) is mapping
+          - >-
+            (agent_cli_claude_settings_current.hooks | default({})).PreToolUse
+            | default([]) is sequence
+        fail_msg: >-
+          {{ agent_cli_home }}/{{ agent_cli_claude_settings }} holds an env,
+          enabledPlugins, permissions, permissions.deny, hooks or
+          hooks.PreToolUse value of the wrong
+          type; fix it by hand before deploying.
+        quiet: true
+
+    - name: Merge the managed settings
+      ansible.builtin.set_fact:
+        agent_cli_claude_settings_merged: >-
+          {{ agent_cli_claude_settings_current | combine({
+               'statusLine': agent_cli_claude_statusline,
+               'env': (agent_cli_claude_settings_current.env | default({}))
+                 | combine(agent_cli_claude_env),
+               'enabledPlugins': (agent_cli_claude_settings_current.enabledPlugins | default({}))
+                 | combine(agent_cli_claude_enabled_plugins),
+               'permissions': (agent_cli_claude_settings_current.permissions | default({}))
+                 | combine({'deny': agent_cli_claude_denied}),
+             } | combine(agent_cli_claude_rtk_hooks)) }}
+      vars:
+        agent_cli_claude_denied_now: >-
+          {{ (agent_cli_claude_settings_current.permissions | default({})).deny
+             | default([]) }}
+        agent_cli_claude_pre_tool_use_now: >-
+          {{ (agent_cli_claude_settings_current.hooks | default({})).PreToolUse
+             | default([]) }}
+        agent_cli_claude_rtk_present: >-
+          {{ agent_cli_claude_pre_tool_use_now
+             | map(attribute='hooks', default=[]) | flatten
+             | map(attribute='command', default='')
+             | select('eq', agent_cli_rtk_hook_command) | list | length > 0 }}
+        agent_cli_claude_rtk_hooks: >-
+          {{ {'hooks': (agent_cli_claude_settings_current.hooks | default({}))
+               | combine({'PreToolUse': agent_cli_claude_pre_tool_use_now
+                 + [{'matcher': 'Bash',
+                     'hooks': [{'type': 'command',
+                                'command': agent_cli_rtk_hook_command}]}]})}
+             if (agent_cli_rtk_enabled | bool
+                 and ansible_facts['architecture'] | default('x86_64') == 'x86_64'
+                 and not agent_cli_claude_rtk_present | bool)
+             else {} }}
+        agent_cli_claude_denied: >-
+          {{ agent_cli_claude_denied_now
+             + (agent_cli_claude_permissions_deny
+                | reject('in', agent_cli_claude_denied_now) | list) }}
+
     - name: Ensure the Claude Code directory exists
       ansible.builtin.file:
         path: '{{ (agent_cli_home ~ "/" ~ agent_cli_claude_settings) | dirname }}'
@@ -56,13 +117,38 @@
         mode: '0700'
       when: not agent_cli_claude_settings_stat.stat.exists
 
-    - name: Merge the status line into Claude Code settings
+    - name: Merge the managed settings into Claude Code settings
       ansible.builtin.copy:
         dest: '{{ agent_cli_home }}/{{ agent_cli_claude_settings }}'
         content: >-
-          {{ agent_cli_claude_settings_current
-             | combine({'statusLine': agent_cli_claude_statusline})
+          {{ agent_cli_claude_settings_merged
              | to_nice_json(indent=2, sort_keys=false, ensure_ascii=false) }}
         mode: >-
           {{ agent_cli_claude_settings_stat.stat.mode
              if agent_cli_claude_settings_stat.stat.exists else '0600' }}
+
+    - name: Inspect Claude Code state
+      ansible.builtin.slurp:
+        src: '{{ agent_cli_home }}/{{ agent_cli_claude_state }}'
+      register: agent_cli_claude_state_raw
+      failed_when: false
+
+    # `claude mcp remove` is the supported way to edit the user scope of a file
+    # that Claude Code rewrites at any time. Only names listed in
+    # agent_cli_claude_mcp_absent and present at that scope are touched.
+    - name: Remove the unwanted user-scope MCP servers
+      ansible.builtin.command:
+        argv:
+          - '{{ agent_cli_claude_binary_lookup.stdout | trim }}'
+          - mcp
+          - remove
+          - '{{ item }}'
+          - --scope
+          - user
+      loop: '{{ agent_cli_claude_mcp_absent }}'
+      when:
+        - agent_cli_claude_state_raw.content is defined
+        - >-
+          item in ((agent_cli_claude_state_raw.content | b64decode | from_json)
+          .mcpServers | default({}))
+      changed_when: true

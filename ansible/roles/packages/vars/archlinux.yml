@@ -136,6 +136,10 @@ packages_family_groups:
       - act
       - actionlint
       - age
+      # DOM-based browser automation CLI for agents (accessibility snapshots
+      # instead of screenshots). In the CachyOS repository, the AUR elsewhere;
+      # it drives the installed Google Chrome or Chromium.
+      - agent-browser
       - ansible-core
       - ansible-lint
       - bandit
