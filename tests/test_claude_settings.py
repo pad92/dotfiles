@@ -55,9 +55,22 @@ class ClaudeSettingsTests(unittest.TestCase):
             "env": DEFAULTS["agent_cli_claude_env"],
             "enabledPlugins": DEFAULTS["agent_cli_claude_enabled_plugins"],
             "permissions": {"deny": DEFAULTS["agent_cli_claude_permissions_deny"]},
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "Bash",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": f"{self.home}/.local/bin/rtk hook claude",
+                            }
+                        ],
+                    }
+                ]
+            },
         }
 
-    def run_play(self, *, installed=True, check=False, on_path=True):
+    def run_play(self, *, installed=True, check=False, on_path=True, extra_vars=None):
         play = [
             {
                 "hosts": "localhost",
@@ -69,6 +82,7 @@ class ClaudeSettingsTests(unittest.TestCase):
                     "agent_cli_claude_binary": (
                         FAKE_BINARY if installed else "claude-dotfiles-test-absent"
                     ),
+                    **(extra_vars or {}),
                 },
                 "tasks": [
                     {
@@ -224,6 +238,32 @@ class ClaudeSettingsTests(unittest.TestCase):
         self.state.write_text(json.dumps({"mcpServers": {"caveman": {}}}))
         self.run_play(check=True)
         self.assertFalse(self.log.exists())
+
+    def test_rtk_hook_keeps_other_hooks_and_is_not_duplicated(self):
+        other = {"matcher": "Edit", "hooks": [{"type": "command", "command": "fmt"}]}
+        self.write_settings(
+            json.dumps({"hooks": {"PreToolUse": [other], "Stop": [{"hooks": []}]}})
+        )
+        self.assert_succeeded(self.run_play(), changed=1)
+        hooks = json.loads(self.settings.read_text())["hooks"]
+        self.assertEqual(
+            hooks["PreToolUse"], [other, *self.managed["hooks"]["PreToolUse"]]
+        )
+        self.assertEqual(hooks["Stop"], [{"hooks": []}])
+        self.assert_succeeded(self.run_play(), changed=0)
+
+    def test_rtk_hook_is_skipped_when_disabled(self):
+        self.write_settings("{}")
+        result = self.run_play(extra_vars={"agent_cli_rtk_enabled": False})
+        self.assert_succeeded(result, changed=1)
+        self.assertNotIn("hooks", json.loads(self.settings.read_text()))
+
+    def test_wrong_typed_hooks_fail_without_being_overwritten(self):
+        original = json.dumps({"hooks": {"PreToolUse": "oops"}})
+        self.write_settings(original)
+        result = self.run_play()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.settings.read_text(), original)
 
     def test_replaces_a_different_status_line(self):
         self.write_settings(

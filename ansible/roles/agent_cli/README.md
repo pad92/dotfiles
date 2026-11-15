@@ -26,6 +26,8 @@ Both playbook tags, `dotfiles` and `agent_cli`, run the role.
 | `agent_cli_claude_permissions_deny` | `Read` of `node_modules`, `.venv`, `__pycache__`  | Entries added to `permissions.deny`.                      |
 | `agent_cli_claude_state`            | `.claude.json`                                    | Claude Code state file, relative to the home.             |
 | `agent_cli_claude_mcp_absent`       | `caveman`                                         | User-scope MCP servers removed when present.              |
+| `agent_cli_rtk_enabled`             | `true`                                            | Install RTK and merge its Claude Code hook.               |
+| `agent_cli_rtk_version`             | `1.2.0`                                           | Pinned rtk-oss release, with `agent_cli_rtk_checksum`.    |
 | `agent_cli_codex_binary`            | `codex`                                           | Codex is configured only when this binary is found.       |
 | `agent_cli_codex_config`            | `.codex/config.toml`                              | Codex configuration, relative to the home.                |
 | `agent_cli_codex_status_line`       | model, directory, branch, context, tokens, limits | Items of `[tui] status_line`.                             |
@@ -57,6 +59,19 @@ For each name in `agent_cli_claude_mcp_absent` found in `mcpServers` of
 `~/.claude.json`, the role runs `claude mcp remove NAME --scope user`. It never
 edits that file itself because Claude Code rewrites it at any time. Nothing runs
 in check mode or when the server is absent.
+
+## RTK output filter
+
+RTK ([rtk-ai/rtk](https://github.com/rtk-ai/rtk)) rewrites Bash commands so
+that Claude Code reads condensed output. The role installs the pinned
+`rtk-oss` release (Apache-2.0, x86_64 Linux) in `~/.local/bin` after checking
+its SHA-256 checksum, and only when the installed version differs. It merges a
+`PreToolUse` hook (`matcher: Bash`, command `rtk hook claude`) into
+`settings.json` without touching other hooks. It does not run `rtk init`, so
+`RTK.md` and `CLAUDE.md` stay unchanged, and telemetry stays off. A missing
+binary makes the hook fail without blocking the command. Check the result with
+`rtk gain` after a restart of Claude Code, and bump the version and checksum
+together to upgrade.
 
 ## Codex status line
 

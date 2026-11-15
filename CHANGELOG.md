@@ -23,6 +23,9 @@ Release history and changes planned for the next version.
   - Install `claude-code`, `claude-desktop` (AUR), `openai-codex` and
     `agent-browser` (DOM snapshots for agents, instead of screenshots) with
     `10_sre_devops`.
+  - Install RTK (`rtk-oss`, pinned release verified by SHA-256) in `~/.local/bin`
+    and merge its `PreToolUse` Bash hook into `settings.json` (tag
+    `dotfiles_rtk`), so Claude Code reads condensed command output.
 - **Ansible roles** for steps of the Arch install guide that were manual:
   `time_sync` (systemd-timesyncd when no other NTP client runs), `power_save`
   (Wi-Fi and audio power saving on portable machines), `wireless_regdom`

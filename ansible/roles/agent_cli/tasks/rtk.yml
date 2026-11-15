@@ -1,0 +1,61 @@
+---
+# RTK is a single static binary: pin the release, verify its checksum and copy
+# it into ~/.local/bin only when the installed version differs.
+- name: Install RTK
+  when:
+    - agent_cli_rtk_enabled | bool
+    - ansible_facts['architecture'] | default('x86_64') == 'x86_64'
+  block:
+    - name: Read the installed RTK version
+      ansible.builtin.command:
+        argv:
+          - '{{ agent_cli_rtk_bin_dir }}/rtk'
+          - --version
+      register: agent_cli_rtk_installed
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Install the pinned RTK release
+      when: agent_cli_rtk_installed.stdout | default('') | trim != 'rtk ' ~ agent_cli_rtk_version
+      block:
+        - name: Create a private download directory
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: rtk-
+          register: agent_cli_rtk_download
+          changed_when: false
+
+        - name: Download the RTK release archive
+          ansible.builtin.get_url:
+            url: '{{ agent_cli_rtk_url }}'
+            dest: '{{ agent_cli_rtk_download.path }}/{{ agent_cli_rtk_asset }}'
+            checksum: '{{ agent_cli_rtk_checksum }}'
+            mode: '0600'
+
+        - name: Unpack the RTK binary
+          ansible.builtin.unarchive:
+            src: '{{ agent_cli_rtk_download.path }}/{{ agent_cli_rtk_asset }}'
+            dest: '{{ agent_cli_rtk_download.path }}'
+            remote_src: true
+            include: [rtk]
+
+        - name: Ensure the RTK install directory exists
+          ansible.builtin.file:
+            path: '{{ agent_cli_rtk_bin_dir }}'
+            state: directory
+            mode: '0755'
+
+        - name: Place the RTK binary
+          ansible.builtin.copy:
+            src: '{{ agent_cli_rtk_download.path }}/rtk'
+            dest: '{{ agent_cli_rtk_bin_dir }}/rtk'
+            remote_src: true
+            mode: '0755'
+      always:
+        - name: Remove the download directory
+          ansible.builtin.file:
+            path: '{{ agent_cli_rtk_download.path }}'
+            state: absent
+          when: agent_cli_rtk_download.path is defined
+          changed_when: false

@@ -28,6 +28,21 @@ agent_cli_claude_permissions_deny:
 agent_cli_claude_state: .claude.json
 agent_cli_claude_mcp_absent:
   - caveman
+# RTK (rtk-ai/rtk) filters shell command output before Claude Code reads it.
+# The pinned rtk-oss release (Apache-2.0, no BUSL pipeline engine) is verified
+# against a SHA-256 checksum and installed in ~/.local/bin. Its PreToolUse hook
+# is merged into settings.json without running `rtk init`, which would patch
+# the file outside this role. Telemetry stays off (rtk asks for consent).
+# Only x86_64 Linux is pinned; other architectures skip RTK entirely.
+agent_cli_rtk_enabled: true
+agent_cli_rtk_version: 1.2.0
+agent_cli_rtk_asset: rtk-oss-x86_64-unknown-linux-musl.tar.gz
+agent_cli_rtk_checksum: sha256:a28407dc13038bdc9c2a1f5a047b0c636e0c1d495b15523576e2adb992a06a17
+agent_cli_rtk_url: >-
+  https://github.com/rtk-ai/rtk/releases/download/v{{ agent_cli_rtk_version }}/{{
+  agent_cli_rtk_asset }}
+agent_cli_rtk_bin_dir: '{{ agent_cli_home }}/.local/bin'
+agent_cli_rtk_hook_command: '{{ agent_cli_rtk_bin_dir }}/rtk hook claude'
 # Codex status line: Codex only accepts its own item identifiers, not a
 # command. Written to [tui] status_line of ~/.codex/config.toml only when the
 # binary below is found, leaving every other setting untouched.

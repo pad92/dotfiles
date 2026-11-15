@@ -60,9 +60,14 @@
           - >-
             (agent_cli_claude_settings_current.permissions | default({})).deny
             | default([]) is sequence
+          - agent_cli_claude_settings_current.hooks | default({}) is mapping
+          - >-
+            (agent_cli_claude_settings_current.hooks | default({})).PreToolUse
+            | default([]) is sequence
         fail_msg: >-
           {{ agent_cli_home }}/{{ agent_cli_claude_settings }} holds an env,
-          enabledPlugins, permissions or permissions.deny value of the wrong
+          enabledPlugins, permissions, permissions.deny, hooks or
+          hooks.PreToolUse value of the wrong
           type; fix it by hand before deploying.
         quiet: true
 
@@ -77,11 +82,29 @@
                  | combine(agent_cli_claude_enabled_plugins),
                'permissions': (agent_cli_claude_settings_current.permissions | default({}))
                  | combine({'deny': agent_cli_claude_denied}),
-             }) }}
+             } | combine(agent_cli_claude_rtk_hooks)) }}
       vars:
         agent_cli_claude_denied_now: >-
           {{ (agent_cli_claude_settings_current.permissions | default({})).deny
              | default([]) }}
+        agent_cli_claude_pre_tool_use_now: >-
+          {{ (agent_cli_claude_settings_current.hooks | default({})).PreToolUse
+             | default([]) }}
+        agent_cli_claude_rtk_present: >-
+          {{ agent_cli_claude_pre_tool_use_now
+             | map(attribute='hooks', default=[]) | flatten
+             | map(attribute='command', default='')
+             | select('eq', agent_cli_rtk_hook_command) | list | length > 0 }}
+        agent_cli_claude_rtk_hooks: >-
+          {{ {'hooks': (agent_cli_claude_settings_current.hooks | default({}))
+               | combine({'PreToolUse': agent_cli_claude_pre_tool_use_now
+                 + [{'matcher': 'Bash',
+                     'hooks': [{'type': 'command',
+                                'command': agent_cli_rtk_hook_command}]}]})}
+             if (agent_cli_rtk_enabled | bool
+                 and ansible_facts['architecture'] | default('x86_64') == 'x86_64'
+                 and not agent_cli_claude_rtk_present | bool)
+             else {} }}
         agent_cli_claude_denied: >-
           {{ agent_cli_claude_denied_now
              + (agent_cli_claude_permissions_deny
