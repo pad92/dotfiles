@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import PLAYBOOK_TIMEOUT, ansible_test_environment
 from git_fixtures import git, repository
 from vim_fixtures import VIM_ERROR, start_vim
 
@@ -107,7 +107,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     env=ansible_test_environment(work),
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=PLAYBOOK_TIMEOUT,
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -262,7 +262,7 @@ class DotfilesDeployTests(unittest.TestCase):
                     env=ansible_test_environment(work),
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=PLAYBOOK_TIMEOUT,
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -537,7 +537,7 @@ class DotfilesTreeCopyTests(unittest.TestCase):
                     env=ansible_test_environment(work),
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=PLAYBOOK_TIMEOUT,
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -668,7 +668,7 @@ class DotfilesTreeCopyTests(unittest.TestCase):
                 env=ansible_test_environment(work),
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=PLAYBOOK_TIMEOUT,
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -843,7 +843,7 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
                     env=ansible_test_environment(work),
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=PLAYBOOK_TIMEOUT,
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -1047,7 +1047,7 @@ class DotfilesVimPackTests(unittest.TestCase):
             env=ansible_test_environment(self.work),
             capture_output=True,
             text=True,
-            timeout=180,
+            timeout=PLAYBOOK_TIMEOUT,
             check=False,
         )
         output = result.stdout + result.stderr

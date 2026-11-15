@@ -265,6 +265,10 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **CI tests**: the `ansible-playbook` runs of the play tests share one
+  `PLAYBOOK_TIMEOUT` (600 s, `TEST_PLAYBOOK_TIMEOUT` to override) instead of
+  60 to 180 s. On the loaded runner a single play took over two minutes, so
+  `unit_tests` failed on timeouts rather than on assertions.
 - **Waybar**: the workspace module is now `ext/workspaces`, so clicking a
   workspace number switches to it. `hyprland/workspaces` sent the legacy
   `dispatch workspace N`, which the Lua Hyprland config rejects.

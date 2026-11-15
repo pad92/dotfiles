@@ -8,6 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 # The local Vault, ignored by Git: see .gitignore.
 LOCAL_VAULT_PATTERN = "vault*.yml"
+# A play takes seconds on a workstation but minutes on a loaded CI runner (four
+# workers on an old CPU, coverage tracing): the limit only catches a hang.
+PLAYBOOK_TIMEOUT = int(os.environ.get("TEST_PLAYBOOK_TIMEOUT", "600"))
 
 
 def ansible_tree(work: Path, source: Path = ROOT / "ansible") -> Path:

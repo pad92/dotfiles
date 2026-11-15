@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import PLAYBOOK_TIMEOUT, ansible_test_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 DETECTION = ROOT / "ansible/roles/dns/tasks/prerequisites.yml"
@@ -628,7 +628,7 @@ class DnsTaskTests(unittest.TestCase):
             },
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=PLAYBOOK_TIMEOUT,
             check=False,
         )
         self.stderr = result.stderr
