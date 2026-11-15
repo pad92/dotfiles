@@ -223,6 +223,10 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **CI**:
+  - The unit test job installs GNU `tar`, which Ansible's `unarchive` needs
+    and the busybox `tar` of the Alpine image cannot replace (the RTK install
+    test failed).
 - **Ansible**:
   - Missing packages from the official repositories go to pacman again
     instead of yay, which cannot use sudo.
