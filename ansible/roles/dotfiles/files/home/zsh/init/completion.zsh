@@ -1,18 +1,28 @@
 # Load and initialize the completion system ignoring insecure directories.
-# Rebuild the dump (and run the security check) at most once a day; otherwise
-# reuse the cached dump with -C to skip the slow per-startup scan.
+# Rebuild the dump (and run the security check) once a day, or as soon as a
+# directory of fpath changed (a package added or removed a completion);
+# otherwise reuse the cached dump with -C to skip the slow per-startup scan.
 zmodload zsh/complist
 autoload -Uz compinit
 # The (#q) glob qualifier needs extended_glob, which is off at this point.
 # compinit only rewrites a changed dump, so touch it to restart the day.
 _zcompdump=${ZDOTDIR:-${HOME}}/.zcompdump
-if () { setopt localoptions extendedglob; [[ ! -s $_zcompdump || -n $_zcompdump(#qN.mh+24) ]] }; then
+# A directory's mtime changes when a file is added or removed in it.
+_dotfiles_fpath_changed() {
+  local dir
+  for dir in $fpath; do
+    [[ $dir -nt $_zcompdump ]] && return 0
+  done
+  return 1
+}
+if () { setopt localoptions extendedglob; [[ ! -s $_zcompdump || -n $_zcompdump(#qN.mh+24) ]] } || _dotfiles_fpath_changed; then
   compinit -i -d $_zcompdump
   touch $_zcompdump
 else
   compinit -C -i -d $_zcompdump
 fi
 unset _zcompdump
+unfunction _dotfiles_fpath_changed
 
 setopt COMPLETE_IN_WORD # Complete from both ends of a word.
 setopt ALWAYS_TO_END # Move cursor to the end of a completed word.
@@ -257,3 +267,27 @@ _dotfiles_bash_completion() {
     [[ -n ${commands[$cmd]} && -z ${_comps[$cmd]} ]] && compdef _dotfiles_bash_completion $cmd
   done
 }
+
+# Commands that ship no zsh or bash completion at all: _gnu_generic reads
+# their options from `--help` on the first TAB. Only commands whose --help is
+# safe (it prints usage and exits) belong here; wrappers such as mangohud and
+# steam would run or launch something. Extend it in ~/.zshrc before init.zsh.
+typeset -ga _dotfiles_generic_help_commands
+_dotfiles_generic_help_commands+=(btop gamescope waybar hyprctl lact)
+() {
+  local cmd
+  for cmd in $_dotfiles_generic_help_commands; do
+    [[ -n ${commands[$cmd]} && -z ${_comps[$cmd]} ]] && compdef _gnu_generic $cmd
+  done
+}
+
+# fzf: `**<TAB>` fuzzy completion of paths, hosts, processes and variables.
+# Its key bindings (Ctrl-R, Ctrl-T, Alt-C) are not loaded: they would replace
+# the history search of key-bindings.zsh.
+for _fzf_file in /usr/share/fzf/completion.zsh /usr/share/doc/fzf/examples/completion.zsh; do
+  if [[ -n ${commands[fzf]} && -r $_fzf_file ]]; then
+    source $_fzf_file
+    break
+  fi
+done
+unset _fzf_file
