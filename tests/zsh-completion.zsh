@@ -37,6 +37,7 @@ cat > "$TEST_DIR/.zshrc" <<'EOF'
 ZSH="${HOME}/.local/share/dotfiles/zsh"
 ZSH_THEME="pad"
 plugins=(httpie)
+_dotfiles_generic_help_commands=(dottest-generic)
 source "${ZSH}/init.zsh"
 EOF
 
@@ -52,6 +53,7 @@ EOF
 print -r -- '#!/bin/sh' > "$TEST_DIR/bin/dottest-bash"
 cp "$TEST_DIR/bin/dottest-bash" "$TEST_DIR/bin/dottest-helper"
 cp "$TEST_DIR/bin/dottest-bash" "$TEST_DIR/bin/dottest-link"
+cp "$TEST_DIR/bin/dottest-bash" "$TEST_DIR/bin/dottest-generic"
 chmod +x "$TEST_DIR"/bin/*
 cat > "$TEST_DIR/bash-completions/dottest-bash" <<'EOF'
 _dottest_bash() { COMPREPLY=($(compgen -W 'alpha beta' -- "${COMP_WORDS[COMP_CWORD]}")); }
@@ -69,7 +71,7 @@ start_zsh() {
     DOTFILES_BASH_COMPLETION_DIR=$TEST_DIR/bash-completions zsh -i -c '
     print -r -- "${_comps[http]:-NONE} ${fpath[(i)$ZSH/plugins/httpie]} ${fpath[(i)'"${default_fpath[1]}"']}" \
       "${_comps[sops]:-NONE} ${_comps[dottest-bash]:-NONE} ${_comps[dottest-helper]:-NONE}" \
-      "${_comps[dottest-link]:-NONE}"' \
+      "${_comps[dottest-link]:-NONE} ${_comps[dottest-generic]:-NONE} ${_comps[dottest-new]:-NONE}"' \
     2>/dev/null | tail -n 1
 }
 
@@ -87,9 +89,19 @@ for run in first cached; do
     || fail "$run start: a bash completion that needs bash-completion helpers was loaded"
   [[ ${result[7]} == _dotfiles_bash_completion ]] \
     || fail "$run start: a symlinked bash completion is not loaded (got: $result)"
+  [[ ${result[8]} == _gnu_generic ]] \
+    || fail "$run start: a command without completion does not fall back to _gnu_generic (got: $result)"
 done
 [[ -s $TEST_DIR/.zcache/bash-completions ]] \
   || fail 'the list of usable bash completions was not cached'
+
+# A package that installs a completion after the dump was built must be seen
+# on the next start, not 24 hours later: the dump is cached at this point.
+sleep 1
+print -r -- '#compdef dottest-new' > "$TEST_DIR/.local/share/dotfiles/zsh/completions/_dottest-new"
+result=(${(z)$(start_zsh)})
+[[ ${result[9]} == _dottest-new ]] \
+  || fail "a completion added to fpath is ignored while the dump is cached (got: $result)"
 
 # Host names: ssh_config syntax, Includes and known_hosts formats.
 SSH_HOME=$TEST_DIR/ssh-home

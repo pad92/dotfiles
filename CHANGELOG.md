@@ -94,9 +94,15 @@ Release history and changes planned for the next version.
   gateway lives only in the Vault (`vault_vpn.yml`); without it the role does
   nothing. A polkit rule and a Waybar `VPN` indicator let the user connect
   and disconnect without a password.
-- **Zsh**: commands that only ship a bash completion (`wg`, `fdisk`,
-  `virt-install`, ...) complete through `bashcompinit`, and `sops` and
-  `git-lfs` from the scripts they generate.
+- **Zsh**:
+  - commands that only ship a bash completion (`wg`, `fdisk`,
+    `virt-install`, ...) complete through `bashcompinit`, and `sops` and
+    `git-lfs` from the scripts they generate.
+  - `btop`, `gamescope`, `waybar`, `hyprctl` and `lact`, which ship no
+    completion, get their options from `--help` (`_gnu_generic`). The list is
+    `_dotfiles_generic_help_commands`.
+  - fzf's `**<TAB>` completion is loaded. Its key bindings are not, so
+    Ctrl-R keeps the history search of `key-bindings.zsh`.
 
 ### Changed
 
@@ -227,6 +233,10 @@ Release history and changes planned for the next version.
   - The unit test job installs GNU `tar`, which Ansible's `unarchive` needs
     and the busybox `tar` of the Alpine image cannot replace (the RTK install
     test failed).
+- **Zsh**: a completion installed by a package is available at the next
+  shell start. The cached `.zcompdump` was reused for up to 24 hours, so new
+  completions were missing until then. It is now rebuilt as soon as a
+  directory of `fpath` changes.
 - **Ansible**:
   - Missing packages from the official repositories go to pacman again
     instead of yay, which cannot use sudo.
