@@ -224,6 +224,24 @@ Release history and changes planned for the next version.
   Page URLs drop the `.md/index.html` suffix: `dist/arch/install.md` is
   published as `dist/arch/install.html`. Links to the old paths no longer
   resolve.
+- **Backup**:
+  - The exclusion list is more generic and now also covers regenerable
+    caches, runtimes, model files and `*.qcow2` virtual machine images.
+  - `backup.sh` backs up symlinks (`--no-links` is gone, `--perms` was
+    redundant with `--archive`).
+  - `backup.sh` refuses a source that is missing or empty, and skips a source
+    whose dry run plans more deletions than `BACKUP_MAX_DELETIONS` (default
+    1000, `--max-deletions=N` per run). `--force-delete` lifts the limit.
+    Without it rsync also gets `--max-delete` as a backstop. Recoverable
+    deletions with `--backup-dir` were left out: they would keep every
+    replaced file on the NAS with no pruning.
+  - rsync status 24 (vanished files) is a warning; any other failure is
+    reported, both sources still run, the summary is printed and the exit
+    status is the worst one. Status 23 on unreadable files notes that rsync
+    skips deletions on I/O errors.
+  - `--clean-packages` runs after a successful backup only.
+  - ssh uses `BatchMode`, keepalives, `-n` and a private control socket
+    directory.
 - **Scripts**: `hypr-screenshot.sh` also records an animated WebP demo. It
   runs as `demo@dotfiles` in namespaces, so no real user or host shows up,
   and its frames are reproducible.
@@ -281,6 +299,18 @@ Release history and changes planned for the next version.
   - The minifier no longer glues words around inline elements.
   - CDN files carry Subresource Integrity hashes, and both Pages jobs
     highlight code with Pygments.
+- **Backup**:
+  - `backup.sh` no longer loses the dry-run plan after the first 16 deletions
+    (ssh read it from stdin), so the added and modified volumes are right.
+  - Non-ASCII, newline and space escapes (`\#NNN`) in file names decode
+    correctly, so deleted-file sizes are looked up on the right path.
+  - Exclude files are joined with a newline between them, and temporary files
+    and the ssh socket directory are removed on every exit.
+  - The hostname and user are validated before the remote path is built, and
+    remote paths are quoted.
+  - The package baseline is kept unless the new list is complete; an unknown
+    distribution skips the list with a message. A non-numeric `du` output no
+    longer aborts a finished run.
 - **Scripts**: `hypr-screenshot.sh` no longer runs the Hyprland autostart in
   the live session, and its terminal shows fastfetch again.
 - **Steam Optimize**:
