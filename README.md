@@ -308,6 +308,13 @@ Commands that only ship a bash completion are completed through
 otherwise zsh completes file names. The caches live in `~/.zcache`: delete
 `~/.zcache/bash-completions` or `~/.zcache/generated/` to rebuild them.
 
+The completion dump is rebuilt when a directory of `fpath` changes, so a new
+package is completed at the next shell start. `btop`, `gamescope`, `waybar`,
+`hyprctl` and `lact`, which ship no completion, are completed from their
+`--help`; add commands to `_dotfiles_generic_help_commands` in `~/.zshrc`
+(only commands whose `--help` prints usage and exits). fzf's `**<TAB>`
+completion is loaded; its key bindings are not.
+
 Neovim uses Lua, Telescope, Treesitter, Mason, and native LSP. Neovim 0.8+
 loads plugins with lazy.nvim; Neovim 0.7.2 uses a compatibility loader with
 older plugin releases. Vim loads its plugins as a Vim package from
