@@ -1,8 +1,9 @@
 {
-  "hyprland/workspaces": {
+  "ext/workspaces": {
     "all-outputs": false,
     "active-only": false,
-    "format": "{id}",
+    "sort-by-id": true,
+    "format": "{name}",
     "on-click": "activate",
     "on-scroll-up": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e+1\" })'",
     "on-scroll-down": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e-1\" })'"

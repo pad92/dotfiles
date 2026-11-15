@@ -257,6 +257,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Waybar**: the workspace module is now `ext/workspaces`, so clicking a
+  workspace number switches to it. `hyprland/workspaces` sent the legacy
+  `dispatch workspace N`, which the Lua Hyprland config rejects.
 - **SwayOSD**: `package_services` enables `swayosd-libinput-backend.service`
   with `11_hyprland`; without it the server could not see Caps Lock and the
   ON/OFF pop-up never appeared.
