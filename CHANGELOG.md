@@ -112,6 +112,12 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Documentation**:
+  - The README documents the Neovim, Vim and Zsh packages with one section and one
+    command each, and no longer repeats the screenshot, editor
+    package and AMD EPP explanations.
+  - The `make clean` details moved to `ansible/README.md`, and the `backup.sh`
+    internals to the script header.
 - **Upgrade notes**:
   - Each target needs an SSH server that accepts the user's key and an entry
     in `ansible/inventory.yml`, with its settings in

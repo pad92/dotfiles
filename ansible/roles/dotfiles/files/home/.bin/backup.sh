@@ -9,6 +9,21 @@
 #   BACKUP_OS_RELEASE     os-release file to read (default /etc/os-release)
 #   DOTFILES_REPOSITORY   repository holding dist/ (default ~/.dotfiles)
 #
+# Behaviour:
+#   - A missing or empty source is refused.
+#   - rsync status 24 (vanished files) only warns; any other failure is
+#     reported at the end, both sources still run, and the exit status is the
+#     worst one.
+#   - /etc is read without root: unreadable files give status 23, and rsync
+#     then skips deletions for that source.
+#   - Replaced or deleted files are not kept on the NAS (--backup-dir would
+#     need its own pruning), -x is not used because it would skip btrfs
+#     subvolumes, and --partial is not used so an interrupted run never leaves
+#     a half-written file under its final name.
+#   - --clean-packages runs `yay -Sc` on Arch or `sudo apt autoremove --purge`
+#     on Debian; --max-deletions=N skips a source whose dry run plans more
+#     than N deletions; --force-delete lifts that limit.
+#
 # Exit status: 0 on success (rsync warning 24, "files vanished", is only
 # reported); 2 on a usage error; otherwise the worst failure of the run.
 set -euo pipefail
