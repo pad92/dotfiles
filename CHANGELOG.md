@@ -229,6 +229,10 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **CI**:
+  - The unit test job installs GNU `tar`, which Ansible's `unarchive` needs
+    and the busybox `tar` of the Alpine image cannot replace (the RTK install
+    test failed).
 - **Zsh**: a completion installed by a package is available at the next
   shell start. The cached `.zcompdump` was reused for up to 24 hours, so new
   completions were missing until then. It is now rebuilt as soon as a

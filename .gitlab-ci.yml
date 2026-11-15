@@ -35,7 +35,7 @@ unit_tests:
       paths: [.cache/unit-tests/]
       when: always
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4 tar
     - python3 -m pip install -r requirements-test.txt
     # Some tests load roles that use pinned collection modules; without them
     # Ansible cannot resolve those tasks and the tests are skipped or fail.
