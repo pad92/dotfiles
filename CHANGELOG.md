@@ -6,6 +6,12 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **Zsh package**:
+  - The `package_zsh` GitLab job and the `package-zsh.yml` GitHub workflow
+    publish `zsh.tar.gz` with `.zshenv`, a rendered `.zshrc`, the Zsh tree and
+    the third-party plugins at their pinned commits. `.zprofile` is left out.
+  - `scripts/ci/build_zsh_package.py` builds it, with tests in
+    `tests/test_zsh_package.py`.
 - **3D printing**: the `24_3dprint` group (PrusaSlicer, F3D) and the `print3d`
   role (`3dprint` tag), which makes F3D thumbnails render in Nautilus.
 - **AI coding agents**:
@@ -188,6 +194,8 @@ Release history and changes planned for the next version.
     Ansible writes.
   - The README opens with the animated demo and lists every Hyprland
     shortcut.
+  - The README has an "Editor packages" section that installs the Neovim
+    and Vim archives with one `curl` or `wget` command each.
 - **Dotfiles**:
   - `~/.vim`, the Zsh tree and the Hyprlock background are copied instead of
     linked into the clone. Only tracked files are copied, and what programs
