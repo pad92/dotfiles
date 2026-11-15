@@ -239,6 +239,9 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **SwayOSD**: `package_services` enables `swayosd-libinput-backend.service`
+  with `11_hyprland`; without it the server could not see Caps Lock and the
+  ON/OFF pop-up never appeared.
 - **CI**:
   - The unit test job installs GNU `tar`, which Ansible's `unarchive` needs
     and the busybox `tar` of the Alpine image cannot replace (the RTK install
