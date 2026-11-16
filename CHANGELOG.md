@@ -275,8 +275,12 @@ Release history and changes planned for the next version.
   and `iwlmvm`/`iwldvm` options by default. Its `zz-dotfiles-power-save.conf`
   sorted after, and so overrode, a local `iwlwifi.conf`, forcing `power_save=1`
   and U-APSD on Intel adapters that crash their firmware ("Queue stuck"),
-  which broke DNS over Wi-Fi. Set `power_save_wifi: true` to restore it. The
-  stale options are removed at the next run and stop applying after a reboot.
+  which broke DNS over Wi-Fi. Set `power_save_wifi: true` to restore it; the
+  Wi-Fi groups now live in their own `power_save_wifi_module_options`, so
+  overriding the audio list keeps the switch working. The file is renamed
+  `00-dotfiles-power-save.conf` and the old `zz-` file is removed, so any local
+  module file, audio included, now overrides these defaults. The stale options
+  stop applying after a reboot. An invalid `power_save_wifi` value fails the run.
 - **CI tests**: the `ansible-playbook` runs of the play tests share one
   `PLAYBOOK_TIMEOUT` (600 s, `TEST_PLAYBOOK_TIMEOUT` to override) instead of
   60 to 180 s. On the loaded runner a single play took over two minutes, so

@@ -6,11 +6,26 @@
     fail_msg: power_save_mode must be auto, true or false.
     quiet: true
 
-- name: Find the loaded Wi-Fi and audio modules
+- name: Validate the Wi-Fi power-save switch
+  ansible.builtin.assert:
+    that:
+      - power_save_wifi | string | lower in ['true', 'false', 'yes', 'no']
+    fail_msg: power_save_wifi must be true or false.
+    quiet: true
+
+# The Wi-Fi groups are a separate list, so an override of the audio list can
+# never bring them back while power_save_wifi is false.
+- name: Select the module groups
+  ansible.builtin.set_fact:
+    power_save_groups: >-
+      {{ power_save_module_options
+         + (power_save_wifi_module_options if power_save_wifi | bool else []) }}
+
+- name: Find the loaded power-save modules
   ansible.builtin.find:
     paths: '{{ power_save_module_directory }}'
     patterns: >-
-      {{ power_save_module_options | map(attribute='modules') | flatten }}
+      {{ power_save_groups | map(attribute='modules') | flatten }}
     file_type: directory
   register: power_save_loaded
 
@@ -21,9 +36,9 @@
       {%- set loaded = power_save_loaded.files | map(attribute='path')
           | map('basename') | list -%}
       {%- set selected = {} -%}
-      {%- for group in power_save_module_options -%}
+      {%- for group in power_save_groups -%}
       {%-   set present = group.modules | select('in', loaded) | list -%}
-      {%-   if present and (power_save_wifi | bool or not group.wifi | default(false)) -%}
+      {%-   if present -%}
       {%-     set _ = selected.update({present[0]: group.options[present[0]]}) -%}
       {%-   endif -%}
       {%- endfor -%}
@@ -38,7 +53,7 @@
               if power_save_mode | string | lower == 'auto'
               else power_save_mode | bool) }}
 
-- name: Configure Wi-Fi and audio power saving
+- name: Configure module power saving
   ansible.builtin.template:
     src: power-save-modprobe.conf.j2
     dest: '{{ power_save_modprobe_path }}'
@@ -48,9 +63,17 @@
   when: power_save_enabled | bool
   notify: Report power-save options apply at next boot
 
-- name: Remove Wi-Fi and audio power saving
+- name: Remove module power saving
   ansible.builtin.file:
     path: '{{ power_save_modprobe_path }}'
     state: absent
   when: not (power_save_enabled | bool)
+  notify: Report power-save options apply at next boot
+
+- name: Remove the options files written under earlier names
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop: '{{ power_save_legacy_modprobe_paths }}'
+  when: item != power_save_modprobe_path
   notify: Report power-save options apply at next boot
