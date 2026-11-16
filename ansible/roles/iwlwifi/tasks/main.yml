@@ -19,6 +19,10 @@
           - >-
             iwlwifi_module_options | map(attribute='options', default=none)
             | reject('sequence') | list | length == 0
+          # A string is a sequence too, and join(' ') would split it by letter.
+          - >-
+            iwlwifi_module_options | map(attribute='options', default=none)
+            | select('string') | list | length == 0
           - >-
             iwlwifi_module_options | map(attribute='options') | flatten
             | reject('match', '^[a-z0-9_]+=[^\s]+$') | list | length == 0

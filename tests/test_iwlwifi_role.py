@@ -153,6 +153,7 @@ class IwlwifiRoleTests(unittest.TestCase):
     def test_rejects_unknown_modules_and_malformed_options(self):
         for entry in (
             {"module": "e1000e", "options": ["SmartPowerDownEnable=1"]},
+            {"module": "iwlwifi", "options": "power_save=0"},
             {"module": "iwlwifi", "options": ["power_save"]},
             {"module": "iwlwifi", "options": ["power_save=0\ninstall iwlwifi /bin/sh"]},
         ):
