@@ -197,6 +197,7 @@ class InstallGuideRoleTests(unittest.TestCase):
                     "ansible_facts": {"form_factor": form_factor},
                     "power_save_module_directory": str(module_directory),
                     "power_save_modprobe_path": str(target),
+                    "power_save_modprobe_directory": str(self.work),
                     # Never let a test reach the real /etc/modprobe.d.
                     "power_save_legacy_modprobe_paths": [str(self.legacy_target)],
                     **extra_vars,
@@ -214,12 +215,47 @@ class InstallGuideRoleTests(unittest.TestCase):
     def legacy_target(self):
         return self.work / "zz-power-save.conf"
 
-    def test_default_options_file_sorts_before_local_files(self):
-        # modprobe reads files in lexical order and the last one wins, so a
-        # local iwlwifi.conf or alsa.conf must sort after the role's file.
-        name = Path(load_defaults("power_save")["power_save_modprobe_path"]).name
-        for local in ("alsa.conf", "iwlwifi.conf", "50-local.conf"):
-            self.assertLess(name, local)
+    def test_options_file_has_a_plain_name_and_replaces_earlier_names(self):
+        defaults = load_defaults("power_save")
+        self.assertEqual(
+            defaults["power_save_modprobe_path"], "/etc/modprobe.d/power-save.conf"
+        )
+        self.assertEqual(
+            set(defaults["power_save_legacy_modprobe_paths"]),
+            {
+                "/etc/modprobe.d/zz-dotfiles-power-save.conf",
+                "/etc/modprobe.d/00-dotfiles-power-save.conf",
+            },
+        )
+
+    # The plain name sorts after alsa.conf or iwlwifi.conf, so the role leaves
+    # out a module a local file already sets instead of relying on file order.
+    def test_local_module_options_win_over_the_role(self):
+        (self.work / "iwlwifi.conf").write_text(
+            "# local\n  options  iwlwifi power_save=0\n"
+        )
+        (self.work / "notes.conf").write_text("# options snd_hda_intel power_save=0\n")
+        output, target = self.run_power_save(
+            "Notebook",
+            ["iwlwifi", "iwlmvm", "snd_hda_intel"],
+            power_save_wifi=True,
+        )
+        self.assertEqual(
+            [
+                line
+                for line in target.read_text().splitlines()
+                if line.startswith("options")
+            ],
+            ["options snd_hda_intel power_save=1", "options iwlmvm power_scheme=3"],
+        )
+        self.assertIn("iwlwifi.conf", output)
+
+    def test_local_options_for_every_module_leave_no_role_file(self):
+        (self.work / "alsa.conf").write_text("options snd-hda-intel power_save=0\n")
+        target = self.work / "power-save.conf"
+        target.write_text("options snd_hda_intel power_save=1\n")
+        _, target = self.run_power_save("Notebook", ["snd_hda_intel"])
+        self.assertFalse(target.exists())
 
     def test_laptop_gets_only_audio_power_saving_by_default(self):
         # Wi-Fi power saving is opt-in: it can trigger Intel firmware crashes.

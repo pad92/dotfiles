@@ -1,0 +1,4 @@
+# Managed by dotfiles (iwlwifi role). Local changes will be overwritten.
+{% for entry in iwlwifi_module_options %}
+options {{ entry.module }} {{ entry.options | join(' ') }}
+{% endfor %}

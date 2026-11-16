@@ -84,6 +84,9 @@
     - role: power_save
       when: packages_action | default('install') != 'plan'
       tags: [system, power_save]
+    - role: iwlwifi
+      when: packages_action | default('install') != 'plan'
+      tags: [system, iwlwifi]
     - role: wireless_regdom
       when:
         - packages_action | default('install') != 'plan'

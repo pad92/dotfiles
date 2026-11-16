@@ -50,10 +50,23 @@
     - packages_selected_groups is defined
   tags: [gpu_modules]
 
+- name: Remove GPU module options written under earlier names
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /etc/modprobe.d/zz-dotfiles-gpu.conf
+    - /etc/modprobe.d/zz-dotfiles-i915.conf
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - packages_selected_groups is defined
+  notify: Regenerate Arch initramfs
+  tags: [gpu_modules]
+
 - name: Configure NVIDIA kernel module options
   ansible.builtin.template:
     src: gpu-modprobe.conf.j2
-    dest: /etc/modprobe.d/zz-dotfiles-gpu.conf
+    dest: /etc/modprobe.d/nvidia.conf
     owner: root
     group: root
     mode: '0644'
@@ -69,7 +82,7 @@
 
 - name: Remove NVIDIA kernel module options when no NVIDIA profile is selected
   ansible.builtin.file:
-    path: /etc/modprobe.d/zz-dotfiles-gpu.conf
+    path: /etc/modprobe.d/nvidia.conf
     state: absent
   when:
     - ansible_facts['os_family'] == 'Archlinux'
@@ -101,7 +114,7 @@
 - name: Configure i915 kernel module options
   ansible.builtin.template:
     src: i915-modprobe.conf.j2
-    dest: /etc/modprobe.d/zz-dotfiles-i915.conf
+    dest: /etc/modprobe.d/i915.conf
     owner: root
     group: root
     mode: '0644'
@@ -115,7 +128,7 @@
 
 - name: Remove i915 kernel module options when not explicitly configured
   ansible.builtin.file:
-    path: /etc/modprobe.d/zz-dotfiles-i915.conf
+    path: /etc/modprobe.d/i915.conf
     state: absent
   when:
     - ansible_facts['os_family'] == 'Archlinux'

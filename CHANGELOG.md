@@ -12,6 +12,12 @@ Release history and changes planned for the next version.
     the third-party plugins at their pinned commits. `.zprofile` is left out.
   - `scripts/ci/build_zsh_package.py` builds it, with tests in
     `tests/test_zsh_package.py`.
+- **Intel Wi-Fi**: the `iwlwifi` role (`iwlwifi` tag) writes the module
+  options a host lists in `iwlwifi_module_options` to
+  `/etc/modprobe.d/iwlwifi.conf`, and backs up the file it replaces. The
+  laptop sets `iwlmvm power_scheme=1`.
+- **Steam**: with `21_steam`, the hardening drop-in also sets
+  `vm.dirty_ratio = 10` and `vm.dirty_background_ratio = 5`.
 - **3D printing**: the `24_3dprint` group (PrusaSlicer, F3D) and the `print3d`
   role (`3dprint` tag), which makes F3D thumbnails render in Nautilus.
 - **AI coding agents**:
@@ -278,9 +284,16 @@ Release history and changes planned for the next version.
   which broke DNS over Wi-Fi. Set `power_save_wifi: true` to restore it; the
   Wi-Fi groups now live in their own `power_save_wifi_module_options`, so
   overriding the audio list keeps the switch working. The file is renamed
-  `00-dotfiles-power-save.conf` and the old `zz-` file is removed, so any local
-  module file, audio included, now overrides these defaults. The stale options
-  stop applying after a reboot. An invalid `power_save_wifi` value fails the run.
+  `power-save.conf` and the earlier `zz-` and `00-dotfiles-` files are removed.
+  A module that another `/etc/modprobe.d/*.conf` file already configures is
+  left out and listed in the run output, so a local file, audio included, keeps
+  control whatever its name. The stale options stop applying after a reboot.
+  An invalid `power_save_wifi` value fails the run.
+- **Kernel drop-in names**: the managed files use plain names, without the
+  `zz-` or `00-dotfiles-` prefixes: `nvidia.conf`, `i915.conf`,
+  `v4l2loopback.conf` (`modprobe.d` and `modules-load.d`), `60-hardening.conf`
+  and `70-bpf.conf`. Each role removes or backs up the file of the former name.
+  Reboot afterwards, since the initramfs embeds `/etc/modprobe.d`.
 - **CI tests**: the `ansible-playbook` runs of the play tests share one
   `PLAYBOOK_TIMEOUT` (600 s, `TEST_PLAYBOOK_TIMEOUT` to override) instead of
   60 to 180 s. On the loaded runner a single play took over two minutes, so

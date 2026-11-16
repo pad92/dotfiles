@@ -1,0 +1,13 @@
+---
+# Options for the Intel Wi-Fi modules, written to iwlwifi_modprobe_path:
+#   iwlwifi_module_options:
+#     - module: iwlmvm
+#       options: [power_scheme=1]
+# null leaves the file alone, so a hand-written one stays untouched. An empty
+# list removes it. Only iwlwifi, iwlmvm and iwldvm are accepted.
+iwlwifi_module_options: null
+iwlwifi_modprobe_path: /etc/modprobe.d/iwlwifi.conf
+# A file of the same name under /etc masks this one, so the role refuses to
+# write when a package ships it.
+iwlwifi_vendor_modprobe_path: /usr/lib/modprobe.d/iwlwifi.conf
+iwlwifi_module_directory: /sys/module

@@ -1,0 +1,89 @@
+---
+- name: Manage the Intel Wi-Fi module options
+  when: iwlwifi_module_options is not none
+  block:
+    - name: Validate the Intel Wi-Fi module options
+      ansible.builtin.assert:
+        that:
+          - iwlwifi_module_options is sequence
+          - iwlwifi_module_options is not string
+          - >-
+            iwlwifi_module_options | rejectattr('module', 'defined') | list
+            | length == 0
+          - >-
+            iwlwifi_module_options | map(attribute='module')
+            | reject('in', ['iwlwifi', 'iwlmvm', 'iwldvm']) | list | length == 0
+          - >-
+            iwlwifi_module_options | map(attribute='module') | unique | list
+            | length == iwlwifi_module_options | length
+          - >-
+            iwlwifi_module_options | map(attribute='options', default=none)
+            | reject('sequence') | list | length == 0
+          - >-
+            iwlwifi_module_options | map(attribute='options') | flatten
+            | reject('match', '^[a-z0-9_]+=[^\s]+$') | list | length == 0
+        fail_msg: >-
+          iwlwifi_module_options must list each of iwlwifi, iwlmvm or iwldvm
+          at most once, with options written as name=value.
+        quiet: true
+
+    # Both roles would set the same iwlwifi and iwlmvm parameters.
+    - name: Refuse to compete with power_save Wi-Fi options
+      ansible.builtin.assert:
+        that:
+          - >-
+            iwlwifi_module_options | length == 0 or
+            not (power_save_wifi | default(false) | bool)
+        fail_msg: >-
+          power_save_wifi is true: the power_save role already writes Intel
+          Wi-Fi options. Set power_save_wifi to false or leave
+          iwlwifi_module_options unset.
+        quiet: true
+
+    - name: Check for a packaged iwlwifi options file
+      ansible.builtin.stat:
+        path: '{{ iwlwifi_vendor_modprobe_path }}'
+      register: iwlwifi_vendor_file
+
+    - name: Refuse to mask the packaged iwlwifi options file
+      ansible.builtin.assert:
+        that:
+          - iwlwifi_module_options | length == 0 or not iwlwifi_vendor_file.stat.exists
+        fail_msg: >-
+          {{ iwlwifi_vendor_modprobe_path }} exists and {{ iwlwifi_modprobe_path }}
+          would hide it. Review its options and set iwlwifi_modprobe_path to
+          another name.
+        quiet: true
+
+    - name: Check whether iwlwifi is loaded
+      ansible.builtin.stat:
+        path: '{{ iwlwifi_module_directory }}/iwlwifi'
+      register: iwlwifi_loaded
+
+    - name: Report missing Intel Wi-Fi hardware
+      ansible.builtin.debug:
+        msg: >-
+          iwlwifi is not loaded on this host: no Intel Wi-Fi options written.
+      when:
+        - iwlwifi_module_options | length > 0
+        - not iwlwifi_loaded.stat.exists
+
+    - name: Write the Intel Wi-Fi module options
+      ansible.builtin.template:
+        src: iwlwifi-modprobe.conf.j2
+        dest: '{{ iwlwifi_modprobe_path }}'
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+      when:
+        - iwlwifi_module_options | length > 0
+        - iwlwifi_loaded.stat.exists
+      notify: Report iwlwifi options apply after a reload
+
+    - name: Remove the Intel Wi-Fi module options
+      ansible.builtin.file:
+        path: '{{ iwlwifi_modprobe_path }}'
+        state: absent
+      when: iwlwifi_module_options | length == 0
+      notify: Report iwlwifi options apply after a reload

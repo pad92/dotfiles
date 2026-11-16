@@ -116,9 +116,10 @@ previous files as backups. The run refuses to regenerate while OBS is open.
 ## Virtual camera
 
 The virtual camera serves Teams and other web meetings. The role writes
-`/etc/modprobe.d/zz-dotfiles-v4l2loopback.conf` with `exclusive_caps=1`
+`/etc/modprobe.d/v4l2loopback.conf` with `exclusive_caps=1`
 (Chromium lists the device only with it) and loads the module now and at every
-boot. A module already loaded with other options is not unloaded, since that
+boot. It removes the `zz-dotfiles-v4l2loopback.conf` files of earlier
+versions. A module already loaded with other options is not unloaded, since that
 would cut a running camera; the run prints the reload command instead.
 
 Firefox asks PipeWire for cameras, and PipeWire never adds a camera for this

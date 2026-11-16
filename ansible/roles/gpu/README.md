@@ -21,8 +21,9 @@ options change.
 
 ## Kernel modules
 
-With an NVIDIA profile, the role manages
-`/etc/modprobe.d/zz-dotfiles-gpu.conf`. Both profiles enable zero-initialized
+With an NVIDIA profile, the role manages `/etc/modprobe.d/nvidia.conf`. It
+removes the `zz-dotfiles-gpu.conf` and `zz-dotfiles-i915.conf` files written by
+earlier versions. Both profiles enable zero-initialized
 system memory and DRM modesetting. Runtime D3 uses the driver default:
 supported Ampere and newer notebooks use fine-grained power management. GSP
 firmware is enabled by default on supported GPUs, so the role does not set it.
@@ -32,7 +33,7 @@ integration and enough temporary storage. Reboot after deployment to apply
 the module options.
 
 The i915 GuC option stays at the kernel default unless `gpu_i915_enable_guc`
-is set. Support varies by platform; see the kernel's
+is set; the role then writes it to `/etc/modprobe.d/i915.conf`. Support varies by platform; see the kernel's
 [i915 documentation](https://docs.kernel.org/gpu/i915.html).
 
 ## Runtime power management

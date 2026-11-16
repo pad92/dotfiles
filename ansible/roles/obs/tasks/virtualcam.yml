@@ -19,7 +19,7 @@
 - name: Configure v4l2loopback for browsers
   ansible.builtin.template:
     src: v4l2loopback-modprobe.conf.j2
-    dest: /etc/modprobe.d/zz-dotfiles-v4l2loopback.conf
+    dest: /etc/modprobe.d/v4l2loopback.conf
     owner: root
     group: root
     mode: '0644'
@@ -29,10 +29,18 @@
 - name: Load v4l2loopback at boot
   ansible.builtin.copy:
     content: "v4l2loopback\n"
-    dest: /etc/modules-load.d/zz-dotfiles-v4l2loopback.conf
+    dest: /etc/modules-load.d/v4l2loopback.conf
     owner: root
     group: root
     mode: '0644'
+
+- name: Remove v4l2loopback files written under earlier names
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /etc/modprobe.d/zz-dotfiles-v4l2loopback.conf
+    - /etc/modules-load.d/zz-dotfiles-v4l2loopback.conf
 
 # modprobe reads the options file; a module loaded earlier keeps its old
 # options until it is reloaded, which the handler reports instead of forcing.

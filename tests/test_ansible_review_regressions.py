@@ -212,6 +212,15 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                     f"net.ipv6.conf.default.disable_ipv6 = {expected}", policy
                 )
 
+    def test_dirty_writeback_limits_follow_the_steam_group(self):
+        limits = ["vm.dirty_ratio = 10", "vm.dirty_background_ratio = 5"]
+        steam = self.render_hardening(["01_base", "21_steam"])
+        base = self.render_hardening(["01_base"])
+        for line in limits:
+            with self.subTest(line=line):
+                self.assertIn(line, steam)
+                self.assertNotIn(line.split(" = ")[0], base)
+
     # The former hostname map must fail loudly instead of selecting its keys.
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_package_role_rejects_a_hostname_map_of_groups(self):

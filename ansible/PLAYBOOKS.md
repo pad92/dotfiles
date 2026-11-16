@@ -46,13 +46,14 @@ escalates with `become`; the home roles run with `become: false`.
 |    11 | `cpu_power`        | `system`, `cpu_power`, `amd_cpu_performance` | not `plan`                                          |
 |    12 | `time_sync`        | `system`, `time_sync`                        | not `plan`                                          |
 |    13 | `power_save`       | `system`, `power_save`                       | not `plan`                                          |
-|    14 | `wireless_regdom`  | `system`, `wireless_regdom`                  | not `plan`, Arch Linux                              |
-|    15 | `gnome_keyring`    | `system`, `gnome_keyring`                    | not `plan`, Arch Linux, `gnome_keyring_pam_enabled` |
-|    16 | `dotfiles`         | `dotfiles`                                   | always                                              |
-|    17 | `audio`            | `dotfiles`, `audio`                          | not `plan`                                          |
-|    18 | `agent_cli`        | `dotfiles`, `agent_cli`                      | always                                              |
-|    19 | `obs`              | `obs`                                        | `22_obs` selected                                   |
-|    20 | `print3d`          | `3dprint`                                    | not `plan`, Arch Linux, `24_3dprint` selected       |
+|    14 | `iwlwifi`          | `system`, `iwlwifi`                          | not `plan`                                          |
+|    15 | `wireless_regdom`  | `system`, `wireless_regdom`                  | not `plan`, Arch Linux                              |
+|    16 | `gnome_keyring`    | `system`, `gnome_keyring`                    | not `plan`, Arch Linux, `gnome_keyring_pam_enabled` |
+|    17 | `dotfiles`         | `dotfiles`                                   | always                                              |
+|    18 | `audio`            | `dotfiles`, `audio`                          | not `plan`                                          |
+|    19 | `agent_cli`        | `dotfiles`, `agent_cli`                      | always                                              |
+|    20 | `obs`              | `obs`                                        | `22_obs` selected                                   |
+|    21 | `print3d`          | `3dprint`                                    | not `plan`, Arch Linux, `24_3dprint` selected       |
 
 "not `plan`" means `packages_action` is not `plan`. `make plan` sets it: the
 run prints the package plan and changes nothing. The `system` tag selects

@@ -24,10 +24,11 @@ it adds to `known_hosts`. Existing entries are not converted.
 
 ## Kernel settings
 
-The `kernel_hardening` tag manages `/etc/sysctl.d/60-dotfiles-hardening.conf`
-and `/etc/sysctl.d/70-dotfiles-bpf.conf`. Their prefixes place the local policy
-after the package defaults in `/usr/lib/sysctl.d/`, as systemd recommends. The
-role backs up its former drop-ins before removing them.
+The `kernel_hardening` tag manages `/etc/sysctl.d/60-hardening.conf` and
+`/etc/sysctl.d/70-bpf.conf`. Their prefixes place the local policy after the
+package defaults in `/usr/lib/sysctl.d/`, as systemd recommends. The role backs
+up its former drop-ins, `60-dotfiles-hardening.conf` and `70-dotfiles-bpf.conf`
+included, before removing them.
 
 The policy keeps the filesystem protections, ASLR, the ptrace and
 kernel-address restrictions, and the inotify limits. It uses loose
@@ -40,20 +41,24 @@ it; `hardening_ipv6_enabled: false` sets the `all` and `default` sysctls.
   since some kernels reject it.
 - The user-namespace setting is written only when the kernel exposes it.
 - `net.core.bpf_jit_harden` is `2` when available. Unprivileged BPF is
-  persisted as the reversible `2` in `70-dotfiles-bpf.conf`, and applied at
+  persisted as the reversible `2` in `70-bpf.conf`, and applied at
   once when its active value is `0`; a kernel already locked at `1` keeps it
   until reboot.
 
 ### Steam
 
-With `21_steam`, `60-dotfiles-hardening.conf` gets
-`vm.max_map_count = 2147483642`, the value Proton documents for games that
-need more mappings. The old `80-gamecompatibility.conf` and
-`99-cachyos-gaming.conf` are backed up as `<filename>.dotfiles-backup` before
-removal; an existing backup is kept as a timestamped copy. Swappiness, dirty
-page writeback, scheduler behavior, network backlog, file-handle limits and
-compatibility-mode mmap randomization stay at the kernel or distribution
-defaults.
+With `21_steam`, `60-hardening.conf` gets `vm.max_map_count = 2147483642`,
+the value Proton documents for games that need more mappings. It also sets
+`vm.dirty_ratio = 10` and `vm.dirty_background_ratio = 5`, so writeback starts
+earlier and a large shader-cache or game download stalls the desktop less. A
+later file that sets `vm.dirty_bytes` or `vm.dirty_background_bytes` takes
+precedence: the kernel keeps only the last of each pair.
+
+The old `80-gamecompatibility.conf` and `99-cachyos-gaming.conf` are backed up
+as `<filename>.dotfiles-backup` before removal; an existing backup is kept as a
+timestamped copy. Swappiness, scheduler behavior, network backlog, file-handle
+limits and compatibility-mode mmap randomization stay at the kernel or
+distribution defaults.
 
 ### Migration
 
