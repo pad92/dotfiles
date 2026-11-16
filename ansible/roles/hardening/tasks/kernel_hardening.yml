@@ -44,7 +44,7 @@
 - name: Manage the desktop sysctl policy
   ansible.builtin.template:
     src: hardening.conf.j2
-    dest: /etc/sysctl.d/60-dotfiles-hardening.conf
+    dest: /etc/sysctl.d/60-hardening.conf
     owner: root
     group: root
     mode: '0644'
@@ -62,12 +62,12 @@
   ansible.posix.sysctl:
     name: '{{ item.0 }}'
     value: '{{ item.1 | trim }}'
-    sysctl_file: /etc/sysctl.d/60-dotfiles-hardening.conf
+    sysctl_file: /etc/sysctl.d/60-hardening.conf
     sysctl_set: true
     reload: false
   loop: '{{ hardening_policy_entries }}'
   loop_control:
-    label: '/etc/sysctl.d/60-dotfiles-hardening.conf: {{ item.0 }}'
+    label: '/etc/sysctl.d/60-hardening.conf: {{ item.0 }}'
   tags: [kernel_hardening]
 
 - name: Check for legacy gaming sysctl drop-ins
@@ -111,7 +111,7 @@
 - name: Persist reversible unprivileged BPF restriction
   ansible.builtin.template:
     src: unprivileged-bpf.conf.j2
-    dest: /etc/sysctl.d/70-dotfiles-bpf.conf
+    dest: /etc/sysctl.d/70-bpf.conf
     owner: root
     group: root
     mode: '0644'
@@ -124,7 +124,7 @@
   ansible.posix.sysctl:
     name: kernel.unprivileged_bpf_disabled
     value: '2'
-    sysctl_file: /etc/sysctl.d/70-dotfiles-bpf.conf
+    sysctl_file: /etc/sysctl.d/70-bpf.conf
     sysctl_set: true
     reload: false
   when:
@@ -140,6 +140,8 @@
     - /etc/sysctl.d/hardening.conf
     - /etc/sysctl.d/zz-dotfiles-hardening.conf
     - /etc/sysctl.d/zz-dotfiles-bpf.conf
+    - /etc/sysctl.d/60-dotfiles-hardening.conf
+    - /etc/sysctl.d/70-dotfiles-bpf.conf
   register: hardening_superseded_sysctls
   tags: [kernel_hardening]
 
@@ -157,7 +159,10 @@
     label: '{{ item.stat.path }}'
   when:
     - item.stat.exists
-    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+    # Keep an old BPF file where the kernel has no such setting to replace it.
+    - >-
+      item.stat.path not in ['/etc/sysctl.d/zz-dotfiles-bpf.conf',
+      '/etc/sysctl.d/70-dotfiles-bpf.conf'] or
       hardening_optional_sysctls.results[1].stat.exists
   tags: [kernel_hardening]
 
@@ -170,6 +175,9 @@
     label: '{{ item.stat.path }}'
   when:
     - item.stat.exists
-    - item.stat.path != '/etc/sysctl.d/zz-dotfiles-bpf.conf' or
+    # Keep an old BPF file where the kernel has no such setting to replace it.
+    - >-
+      item.stat.path not in ['/etc/sysctl.d/zz-dotfiles-bpf.conf',
+      '/etc/sysctl.d/70-dotfiles-bpf.conf'] or
       hardening_optional_sysctls.results[1].stat.exists
   tags: [kernel_hardening]

@@ -1,0 +1,7 @@
+---
+- name: Report iwlwifi options apply after a reload
+  ansible.builtin.debug:
+    msg: >-
+      The Intel Wi-Fi module options changed. Reboot, or run
+      "sudo modprobe -r iwlmvm iwldvm iwlwifi && sudo modprobe iwlwifi"
+      (this drops the Wi-Fi link), to apply them.

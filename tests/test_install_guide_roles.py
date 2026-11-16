@@ -175,7 +175,7 @@ class InstallGuideRoleTests(unittest.TestCase):
         self.assertIn("ENABLE False", output)
 
     # power_save: options for the loaded modules, on a portable machine only.
-    def run_power_save(self, form_factor, modules, **extra_vars):
+    def run_power_save(self, form_factor, modules, expect_success=True, **extra_vars):
         module_directory = self.work / "module"
         for module in modules:
             (module_directory / module).mkdir(parents=True, exist_ok=True)
@@ -197,19 +197,68 @@ class InstallGuideRoleTests(unittest.TestCase):
                     "ansible_facts": {"form_factor": form_factor},
                     "power_save_module_directory": str(module_directory),
                     "power_save_modprobe_path": str(target),
+                    "power_save_modprobe_directory": str(self.work),
+                    # Never let a test reach the real /etc/modprobe.d.
+                    "power_save_legacy_modprobe_paths": [str(self.legacy_target)],
                     **extra_vars,
                 },
                 "tasks": tasks,
                 "handlers": yaml.safe_load(
                     (ROLES / "power_save/handlers/main.yml").read_text()
                 ),
-            }
+            },
+            expect_success=expect_success,
         )
         return output, target
 
+    @property
+    def legacy_target(self):
+        return self.work / "zz-power-save.conf"
+
+    def test_options_file_has_a_plain_name_and_replaces_earlier_names(self):
+        defaults = load_defaults("power_save")
+        self.assertEqual(
+            defaults["power_save_modprobe_path"], "/etc/modprobe.d/power-save.conf"
+        )
+        self.assertEqual(
+            set(defaults["power_save_legacy_modprobe_paths"]),
+            {
+                "/etc/modprobe.d/zz-dotfiles-power-save.conf",
+                "/etc/modprobe.d/00-dotfiles-power-save.conf",
+            },
+        )
+
+    # The plain name sorts after alsa.conf or iwlwifi.conf, so the role leaves
+    # out a module a local file already sets instead of relying on file order.
+    def test_local_module_options_win_over_the_role(self):
+        (self.work / "iwlwifi.conf").write_text(
+            "# local\n  options  iwlwifi power_save=0\n"
+        )
+        (self.work / "notes.conf").write_text("# options snd_hda_intel power_save=0\n")
+        output, target = self.run_power_save(
+            "Notebook",
+            ["iwlwifi", "iwlmvm", "snd_hda_intel"],
+            power_save_wifi=True,
+        )
+        self.assertEqual(
+            [
+                line
+                for line in target.read_text().splitlines()
+                if line.startswith("options")
+            ],
+            ["options snd_hda_intel power_save=1", "options iwlmvm power_scheme=3"],
+        )
+        self.assertIn("iwlwifi.conf", output)
+
+    def test_local_options_for_every_module_leave_no_role_file(self):
+        (self.work / "alsa.conf").write_text("options snd-hda-intel power_save=0\n")
+        target = self.work / "power-save.conf"
+        target.write_text("options snd_hda_intel power_save=1\n")
+        _, target = self.run_power_save("Notebook", ["snd_hda_intel"])
+        self.assertFalse(target.exists())
+
     def test_laptop_gets_only_audio_power_saving_by_default(self):
-        # Wi-Fi power saving is opt-in: it overrides the user's own iwlwifi.conf
-        # (zz- sorts last) and can trigger Intel firmware crashes.
+        # Wi-Fi power saving is opt-in: it can trigger Intel firmware crashes.
         _, target = self.run_power_save(
             "Notebook", ["iwlwifi", "iwlmvm", "snd_hda_intel", "cfg80211"]
         )
@@ -234,11 +283,61 @@ class InstallGuideRoleTests(unittest.TestCase):
         self.assertEqual(
             options,
             [
+                "options snd_hda_intel power_save=1",
                 "options iwlwifi power_save=1 uapsd_disable=0",
                 "options iwlmvm power_scheme=3",
-                "options snd_hda_intel power_save=1",
             ],
         )
+
+    def test_wifi_opt_in_survives_an_audio_override(self):
+        _, target = self.run_power_save(
+            "Notebook",
+            ["iwlwifi", "snd_hda_intel"],
+            power_save_wifi=True,
+            power_save_module_options=[
+                {
+                    "modules": ["snd_hda_intel"],
+                    "options": {"snd_hda_intel": ["power_save=10"]},
+                }
+            ],
+        )
+        self.assertEqual(
+            [
+                line
+                for line in target.read_text().splitlines()
+                if line.startswith("options")
+            ],
+            [
+                "options snd_hda_intel power_save=10",
+                "options iwlwifi power_save=1 uapsd_disable=0",
+            ],
+        )
+
+    def test_invalid_wifi_switch_fails(self):
+        output, target = self.run_power_save(
+            "Notebook",
+            ["iwlwifi", "snd_hda_intel"],
+            expect_success=False,
+            power_save_wifi="enabled",
+        )
+        self.assertIn("power_save_wifi must be true or false", output)
+        self.assertFalse(target.exists())
+
+    def test_old_file_name_is_removed_on_an_audio_laptop(self):
+        self.legacy_target.write_text(
+            "options iwlwifi power_save=1 uapsd_disable=0\n"
+            "options snd_hda_intel power_save=1\n"
+        )
+        _, target = self.run_power_save(
+            "Notebook", ["iwlwifi", "iwlmvm", "snd_hda_intel"]
+        )
+        self.assertFalse(self.legacy_target.exists())
+        self.assertNotIn("iwl", target.read_text())
+
+    def test_old_file_name_is_removed_on_a_desktop(self):
+        self.legacy_target.write_text("options iwlwifi power_save=1\n")
+        self.run_power_save("Desktop", ["iwlwifi", "snd_hda_intel"])
+        self.assertFalse(self.legacy_target.exists())
 
     def test_wifi_only_laptop_by_default_removes_the_old_file(self):
         (self.work / "power-save.conf").write_text(
@@ -271,6 +370,12 @@ class InstallGuideRoleTests(unittest.TestCase):
         self.assertIn("options snd_hda_intel power_save=1", target.read_text())
 
     def test_power_saving_rerun_changes_nothing(self):
+        self.legacy_target.write_text("options iwlwifi power_save=1\n")
+        self.run_power_save("Notebook", ["iwlwifi", "snd_hda_intel"])
+        output, _ = self.run_power_save("Notebook", ["iwlwifi", "snd_hda_intel"])
+        self.assertIn("changed=0", output)
+
+    def test_wifi_power_saving_rerun_changes_nothing(self):
         self.run_power_save(
             "Notebook", ["iwlwifi", "snd_hda_intel"], power_save_wifi=True
         )

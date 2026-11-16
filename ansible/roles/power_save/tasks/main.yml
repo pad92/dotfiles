@@ -6,28 +6,94 @@
     fail_msg: power_save_mode must be auto, true or false.
     quiet: true
 
-- name: Find the loaded Wi-Fi and audio modules
+- name: Validate the Wi-Fi power-save switch
+  ansible.builtin.assert:
+    that:
+      - power_save_wifi | string | lower in ['true', 'false', 'yes', 'no']
+    fail_msg: power_save_wifi must be true or false.
+    quiet: true
+
+# The Wi-Fi groups are a separate list, so an override of the audio list can
+# never bring them back while power_save_wifi is false.
+- name: Select the module groups
+  ansible.builtin.set_fact:
+    power_save_groups: >-
+      {{ power_save_module_options
+         + (power_save_wifi_module_options if power_save_wifi | bool else []) }}
+
+- name: Find the loaded power-save modules
   ansible.builtin.find:
     paths: '{{ power_save_module_directory }}'
     patterns: >-
-      {{ power_save_module_options | map(attribute='modules') | flatten }}
+      {{ power_save_groups | map(attribute='modules') | flatten }}
     file_type: directory
   register: power_save_loaded
 
-# The first loaded module of each group gets the options listed for it.
+# modprobe applies the last options line it reads for a module, and our file
+# has a plain name, so file order cannot be trusted to let a local file win.
+- name: Find the other modprobe files
+  ansible.builtin.find:
+    paths: '{{ power_save_modprobe_directory }}'
+    patterns: '*.conf'
+    file_type: file
+    follow: true
+  register: power_save_local_files
+
+- name: Read the other modprobe files
+  ansible.builtin.slurp:
+    src: '{{ item }}'
+  loop: >-
+    {{ power_save_local_files.files | map(attribute='path')
+       | reject('in', [power_save_modprobe_path] + power_save_legacy_modprobe_paths)
+       | sort }}
+  register: power_save_local_contents
+
+# modprobe treats dashes and underscores in module names alike.
+- name: List the modules the other files configure
+  ansible.builtin.set_fact:
+    power_save_local_modules: >-
+      {%- set found = {} -%}
+      {%- for result in power_save_local_contents.results -%}
+      {%-   for module in result.content | b64decode
+              | regex_findall('(?m)^[ \t]*options[ \t]+(\S+)') -%}
+      {%-     set _ = found.setdefault(module | replace('-', '_'), result.item) -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ found }}
+
+# The first loaded module of each group gets the options listed for it, unless
+# another file already sets that module.
 - name: Select the module options
   ansible.builtin.set_fact:
     power_save_options: >-
       {%- set loaded = power_save_loaded.files | map(attribute='path')
           | map('basename') | list -%}
       {%- set selected = {} -%}
-      {%- for group in power_save_module_options -%}
+      {%- for group in power_save_groups -%}
       {%-   set present = group.modules | select('in', loaded) | list -%}
-      {%-   if present and (power_save_wifi | bool or not group.wifi | default(false)) -%}
+      {%-   if present and present[0] not in power_save_local_modules -%}
       {%-     set _ = selected.update({present[0]: group.options[present[0]]}) -%}
       {%-   endif -%}
       {%- endfor -%}
       {{ selected }}
+    power_save_left_to_local: >-
+      {%- set loaded = power_save_loaded.files | map(attribute='path')
+          | map('basename') | list -%}
+      {%- set skipped = [] -%}
+      {%- for group in power_save_groups -%}
+      {%-   set present = group.modules | select('in', loaded) | list -%}
+      {%-   if present and present[0] in power_save_local_modules -%}
+      {%-     set source = power_save_local_modules[present[0]] -%}
+      {%-     set _ = skipped.append(present[0] ~ ' (' ~ source ~ ')') -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ skipped }}
+
+- name: Report the modules left to local files
+  ansible.builtin.debug:
+    msg: >-
+      Left to the local modprobe files: {{ power_save_left_to_local | join(', ') }}.
+  when: power_save_left_to_local | length > 0
 
 # Nothing to write when none of the listed modules is loaded.
 - name: Decide whether to save power
@@ -38,7 +104,7 @@
               if power_save_mode | string | lower == 'auto'
               else power_save_mode | bool) }}
 
-- name: Configure Wi-Fi and audio power saving
+- name: Configure module power saving
   ansible.builtin.template:
     src: power-save-modprobe.conf.j2
     dest: '{{ power_save_modprobe_path }}'
@@ -48,9 +114,17 @@
   when: power_save_enabled | bool
   notify: Report power-save options apply at next boot
 
-- name: Remove Wi-Fi and audio power saving
+- name: Remove module power saving
   ansible.builtin.file:
     path: '{{ power_save_modprobe_path }}'
     state: absent
   when: not (power_save_enabled | bool)
+  notify: Report power-save options apply at next boot
+
+- name: Remove the options files written under earlier names
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop: '{{ power_save_legacy_modprobe_paths }}'
+  when: item != power_save_modprobe_path
   notify: Report power-save options apply at next boot

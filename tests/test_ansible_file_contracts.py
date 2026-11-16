@@ -128,8 +128,11 @@ class FileContractTests(unittest.TestCase):
             "hardening.conf",
             "zz-dotfiles-hardening.conf",
             "zz-dotfiles-bpf.conf",
+            "60-dotfiles-hardening.conf",
+            "70-dotfiles-bpf.conf",
         ]
-        for name in old_files:
+        current_files = ["60-hardening.conf", "70-bpf.conf"]
+        for name in old_files + current_files:
             (sysctl_dir / name).write_text(f"old {name}\n")
 
         tasks = yaml.safe_load(
@@ -175,3 +178,21 @@ class FileContractTests(unittest.TestCase):
             self.assertEqual(
                 (sysctl_dir / f"{name}.dotfiles-backup").read_text(), f"old {name}\n"
             )
+        for name in current_files:
+            self.assertEqual((sysctl_dir / name).read_text(), f"old {name}\n")
+            self.assertFalse((sysctl_dir / f"{name}.dotfiles-backup").exists())
+
+    def test_sysctl_policy_files_use_plain_ordered_names(self):
+        tasks = yaml.safe_load(
+            (ROOT / "ansible/roles/hardening/tasks/kernel_hardening.yml").read_text()
+        )
+        managed = set()
+        for task in tasks:
+            for module in ("ansible.builtin.template", "ansible.posix.sysctl"):
+                arguments = task.get(module) or {}
+                path = arguments.get("dest") or arguments.get("sysctl_file")
+                if path:
+                    managed.add(path)
+        self.assertEqual(
+            managed, {"/etc/sysctl.d/60-hardening.conf", "/etc/sysctl.d/70-bpf.conf"}
+        )

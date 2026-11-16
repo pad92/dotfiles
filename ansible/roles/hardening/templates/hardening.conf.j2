@@ -72,4 +72,9 @@ vm.mmap_rnd_bits = 32
 # Steam and Proton tuning.
 {% if '21_steam' in hardening_selected_groups %}
 vm.max_map_count = 2147483642
+# Start background writeback at 5 % of reclaimable memory and block writers at
+# 10 %, so a large game install or shader cache flush does not stall the
+# desktop behind gigabytes of dirty pages.
+vm.dirty_ratio = 10
+vm.dirty_background_ratio = 5
 {% endif %}
