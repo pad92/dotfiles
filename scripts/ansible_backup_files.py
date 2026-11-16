@@ -61,6 +61,11 @@ def load_configuration(root: Path, extra_vars: list[str]) -> dict:
 
     The SSH inventory names the workstations, not this machine: a one-host
     localhost inventory still loads ansible/group_vars through --playbook-dir.
+
+    Since ansible-core 2.22, what ansible-inventory displays has its Vault
+    values masked as $REDACTED$, unquoted, which is not JSON for a secret
+    integer. --output writes the JSON without going through the display; the
+    secrets still go only through the pipe to this process.
     """
     command = [
         "ansible-inventory",
@@ -70,6 +75,8 @@ def load_configuration(root: Path, extra_vars: list[str]) -> dict:
         str(REPOSITORY_ROOT / "ansible"),
         "--host",
         "localhost",
+        "--output",
+        "/dev/stdout",
     ]
     for variables in extra_vars:
         command.extend(["--extra-vars", variables])

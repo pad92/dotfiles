@@ -277,6 +277,11 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **make clean**: `make clean` failed with "Unable to resolve managed paths"
+  since ansible-core 2.22, which shows Vault values as `$REDACTED$` in what
+  `ansible-inventory` prints: a secret integer made the JSON invalid. The
+  backup script now reads the inventory through `--output /dev/stdout`, which
+  skips that display; the values still go only through the pipe.
 - **Wi-Fi power saving**: the `power_save` role no longer writes the `iwlwifi`
   and `iwlmvm`/`iwldvm` options by default. Its `zz-dotfiles-power-save.conf`
   sorted after, and so overrode, a local `iwlwifi.conf`, forcing `power_save=1`
