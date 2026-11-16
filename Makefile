@@ -133,7 +133,7 @@ install-obs: ## Same as deploy PLAYBOOK=obs: OBS, its runtime and demo scenes
 # $(call clean_obsolete,<extra options>)
 clean_obsolete = $(ANSIBLE_ENV) "$(ANSIBLE_PYTHON)" scripts/clean_obsolete.py --root "$(CLEAN_ROOT)" $(1)
 
-clean: ## Remove dotfile backups, migration leftovers and broken links (DRY_RUN=1 lists)
+clean: ## Remove dotfile and /etc backups, migration leftovers and broken links (DRY_RUN=1 lists)
 	$(if $(filter-out 0 1,$(DRY_RUN)),$(error DRY_RUN=$(DRY_RUN) is not 0 or 1))
 	@$(call clean_obsolete,$(if $(filter 1,$(DRY_RUN)),--dry-run))
 

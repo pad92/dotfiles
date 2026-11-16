@@ -27,6 +27,20 @@ PATH_VARIABLES = (
     "dotfiles_hyprlock_wallpaper",
     "dotfiles_systemd_directory",
 )
+# System files the roles write with backup: true, relative to the system root.
+# Each entry mirrors a role default; clean looks for their timestamp backups.
+SYSTEM_MANAGED_FILES = (
+    "etc/conf.d/wireless-regdom",  # wireless_regdom_config
+    "etc/docker/daemon.json",  # dns_docker_daemon_config_path
+    "etc/firefox/policies/policies.json",  # obs_firefox_policies_file
+    "etc/lact/config.yaml",  # lact_config_path
+    "etc/modprobe.d/iwlwifi.conf",  # iwlwifi_modprobe_path
+    "etc/pacman.conf",  # package_manager
+    "etc/pam.d/system-local-login",  # gnome_keyring_pam_service
+    "etc/sysctl.d/60-hardening.conf",  # hardening
+    "etc/sysctl.d/70-bpf.conf",  # hardening
+    "etc/systemd/resolved.conf.d/60-dotfiles-dns.conf",  # dns_resolved_dropin
+)
 # Files the audio role no longer ships, relative to audio_config_home.
 OBSOLETE_FILE_VARIABLES = ("audio_config_home", "audio_obsolete_files")
 
@@ -233,6 +247,14 @@ def find_backups(root: Path, configuration: dict) -> list[Path]:
     return sorted(
         candidates, key=lambda path: (len(path.parts), str(path)), reverse=True
     )
+
+
+def find_system_backups(system_root: Path) -> list[Path]:
+    """Timestamp backups next to the system files the roles write."""
+    candidates = set()
+    for relative_path in SYSTEM_MANAGED_FILES:
+        candidates.update(timestamp_siblings(system_root / relative_path))
+    return sorted(candidates)
 
 
 def timestamp_siblings(target: Path) -> set[Path]:

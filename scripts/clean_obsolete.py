@@ -5,6 +5,9 @@ These leftovers are removed:
 - the backups the dotfiles role made next to the paths it manages
   (<path>.bak after a conflict, <path>.<pid>.<date>@<time>~ from a copy),
   found by ansible_backup_files.py;
+- the timestamp backups of the system files the roles write (/etc/pacman.conf,
+  sysctl.d, modprobe.d...), where the user may write; run clean as root for
+  the others, which are reported and kept;
 - broken symbolic links under the paths the dotfiles role deploys in the
   home directory, such as a link into a deleted ~/.dotfiles clone or a
   .wants link to a user unit that no longer exists;
@@ -65,6 +68,8 @@ class Plan:
     # Obsolete file mapped to the SHA-1 it was shipped with.
     obsolete_files: dict[Path, str] = field(default_factory=dict)
     backups: list[Path] = field(default_factory=list)
+    # Backups of system files: removed only where the user may write.
+    system_backups: list[Path] = field(default_factory=list)
     submodule_sections: list[str] = field(default_factory=list)
     submodule_directories: list[Path] = field(default_factory=list)
     prunable_worktrees: list[str] = field(default_factory=list)
@@ -74,6 +79,7 @@ class Plan:
         """Whether the plan removes something that REMOVE must confirm."""
         return bool(
             self.backups
+            or self.system_backups
             or self.submodule_sections
             or self.submodule_directories
             or self.prunable_worktrees
@@ -355,9 +361,24 @@ def repository_files(repository: Path, plan: Plan) -> None:
                 plan.paths.append(path)
 
 
-def build_plan(root: Path, configuration: dict, repository: Path) -> Plan:
+def system_backup_leftovers(system_root: Path, plan: Plan) -> None:
+    """Backups of /etc files; those in a directory the user cannot write stay."""
+    for backup in managed.find_system_backups(system_root):
+        if os.access(backup.parent, os.W_OK):
+            plan.system_backups.append(backup)
+        else:
+            plan.kept.append(f"{backup}: not writable, run clean as root to remove it")
+
+
+def build_plan(
+    root: Path,
+    configuration: dict,
+    repository: Path,
+    system_root: Path = Path("/"),
+) -> Plan:
     plan = Plan()
     plan.backups.extend(managed.find_backups(root, configuration))
+    system_backup_leftovers(system_root, plan)
     plan.paths.extend(home_broken_links(root, configuration))
     role_obsolete_files(configuration, plan)
     submodule_leftovers(repository, plan)
@@ -385,7 +406,7 @@ def remove_path(path: Path) -> None:
 
 
 def apply(plan: Plan, repository: Path) -> None:
-    for path in plan.backups:
+    for path in plan.backups + plan.system_backups:
         remove_path(path)
     for path in plan.paths:
         if path.is_symlink():
@@ -425,7 +446,7 @@ def apply(plan: Plan, repository: Path) -> None:
 
 def report(plan: Plan, dry_run: bool) -> None:
     verb = "would remove" if dry_run else "remove"
-    for path in plan.backups:
+    for path in plan.backups + plan.system_backups:
         print(f"{verb} backup {path}")
     for path in plan.paths:
         print(f"{verb} {path}")
@@ -446,8 +467,8 @@ def report(plan: Plan, dry_run: bool) -> None:
 def confirmed_items(plan: Plan) -> list[str]:
     """What REMOVE confirms, counted for the prompt and the report."""
     items = []
-    if plan.backups:
-        items.append(f"{len(plan.backups)} backups")
+    if plan.backups or plan.system_backups:
+        items.append(f"{len(plan.backups) + len(plan.system_backups)} backups")
     if plan.submodule_sections or plan.submodule_directories:
         items.append(f"{len(plan.submodule_sections)} retired submodules")
     if plan.prunable_worktrees:
@@ -475,6 +496,7 @@ def confirm_removal(plan: Plan, prompt=input, interactive: bool | None = None) -
     plan.kept.append(f"{items}: {reason}")
     print(f"keep {plan.kept[-1]}")
     plan.backups.clear()
+    plan.system_backups.clear()
     plan.submodule_sections.clear()
     plan.submodule_directories.clear()
     plan.prunable_worktrees.clear()
@@ -491,6 +513,12 @@ def main() -> int:
         help="home directory the dotfiles were deployed to",
     )
     parser.add_argument("--repository", type=Path, default=REPOSITORY_ROOT)
+    parser.add_argument(
+        "--system-root",
+        type=Path,
+        default=Path("/"),
+        help="root whose /etc backups are cleaned (default: /)",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -512,7 +540,7 @@ def main() -> int:
 
     try:
         configuration = managed.load_configuration(root, arguments.extra_vars)
-        plan = build_plan(root, configuration, repository)
+        plan = build_plan(root, configuration, repository, arguments.system_root)
         report(plan, arguments.dry_run)
         if not arguments.dry_run:
             confirm_removal(plan)
