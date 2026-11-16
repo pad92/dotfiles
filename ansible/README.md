@@ -188,7 +188,7 @@ and conditions.
 | [`gpu`](roles/gpu/README.md)                           | Configure the NVIDIA and i915 kernel modules and hybrid runtime PM.                         |
 | [`cpu_power`](roles/cpu_power/README.md)               | Apply the AMD EPP and X3D settings and read which power manager runs.                       |
 | [`time_sync`](roles/time_sync/README.md)               | Enable systemd-timesyncd when no other NTP client is enabled or running.                    |
-| [`power_save`](roles/power_save/README.md)             | Write Wi-Fi and audio power-saving module options on a portable machine.                    |
+| [`power_save`](roles/power_save/README.md)             | Write audio (and opt-in Wi-Fi) power-saving module options on a portable machine.           |
 | [`wireless_regdom`](roles/wireless_regdom/README.md)   | Set the Wi-Fi regulatory domain in `/etc/conf.d/wireless-regdom`.                           |
 | [`gnome_keyring`](roles/gnome_keyring/README.md)       | Add the `pam_gnome_keyring.so` rules to `/etc/pam.d/login`.                                 |
 | [`dotfiles`](roles/dotfiles/README.md)                 | Deploy the home directory files and the user units.                                         |

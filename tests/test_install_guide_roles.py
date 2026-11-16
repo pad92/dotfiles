@@ -207,9 +207,24 @@ class InstallGuideRoleTests(unittest.TestCase):
         )
         return output, target
 
-    def test_laptop_gets_wifi_and_audio_power_saving(self):
+    def test_laptop_gets_only_audio_power_saving_by_default(self):
+        # Wi-Fi power saving is opt-in: it overrides the user's own iwlwifi.conf
+        # (zz- sorts last) and can trigger Intel firmware crashes.
         _, target = self.run_power_save(
             "Notebook", ["iwlwifi", "iwlmvm", "snd_hda_intel", "cfg80211"]
+        )
+        text = target.read_text()
+        self.assertEqual(
+            [line for line in text.splitlines() if line.startswith("options")],
+            ["options snd_hda_intel power_save=1"],
+        )
+        self.assertNotIn("iwl", text)
+
+    def test_wifi_power_saving_can_be_enabled(self):
+        _, target = self.run_power_save(
+            "Notebook",
+            ["iwlwifi", "iwlmvm", "snd_hda_intel", "cfg80211"],
+            power_save_wifi=True,
         )
         options = [
             line
@@ -225,8 +240,17 @@ class InstallGuideRoleTests(unittest.TestCase):
             ],
         )
 
+    def test_wifi_only_laptop_by_default_removes_the_old_file(self):
+        (self.work / "power-save.conf").write_text(
+            "options iwlwifi power_save=1 uapsd_disable=0\n"
+        )
+        _, target = self.run_power_save("Notebook", ["iwlwifi", "iwlmvm"])
+        self.assertFalse(target.exists())
+
     def test_dvm_firmware_gets_its_own_option(self):
-        _, target = self.run_power_save("Laptop", ["iwlwifi", "iwldvm"])
+        _, target = self.run_power_save(
+            "Laptop", ["iwlwifi", "iwldvm"], power_save_wifi=True
+        )
         self.assertIn("options iwldvm force_cam=0", target.read_text())
         self.assertNotIn("iwlmvm", target.read_text())
 
@@ -247,8 +271,12 @@ class InstallGuideRoleTests(unittest.TestCase):
         self.assertIn("options snd_hda_intel power_save=1", target.read_text())
 
     def test_power_saving_rerun_changes_nothing(self):
-        self.run_power_save("Notebook", ["iwlwifi", "snd_hda_intel"])
-        output, _ = self.run_power_save("Notebook", ["iwlwifi", "snd_hda_intel"])
+        self.run_power_save(
+            "Notebook", ["iwlwifi", "snd_hda_intel"], power_save_wifi=True
+        )
+        output, _ = self.run_power_save(
+            "Notebook", ["iwlwifi", "snd_hda_intel"], power_save_wifi=True
+        )
         self.assertIn("changed=0", output)
 
     # wireless_regdom: one active country in the wireless-regdb file.

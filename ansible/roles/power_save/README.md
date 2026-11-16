@@ -1,6 +1,7 @@
 # power_save
 
-Writes the Wi-Fi and audio power-saving module options on a portable machine.
+Writes the audio power-saving module options on a portable machine, and the
+Wi-Fi ones when `power_save_wifi` is true.
 
 ## Requirements
 
@@ -8,15 +9,17 @@ Writes the Wi-Fi and audio power-saving module options on a portable machine.
 
 ## Role Variables
 
-| Variable                           | Default                                       | Description                                                             |
-| :--------------------------------- | :-------------------------------------------- | :---------------------------------------------------------------------- |
-| `power_save_mode`                  | `auto`                                        | `auto` applies on a portable chassis only; `true` or `false` forces it. |
-| `power_save_portable_form_factors` | Portable, Laptop, Notebook, Convertible...    | DMI chassis types that count as portable.                               |
-| `power_save_module_directory`      | `/sys/module`                                 | Where loaded modules are detected.                                      |
-| `power_save_modprobe_path`         | `/etc/modprobe.d/zz-dotfiles-power-save.conf` | Module options file.                                                    |
-| `power_save_module_options`        | see below                                     | Options per loaded module, by group.                                    |
+| Variable                           | Default                                       | Description                                                                                                          |
+| :--------------------------------- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| `power_save_mode`                  | `auto`                                        | `auto` applies on a portable chassis only; `true` or `false` forces it.                                              |
+| `power_save_wifi`                  | `false`                                       | Also write the Intel Wi-Fi options. Off by default: they override a local `iwlwifi.conf` and can crash the firmware. |
+| `power_save_portable_form_factors` | Portable, Laptop, Notebook, Convertible...    | DMI chassis types that count as portable.                                                                            |
+| `power_save_module_directory`      | `/sys/module`                                 | Where loaded modules are detected.                                                                                   |
+| `power_save_modprobe_path`         | `/etc/modprobe.d/zz-dotfiles-power-save.conf` | Module options file.                                                                                                 |
+| `power_save_module_options`        | see below                                     | Options per loaded module, by group.                                                                                 |
 
-Within a group, only the first loaded module gets its options:
+Within a group, only the first loaded module gets its options. The `iwlwifi`
+and `iwlmvm`/`iwldvm` groups apply only when `power_save_wifi` is true:
 
 | Group                             | Options                                         |
 | :-------------------------------- | :---------------------------------------------- |

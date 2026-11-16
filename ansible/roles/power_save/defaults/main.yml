@@ -3,6 +3,11 @@
 # auto: only on a portable machine (DMI chassis type), where battery life
 # matters more than the latency power saving adds. true or false forces it.
 power_save_mode: auto
+# Wi-Fi power saving is opt-in. zz-dotfiles-power-save.conf sorts after any
+# local iwlwifi.conf and would override it, and power_save=1 with U-APSD can
+# crash the Intel firmware ("Queue stuck", "Microcode SW error"), which breaks
+# DNS and connectivity. Set true only on hardware known to be stable.
+power_save_wifi: false
 power_save_portable_form_factors:
   - Portable
   - Laptop
@@ -17,11 +22,14 @@ power_save_modprobe_path: /etc/modprobe.d/zz-dotfiles-power-save.conf
 # Options per loaded kernel module. Within a group, only the first loaded
 # module gets its options: iwlmvm and iwldvm are the two Intel Wi-Fi firmware
 # drivers, snd_hda_intel and snd_ac97_codec the two audio codec drivers.
+# Groups marked wifi: true are skipped unless power_save_wifi is true.
 power_save_module_options:
   - modules: [iwlwifi]
+    wifi: true
     options:
       iwlwifi: [power_save=1, uapsd_disable=0]
   - modules: [iwlmvm, iwldvm]
+    wifi: true
     options:
       iwlmvm: [power_scheme=3]
       iwldvm: [force_cam=0]

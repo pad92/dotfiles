@@ -271,6 +271,12 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Wi-Fi power saving**: the `power_save` role no longer writes the `iwlwifi`
+  and `iwlmvm`/`iwldvm` options by default. Its `zz-dotfiles-power-save.conf`
+  sorted after, and so overrode, a local `iwlwifi.conf`, forcing `power_save=1`
+  and U-APSD on Intel adapters that crash their firmware ("Queue stuck"),
+  which broke DNS over Wi-Fi. Set `power_save_wifi: true` to restore it. The
+  stale options are removed at the next run and stop applying after a reboot.
 - **CI tests**: the `ansible-playbook` runs of the play tests share one
   `PLAYBOOK_TIMEOUT` (600 s, `TEST_PLAYBOOK_TIMEOUT` to override) instead of
   60 to 180 s. On the loaded runner a single play took over two minutes, so
