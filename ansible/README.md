@@ -145,7 +145,11 @@ root, the `make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
 
 ## Cleaning up
 
-`make clean` removes what deployments and earlier versions left behind. In the
+`make clean` removes what deployments and earlier versions left behind. It also
+lists the Ansible backups (`<path>.<pid>.<date>@<time>~`) of the `/etc` files the
+roles manage (`SYSTEM_MANAGED_FILES` in `scripts/ansible_backup_files.py`) and
+removes them after the `REMOVE` confirmation; they are root-owned, so run
+`sudo make clean CLEAN_ROOT=$HOME`, otherwise they are kept and reported. In the
 home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
 `dotfiles` role made next to the paths it manages (`<path>.bak` and
 `<path>.<pid>.<date>@<time>~`). It also deletes the broken links

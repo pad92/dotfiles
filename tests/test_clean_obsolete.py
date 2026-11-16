@@ -103,6 +103,61 @@ class BackupTests(HomeTestCase):
 
         self.assertEqual(sorted(backups), sorted([backup, timestamped]))
 
+    def empty_repository(self) -> Path:
+        repository = self.root / "empty"
+        repository.mkdir(exist_ok=True)
+        subprocess.run(["git", "init", "-q", str(repository)], check=True)
+        return repository
+
+    def system_file(self, relative: str, content: str) -> Path:
+        path = self.root / "system" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        return path
+
+    def test_system_backups_are_found_next_to_managed_files_only(self):
+        self.system_file("etc/pacman.conf", "current")
+        pacman = self.system_file(
+            "etc/pacman.conf.4242.2026-10-16@12:00:00~", "older pacman.conf"
+        )
+        sysctl = self.system_file(
+            "etc/sysctl.d/60-hardening.conf.7.2026-10-16@12:00:00~", "older"
+        )
+        self.system_file("etc/hosts.7.2026-10-16@12:00:00~", "not managed")
+        self.system_file("etc/pacman.conf.bak", "not a timestamp backup")
+
+        plan = clean.build_plan(
+            self.home, self.config(), self.empty_repository(), self.root / "system"
+        )
+
+        self.assertEqual(sorted(plan.system_backups), sorted([pacman, sysctl]))
+
+    def test_system_backups_need_remove_and_go_when_confirmed(self):
+        backup = self.system_file(
+            "etc/lact/config.yaml.1.2026-10-16@12:00:00~", "older profile"
+        )
+        plan = clean.Plan(system_backups=[backup])
+
+        clean.confirm_removal(plan, prompt=lambda _: "yes", interactive=True)
+        self.assertTrue(backup.exists())
+
+        plan = clean.Plan(system_backups=[backup])
+        clean.confirm_removal(plan, prompt=lambda _: "REMOVE", interactive=True)
+        clean.apply(plan, self.home)
+        self.assertFalse(backup.exists())
+
+    def test_unwritable_system_backups_are_kept_and_reported(self):
+        backup = self.system_file(
+            "etc/pacman.conf.1.2026-10-16@12:00:00~", "older pacman.conf"
+        )
+        with patch.object(clean.os, "access", return_value=False):
+            plan = clean.build_plan(
+                self.home, self.config(), self.empty_repository(), self.root / "system"
+            )
+
+        self.assertEqual(plan.system_backups, [])
+        self.assertTrue(any(str(backup) in line for line in plan.kept))
+
     def test_backups_are_kept_without_a_terminal(self):
         backup = self.backup()
         plan = clean.Plan(backups=[backup])
