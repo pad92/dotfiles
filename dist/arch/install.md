@@ -254,8 +254,9 @@ same tag; follow the [DNS migration note](./dns-migration.md).
 ### Wi-Fi and audio
 
 Ansible sets the Wi-Fi regulatory domain (`wireless_regdom` tag, `wireless_regdom_country: FR` in
-`group_vars/all/main.yml`) and, on a portable machine, the Intel Wi-Fi and HDA
-audio power-saving module options (`power_save` tag). Nothing is needed here.
+`group_vars/all/main.yml`) and, on a portable machine, the HDA audio
+power-saving module options (`power_save` tag). Intel Wi-Fi power saving stays
+off unless `power_save_wifi: true` is set. Nothing is needed here.
 
 ### Create fstab
 

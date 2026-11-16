@@ -184,7 +184,7 @@ variables, package ownership, and system settings.
 | `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                   |
 | `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                               |
 | `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
-| `power_save`                               | Set Wi-Fi and audio power-saving module options on a portable machine.          |
+| `power_save`                               | Set audio (and opt-in Wi-Fi) power-saving module options on a portable machine. |
 | `wireless_regdom`                          | Set the Wi-Fi regulatory domain (`wireless_regdom_country`).                    |
 | `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                  |

@@ -23,7 +23,7 @@
       {%- set selected = {} -%}
       {%- for group in power_save_module_options -%}
       {%-   set present = group.modules | select('in', loaded) | list -%}
-      {%-   if present -%}
+      {%-   if present and (power_save_wifi | bool or not group.wifi | default(false)) -%}
       {%-     set _ = selected.update({present[0]: group.options[present[0]]}) -%}
       {%-   endif -%}
       {%- endfor -%}
