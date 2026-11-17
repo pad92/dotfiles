@@ -313,6 +313,7 @@ perform_rsync() {
 
     rsync --force --archive --xattrs \
         --no-specials --no-devices \
+        --omit-dir-times --omit-link-times \
         --delete --delete-excluded \
         "${delete_limit[@]}" \
         -e "$RSYNC_SSH" \

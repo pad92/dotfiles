@@ -80,6 +80,7 @@ recently-used.xbel
 .gnupg/S.*
 .ssh/sockets/
 .ssh/agent/
+ssh/ssh_host_*_key
 .steam/steam.pipe
 .config/geany/geany_socket_*
 .config/VirtualBox/VBoxGuestAdditions_*

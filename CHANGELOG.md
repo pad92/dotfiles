@@ -249,6 +249,9 @@ Release history and changes planned for the next version.
     caches, runtimes, model files and `*.qcow2` virtual machine images.
   - The exclusion list also skips `.ssh/agent/` (forwarded agent sockets) and
     `.steam/steam.pipe`, which rsync reported as non-regular files.
+  - `backup.sh` passes `--omit-dir-times --omit-link-times`, and the exclusion
+    list skips the root-only `ssh/ssh_host_*_key` files, so `/etc` no longer
+    ends with status 23 on `failed to set times` and unreadable host keys.
   - `backup.sh` backs up symlinks (`--no-links` is gone, `--perms` was
     redundant with `--archive`).
   - `backup.sh` refuses a source that is missing or empty, and rsync stops a
