@@ -20,16 +20,18 @@
 #     need its own pruning), -x is not used because it would skip btrfs
 #     subvolumes, and --partial is not used so an interrupted run never leaves
 #     a half-written file under its final name.
+#   - There is no dry run: one rsync pass per source. rsync's own --stats
+#     output and the remote disk space delta report what changed.
 #   - --clean-packages runs `yay -Sc` on Arch or `sudo apt autoremove --purge`
-#     on Debian; --max-deletions=N skips a source whose dry run plans more
-#     than N deletions; --force-delete lifts that limit.
+#     on Debian; --max-deletions=N makes rsync stop a source at N deletions
+#     (status 25, the files already deleted stay deleted); --force-delete
+#     lifts that limit.
 #
 # Exit status: 0 on success (rsync warning 24, "files vanished", is only
 # reported); 2 on a usage error; otherwise the worst failure of the run.
 set -euo pipefail
 
 DEFAULT_MAX_DELETIONS=1000
-DELETE_BATCH_SIZE=16
 
 # --- Colours & logging ---
 C_RED='\033[0;31m'
@@ -66,8 +68,7 @@ cleanup() {
 
 # --- SSH ---
 # Wrapper: run ssh with consistent options. -n keeps ssh from reading the
-# caller's stdin (it would swallow the plan file read by a "while read" loop);
-# nothing here is interactive, hence BatchMode.
+# caller's stdin; nothing here is interactive, hence BatchMode.
 run_ssh() {
     ssh -n \
         -o BatchMode=yes \
@@ -160,151 +161,6 @@ format_size() {
         printf '%s%.2f MB\n' "$prefix" "$(echo "$abs_size_kb" | awk '{print $1 / 1024}')"
     else
         printf '%s%.2f GB\n' "$prefix" "$(echo "$abs_size_kb" | awk '{print $1 / 1048576}')"
-    fi
-}
-
-format_volume() {
-    awk -v bytes="$1" 'BEGIN {
-        unit = "B"
-        if (bytes >= 1073741824) {
-            bytes /= 1073741824
-            unit = "GB"
-        } else if (bytes >= 1048576) {
-            bytes /= 1048576
-            unit = "MB"
-        } else if (bytes >= 1024) {
-            bytes /= 1024
-            unit = "KB"
-        }
-        printf "%.2f %s\n", bytes, unit
-    }'
-}
-
-# rsync escapes unusual bytes in %n as \#NNN (octal). Result in
-# RSYNC_DECODED_NAME. The escapes become \xHH for printf %b, which, unlike
-# a bare \NNN, decodes every byte value; other backslashes stay literal.
-decode_rsync_name() {
-    local input="$1"
-    local output=""
-    local octal char hex
-    local i=0
-    local LC_ALL=C
-
-    while [ "$i" -lt "${#input}" ]; do
-        char="${input:i:1}"
-        if [ "$char" = "\\" ]; then
-            octal="${input:i+2:3}"
-            if [ "${input:i:2}" = '\#' ] && [[ "$octal" =~ ^[0-7]{3}$ ]]; then
-                printf -v hex '\\x%02x' "$((8#$octal))"
-                output+="$hex"
-                i=$((i + 5))
-            else
-                output+="\\\\"
-                i=$((i + 1))
-            fi
-        else
-            output+="$char"
-            i=$((i + 1))
-        fi
-    done
-
-    printf -v RSYNC_DECODED_NAME '%b' "$output"
-}
-
-remote_file_sizes() {
-    local remote_dir="$1"
-    shift
-    local -a paths=("$@")
-    local remote_path quoted_args command output kind bytes
-    local start=0 index end
-
-    while [ "$start" -lt "${#paths[@]}" ]; do
-        end=$((start + DELETE_BATCH_SIZE))
-        [ "$end" -le "${#paths[@]}" ] || end="${#paths[@]}"
-        quoted_args=""
-        for ((index = start; index < end; index++)); do
-            remote_path="${remote_dir}/${paths[index]}"
-            quoted_args+=" $(quote_remote_arg "$remote_path")"
-        done
-
-        command="LC_ALL=C stat -c '%F|%s' --${quoted_args}"
-        if ! output="$(run_ssh "${REMOTE_USER}@${REMOTE_HOST}" "$command")"; then
-            log "ERROR: Could not read sizes of files scheduled for deletion." "$C_ORANGE" >&2
-            return 1
-        fi
-
-        while IFS='|' read -r kind bytes; do
-            [ -n "$bytes" ] || continue
-            if ! [[ "$bytes" =~ ^[0-9]+$ ]]; then
-                log "ERROR: Invalid remote file size while preparing backup summary." "$C_ORANGE" >&2
-                return 1
-            fi
-            if [ "$kind" != "directory" ]; then
-                DELETED_BYTES=$((DELETED_BYTES + bytes))
-            fi
-        done <<< "$output"
-
-        start="$end"
-    done
-}
-
-# Dry run: fills PLAN_DELETIONS and the ADDED/DELETED/MODIFIED byte counters.
-# rsync 23 (partial transfer) and 24 (vanished files) still leave a usable plan.
-collect_rsync_volumes() {
-    local src="$1"
-    local full_dest_path="$2"
-    local exclude_file="$3"
-    local plan_file="$4"
-    local item size path plan_rc=0
-    local -a deleted_paths=()
-
-    PLAN_DELETIONS=0
-    rsync --dry-run --force --archive --xattrs \
-        --no-specials --no-devices \
-        --delete --delete-excluded \
-        -e "$RSYNC_SSH" \
-        --itemize-changes --out-format='%i|%l|%n' \
-        --exclude-from="$exclude_file" \
-        "$src" "${REMOTE_USER}@${REMOTE_HOST}:${full_dest_path}/" > "$plan_file" || plan_rc=$?
-    case "$plan_rc" in
-        0|23|24) ;;
-        *) return 1 ;;
-    esac
-
-    # The plan is read on fd 3, so nothing run in the loop can consume it.
-    exec 3< "$plan_file"
-    while IFS='|' read -r -u 3 item size path; do
-        case "$item" in
-            '*deleting'*)
-                PLAN_DELETIONS=$((PLAN_DELETIONS + 1))
-                decode_rsync_name "$path"
-                deleted_paths+=("$RSYNC_DECODED_NAME")
-                if [ "${#deleted_paths[@]}" -ge "$DELETE_BATCH_SIZE" ]; then
-                    if [ "$VOLUME_STATS_AVAILABLE" = true ] \
-                        && ! remote_file_sizes "$full_dest_path" "${deleted_paths[@]}"; then
-                        VOLUME_STATS_AVAILABLE=false
-                    fi
-                    deleted_paths=()
-                fi
-                ;;
-            '>f+++++++++'|'<f+++++++++')
-                if [[ "$size" =~ ^[0-9]+$ ]]; then
-                    ADDED_BYTES=$((ADDED_BYTES + size))
-                fi
-                ;;
-            '>f'*|'<f'*)
-                if [[ "$size" =~ ^[0-9]+$ ]]; then
-                    MODIFIED_BYTES=$((MODIFIED_BYTES + size))
-                fi
-                ;;
-        esac
-    done
-    exec 3<&-
-
-    if [ "${#deleted_paths[@]}" -gt 0 ] && [ "$VOLUME_STATS_AVAILABLE" = true ]; then
-        if ! remote_file_sizes "$full_dest_path" "${deleted_paths[@]}"; then
-            VOLUME_STATS_AVAILABLE=false
-        fi
     fi
 }
 
@@ -430,7 +286,7 @@ perform_rsync() {
     local src="$1"
     local subfolder="$2"
     local full_dest_path="${REMOTE_BASE_PATH}/${subfolder}"
-    local exclude_tmp plan_tmp rsync_rc=0
+    local exclude_tmp rsync_rc=0
     local -a delete_limit=()
 
     log "--- Syncing $src → ${REMOTE_HOST}:${full_dest_path} ---" "$C_ORANGE"
@@ -448,25 +304,9 @@ perform_rsync() {
 
     new_temp_file
     exclude_tmp="$NEW_TEMP_PATH"
-    new_temp_file
-    plan_tmp="$NEW_TEMP_PATH"
     build_excludes "$exclude_tmp"
 
-    PLAN_DELETIONS=0
-    if collect_rsync_volumes "$src" "$full_dest_path" "$exclude_tmp" "$plan_tmp"; then
-        if [ "$FORCE_DELETE" != true ] && [ "$MAX_DELETIONS" -gt 0 ] \
-            && [ "$PLAN_DELETIONS" -gt "$MAX_DELETIONS" ]; then
-            log "ERROR: ${PLAN_DELETIONS} deletions planned for ${src} (limit ${MAX_DELETIONS}); skipped. Check the exclusions and the source, then re-run with --force-delete." "$C_RED" >&2
-            rm -f "$exclude_tmp" "$plan_tmp"
-            return 1
-        fi
-    else
-        VOLUME_STATS_AVAILABLE=false
-        log "WARNING: Could not estimate rsync change volumes." "$C_ORANGE" >&2
-    fi
-    rm -f "$plan_tmp"
-
-    # rsync enforces the same limit itself as a backstop (status 25).
+    # rsync itself stops at the deletion limit (status 25).
     if [ "$FORCE_DELETE" != true ] && [ "$MAX_DELETIONS" -gt 0 ]; then
         delete_limit=("--max-delete=${MAX_DELETIONS}")
     fi
@@ -562,12 +402,6 @@ main() {
         RSYNC_INFO=("--info=progress2,name0,stats2")
     fi
 
-    ADDED_BYTES=0
-    DELETED_BYTES=0
-    MODIFIED_BYTES=0
-    VOLUME_STATS_AVAILABLE=true
-    PLAN_DELETIONS=0
-
     manage_packages
     manage_diffs
 
@@ -593,13 +427,6 @@ main() {
         log "Backup completed in $(( (finish - start) / 60 ))m $(( (finish - start) % 60 ))s" "$C_GREEN"
     else
         log "Backup finished with errors (status ${worst}) in $(( (finish - start) / 60 ))m $(( (finish - start) % 60 ))s" "$C_RED" >&2
-    fi
-    if [ "$VOLUME_STATS_AVAILABLE" = true ]; then
-        log "Estimated volume added: $(format_volume "$ADDED_BYTES")" "$C_GREEN"
-        log "Estimated volume deleted: $(format_volume "$DELETED_BYTES")" "$C_GREEN"
-        log "Estimated volume modified (new file sizes): $(format_volume "$MODIFIED_BYTES")" "$C_GREEN"
-    else
-        log "Change volume summary unavailable." "$C_ORANGE"
     fi
     if [ -n "$delta" ]; then
         log "Disk space delta: $delta" "$C_GREEN"

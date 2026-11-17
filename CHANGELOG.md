@@ -247,14 +247,19 @@ Release history and changes planned for the next version.
 - **Backup**:
   - The exclusion list is more generic and now also covers regenerable
     caches, runtimes, model files and `*.qcow2` virtual machine images.
+  - The exclusion list also skips `.ssh/agent/` (forwarded agent sockets) and
+    `.steam/steam.pipe`, which rsync reported as non-regular files.
   - `backup.sh` backs up symlinks (`--no-links` is gone, `--perms` was
     redundant with `--archive`).
-  - `backup.sh` refuses a source that is missing or empty, and skips a source
-    whose dry run plans more deletions than `BACKUP_MAX_DELETIONS` (default
-    1000, `--max-deletions=N` per run). `--force-delete` lifts the limit.
-    Without it rsync also gets `--max-delete` as a backstop. Recoverable
-    deletions with `--backup-dir` were left out: they would keep every
-    replaced file on the NAS with no pruning.
+  - `backup.sh` refuses a source that is missing or empty, and rsync stops a
+    source at `BACKUP_MAX_DELETIONS` deletions (default 1000,
+    `--max-deletions=N` per run, status 25; files already deleted stay
+    deleted). `--force-delete` lifts the limit.
+  - `backup.sh` no longer runs a dry run before each source, which doubled the
+    rsync time. The "Estimated volume" lines are gone; rsync's `--stats` and
+    the remote disk space delta remain.
+  - Recoverable deletions with `--backup-dir` were left out: they would keep
+    every replaced file on the NAS with no pruning.
   - rsync status 24 (vanished files) is a warning; any other failure is
     reported, both sources still run, the summary is printed and the exit
     status is the worst one. Status 23 on unreadable files notes that rsync

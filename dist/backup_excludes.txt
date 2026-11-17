@@ -79,6 +79,8 @@ recently-used.xbel
 .gnupg/rnd
 .gnupg/S.*
 .ssh/sockets/
+.ssh/agent/
+.steam/steam.pipe
 .config/geany/geany_socket_*
 .config/VirtualBox/VBoxGuestAdditions_*
 .config/VirtualBox/VBoxSVC.log*

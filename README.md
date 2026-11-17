@@ -386,7 +386,7 @@ exit status are documented at the top of the script.
 - `-v`, `--verbose` lists each transferred file.
 - `--clean-packages` cleans the package cache (Arch) or removes unneeded
   packages (Debian) after a successful backup.
-- `--max-deletions=N` and `--force-delete` bound or lift the deletion check.
+- `--max-deletions=N` and `--force-delete` bound or lift the deletion limit (rsync `--max-delete`).
 
 ## Development
 
