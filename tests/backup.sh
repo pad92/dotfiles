@@ -2,8 +2,7 @@
 #
 # Integration tests of backup.sh. ssh, rsync, ssh-add, hostnamectl, id and the
 # package managers are fakes on PATH, so nothing touches the network or the
-# NAS. The fake ssh drains its stdin unless it got -n, like the real client,
-# so a plan read on the script's stdin is really lost without the fix.
+# NAS.
 
 set -euo pipefail
 
@@ -51,11 +50,6 @@ case $command in
             printf '%s\n' "${FAKE_DU_AFTER-150	/x}"
         fi
         ;;
-    *stat*)
-        rest=${command#*-- }
-        eval "set -- $rest"
-        for _ in "$@"; do echo 'regular file|10'; done
-        ;;
 esac
 FAKE
 
@@ -63,10 +57,6 @@ cat > "$BIN/rsync" << 'FAKE'
 #!/usr/bin/env bash
 src=${*: -2:1}
 { printf '%s\n' "--- call"; printf '%s\n' "$@"; } >> "$LOG/rsync.log"
-if [[ " $* " == *' --dry-run '* ]]; then
-    [[ $src != "$HOME/" ]] || cat "$FAKE_PLAN" 2> /dev/null || true
-    exit "${FAKE_DRY_RC:-0}"
-fi
 echo "rsync $src" >> "$LOG/order.log"
 if [[ $src == /etc/ ]]; then exit "${FAKE_RC_ETC:-0}"; fi
 exit "${FAKE_RC_HOME:-0}"
@@ -99,7 +89,7 @@ cat > "$BIN/yay" << 'FAKE'
 echo "yay $*" >> "$LOG/order.log"
 FAKE
 chmod +x "$BIN"/*
-export LOG FAKE_PLAN="$TEST_DIR/plan"
+export LOG
 export PATH="$BIN:$PATH"
 
 # --- Harness -----------------------------------------------------------------
@@ -109,7 +99,7 @@ printf 'ID=arch\n' > "$OS_RELEASE"
 reset_case()
 {
     local name
-    for name in home run tmp repo out err plan; do
+    for name in home run tmp repo out err; do
         rm -rf -- "${TEST_DIR:?}/$name"
     done
     rm -rf -- "${LOG:?}"
@@ -117,7 +107,7 @@ reset_case()
     chmod 700 "$TEST_DIR/run"
     echo data > "$TEST_DIR/home/file"
     printf 'x\n' > "$TEST_DIR/repo/dist/test_excludes.txt"
-    unset FAKE_DU_BEFORE FAKE_DU_AFTER FAKE_RC_HOME FAKE_RC_ETC FAKE_DRY_RC \
+    unset FAKE_DU_BEFORE FAKE_DU_AFTER FAKE_RC_HOME FAKE_RC_ETC \
         FAKE_HOSTNAME FAKE_USER FAKE_PACMAN_FAIL BACKUP_MAX_DELETIONS
 }
 
@@ -146,24 +136,15 @@ real_calls()
     grep -c '^rsync ' "$LOG/order.log" 2> /dev/null || true
 }
 
-deleting_plan()
-{
-    local count=$1 i
-    for ((i = 1; i <= count; i++)); do printf '*deleting   |0|old/file%d\n' "$i"; done
-}
-
-# --- 1. The plan survives ssh calls made while it is read ------------------
+# --- 1. One rsync pass per source, no dry run ---------------------------------
 reset_case
-{
-    deleting_plan 20
-    printf '>f+++++++++|100|new1\n>f+++++++++|100|new2\n>f.st......|50|mod\n'
-} > "$FAKE_PLAN"
 run_backup
 [[ $RC -eq 0 ]] || fail "plain run exited $RC"
-assert_out 'Estimated volume added: 200.00 B' "ADDED lost after the first batch of 16 deletions"
-assert_out 'Estimated volume modified (new file sizes): 50.00 B' "MODIFIED lost after the first batch of 16 deletions"
-assert_out 'Estimated volume deleted: 200.00 B' "DELETED bytes wrong"
+[[ $(real_calls) -eq 2 ]] || fail "expected one rsync per source, got $(real_calls)"
+[[ $(grep -c '^--- call' "$LOG/rsync.log") -eq 2 ]] || fail "rsync called more than once per source"
+if grep -qx -- '--dry-run' "$LOG/rsync.log"; then fail "no dry run expected"; fi
 assert_out 'Disk space delta: +50 KB' "disk delta missing"
+if grep -q 'Estimated volume' "$TEST_DIR/out"; then fail "volume estimates are gone with the dry run"; fi
 assert_no_leftovers
 
 # --- 2. rsync flags, ssh options, quoting ------------------------------------
@@ -190,7 +171,7 @@ FAKE_RC_ETC=23 run_backup
 [[ $RC -eq 23 ]] || fail "rsync 23 on /etc must fail the run, got $RC"
 [[ $(real_calls) -eq 2 ]] || fail "both sources must run after a failure in the last one"
 assert_out 'skips deletions on I/O errors' "rsync 23 explanation missing"
-assert_out 'Estimated volume added' "summary missing after a failure"
+assert_out 'Disk space delta' "summary missing after a failure"
 assert_out 'finished with errors' "failure line missing"
 assert_no_leftovers
 
@@ -205,21 +186,18 @@ FAKE_RC_HOME=12 run_backup
 
 # --- 4. Mass-deletion guard and empty source ---------------------------------
 reset_case
-deleting_plan 20 > "$FAKE_PLAN"
-BACKUP_MAX_DELETIONS=5 run_backup
-[[ $RC -ne 0 ]] || fail "20 deletions above a limit of 5 must fail the run"
-assert_out '20 deletions planned' "guard message missing"
-if grep -qx "rsync $TEST_DIR/home/" "$LOG/order.log"; then fail "guarded source was synced"; fi
-[[ $(real_calls) -eq 1 ]] || fail "only /etc should have synced, got $(real_calls)"
+BACKUP_MAX_DELETIONS=5 FAKE_RC_HOME=25 run_backup
+[[ $RC -eq 25 ]] || fail "rsync 25 must fail the run, got $RC"
+assert_out 'deletion limit (25)' "rsync 25 explanation missing"
+grep -qx -- '--max-delete=5' "$LOG/rsync.log" || fail "--max-delete=5 missing"
+[[ $(real_calls) -eq 2 ]] || fail "the other source must still run after a 25"
 
 reset_case
-deleting_plan 20 > "$FAKE_PLAN"
 BACKUP_MAX_DELETIONS=5 run_backup --force-delete
 [[ $RC -eq 0 ]] || fail "--force-delete must pass the guard, got $RC"
 if grep -q -- '--max-delete' "$LOG/rsync.log"; then fail "--force-delete must not pass --max-delete"; fi
 
 reset_case
-deleting_plan 20 > "$FAKE_PLAN"
 run_backup --max-deletions=30
 [[ $RC -eq 0 ]] || fail "--max-deletions=30 must allow 20 deletions, got $RC"
 grep -qx -- '--max-delete=30' "$LOG/rsync.log" || fail "--max-delete=30 missing"
@@ -291,15 +269,6 @@ assert_out 'Package cleaning skipped' "skipped-cleaning message missing"
 # shellcheck source=/dev/null
 source "$BACKUP"
 LC_ALL=C
-
-decode_rsync_name '\#303\#251'
-[[ $RSYNC_DECODED_NAME == $'\303\251' ]] || fail "UTF-8 escape not decoded"
-decode_rsync_name 'a\#012b'
-[[ $RSYNC_DECODED_NAME == $'a\nb' ]] || fail "newline escape not decoded"
-decode_rsync_name 'a\#040b'
-[[ $RSYNC_DECODED_NAME == 'a b' ]] || fail "space escape not decoded"
-decode_rsync_name 'a\#134b\c'
-[[ $RSYNC_DECODED_NAME == 'a\b\c' ]] || fail "backslash handling wrong: $RSYNC_DECODED_NAME"
 
 reset_case
 printf 'no-newline' > "$TEST_DIR/home/.no_backup.txt"
