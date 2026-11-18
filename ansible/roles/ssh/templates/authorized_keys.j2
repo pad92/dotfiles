@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+{% for key in ssh_authorized_keys %}
+{{ key | trim }}
+{% endfor %}

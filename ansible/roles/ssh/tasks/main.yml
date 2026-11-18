@@ -1,0 +1,170 @@
+---
+# Everything personal comes from the Ansible Vault. Without it (fresh clone,
+# CI) nothing is created and the files of an earlier run stay in place.
+# Tasks that handle vault values use no_log: their output, items and --diff
+# never reach the terminal or a log.
+- name: Report that SSH is not configured
+  ansible.builtin.debug:
+    msg: >-
+      SSH skipped: no vault_ssh_* variable is defined. Add them to
+      ansible/group_vars/all/vault_ssh.yml to manage ~/.ssh.
+  when: not ssh_config_managed and not ssh_files_managed
+  vars: &ssh_parts
+    ssh_config_managed: >-
+      {{ ssh_config_options | length > 0 or ssh_config_fragments | length > 0 }}
+    ssh_files_managed: >-
+      {{ ssh_authorized_keys | length > 0
+         or ssh_known_hosts | length > 0
+         or ssh_keys | length > 0 }}
+
+- name: Configure the SSH client
+  when: ssh_config_managed or ssh_files_managed
+  vars: *ssh_parts
+  tags: [ssh_config, ssh_keys]
+  block:
+    # Each value lands in a line-based file: a newline would add an option, a
+    # host block or a key the vault does not show. A slash in a file name
+    # would write outside the directory. The message names the rule, never
+    # the value.
+    - name: Validate the SSH settings
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - ssh_config_options is mapping
+          - ssh_config_options.keys() | reject('match', '^[A-Za-z]+$') | list | length == 0
+          - option_values | select('mapping') | list | length == 0
+          - option_values | map('string') | select('search', '[\r\n]') | list | length == 0
+          - ssh_config_fragments is mapping
+          - ssh_config_fragments.keys() | reject('match', file_name) | list | length == 0
+          - ssh_config_fragments.values() | reject('string') | list | length == 0
+          - ssh_authorized_keys is sequence and ssh_authorized_keys is not string
+          - ssh_authorized_keys | reject('string') | list | length == 0
+          - ssh_authorized_keys | map('trim') | select('search', '[\r\n]') | list | length == 0
+          - ssh_known_hosts is sequence and ssh_known_hosts is not string
+          - ssh_known_hosts | reject('mapping') | list | length == 0
+          - ssh_known_hosts | rejectattr('name', 'defined') | list | length == 0
+          - ssh_known_hosts | rejectattr('key', 'defined') | list | length == 0
+          - ssh_keys is sequence and ssh_keys is not string
+          - ssh_keys | reject('mapping') | list | length == 0
+          - ssh_keys | rejectattr('name', 'defined') | list | length == 0
+          - ssh_keys | rejectattr('private', 'defined') | list | length == 0
+          - ssh_keys | map(attribute='name') | reject('match', file_name) | list | length == 0
+          - >-
+            ssh_keys | map(attribute='name') | select('in', reserved_names) | list
+              | length == 0
+          - ssh_keys | map(attribute='name') | select('search', '[.]pub$') | list | length == 0
+          - >-
+            ssh_keys | map(attribute='private') | reject('search', 'PRIVATE KEY-----') | list
+              | length == 0
+        fail_msg: >-
+          Invalid SSH settings in the vault. ssh_config_options: {Option:
+          value} with letter-only options and single-line values.
+          ssh_config_fragments and ssh_keys names: letters, digits, dot, dash
+          or underscore, not starting with a dot; key names other than config,
+          authorized_keys, known_hosts and *.pub; private: an OpenSSH private
+          key. authorized_keys: one key per line. known_hosts: [{name, key}].
+      vars:
+        option_values: '{{ ssh_config_options.values() | list | flatten(levels=1) }}'
+        file_name: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
+        reserved_names:
+          [config, config.d, authorized_keys, known_hosts, known_hosts.old]
+
+    # OpenSSH ignores a config or a key that others can read or write.
+    - name: Create the SSH directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '0700'
+      loop: >-
+        {{ [ssh_dir]
+           + ([ssh_dir ~ '/config.d']
+              + ssh_extra_dirs | map('regex_replace', '^', ssh_dir ~ '/') | list
+              if ssh_config_managed else []) }}
+
+    - name: Check for the OpenSSH client
+      ansible.builtin.stat:
+        path: '{{ ssh_binary }}'
+        get_checksum: false
+      register: ssh_client_stat
+      when: ssh_config_managed
+
+    # The fragments come first: the main config includes them, and ssh checks
+    # the files it includes.
+    - name: Write the per-host SSH configuration
+      ansible.builtin.copy:
+        content: "{{ item.value | trim }}\n"
+        dest: '{{ ssh_dir }}/config.d/{{ item.key }}'
+        mode: '0600'
+        validate: '{{ ssh_validate if ssh_client_stat.stat.exists else omit }}'
+      loop: '{{ ssh_config_fragments | dict2items }}'
+      no_log: '{{ ssh_no_log }}'
+      when: ssh_config_managed
+      vars: &ssh_validate
+        # -G parses the file and prints the result without connecting;
+        # .invalid never resolves (RFC 6761).
+        ssh_validate: '{{ ssh_binary }} -G -F %s ssh-role-validate.invalid'
+
+    - name: List the per-host SSH files
+      ansible.builtin.find:
+        paths: '{{ ssh_dir }}/config.d'
+        file_type: any
+      register: ssh_fragment_files
+      when: ssh_config_managed and ssh_config_fragments_exclusive
+
+    # Only on request, and only files the vault does not list.
+    - name: Remove the per-host SSH files the vault does not list
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop: >-
+        {{ ssh_fragment_files.files | map(attribute='path')
+           | reject('in', ssh_config_fragments.keys()
+                          | map('regex_replace', '^', ssh_dir ~ '/config.d/') | list)
+           | list }}
+      no_log: '{{ ssh_no_log }}'
+      when: ssh_config_managed and ssh_config_fragments_exclusive
+
+    - name: Write the SSH client configuration
+      ansible.builtin.template:
+        src: ssh_config.j2
+        dest: '{{ ssh_dir }}/config'
+        mode: '0600'
+        validate: '{{ ssh_validate if ssh_client_stat.stat.exists else omit }}'
+      no_log: '{{ ssh_no_log }}'
+      when: ssh_config_managed
+      vars: *ssh_validate
+
+    - name: Write the authorized SSH keys
+      ansible.builtin.template:
+        src: authorized_keys.j2
+        dest: '{{ ssh_dir }}/authorized_keys'
+        mode: '0600'
+      no_log: '{{ ssh_no_log }}'
+      when: ssh_authorized_keys | length > 0
+
+    # Pinned entries are added; the ones ssh learnt stay.
+    - name: Pin the SSH host keys
+      ansible.builtin.known_hosts:
+        path: '{{ ssh_dir }}/known_hosts'
+        name: '{{ item.name }}'
+        key: '{{ item.key }}'
+        state: present
+      loop: '{{ ssh_known_hosts }}'
+      no_log: '{{ ssh_no_log }}'
+
+    # OpenSSH reads a private key only when it ends with a newline.
+    - name: Write the SSH private keys
+      ansible.builtin.copy:
+        content: "{{ item.private | trim }}\n"
+        dest: '{{ ssh_dir }}/{{ item.name }}'
+        mode: '0600'
+      loop: '{{ ssh_keys }}'
+      no_log: '{{ ssh_no_log }}'
+
+    - name: Write the SSH public keys
+      ansible.builtin.copy:
+        content: "{{ item.public | trim }}\n"
+        dest: '{{ ssh_dir }}/{{ item.name }}.pub'
+        mode: '0644'
+      loop: "{{ ssh_keys | selectattr('public', 'defined') | list }}"
+      no_log: '{{ ssh_no_log }}'

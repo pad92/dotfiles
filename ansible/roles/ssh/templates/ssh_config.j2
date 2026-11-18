@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# ssh role: edit the Ansible Vault, not this file.
+# Per-host blocks come first: OpenSSH keeps the first value it reads.
+Include {{ ssh_dir }}/config.d/*
+{% if ssh_config_options | length > 0 %}
+
+Host *
+{% for option, value in ssh_config_options | dictsort %}
+{% for item in (value if value is sequence and value is not string else [value]) %}
+    {{ option }} {{ ('yes' if item else 'no') if item is boolean else item }}
+{% endfor %}
+{% endfor %}
+{% endif %}

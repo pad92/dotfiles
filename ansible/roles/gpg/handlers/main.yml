@@ -1,0 +1,11 @@
+---
+# Running daemons read their configuration again; none running is not an
+# error.
+- name: Reload the GnuPG daemons
+  ansible.builtin.command:
+    argv:
+      - '{{ gpg_gpgconf_binary }}'
+      - --homedir
+      - '{{ gpg_homedir }}'
+      - --reload
+  changed_when: false

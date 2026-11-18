@@ -194,12 +194,16 @@ variables, package ownership, and system settings.
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
 | `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
 | `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
-| `dotfiles`                                 | Run the `dotfiles`, `audio` and `agent_cli` roles.                              |
+| `dotfiles`                                 | Run the `dotfiles`, `audio`, `agent_cli`, `ssh` and `gpg` roles.                |
 | `audio`                                    | Write the PipeWire and WirePlumber configuration: clean mic and voice effects.  |
 | `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
 | `agent_cli`                                | Set the Claude Code and Codex status lines and the Claude Code token savings.   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
+| `ssh`                                      | Deploy `~/.ssh` from the Vault; inert without `vault_ssh_*`.                    |
+| `gpg`                                      | Deploy `~/.gnupg` from the Vault; inert without `vault_gpg_*`.                  |
+| `ssh_config`, `ssh_keys`                   | Only the SSH client configuration, or only the SSH keys and host keys.          |
+| `gpg_config`, `gpg_keys`                   | Only the GnuPG configuration files, or only the GnuPG keys and owner trust.     |
 | `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
 

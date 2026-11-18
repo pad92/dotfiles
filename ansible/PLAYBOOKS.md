@@ -52,8 +52,10 @@ escalates with `become`; the home roles run with `become: false`.
 |    17 | `dotfiles`         | `dotfiles`                                   | always                                              |
 |    18 | `audio`            | `dotfiles`, `audio`                          | not `plan`                                          |
 |    19 | `agent_cli`        | `dotfiles`, `agent_cli`                      | always                                              |
-|    20 | `obs`              | `obs`                                        | `22_obs` selected                                   |
-|    21 | `print3d`          | `3dprint`                                    | not `plan`, Arch Linux, `24_3dprint` selected       |
+|    20 | `ssh`              | `dotfiles`, `ssh`                            | always (inert without its Vault variables)          |
+|    21 | `gpg`              | `dotfiles`, `gpg`                            | always (inert without its Vault variables)          |
+|    22 | `obs`              | `obs`                                        | `22_obs` selected                                   |
+|    23 | `print3d`          | `3dprint`                                    | not `plan`, Arch Linux, `24_3dprint` selected       |
 
 "not `plan`" means `packages_action` is not `plan`. `make plan` sets it: the
 run prints the package plan and changes nothing. The `system` tag selects

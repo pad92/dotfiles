@@ -1,0 +1,23 @@
+---
+# Personal GnuPG configuration and keyring of ~/.gnupg. Every value below
+# comes from the Ansible Vault (ansible/group_vars/all/vault_gpg.yml, ignored
+# by Git): each part is managed only when its vault variable is set, and
+# without the vault the role changes nothing. The repository holds no key or
+# address.
+gpg_home: "{{ ansible_facts['user_dir'] }}"
+gpg_homedir: '{{ gpg_home }}/.gnupg'
+
+# Files of ~/.gnupg, as {file name: [lines]}, for instance common.conf,
+# gpg.conf or gpg-agent.conf. A listed file is replaced; the others stay.
+gpg_config: '{{ vault_gpg_config | default({}) }}'
+# Keys imported into the keyring, as [{fingerprint, armor, trust}]. armor is
+# an ASCII-armored export, public or secret; trust is optional (undefined,
+# never, marginal, full or ultimate). A key already present is not imported
+# again, so a passphrase-protected secret key never asks for its passphrase.
+gpg_keys: '{{ vault_gpg_keys | default([]) }}'
+gpg_binary: gpg
+gpg_gpgconf_binary: gpgconf
+
+# Hide the vault values from the output, including --diff. Set it to false
+# only to debug a failing task, never in a shared log.
+gpg_no_log: true

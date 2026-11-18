@@ -20,6 +20,8 @@ parem = "parem"
 Monstre = "Monstre"
 Effet = "Effet"
 exemple = "exemple"
+# GnuPG --with-colons record type of a fingerprint.
+fpr = "fpr"
 wronly = "wronly"
 # GNOME/freedesktop term for a program that renders previews (F3D).
 thumbnailer = "thumbnailer"

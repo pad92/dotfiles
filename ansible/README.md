@@ -109,7 +109,10 @@ overrides any setting for one run.
 The Vault is optional. When `.vault` (ignored by Git) exists at the repository
 root, the `make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
 `DOTFILES_VAULT_PASSWORD_FILE=/path` to use another file. A clone without
-`.vault` runs without the Vault. The `vpn` role reads its gateway from it.
+`.vault` runs without the Vault. The `vpn` role reads its gateway from it, and
+the `ssh` role `~/.ssh` from `vault_ssh.yml`, and the `gpg` role `~/.gnupg`
+from `vault_gpg.yml`. `roles/ssh/vault_ssh.sample.yml` and
+`roles/gpg/vault_gpg.sample.yml` show these two files with placeholder values.
 
 ## Role conventions
 
@@ -199,5 +202,7 @@ and conditions.
 | [`dotfiles`](roles/dotfiles/README.md)                 | Deploy the home directory files and the user units.                                         |
 | [`audio`](roles/audio/README.md)                       | Write the PipeWire and WirePlumber user configuration: clean microphone and voice effects.  |
 | [`agent_cli`](roles/agent_cli/README.md)               | Set the Claude Code and Codex status lines and Claude Code token savings.                   |
+| [`ssh`](roles/ssh/README.md)                           | Deploy `~/.ssh` (config, keys, `authorized_keys`, host keys) from the Ansible Vault.        |
+| [`gpg`](roles/gpg/README.md)                           | Deploy `~/.gnupg` (config, keys, owner trust) from the Ansible Vault.                       |
 | [`obs`](roles/obs/README.md)                           | Configure OBS Studio and its virtual camera for `22_obs`.                                   |
 | [`print3d`](roles/print3d/README.md)                   | Configure F3D thumbnails of 3D files for Nautilus, for `24_3dprint` (tag `3dprint`).        |

@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: ssh
+  author: pad
+  description: >-
+    Deploys the user's OpenSSH client configuration, keys and pinned host keys
+    from the Ansible Vault.
+  license: Unlicense
+  min_ansible_version: '2.21'
+  platforms:
+    - name: ArchLinux
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Fedora
+      versions: [all]
+  galaxy_tags: [ssh, dotfiles]
+dependencies: []

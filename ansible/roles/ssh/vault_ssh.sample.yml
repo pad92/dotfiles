@@ -1,0 +1,50 @@
+---
+# Example of ansible/group_vars/all/vault_ssh.yml, with placeholder values.
+# Copy it there and encrypt it while it holds only placeholders, then
+# replace every <...> value in the editor:
+#   cp ansible/roles/ssh/vault_ssh.sample.yml ansible/group_vars/all/vault_ssh.yml
+#   ansible-vault encrypt --vault-password-file .vault \
+#     ansible/group_vars/all/vault_ssh.yml
+#   ansible-vault edit --vault-password-file .vault \
+#     ansible/group_vars/all/vault_ssh.yml
+# Git ignores group_vars/all/vault*.yml. Every variable is optional; the role
+# refuses the run while a key still holds its placeholder.
+
+# "Host *" options of ~/.ssh/config. true/false become yes/no; a list repeats
+# the option.
+vault_ssh_config_options:
+  ForwardAgent: false
+  ServerAliveInterval: 30
+  ControlMaster: auto
+  ControlPath: ~/.ssh/sockets/%C
+  ControlPersist: 10m
+  SetEnv:
+    - TERM=xterm-256color
+
+# One file per entry in ~/.ssh/config.d, read before "Host *".
+vault_ssh_config_fragments:
+  bastion: |
+    Host bastion
+        HostName bastion.example.test
+        User admin
+        IdentityFile ~/.ssh/id_example
+  internal: |
+    Host *.internal.example.test
+        ProxyJump bastion
+
+# Key pairs written to ~/.ssh/<name> (0600) and <name>.pub (0644).
+# "public" is optional.
+vault_ssh_keys:
+  - name: id_example
+    private: |
+      <the whole content of ~/.ssh/id_example>
+    public: <the line of ~/.ssh/id_example.pub>
+
+# Lines of ~/.ssh/authorized_keys, which the role replaces.
+vault_ssh_authorized_keys:
+  - <one public key line>
+
+# Host keys added to ~/.ssh/known_hosts; the keys ssh learns stay.
+vault_ssh_known_hosts:
+  - name: bastion.example.test
+    key: <the known_hosts line of the host>

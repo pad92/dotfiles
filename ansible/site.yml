@@ -110,6 +110,13 @@
     - role: agent_cli
       become: false
       tags: [dotfiles, agent_cli]
+    # ~/.ssh and ~/.gnupg from the Ansible Vault; each is inert without it.
+    - role: ssh
+      become: false
+      tags: [dotfiles, ssh]
+    - role: gpg
+      become: false
+      tags: [dotfiles, gpg]
     - role: obs
       when: "'22_obs' in (packages_selected_groups | default([]))"
       tags: [obs]

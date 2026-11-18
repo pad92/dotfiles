@@ -1,0 +1,166 @@
+---
+# Everything personal comes from the Ansible Vault. Without it (fresh clone,
+# CI) nothing is created and the files of an earlier run stay in place.
+# Tasks that handle vault values use no_log: their output, items and --diff
+# never reach the terminal or a log.
+- name: Report that GnuPG is not configured
+  ansible.builtin.debug:
+    msg: >-
+      GnuPG skipped: no vault_gpg_* variable is defined. Add them to
+      ansible/group_vars/all/vault_gpg.yml to manage ~/.gnupg.
+  when: gpg_config | length == 0 and gpg_keys | length == 0
+
+- name: Configure GnuPG
+  when: gpg_config | length > 0 or gpg_keys | length > 0
+  tags: [gpg_config, gpg_keys]
+  block:
+    # Each value lands in a line-based file: a newline would add a directive
+    # the vault does not show, and a slash in a file name would write outside
+    # ~/.gnupg. The message names the rule, never the value.
+    - name: Validate the GnuPG settings
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - gpg_config is mapping
+          - >-
+            gpg_config.keys() | reject('match', '^[a-z0-9][a-z0-9_-]*[.]conf$') | list
+              | length == 0
+          - gpg_config.values() | reject('sequence') | list | length == 0
+          - gpg_config.values() | select('string') | list | length == 0
+          - gpg_config.values() | list | flatten | reject('string') | list | length == 0
+          - >-
+            gpg_config.values() | list | flatten | select('search', '[\r\n]') | list
+              | length == 0
+          - gpg_keys is sequence and gpg_keys is not string
+          - gpg_keys | reject('mapping') | list | length == 0
+          - gpg_keys | rejectattr('fingerprint', 'defined') | list | length == 0
+          - gpg_keys | rejectattr('armor', 'defined') | list | length == 0
+          - >-
+            gpg_keys | map(attribute='fingerprint') | map('string')
+              | reject('match', '^([0-9A-F]{40}|[0-9A-F]{64})$') | list | length == 0
+          - >-
+            gpg_keys | map(attribute='armor')
+              | reject('search', '-----BEGIN PGP (PUBLIC|PRIVATE) KEY BLOCK-----') | list
+              | length == 0
+          - >-
+            gpg_keys | selectattr('trust', 'defined') | map(attribute='trust')
+              | reject('in', trust_levels) | list | length == 0
+        fail_msg: >-
+          Invalid GnuPG settings in the vault. gpg_config: {name.conf: [single
+          lines]}. gpg_keys: [{fingerprint (40 or 64 upper-case hex digits),
+          armor (ASCII-armored key), trust (undefined, never, marginal, full or
+          ultimate)}].
+      vars:
+        trust_levels: [undefined, never, marginal, full, ultimate]
+
+    # gpg refuses to use a home directory that others can read.
+    - name: Create the GnuPG home directory
+      ansible.builtin.file:
+        path: '{{ gpg_homedir }}'
+        state: directory
+        mode: '0700'
+
+    - name: Write the GnuPG configuration files
+      ansible.builtin.template:
+        src: gnupg.conf.j2
+        dest: '{{ gpg_homedir }}/{{ item.key }}'
+        mode: '0600'
+      loop: '{{ gpg_config | dict2items }}'
+      no_log: '{{ gpg_no_log }}'
+      notify: Reload the GnuPG daemons
+
+    # gpg exits with 2 when the keyring lacks the key.
+    - name: Look for the GnuPG keys in the keyring
+      ansible.builtin.command:
+        argv: &gpg_list_key
+          - '{{ gpg_binary }}'
+          - --homedir
+          - '{{ gpg_homedir }}'
+          - --batch
+          - --with-colons
+          - "{{ '--list-secret-keys' if 'PRIVATE KEY BLOCK' in item.armor else '--list-keys' }}"
+          - '{{ item.fingerprint }}'
+      loop: '{{ gpg_keys }}'
+      register: gpg_key_present
+      changed_when: false
+      failed_when: gpg_key_present.rc not in [0, 2]
+      no_log: '{{ gpg_no_log }}'
+
+    # A secret key keeps its passphrase: the import does not ask for it.
+    - name: Import the missing GnuPG keys
+      ansible.builtin.command:
+        argv:
+          - '{{ gpg_binary }}'
+          - --homedir
+          - '{{ gpg_homedir }}'
+          - --batch
+          - --import
+        stdin: '{{ item.armor }}'
+      loop: >-
+        {{ gpg_key_present.results | rejectattr('rc', 'eq', 0)
+           | map(attribute='item') | list }}
+      # Only the keys missing from the keyring reach this task.
+      changed_when: true
+      no_log: '{{ gpg_no_log }}'
+
+    # An armor that holds another key would be imported again on every run:
+    # check that each fingerprint is now in the keyring.
+    - name: Check the imported GnuPG keys
+      ansible.builtin.command:
+        argv: *gpg_list_key
+      loop: '{{ gpg_keys }}'
+      loop_control:
+        extended: true
+        extended_allitems: false
+      register: gpg_key_imported
+      changed_when: false
+      failed_when: false
+      no_log: '{{ gpg_no_log }}'
+
+    - name: Require the GnuPG keys of the vault
+      ansible.builtin.assert:
+        quiet: true
+        that: missing | length == 0
+        fail_msg: >-
+          {{ missing | length }} vault_gpg_keys entries (positions
+          {{ missing | join(', ') }}, from 0) are not in the keyring after the
+          import: the armor does not hold the key of the fingerprint.
+      vars:
+        missing: >-
+          {{ gpg_key_imported.results | rejectattr('rc', 'eq', 0)
+             | map(attribute='ansible_loop.index0') | list }}
+
+    - name: Read the GnuPG owner trust
+      ansible.builtin.command:
+        argv:
+          - '{{ gpg_binary }}'
+          - --homedir
+          - '{{ gpg_homedir }}'
+          - --batch
+          - --export-ownertrust
+      register: gpg_ownertrust
+      changed_when: false
+      when: gpg_keys | selectattr('trust', 'defined') | list | length > 0
+
+    - name: Set the GnuPG owner trust
+      ansible.builtin.command:
+        argv:
+          - '{{ gpg_binary }}'
+          - --homedir
+          - '{{ gpg_homedir }}'
+          - --batch
+          - --import-ownertrust
+        stdin: "{{ item.fingerprint }}:{{ trust_values[item.trust] }}:\n"
+        # gpg rejects the empty line the default extra newline would add.
+        stdin_add_newline: false
+      loop: "{{ gpg_keys | selectattr('trust', 'defined') | list }}"
+      when: >-
+        (item.fingerprint ~ ':' ~ trust_values[item.trust] ~ ':')
+        not in gpg_ownertrust.stdout_lines
+      # The when above keeps only the trust values that differ.
+      changed_when: true
+      no_log: '{{ gpg_no_log }}'
+      vars:
+        # Values of gpg --export-ownertrust.
+        trust_values:
+          { undefined: 2, never: 3, marginal: 4, full: 5, ultimate: 6 }

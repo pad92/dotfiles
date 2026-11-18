@@ -6,6 +6,21 @@ Release history and changes planned for the next version.
 
 ### Added
 
+- **SSH and GnuPG**: two roles, both in the `dotfiles` tag, read Vault files
+  that Git ignores:
+  - `ssh` (`ssh` tag) deploys `~/.ssh` from `vault_ssh.yml`: the `Host *`
+    options, per-host fragments checked with `ssh -G`, key pairs,
+    `authorized_keys` and pinned host keys.
+  - `gpg` (`gpg` tag) deploys `~/.gnupg` from `vault_gpg.yml`: the
+    configuration files, keys and owner trust.
+
+  The repository holds no key, address or host name. Vault values stay out of
+  the output (`no_log`), and each role changes nothing without its own Vault
+  variables. `vault_ssh.sample.yml` and `vault_gpg.sample.yml`, in each role,
+  document the Vault files with placeholder values; the role refuses a copy
+  whose keys are still placeholders. Tests in `tests/test_ssh.py` and
+  `tests/test_gpg.py`.
+
 - **Zsh package**:
   - The `package_zsh` GitLab job and the `package-zsh.yml` GitHub workflow
     publish `zsh.tar.gz` with `.zshenv`, a rendered `.zshrc`, the Zsh tree and

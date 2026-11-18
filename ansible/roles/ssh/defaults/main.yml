@@ -1,0 +1,38 @@
+---
+# Personal OpenSSH configuration of ~/.ssh. Every value below comes from the
+# Ansible Vault (ansible/group_vars/all/vault_ssh.yml, ignored by Git): each
+# part is managed only when its vault variable is set, and without the vault
+# the role changes nothing. The repository holds no key, address or host name.
+ssh_home: "{{ ansible_facts['user_dir'] }}"
+ssh_dir: '{{ ssh_home }}/.ssh'
+
+# Options of the "Host *" block of ~/.ssh/config, as {Option: value}. A list
+# repeats the option; true and false become yes and no. Setting it, or
+# ssh_config_fragments, makes the role own ~/.ssh/config.
+ssh_config_options: '{{ vault_ssh_config_options | default({}) }}'
+# Per-host blocks, as {file name: OpenSSH text}, written to ~/.ssh/config.d/
+# and included before "Host *" (OpenSSH keeps the first value it reads).
+ssh_config_fragments: '{{ vault_ssh_config_fragments | default({}) }}'
+# true deletes the files of config.d that ssh_config_fragments does not list.
+# Off by default: hand-written fragments stay until they are moved into the
+# vault.
+ssh_config_fragments_exclusive: false
+# Public keys allowed to log in, one line each. Set, it replaces
+# ~/.ssh/authorized_keys.
+ssh_authorized_keys: '{{ vault_ssh_authorized_keys | default([]) }}'
+# Pinned host keys, as [{name, key}] (key: the full known_hosts line). They are
+# added to ~/.ssh/known_hosts; the other entries stay.
+ssh_known_hosts: '{{ vault_ssh_known_hosts | default([]) }}'
+# Key pairs written to ~/.ssh, as [{name, private, public}]. public is
+# optional. Keys served by an agent need none.
+ssh_keys: '{{ vault_ssh_keys | default([]) }}'
+# Directories created next to the config, for instance for ControlPath.
+ssh_extra_dirs:
+  - sockets
+# OpenSSH client used to check the config before it replaces the old one.
+# Missing, the check is skipped.
+ssh_binary: /usr/bin/ssh
+
+# Hide the vault values from the output, including --diff. Set it to false
+# only to debug a failing task, never in a shared log.
+ssh_no_log: true
