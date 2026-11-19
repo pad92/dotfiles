@@ -51,9 +51,9 @@ packages_family_groups:
       - pipewire-pulse
       - plocate
       - powertop
-      - realtime-privileges
       - reflector
       - rkhunter
+      - rtkit
       - thefuck
       - traceroute
       - tumbler

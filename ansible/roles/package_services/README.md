@@ -31,9 +31,15 @@ Default units on Arch Linux:
 keeps the last three versions of each package in the pacman cache. Debian and
 Fedora packages usually enable their own services.
 
-Default groups on Arch Linux: `realtime` with `01_base`, for the real-time
-scheduling limits of `realtime-privileges` that PipeWire uses, and `plugdev`
-with `25_razer`, which OpenRazer's udev rule gives the device.
+Default group on Arch Linux: `plugdev` with `25_razer`, which OpenRazer's udev
+rule gives the device.
+
+The user does not join `realtime`. Its limits let any process of the user
+lower its nice value. Chromium, and so Electron apps such as Claude Desktop,
+then raise their display threads to -8, and every process they start inherits
+that value. A heavy job started from such an app then takes the CPU from a
+Teams call in Firefox (nice 0), whose voice crackles and speeds up. PipeWire
+gets real-time scheduling from rtkit, which `01_base` installs.
 
 ## Behavior
 
