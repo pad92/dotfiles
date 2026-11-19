@@ -20,7 +20,8 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 
 ### `deploy-pages.yml`
 
-The workflow installs `markdown` and `pygments`, then runs
+The workflow installs the `markdown` and `pygments` versions pinned in
+[`scripts/ci/pages-requirements.txt`](../../scripts/ci/pages-requirements.txt), then runs
 [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh), which renders
 every Markdown file tracked by Git into `public/` with
 [`gen_pages.py`](../../scripts/ci/gen_pages.py). Any change to a `.md` file

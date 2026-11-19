@@ -1,0 +1,5 @@
+# Markdown and Pygments versions for the documentation site, in every job.
+# Keep them equal to the Arch packages python-markdown and python-pygments:
+# test_gen_pages.py fails when the installed versions differ from this file.
+markdown==3.11.3
+pygments==2.21.0

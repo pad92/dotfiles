@@ -1170,6 +1170,7 @@ class PagesTriggerTests(unittest.TestCase):
             *GEN_PAGES.SITE_ICONS,
             "gen_pages.py",
             "pages.json",
+            "pages-requirements.txt",
             "build_pages.sh",
         )
     )
@@ -1201,6 +1202,26 @@ class PagesTriggerTests(unittest.TestCase):
         ]:
             with self.subTest(name=name):
                 self.assertIsNotNone(re.search(pattern, name))
+
+
+class PagesRequirementsTests(unittest.TestCase):
+    """Local hooks and CI jobs render the site with the same libraries."""
+
+    def test_installed_versions_match_the_pinned_ones(self):
+        from importlib.metadata import version
+
+        text = (REPO_ROOT / "scripts/ci/pages-requirements.txt").read_text(
+            encoding="utf-8"
+        )
+        pins = dict(re.findall(r"^([A-Za-z0-9_.-]+)==(\S+)$", text, re.MULTILINE))
+        self.assertEqual(set(pins), {"markdown", "pygments"})
+        for name, pinned in pins.items():
+            with self.subTest(name=name):
+                self.assertEqual(
+                    version(name),
+                    pinned,
+                    f"{name} differs from scripts/ci/pages-requirements.txt",
+                )
 
 
 class BuildPagesScriptTests(unittest.TestCase):

@@ -177,8 +177,12 @@ Release history and changes planned for the next version.
 - **Backup**: file names with non-ASCII characters, newlines or spaces are
   decoded correctly, remote paths are validated and quoted, and temporary
   files are always removed.
-- **CI**: the play tests share a 600 s timeout (`TEST_PLAYBOOK_TIMEOUT`), and
-  the unit test job installs GNU `tar`.
+- **CI**:
+  - The play tests share a 600 s timeout (`TEST_PLAYBOOK_TIMEOUT`), and the
+    unit test job installs GNU `tar`.
+  - The Pages jobs install Markdown and Pygments from
+    `scripts/ci/pages-requirements.txt`, pinned to the Arch versions, so CI
+    renders the site like the local hooks. A test fails when they drift.
 - **Documentation**: the DNS migration guide, the install guide and the README
   tag table match the current variables and tags.
 - **Hyprland**:

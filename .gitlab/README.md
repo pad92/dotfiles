@@ -73,17 +73,19 @@ another path, add it to `.unit_test_rules` in `.gitlab-ci.yml`.
 
 ### `pages_tests`
 
-This job runs `scripts/ci/test_gen_pages.py` on `alpine:latest` with `git`,
-`python3`, `py3-markdown` and `py3-pygments`, on the changes that start
+This job runs `scripts/ci/test_gen_pages.py` on `python:3.14-alpine` with
+`git` and the `markdown` and `pygments` versions pinned in
+`scripts/ci/pages-requirements.txt`, on the changes that start
 `build_pages_review`, plus the test file and the Hyprtoolkit palette that the
 style tests compare with `style.css`. Some tests build a throwaway Git
 repository; the Pages jobs do not install Git, so the generator tests run apart.
 
 ### `pages`
 
-This job runs on `alpine:latest`, installs `python3`, `py3-markdown` and
-`py3-pygments`, and
-calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
+This job runs on `python:3.14-alpine`, installs the `markdown` and `pygments`
+versions pinned in
+[`scripts/ci/pages-requirements.txt`](../scripts/ci/pages-requirements.txt),
+and calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script.
 Every Markdown file of the repository becomes a page, and relative links to
 other files point to the GitLab file browser at `CI_COMMIT_SHA`. The canonical
