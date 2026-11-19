@@ -126,6 +126,12 @@ Release history and changes planned for the next version.
 ### Changed
 
 - **Waybar tooltips**:
+  - Every tooltip follows one layout: `Nom : état` first, then details,
+    then one `clic : action` line per click, last. This changes the
+    recording, volume, LACT, VPN, headset and temperature tooltips.
+  - The CPU, memory, battery and backlight modules have French tooltips
+    instead of Waybar's English defaults; the battery one shows the power
+    draw and the time left.
   - The screen recording tooltip is now in French, like the rest of the bar.
   - The Bluetooth tooltips no longer show controller or device MAC
     addresses, and they list connected devices by name, with their battery

@@ -108,7 +108,7 @@ print_status()
         # hold & or <.
         jq -cn --arg path "${path%.part}" \
             '{text: "REC", class: "recording",
-              tooltip: ("Enregistrement vers " + ($path | @html) + "\nclic pour arrêter")}'
+              tooltip: ("Enregistrement : " + ($path | @html) + "\nclic : arrêter")}'
     else
         printf '{"text": "", "class": "idle"}\n'
     fi

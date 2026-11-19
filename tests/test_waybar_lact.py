@@ -59,7 +59,9 @@ class LactTooltipTests(unittest.TestCase):
 
     def test_click_hint_only_when_the_click_can_work(self):
         with patch("subprocess.run", side_effect=self.run_query):
-            self.assertIn("clic pour changer", API["status"]()["tooltip"])
+            self.assertTrue(
+                API["status"]()["tooltip"].endswith("\nclic : profil suivant")
+            )
 
         def query(arguments, **kwargs):
             if arguments == ["lact", "cli", "profile", "list"]:

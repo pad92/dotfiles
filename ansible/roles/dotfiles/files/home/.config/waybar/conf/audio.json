@@ -12,7 +12,7 @@
       "car": "",
       "default": ["", ""]
     },
-    "tooltip-format": "{desc} : {volume} %\nclic : sortie suivante — clic droit : pavucontrol",
+    "tooltip-format": "{desc} : {volume} %\nclic : sortie suivante\nclic droit : pavucontrol",
     "on-click": "~/.config/waybar/modules/cycle-default-sink",
     "on-click-right": "pavucontrol"
   },

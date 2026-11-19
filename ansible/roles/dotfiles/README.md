@@ -162,6 +162,13 @@ chassis type, names a laptop or another portable chassis. Set it in
 a portable machine Waybar adds the backlight and battery modules, and
 Hyprland turns off blur and shadows (`dotfiles_hypr_effects_enabled`).
 
+Waybar tooltips are in French and share one layout: `Nom : état` on the first
+line, then details, then one line per click at the end (`clic : action`, then
+`clic droit : action`). A tooltip shows no click line when the click would do
+nothing or fail. Custom modules escape what they print, since Waybar reads
+their tooltip as Pango markup. `tests/test_waybar_tooltips.py` checks the
+layout and that each format string uses known placeholders.
+
 A Waybar `temperature#<name>` module appears only when
 `dotfiles_waybar_temperature_sensors` has a sensor of that name:
 

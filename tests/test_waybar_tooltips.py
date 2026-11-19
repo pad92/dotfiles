@@ -10,14 +10,87 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 WAYBAR = ROOT / "ansible/roles/dotfiles/files/home/.config/waybar"
 HEADSET = runpy.run_path(str(WAYBAR / "modules/headsetcontrol"))
+VPN = runpy.run_path(str(WAYBAR / "modules/vpn"))
+TEMPERATURE = (
+    ROOT
+    / "ansible/roles/dotfiles/templates/home/.config/waybar/conf/temperature.json.j2"
+)
+# Sample values for the placeholders the configured tooltips use; Waybar
+# formats them with fmt, whose replacement syntax str.format shares.
+PLACEHOLDERS = {
+    "avg_frequency": 2.4,
+    "calendar": "",
+    "capacity": 80,
+    "controller_alias": "hci0",
+    "desc": "Casque",
+    "device_alias": "Clavier",
+    "device_battery_percentage": 50,
+    "device_enumerate": "",
+    "load": 1.5,
+    "num_connections": 1,
+    "percent": 40,
+    "percentage": 30,
+    "power": 7.25,
+    "status": "on",
+    "swapTotal": 8.0,
+    "swapUsed": 0.0,
+    "time": "2 h 10 min",
+    "total": 31.2,
+    "usage": 12,
+    "used": 9.8,
+    "volume": 35,
+}
 
 
 def config(name: str) -> dict:
     return json.loads((WAYBAR / "conf" / name).read_text(encoding="utf-8"))
 
 
+def tooltips() -> dict[str, str]:
+    """Every tooltip format of the static configuration, by module and key."""
+    found = {}
+    for path in sorted((WAYBAR / "conf").glob("*.json")):
+        for module, settings in json.loads(path.read_text(encoding="utf-8")).items():
+            for key, value in settings.items():
+                if key.startswith("tooltip-format"):
+                    found[f"{module} {key}"] = value
+    return found
+
+
+def assert_convention(case: unittest.TestCase, tooltip: str, label: str) -> None:
+    """ "Name : state" first, then details, then one line per click, last."""
+    lines = tooltip.split("\n")
+    case.assertIn(" : ", lines[0], label)
+    case.assertNotRegex(tooltip, r"— clic|clic pour", label)
+    clicks = [i for i, line in enumerate(lines) if line.startswith("clic")]
+    case.assertEqual(clicks, list(range(len(lines) - len(clicks), len(lines))), label)
+    for index in clicks:
+        case.assertRegex(lines[index], r"^clic( droit)? : \S", label)
+
+
 def headset_report(battery: dict, product: str = "HS70 <Pro> & Co") -> str:
     return json.dumps({"devices": [{"product": product, "battery": battery}]})
+
+
+class ConventionTests(unittest.TestCase):
+    def test_static_tooltips_follow_the_convention_and_format(self):
+        for label, tooltip in tooltips().items():
+            if "{calendar}" in tooltip or "enumerate" in label:
+                continue
+            assert_convention(self, tooltip, label)
+            tooltip.format(**PLACEHOLDERS)
+
+    def test_builtin_modules_no_longer_show_waybar_english_defaults(self):
+        found = tooltips()
+        for module in ("cpu", "memory", "battery", "backlight"):
+            self.assertIn(f"{module} tooltip-format", found)
+        self.assertIn("autonomie", found["battery tooltip-format-discharging"])
+        self.assertIn(" : {temperatureC} °C", TEMPERATURE.read_text(encoding="utf-8"))
+
+    def test_vpn_states_follow_the_convention(self):
+        for css_class, tooltip in [*VPN["STATES"].values(), VPN["DISCONNECTED"]]:
+            assert_convention(self, tooltip, css_class)
+        self.assertNotIn("clic", VPN["STATES"]["deactivating"][1])
 
 
 class BluetoothTooltipTests(unittest.TestCase):
@@ -38,8 +111,11 @@ class AudioTooltipTests(unittest.TestCase):
     def test_sink_tooltip_names_both_click_actions(self):
         pulseaudio = config("audio.json")["pulseaudio"]
         self.assertIn("cycle-default-sink", pulseaudio["on-click"])
-        self.assertIn("sortie suivante", pulseaudio["tooltip-format"])
-        self.assertIn("pavucontrol", pulseaudio["tooltip-format"])
+        self.assertTrue(
+            pulseaudio["tooltip-format"].endswith(
+                "\nclic : sortie suivante\nclic droit : pavucontrol"
+            )
+        )
 
     def test_headset_module_reads_json_with_a_tooltip(self):
         headset = config("audio.json")["custom/headsetcontrol"]
@@ -59,9 +135,10 @@ class HeadsetTooltipTests(unittest.TestCase):
         )
         self.assertEqual(result["text"], "HS 42%")
         self.assertEqual(result["class"], "charging")
-        self.assertIn("HS70 &lt;Pro&gt; &amp; Co", result["tooltip"])
-        self.assertIn("Batterie : 42 % (en charge)", result["tooltip"])
-        self.assertRegex(result["tooltip"], r"lu à \d\d:\d\d")
+        self.assertRegex(
+            result["tooltip"],
+            r"^HS70 &lt;Pro&gt; &amp; Co : 42 % \(en charge\)\nlu à \d\d:\d\d$",
+        )
 
     def test_offline_headset_hides_the_module(self):
         result = self.run_headset(

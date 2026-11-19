@@ -16,15 +16,15 @@ CONFIG = Path("/etc/openfortivpn/waybar.json")
 # Waybar refreshes the module on SIGRTMIN+<signal>, as set in system.json.
 WAYBAR_SIGNAL = 9
 STATES = {
-    "active": ("connected", "VPN connecté — clic pour déconnecter"),
+    "active": ("connected", "VPN : connecté\nclic : déconnecter"),
     "activating": (
         "connecting",
-        "VPN : connexion SAML en attente dans le navigateur — clic pour annuler",
+        "VPN : connexion SAML en attente dans le navigateur\nclic : annuler",
     ),
     "deactivating": ("connecting", "VPN : déconnexion en cours"),
-    "failed": ("failed", "VPN : dernière connexion en échec — clic pour réessayer"),
+    "failed": ("failed", "VPN : dernière connexion en échec\nclic : réessayer"),
 }
-DISCONNECTED = ("disconnected", "VPN déconnecté — clic pour se connecter")
+DISCONNECTED = ("disconnected", "VPN : déconnecté\nclic : se connecter")
 
 
 def load_config() -> dict[str, str] | None:

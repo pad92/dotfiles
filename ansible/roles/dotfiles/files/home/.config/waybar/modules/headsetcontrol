@@ -32,8 +32,7 @@ def status() -> dict[str, str]:
             continue
         name = device.get("product") or device.get("device") or "Casque"
         tooltip = (
-            f"{name}\nBatterie : {level} %{READABLE[state]}\n"
-            f"lu à {time.strftime('%H:%M')}"
+            f"{name} : {level} %{READABLE[state]}\n" f"lu à {time.strftime('%H:%M')}"
         )
         return {
             "text": f"HS {level}%",

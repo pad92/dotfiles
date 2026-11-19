@@ -5,10 +5,12 @@
     "tooltip-format": "<tt>{calendar}</tt>"
   },
   "cpu": {
-    "format": "{usage}% "
+    "format": "{usage}% ",
+    "tooltip-format": "CPU : {usage} %\nfréquence moyenne : {avg_frequency} GHz\ncharge : {load}"
   },
   "memory": {
-    "format": "{}% "
+    "format": "{}% ",
+    "tooltip-format": "Mémoire : {used:0.1f} / {total:0.1f} Gio ({percentage} %)\nswap : {swapUsed:0.1f} / {swapTotal:0.1f} Gio"
   },
   "custom/recording": {
     "exec": "$HOME/.bin/hypr-record.sh status",
@@ -45,12 +47,17 @@
     "format": "{icon} {capacity}%",
     "format-charging": " {capacity}%",
     "format-plugged": " {capacity}%",
-    "format-icons": ["", "", "", "", ""]
+    "format-icons": ["", "", "", "", ""],
+    "tooltip-format": "Batterie : {capacity} %",
+    "tooltip-format-discharging": "Batterie : {capacity} %, {power:.1f} W\nautonomie : {time}",
+    "tooltip-format-charging": "Batterie : {capacity} % (en charge)\npleine dans {time}",
+    "tooltip-format-full": "Batterie : pleine"
   },
   "backlight": {
     "device": "intel_backlight",
     "format": "{icon}",
-    "format-icons": ["", "", "", "", "", "", "", "", ""]
+    "format-icons": ["", "", "", "", "", "", "", "", ""],
+    "tooltip-format": "Luminosité : {percent} %"
   },
   "tray": {
     "spacing": 5

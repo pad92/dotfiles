@@ -63,15 +63,16 @@ def status() -> dict[str, str]:
         return {"text": ""}
     text, css_class = PROFILE_DISPLAY.get(profile, ("?", "unknown"))
     tooltip = f"LACT : {profile or 'aucun'}"
-    if set(PROFILES).issubset(available):
-        tooltip += " — clic pour changer"
-    else:
+    clickable = set(PROFILES).issubset(available)
+    if not clickable:
         # cycle_profile() refuses to run without these profiles: no click hint.
         text, css_class = "GPU profils?", "unavailable"
         tooltip += "\nProfils LACT requis : " + ", ".join(PROFILES)
     tooltip += "\n\n" + "\n".join(
         service_status(service) for service in ("power-profiles-daemon", "ananicy-cpp")
     )
+    if clickable:
+        tooltip += "\nclic : profil suivant"
     return {
         "text": html.escape(text),
         "tooltip": html.escape(tooltip),
