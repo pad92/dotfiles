@@ -1,4 +1,9 @@
 local yay = rawget(_G, "yay")
+
+if require("hook_switch").disabled("recent_update") then
+  return
+end
+
 local cooldown = 2 * 24 * 60 * 60 -- 48 hours
 
 yay.create_autocmd("UpgradeSelect", {
