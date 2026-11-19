@@ -81,11 +81,21 @@
          | dict2items | selectattr('key', 'in', packages_selected_groups)
          | map(attribute='value') | flatten | unique | sort }}
 
-# A group exists only once the package that creates it is installed.
+- name: Select the groups the users must leave
+  ansible.builtin.set_fact:
+    package_services_retired_memberships: []
+    package_services_retired_groups: >-
+      {{ package_services_retired_user_groups.get(ansible_facts['os_family'], [])
+         | unique | sort }}
+
+# A group exists only once the package that creates it is installed. Its
+# members also tell which retired groups a user still belongs to.
 - name: Read the system groups
   ansible.builtin.getent:
     database: group
-  when: package_services_user_groups | length > 0
+  when: >-
+    package_services_user_groups | length > 0
+    or package_services_retired_groups | length > 0
 
 - name: Find user groups that exist on the system
   ansible.builtin.set_fact:
@@ -111,3 +121,34 @@
   loop: '{{ package_services_group_users }}'
   when: package_services_user_groups_present | length > 0
   notify: Report package group membership requires login
+
+# getent lists a group as [password, gid, members], members comma-separated.
+# The user module sets the supplementary groups only as a whole, so the users
+# keep every group they are in except the retired ones, plus the groups the
+# previous task added after the system groups were read.
+- name: Find the users still in a retired group
+  ansible.builtin.set_fact:
+    package_services_retired_memberships: >-
+      {{ package_services_retired_memberships
+         + [{'user': item,
+             'leave': member_of | select('in', package_services_retired_groups) | list,
+             'keep': member_of | union(package_services_user_groups_present | default([]))
+                     | reject('in', package_services_retired_groups) | sort}] }}
+  vars:
+    member_of: >-
+      {{ ansible_facts.getent_group | default({}) | dict2items
+         | selectattr('value.2', 'defined')
+         | selectattr('value.2', 'search', '(^|,)' ~ (item | regex_escape) ~ '(,|$)')
+         | map(attribute='key') | sort }}
+  loop: '{{ package_services_group_users }}'
+  when: member_of | select('in', package_services_retired_groups) | list | length > 0
+
+- name: Remove the regular users from the retired groups
+  ansible.builtin.user:
+    name: '{{ item.user }}'
+    groups: '{{ item.keep }}'
+    append: false
+  loop: '{{ package_services_retired_memberships }}'
+  loop_control:
+    label: '{{ item.user }} leaves {{ item.leave | join(", ") }}'
+  notify: Report leaving a package group requires login

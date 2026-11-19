@@ -599,11 +599,12 @@ Do not install `realtime-privileges`: its limits let Chromium and Electron apps
 run at nice -8, along with every process they start, and that load then
 starves a WebRTC call in Firefox.
 
-On a machine that already has it, a deploy does not remove it. Reconcile with
+On a machine that already has it, the `package_services` tag removes the user
+from the `realtime` group, which drops its limits; log out and back in, since
+they are read at login. The deploy does not remove the package. Reconcile with
 `make deploy ANSIBLE_ARGS="-e packages_action=reconcile"` and type `REMOVE`;
 the reconcile only removes packages this repository installed, so otherwise
-run `sudo pacman -Rs realtime-privileges`. Log out and back in, since the
-limits are read at login.
+run `sudo pacman -Rs realtime-privileges`.
 
 To check that PipeWire has a real-time thread (`FF` class):
 

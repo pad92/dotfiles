@@ -4,3 +4,9 @@
     msg: >-
       Group membership changed ({{ package_services_user_groups_present
       | join(', ') }}). Log out and back in for it to take effect.
+
+- name: Report leaving a package group requires login
+  ansible.builtin.debug:
+    msg: >-
+      Left {{ package_services_retired_groups | join(', ') }}. Log out and back
+      in for it to take effect.

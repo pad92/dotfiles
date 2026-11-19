@@ -307,12 +307,12 @@ Release history and changes planned for the next version.
   -8, and the processes they start inherited it: a test run from Claude
   Desktop took the CPU from a Teams call in Firefox (nice 0), whose voice
   crackled and sped up. PipeWire now gets real-time scheduling from rtkit.
-  `make install` leaves an installed `realtime-privileges` in place: a
-  reconcile (`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`)
+  On a host deployed before, `package_services` removes the user from
+  `realtime`, which is enough to drop its limits; log in again, since they are
+  read at login. `make install` leaves an installed `realtime-privileges` in
+  place: a reconcile (`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`)
   offers to remove it (`REMOVE` confirmation) when this repository installed
-  it, otherwise run `sudo pacman -Rs realtime-privileges`. Leaving the group
-  is optional (`sudo gpasswd -d "$USER" realtime`); log in again, since the
-  limits are read at login.
+  it, otherwise run `sudo pacman -Rs realtime-privileges`.
 - **make clean**: `make clean` failed with "Unable to resolve managed paths"
   since ansible-core 2.22, which shows Vault values as `$REDACTED$` in what
   `ansible-inventory` prints: a secret integer made the JSON invalid. The
