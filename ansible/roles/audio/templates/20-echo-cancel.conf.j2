@@ -23,6 +23,12 @@ context.modules = [
         args = {
             library.name = aec/libspa-aec-webrtc
             monitor.mode = true
+            # One channel for the microphone and for the speaker echo: a
+            # stereo microphone would double the WebRTC work, and RNNoise and
+            # the calls are mono anyway.
+            audio.channels = 1
+            audio.position = [ MONO ]
+            node.latency   = {{ spa(audio_quantum ~ '/' ~ audio_rate) }}
 
             aec.args = {
 {% for key, value in audio_echo_cancel_args | dictsort %}

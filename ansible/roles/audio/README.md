@@ -15,24 +15,25 @@ and the Bluetooth and suspend settings.
 
 ## Role Variables
 
-| Variable                               | Default                                             | Description                                                                                               |
-| :------------------------------------- | :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| `audio_config_home`                    | `$XDG_CONFIG_HOME`, else `~/.config`                | Base directory of the written files.                                                                      |
-| `audio_pipewire_dir`                   | `<config home>/pipewire/pipewire.conf.d`            | PipeWire drop-ins.                                                                                        |
-| `audio_wireplumber_dir`                | `<config home>/wireplumber/wireplumber.conf.d`      | WirePlumber drop-ins.                                                                                     |
-| `audio_rate`                           | `48000`                                             | Sample rate of the filter nodes.                                                                          |
-| `audio_node_prefix`                    | `voice`                                             | Prefix of every node name.                                                                                |
-| `audio_clean_source`                   | `voice.clean`                                       | Clean source given to the applications.                                                                   |
-| `audio_clean_source_description`       | `Voix filtrée`                                      | Name shown by the applications.                                                                           |
-| `audio_echo_cancel_source`             | `voice.echo-cancel`                                 | Echo-cancelled source that RNNoise reads.                                                                 |
-| `audio_echo_cancel_source_description` | `Voix sans écho (interne)`                          | Its displayed name.                                                                                       |
-| `audio_echo_cancel_args`               | see `defaults/main.yml`                             | WebRTC options (`webrtc.<key>`). Gain control is off; WebRTC noise suppression runs only without RNNoise. |
-| `audio_rnnoise_enabled`                | `true` on Arch Linux                                | Add the RNNoise stage.                                                                                    |
-| `audio_rnnoise_controls`               | VAD threshold 50 %, grace 200 ms, retroactive 50 ms | RNNoise voice detector.                                                                                   |
-| `audio_disable_suspend`                | `true`                                              | Keep ALSA and Bluetooth devices awake. `false` lets idle devices suspend.                                 |
-| `audio_voice_effects_group`            | `26_voice_effects`                                  | Package group that enables the voice effects.                                                             |
-| `audio_voice_effects`                  | vader, chipmunk, robot, church, radio               | One virtual source per entry.                                                                             |
-| `audio_obsolete_files`                 | `10-realtime.conf` and its SHA-1                    | Former files deleted while unchanged.                                                                     |
+| Variable                               | Default                                             | Description                                                                                                                          |
+| :------------------------------------- | :-------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| `audio_config_home`                    | `$XDG_CONFIG_HOME`, else `~/.config`                | Base directory of the written files.                                                                                                 |
+| `audio_pipewire_dir`                   | `<config home>/pipewire/pipewire.conf.d`            | PipeWire drop-ins.                                                                                                                   |
+| `audio_wireplumber_dir`                | `<config home>/wireplumber/wireplumber.conf.d`      | WirePlumber drop-ins.                                                                                                                |
+| `audio_rate`                           | `48000`                                             | Sample rate of the filter nodes.                                                                                                     |
+| `audio_quantum`                        | `1024`                                              | Quantum the echo canceller asks for. A power of two of at least `audio_rate / 100`.                                                  |
+| `audio_node_prefix`                    | `voice`                                             | Prefix of every node name.                                                                                                           |
+| `audio_clean_source`                   | `voice.clean`                                       | Clean source given to the applications.                                                                                              |
+| `audio_clean_source_description`       | `Voix filtrée`                                      | Name shown by the applications.                                                                                                      |
+| `audio_echo_cancel_source`             | `voice.echo-cancel`                                 | Echo-cancelled source that RNNoise reads.                                                                                            |
+| `audio_echo_cancel_source_description` | `Voix sans écho (interne)`                          | Its displayed name.                                                                                                                  |
+| `audio_echo_cancel_args`               | see `defaults/main.yml`                             | WebRTC options (`webrtc.<key>`). Gain control and voice detection are off; noise and transient suppression run only without RNNoise. |
+| `audio_rnnoise_enabled`                | `true` on Arch Linux                                | Add the RNNoise stage.                                                                                                               |
+| `audio_rnnoise_controls`               | VAD threshold 50 %, grace 200 ms, retroactive 50 ms | RNNoise voice detector.                                                                                                              |
+| `audio_disable_suspend`                | `true`                                              | Keep ALSA and Bluetooth devices awake. `false` lets idle devices suspend.                                                            |
+| `audio_voice_effects_group`            | `26_voice_effects`                                  | Package group that enables the voice effects.                                                                                        |
+| `audio_voice_effects`                  | vader, chipmunk, robot, church, radio               | One virtual source per entry.                                                                                                        |
+| `audio_obsolete_files`                 | `10-realtime.conf` and its SHA-1                    | Former files deleted while unchanged.                                                                                                |
 
 ## Clean source
 
@@ -41,7 +42,7 @@ The role names its nodes `voice.<name>`, and the stream that feeds a node
 pavucontrol.
 
 `voice.clean` is the clean source. WebRTC cancels the speakers' echo on the
-default microphone, which gives `voice.echo-cancel`. RNNoise then removes the
+default microphone, in mono, which gives `voice.echo-cancel`. RNNoise then removes the
 non-voice noise and mutes the output between phrases. Without RNNoise, the
 echo canceller output is `voice.clean`.
 

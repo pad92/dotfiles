@@ -78,6 +78,13 @@ class AudioWiringTests(unittest.TestCase):
     def test_echo_cancel_options_are_read_by_the_webrtc_module(self):
         self.assertLessEqual(set(DEFAULTS["audio_echo_cancel_args"]), WEBRTC_KEYS)
 
+    def test_quantum_is_a_power_of_two_holding_a_webrtc_frame(self):
+        # PipeWire rounds a requested quantum down to a power of two, so 480
+        # (one WebRTC frame) ran the graph at 256, under one frame per cycle.
+        quantum = DEFAULTS["audio_quantum"]
+        self.assertEqual(quantum & (quantum - 1), 0, quantum)
+        self.assertGreaterEqual(quantum, DEFAULTS["audio_rate"] // 100)
+
     def test_kept_effects_and_unique_node_names(self):
         effects = DEFAULTS["audio_voice_effects"]
         self.assertEqual({effect["name"] for effect in effects}, EFFECTS)
@@ -233,10 +240,18 @@ class AudioRoleTests(unittest.TestCase):
         echo = (self.pipewire / "20-echo-cancel.conf").read_text()
         effects = (self.pipewire / "30-voice-effects.conf").read_text()
 
+        # The module turns an unlisted option on, so every one is written.
         self.assertEqual(
             set(re.findall(r"webrtc\.(\w+)", echo)), WEBRTC_KEYS - {"mobile_mode"}
         )
+        # RNNoise removes the noise and the keyboard clicks; PipeWire never
+        # reads the voice detection result.
         self.assertIn("webrtc.noise_suppression = false", echo)
+        self.assertIn("webrtc.transient_suppression = false", echo)
+        self.assertIn("webrtc.voice_detection = false", echo)
+        self.assertIn("audio.channels = 1", echo)
+        self.assertIn("audio.position = [ MONO ]", echo)
+        self.assertRegex(echo, r'node\.latency\s*= "1024/48000"')
         self.assertIn("label = noise_suppressor_mono", echo)
         self.assert_smart_filter_chain(echo, ["voice.clean", "voice.echo-cancel"])
         self.assertIn('node.name = "voice.echo-cancel.monitor"', echo)
@@ -289,6 +304,8 @@ class AudioRoleTests(unittest.TestCase):
             {"voice.clean", "voice.clean.capture", "voice.clean.monitor"},
         )
         self.assertIn("webrtc.noise_suppression = true", echo)
+        self.assertIn("webrtc.transient_suppression = true", echo)
+        self.assertIn("webrtc.voice_detection = false", echo)
 
     def test_host_settings_remove_the_effects_and_the_suspend_policy(self):
         self.run_role()
