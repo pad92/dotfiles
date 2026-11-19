@@ -21,7 +21,7 @@ and the Bluetooth and suspend settings.
 | `audio_pipewire_dir`                   | `<config home>/pipewire/pipewire.conf.d`            | PipeWire drop-ins.                                                                                                                   |
 | `audio_wireplumber_dir`                | `<config home>/wireplumber/wireplumber.conf.d`      | WirePlumber drop-ins.                                                                                                                |
 | `audio_rate`                           | `48000`                                             | Sample rate of the filter nodes.                                                                                                     |
-| `audio_quantum`                        | `1024`                                              | Quantum the echo canceller asks for. A power of two of at least `audio_rate / 100`.                                                  |
+| `audio_quantum`                        | `1024`                                              | Quantum the echo canceller asks for. A power of two of at least `audio_rate / 100`; the role refuses any other value.                |
 | `audio_node_prefix`                    | `voice`                                             | Prefix of every node name.                                                                                                           |
 | `audio_clean_source`                   | `voice.clean`                                       | Clean source given to the applications.                                                                                              |
 | `audio_clean_source_description`       | `Voix filtrée`                                      | Name shown by the applications.                                                                                                      |
@@ -42,9 +42,9 @@ The role names its nodes `voice.<name>`, and the stream that feeds a node
 pavucontrol.
 
 `voice.clean` is the clean source. WebRTC cancels the speakers' echo on the
-default microphone, in mono, which gives `voice.echo-cancel`. RNNoise then removes the
-non-voice noise and mutes the output between phrases. Without RNNoise, the
-echo canceller output is `voice.clean`.
+default microphone, in mono, which gives `voice.echo-cancel`. RNNoise then
+removes the non-voice noise and mutes the output between phrases. Without
+RNNoise, the echo canceller output is `voice.clean`.
 
 Both stages are WirePlumber smart source filters (`filter.smart`). WirePlumber
 never makes a smart filter the default source. It chains them by

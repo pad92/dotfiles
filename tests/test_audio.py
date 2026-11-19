@@ -251,7 +251,8 @@ class AudioRoleTests(unittest.TestCase):
         self.assertIn("webrtc.voice_detection = false", echo)
         self.assertIn("audio.channels = 1", echo)
         self.assertIn("audio.position = [ MONO ]", echo)
-        self.assertRegex(echo, r'node\.latency\s*= "1024/48000"')
+        latency = f'"{DEFAULTS["audio_quantum"]}/{DEFAULTS["audio_rate"]}"'
+        self.assertRegex(echo, r"node\.latency\s*= " + re.escape(latency))
         self.assertIn("label = noise_suppressor_mono", echo)
         self.assert_smart_filter_chain(echo, ["voice.clean", "voice.echo-cancel"])
         self.assertIn('node.name = "voice.echo-cancel.monitor"', echo)
@@ -335,6 +336,17 @@ class AudioRoleTests(unittest.TestCase):
         output = self.run_role()
         self.assertTrue(realtime.is_symlink())
         self.assertIn("is not a regular file, so it is kept.", output)
+
+    def test_quantum_override_under_a_frame_or_not_a_power_of_two_is_refused(self):
+        # 480 is one frame but PipeWire runs it at 256; 512 holds a 48 kHz
+        # frame but not a 96 kHz one (960 samples).
+        for quantum, rate in ((480, 48000), (512, 96000)):
+            with self.subTest(quantum=quantum, rate=rate):
+                output = self.run_role(
+                    succeed=False, audio_quantum=quantum, audio_rate=rate
+                )
+                self.assertIn("Check the echo canceller quantum", output)
+                self.assertFalse(self.pipewire.exists())
 
     def test_linked_configuration_directory_is_refused(self):
         clone = self.work / "clone/pipewire"

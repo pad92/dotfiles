@@ -17,8 +17,9 @@ audio_rate: 48000
 # unset, it asks for one WebRTC frame (480 at 48 kHz), which PipeWire rounds
 # down to a power of two: 256, so the graph wakes up every 5.3 ms and the
 # canceller runs a whole frame on only every other cycle. Keep a power of two
-# of at least one frame (audio_rate / 100); 1024 adds about 10 ms to the
-# microphone, which a call does not notice.
+# of at least one frame (audio_rate / 100); the role refuses any other value.
+# 1024 instead of 256 adds 768 samples, 16 ms at 48 kHz, to each graph cycle
+# of the microphone, which a call does not notice.
 audio_quantum: 1024
 
 # Every node the role creates is named <audio_node_prefix>.<role>, and the
