@@ -28,13 +28,13 @@ class LactTooltipTests(unittest.TestCase):
             result = API["status"]()
         self.assertEqual(result["class"], "auto")
         self.assertNotIn("balanced", result["text"])
-        self.assertIn("LACT : Auto", result["tooltip"])
-        self.assertIn("Profil d’énergie : balanced", result["tooltip"])
-        self.assertIn("ananicy-cpp : active (running)", result["tooltip"])
+        self.assertIn("LACT: Auto", result["tooltip"])
+        self.assertIn("Power profile: balanced", result["tooltip"])
+        self.assertIn("ananicy-cpp: active (running)", result["tooltip"])
 
     def test_missing_and_failed_services_remain_readable(self):
         for output, expected in [
-            ("LoadState=not-found", "non installé"),
+            ("LoadState=not-found", "not installed"),
             (
                 "LoadState=loaded\nActiveState=failed\nSubState=failed",
                 "failed (failed)",
@@ -56,6 +56,25 @@ class LactTooltipTests(unittest.TestCase):
             result = API["status"]()
         self.assertEqual(result["class"], "auto")
         self.assertIn("&lt;bus error&gt;", result["tooltip"])
+
+    def test_click_hint_only_when_the_click_can_work(self):
+        with patch("subprocess.run", side_effect=self.run_query):
+            self.assertTrue(
+                API["status"]()["tooltip"].endswith("\nclick: next profile")
+            )
+
+        def query(arguments, **kwargs):
+            if arguments == ["lact", "cli", "profile", "list"]:
+                return subprocess.CompletedProcess(arguments, 0, "Default\nAuto\n", "")
+            return self.run_query(arguments, **kwargs)
+
+        with patch("subprocess.run", side_effect=query):
+            result = API["status"]()
+            with self.assertRaises(ValueError):
+                API["cycle_profile"]()
+        self.assertEqual(result["class"], "unavailable")
+        self.assertNotIn("click", result["tooltip"])
+        self.assertIn("Required LACT profiles", result["tooltip"])
 
     def test_unavailable_lact_hides_the_indicator(self):
         with patch("subprocess.run", side_effect=FileNotFoundError("lact")):

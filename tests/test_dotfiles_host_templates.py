@@ -170,7 +170,7 @@ class HostTemplateTests(unittest.TestCase):
             temperature["temperature#cpu"]["hwmon-path-abs"],
             "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
         )
-        self.assertEqual(temperature["temperature#gpu"]["tooltip-format"][:4], "GPU:")
+        self.assertEqual(temperature["temperature#gpu"]["tooltip-format"][:5], "GPU: ")
         self.assertRegex(
             hypridle,
             r"timeout = 3600\n\s+on-timeout = ~/.bin/hyprlock-carousel-suspend.sh",

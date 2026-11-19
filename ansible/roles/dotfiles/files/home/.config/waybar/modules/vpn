@@ -16,15 +16,15 @@ CONFIG = Path("/etc/openfortivpn/waybar.json")
 # Waybar refreshes the module on SIGRTMIN+<signal>, as set in system.json.
 WAYBAR_SIGNAL = 9
 STATES = {
-    "active": ("connected", "VPN connecté — clic pour déconnecter"),
+    "active": ("connected", "VPN: connected\nclick: disconnect"),
     "activating": (
         "connecting",
-        "VPN : connexion SAML en attente dans le navigateur — clic pour annuler",
+        "VPN: SAML login pending in the browser\nclick: cancel",
     ),
-    "deactivating": ("connecting", "VPN : déconnexion en cours"),
-    "failed": ("failed", "VPN : dernière connexion en échec — clic pour réessayer"),
+    "deactivating": ("connecting", "VPN: disconnecting"),
+    "failed": ("failed", "VPN: last connection failed\nclick: retry"),
 }
-DISCONNECTED = ("disconnected", "VPN déconnecté — clic pour se connecter")
+DISCONNECTED = ("disconnected", "VPN: disconnected\nclick: connect")
 
 
 def load_config() -> dict[str, str] | None:
@@ -40,7 +40,7 @@ def load_config() -> dict[str, str] | None:
         and isinstance(config.get("login_url"), str)
         and config["login_url"].startswith("https://")
     ):
-        raise ValueError(f"{CONFIG} : unit ou login_url invalide")
+        raise ValueError(f"{CONFIG}: invalid unit or login_url")
     return config
 
 
@@ -63,7 +63,7 @@ def status() -> dict[str, str]:
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return {
             "text": "VPN ?",
-            "tooltip": html.escape(f"VPN : lecture impossible\n{error}"),
+            "tooltip": html.escape(f"VPN: cannot read state\n{error}"),
             "class": "unknown",
         }
     css_class, tooltip = STATES.get(state, DISCONNECTED)
@@ -73,7 +73,7 @@ def status() -> dict[str, str]:
 def toggle() -> None:
     config = load_config()
     if config is None:
-        raise ValueError(f"{CONFIG} absent : le VPN n'est pas configuré")
+        raise ValueError(f"{CONFIG} missing: the VPN is not configured")
     unit = config["unit"]
     # --no-block: the unit is ready only after the browser login, which this
     # click starts; polkit grants start and stop without a password.
@@ -106,5 +106,5 @@ if __name__ == "__main__":
         try:
             toggle()
         except (OSError, ValueError, subprocess.SubprocessError) as error:
-            print(f"VPN : {error}", file=sys.stderr)
+            print(f"VPN: {error}", file=sys.stderr)
             sys.exit(1)

@@ -1,11 +1,46 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env python3
+"""Show the battery of a USB gaming headset in Waybar, hidden when offline.
 
-if ! command -v headsetcontrol >/dev/null 2>&1; then
-  exit 0
-fi
+Waybar polls this hourly, so the tooltip says when the level was read.
+"""
 
-status="$(headsetcontrol -b 2>/dev/null || true)"
-if [[ "$status" =~ ([0-9]{1,3})% ]]; then
-  echo "HS ${BASH_REMATCH[1]}%"
-fi
+import html
+import json
+import subprocess
+import time
+
+READABLE = {"BATTERY_AVAILABLE": "", "BATTERY_CHARGING": " (charging)"}
+
+
+def status() -> dict[str, str]:
+    try:
+        report = json.loads(
+            subprocess.run(
+                ["headsetcontrol", "-b", "-o", "json"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
+            ).stdout
+        )
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return {"text": ""}
+    for device in report.get("devices", []) if isinstance(report, dict) else []:
+        battery = device.get("battery") or {}
+        level, state = battery.get("level"), battery.get("status")
+        if state not in READABLE or not isinstance(level, int) or level < 0:
+            continue
+        name = device.get("product") or device.get("device") or "Headset"
+        tooltip = (
+            f"{name}: {level}%{READABLE[state]}\n" f"read at {time.strftime('%H:%M')}"
+        )
+        return {
+            "text": f"HS {level}%",
+            "tooltip": html.escape(tooltip),
+            "class": "charging" if state == "BATTERY_CHARGING" else "discharging",
+        }
+    return {"text": ""}
+
+
+if __name__ == "__main__":
+    print(json.dumps(status(), ensure_ascii=False))

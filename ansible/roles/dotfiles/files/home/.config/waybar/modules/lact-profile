@@ -36,15 +36,15 @@ def service_status(service: str) -> str:
             if "=" in line
         )
         if properties.get("LoadState") == "not-found":
-            return f"{service} : non installé"
+            return f"{service}: not installed"
         active = properties.get("ActiveState", "unknown")
         substate = properties.get("SubState", "unknown")
-        detail = f"{service} : {active} ({substate})"
+        detail = f"{service}: {active} ({substate})"
         if service == "power-profiles-daemon" and active == "active":
             profile = query(["powerprofilesctl", "get"])
             if not profile:
-                raise ValueError("profil d’énergie vide")
-            detail += f"\nProfil d’énergie : {profile}"
+                raise ValueError("empty power profile")
+            detail += f"\nPower profile: {profile}"
         return detail
     except (OSError, subprocess.SubprocessError, ValueError) as error:
         detail = (
@@ -52,7 +52,7 @@ def service_status(service: str) -> str:
             if isinstance(error, subprocess.CalledProcessError) and error.stderr
             else str(error)
         )
-        return f"{service} : lecture impossible\n{detail}"
+        return f"{service}: cannot read state\n{detail}"
 
 
 def status() -> dict[str, str]:
@@ -62,13 +62,17 @@ def status() -> dict[str, str]:
     except (OSError, subprocess.SubprocessError):
         return {"text": ""}
     text, css_class = PROFILE_DISPLAY.get(profile, ("?", "unknown"))
-    tooltip = f"LACT : {profile or 'aucun'} — clic pour changer"
-    if not set(PROFILES).issubset(available):
-        text, css_class = "GPU profils?", "unavailable"
-        tooltip += "\nProfils LACT requis : " + ", ".join(PROFILES)
+    tooltip = f"LACT: {profile or 'none'}"
+    clickable = set(PROFILES).issubset(available)
+    if not clickable:
+        # cycle_profile() refuses to run without these profiles: no click hint.
+        text, css_class = "GPU profiles?", "unavailable"
+        tooltip += "\nRequired LACT profiles: " + ", ".join(PROFILES)
     tooltip += "\n\n" + "\n".join(
         service_status(service) for service in ("power-profiles-daemon", "ananicy-cpp")
     )
+    if clickable:
+        tooltip += "\nclick: next profile"
     return {
         "text": html.escape(text),
         "tooltip": html.escape(tooltip),
@@ -79,7 +83,7 @@ def status() -> dict[str, str]:
 def cycle_profile() -> None:
     available = query(["lact", "cli", "profile", "list"]).splitlines()
     if not set(PROFILES).issubset(available):
-        raise ValueError("Profils LACT requis : " + ", ".join(PROFILES))
+        raise ValueError("Required LACT profiles: " + ", ".join(PROFILES))
     current = query(["lact", "cli", "profile", "get"])
     index = (PROFILES.index(current) + 1) % len(PROFILES) if current in PROFILES else 0
     query(["lact", "cli", "profile", "set", PROFILES[index]])
@@ -96,5 +100,5 @@ if __name__ == "__main__":
         try:
             cycle_profile()
         except (OSError, subprocess.SubprocessError, ValueError) as error:
-            print(f"LACT : {error}", file=sys.stderr)
+            print(f"LACT: {error}", file=sys.stderr)
             sys.exit(1)

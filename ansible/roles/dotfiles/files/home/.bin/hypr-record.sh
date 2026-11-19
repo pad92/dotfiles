@@ -104,8 +104,11 @@ print_status()
     local path
     if recording_pid > /dev/null; then
         path=$(sed -n 2p "$STATE_FILE")
+        # Waybar reads the tooltip as Pango markup: escape the path, which may
+        # hold & or <.
         jq -cn --arg path "${path%.part}" \
-            '{text: "REC", class: "recording", tooltip: ("Recording to " + $path + "\nClick to stop")}'
+            '{text: "REC", class: "recording",
+              tooltip: ("Recording: " + ($path | @html) + "\nclick: stop")}'
     else
         printf '{"text": "", "class": "idle"}\n'
     fi

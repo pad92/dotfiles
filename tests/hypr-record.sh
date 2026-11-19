@@ -279,18 +279,24 @@ wait "$stranger_pid" 2> /dev/null || true
 unset stranger_pid
 
 # --- Status reports a live recording, for the Waybar module.
+# The directory holds Pango markup characters: Waybar drops a tooltip whose
+# markup is invalid, so the path must reach it escaped.
 reset_case status
+plain_record_dir=$HYPR_RECORD_DIR
+export HYPR_RECORD_DIR="$TEST_DIR/R&D <videos>"
 "$RECORD" screen > /dev/null 2>&1 &
 supervisor=$!
 wait_for "the recording to start" recording_started
 status_json=$("$RECORD" status)
 [[ $(jq -r .class <<< "$status_json") == recording && $(jq -r .text <<< "$status_json") == REC ]] \
     || fail "status did not report the live recording: $status_json"
-[[ $(jq -r .tooltip <<< "$status_json") == *"$HYPR_RECORD_DIR"/rec-*.mp4* ]] \
-    || fail "status did not name the destination file"
+[[ $(jq -r .tooltip <<< "$status_json") == "Recording: $TEST_DIR/R&amp;D &lt;videos&gt;"/rec-*.mp4$'\n'"click: stop" ]] \
+    || fail "status did not name the escaped destination, then the click: $status_json"
 "$RECORD" stop
 wait "$supervisor" || fail "stopping from Waybar did not finish the recording"
 only_file > /dev/null || fail "the recording stopped from Waybar was not saved"
+rm -rf -- "$HYPR_RECORD_DIR"
+export HYPR_RECORD_DIR=$plain_record_dir
 
 # --- An encoder failure keeps the .part file and never renames it.
 reset_case encoder-failure
