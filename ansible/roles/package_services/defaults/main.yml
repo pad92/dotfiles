@@ -36,5 +36,8 @@ package_services_user_groups_by_group:
 # its negative nice limits even after the role stops adding new members.
 package_services_retired_user_groups:
   Archlinux: [realtime]
+# Caps the nice value of package_services_group_users at 0: a user line wins
+# over the group limits that packages add to limits.d.
+package_services_nice_limits_file: /etc/security/limits.d/90-no-negative-nice.conf
 package_services_group_users:
   - "{{ ansible_facts['user_id'] }}"

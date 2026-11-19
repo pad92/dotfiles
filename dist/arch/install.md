@@ -600,8 +600,13 @@ run at nice -8, along with every process they start, and that load then
 starves a WebRTC call in Firefox.
 
 On a machine that already has it, the `package_services` tag removes the user
-from the `realtime` group, which drops its limits; log out and back in, since
-they are read at login. The deploy does not remove the package. Reconcile with
+from the `realtime` group. That alone does not drop the nice limit:
+`cachyos-settings` gives the `audio` group the same one. The tag also writes
+`/etc/security/limits.d/90-no-negative-nice.conf` with `<user> - nice 0`; a
+user line wins over a group line in `pam_limits`. Close every session of the
+user, or reboot: the systemd user manager, which starts the apps that `uwsm`
+launches, keeps the limits it started with. The deploy does not remove the
+package. Reconcile with
 `make deploy ANSIBLE_ARGS="-e packages_action=reconcile"` and type `REMOVE`;
 the reconcile only removes packages this repository installed, so otherwise
 run `sudo pacman -Rs realtime-privileges`.
@@ -611,6 +616,8 @@ To check that PipeWire has a real-time thread (`FF` class):
 ```sh
 ps -L -o cls=,rtprio=,comm= -p "$(pgrep -u "$USER" -x pipewire)"
 ```
+
+After a new login, `ulimit -e` prints `20` (lowest nice 0), not `31` (-11).
 
 ## Security follow-up
 

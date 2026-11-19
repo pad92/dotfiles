@@ -68,7 +68,7 @@ class InstallGuideRoleTests(unittest.TestCase):
         return output
 
     # package_services: groups created by a selected package group.
-    def run_user_groups(self, groups, existing):
+    def run_package_groups(self, getent_group, selected, msg, user_groups=None):
         tasks = load_tasks("package_services")
         start = next(
             index
@@ -83,6 +83,7 @@ class InstallGuideRoleTests(unittest.TestCase):
                 "Read the system groups",
                 "Add the regular users to the selected groups",
                 "Remove the regular users from the retired groups",
+                "Forbid negative nice values",
             ]
         ]
         defaults = load_defaults("package_services")
@@ -91,26 +92,29 @@ class InstallGuideRoleTests(unittest.TestCase):
                 "vars": {
                     "ansible_facts": {
                         "os_family": "Archlinux",
-                        "getent_group": {name: ["x", "1"] for name in existing},
+                        "getent_group": getent_group,
                     },
-                    "package_services_user_groups_by_group": defaults[
-                        "package_services_user_groups_by_group"
-                    ],
+                    "package_services_user_groups_by_group": (
+                        defaults["package_services_user_groups_by_group"]
+                        if user_groups is None
+                        else user_groups
+                    ),
                     "package_services_retired_user_groups": defaults[
                         "package_services_retired_user_groups"
                     ],
                     "package_services_group_users": ["alice"],
-                    "packages_selected_groups": groups,
+                    "packages_selected_groups": list(selected),
                 },
-                "tasks": tasks
-                + [
-                    {
-                        "ansible.builtin.debug": {
-                            "msg": "JOIN {{ package_services_user_groups_present }}"
-                        }
-                    }
-                ],
+                "tasks": tasks + [{"ansible.builtin.debug": {"msg": msg}}],
             }
+        )
+
+    def run_user_groups(self, groups, existing, user_groups=None):
+        return self.run_package_groups(
+            {name: ["x", "1"] for name in existing},
+            groups,
+            "JOIN {{ package_services_user_groups_present }}",
+            user_groups,
         )
 
     def test_razer_group_users_join_plugdev(self):
@@ -132,51 +136,23 @@ class InstallGuideRoleTests(unittest.TestCase):
         output = self.run_user_groups(["01_base"], ["realtime", "wheel"])
         self.assertIn("JOIN []", output)
 
-    def run_retired_groups(self, getent_group, selected=("01_base",)):
-        tasks = load_tasks("package_services")
-        start = next(
-            index
-            for index, task in enumerate(tasks)
-            if task["name"] == "Validate the users who join package groups"
+    def test_retired_group_is_never_joined(self):
+        # A retired group listed for a package group would be joined, then
+        # left again by the same run, on every deploy.
+        output = self.run_user_groups(
+            ["01_base"],
+            ["realtime", "wheel"],
+            user_groups={"Archlinux": {"01_base": ["realtime", "wheel"]}},
         )
-        tasks = [
-            task
-            for task in tasks[start:]
-            if task["name"]
-            not in [
-                "Read the system groups",
-                "Add the regular users to the selected groups",
-                "Remove the regular users from the retired groups",
-            ]
-        ]
-        defaults = load_defaults("package_services")
-        return self.run_play(
-            {
-                "vars": {
-                    "ansible_facts": {
-                        "os_family": "Archlinux",
-                        "getent_group": getent_group,
-                    },
-                    "package_services_user_groups_by_group": defaults[
-                        "package_services_user_groups_by_group"
-                    ],
-                    "package_services_retired_user_groups": defaults[
-                        "package_services_retired_user_groups"
-                    ],
-                    "package_services_group_users": ["alice"],
-                    "packages_selected_groups": list(selected),
-                },
-                "tasks": tasks
-                + [
-                    {
-                        "ansible.builtin.debug": {
-                            "msg": "LEAVE{% for m in package_services_retired_memberships %}"
-                            " {{ m.user }}:{{ m.leave | join(',') }}"
-                            " keep={{ m.keep | join(',') }}{% endfor %};"
-                        }
-                    }
-                ],
-            }
+        self.assertIn("JOIN ['wheel']", output)
+
+    def run_retired_groups(self, getent_group, selected=("01_base",)):
+        return self.run_package_groups(
+            getent_group,
+            selected,
+            "LEAVE{% for m in package_services_retired_memberships %}"
+            " {{ m.user }}:{{ m.leave | join(',') }}"
+            " keep={{ m.keep | join(',') }}{% endfor %};",
         )
 
     def test_user_in_realtime_leaves_it_and_keeps_other_groups(self):
@@ -209,6 +185,38 @@ class InstallGuideRoleTests(unittest.TestCase):
             selected=("01_base", "25_razer"),
         )
         self.assertIn("LEAVE alice:realtime keep=plugdev,wheel;", output)
+
+    def test_users_get_no_negative_nice_limit(self):
+        # cachyos-settings gives @audio a nice limit of -11, as realtime did:
+        # a user line wins over a group line in pam_limits, so leaving
+        # realtime alone does not stop Chromium threads from running at -8.
+        limits = self.work / "90-no-negative-nice.conf"
+        tasks = load_tasks("package_services")
+        task = next(
+            task for task in tasks if task["name"] == "Forbid negative nice values"
+        )
+        # The test runs without root: keep the content, drop the chown.
+        task.pop("notify", None)
+        for key in ("owner", "group"):
+            task["ansible.builtin.copy"].pop(key)
+        self.run_play(
+            {
+                "vars": {
+                    **load_defaults("package_services"),
+                    "package_services_group_users": ["alice", "bob"],
+                    "package_services_nice_limits_file": str(limits),
+                },
+                "tasks": [task],
+            }
+        )
+        lines = [
+            line.split()
+            for line in limits.read_text().splitlines()
+            if line and not line.startswith("#")
+        ]
+        self.assertEqual(
+            lines, [["alice", "-", "nice", "0"], ["bob", "-", "nice", "0"]]
+        )
 
     # time_sync: never run two NTP clients.
     def run_time_sync(self, services):

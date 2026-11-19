@@ -74,19 +74,22 @@
     quiet: true
   loop: '{{ package_services_group_users }}'
 
-- name: Select user groups for the selected package groups
-  ansible.builtin.set_fact:
-    package_services_user_groups: >-
-      {{ package_services_user_groups_by_group.get(ansible_facts['os_family'], {})
-         | dict2items | selectattr('key', 'in', packages_selected_groups)
-         | map(attribute='value') | flatten | unique | sort }}
-
 - name: Select the groups the users must leave
   ansible.builtin.set_fact:
     package_services_retired_memberships: []
     package_services_retired_groups: >-
       {{ package_services_retired_user_groups.get(ansible_facts['os_family'], [])
          | unique | sort }}
+
+# A retired group is never joined: the users would join it, then leave it
+# again in the same run, on every deploy.
+- name: Select user groups for the selected package groups
+  ansible.builtin.set_fact:
+    package_services_user_groups: >-
+      {{ package_services_user_groups_by_group.get(ansible_facts['os_family'], {})
+         | dict2items | selectattr('key', 'in', packages_selected_groups)
+         | map(attribute='value') | flatten
+         | reject('in', package_services_retired_groups) | unique | sort }}
 
 # A group exists only once the package that creates it is installed. Its
 # members also tell which retired groups a user still belongs to.
@@ -152,3 +155,21 @@
   loop_control:
     label: '{{ item.user }} leaves {{ item.leave | join(", ") }}'
   notify: Report leaving a package group requires login
+
+# pam_limits gives a user line priority over a group line, so this file caps
+# the nice value of the users whatever groups they are in, such as `audio`,
+# to which cachyos-settings gives a limit of -11. Without it, Chromium and
+# Electron threads run at -8 with every process they start.
+- name: Forbid negative nice values
+  ansible.builtin.copy:
+    dest: '{{ package_services_nice_limits_file }}'
+    content: |
+      # Managed by Ansible (package_services). A user line overrides the group
+      # limits of limits.d: no process of these users goes below nice 0.
+      {% for user in package_services_group_users %}
+      {{ user }} - nice 0
+      {% endfor %}
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Report the nice limit requires login
