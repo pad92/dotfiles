@@ -1,4 +1,18 @@
 ---
+# PipeWire rounds a quantum down to a power of two: an override such as 480
+# would run the graph at 256, under one WebRTC frame (audio_rate / 100) per
+# cycle, which is the CPU cost audio_quantum exists to avoid.
+- name: Check the echo canceller quantum
+  ansible.builtin.assert:
+    that:
+      - audio_quantum | int >= audio_rate | int // 100
+      - audio_quantum | int == 2 ** (audio_quantum | int | log(2) | round | int)
+    fail_msg: >-
+      audio_quantum is {{ audio_quantum }}. Use a power of two of at least
+      one WebRTC frame ({{ audio_rate | int // 100 }} samples at
+      {{ audio_rate }} Hz), such as 1024 at 48 kHz.
+    quiet: true
+
 # Writing through a link would put the files wherever it points, such as the
 # repository clone of an old deployment that linked these directories.
 - name: Inspect the PipeWire and WirePlumber configuration directories

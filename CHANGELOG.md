@@ -179,6 +179,15 @@ Release history and changes planned for the next version.
   - Bluetooth enables every codec again, and LDAC uses adaptive quality.
   - Deployment removes an unedited `10-realtime.conf` and stops before writing
     through a linked PipeWire or WirePlumber directory.
+  - The echo canceller uses less CPU. It works in mono, so a stereo
+    microphone no longer doubles the WebRTC work. It asks for a 1024-sample
+    quantum (`audio_quantum`): its 480-sample request was rounded down to 256,
+    which woke the graph every 5.3 ms. Voice detection, whose result PipeWire
+    never reads, is off, and transient suppression runs only without RNNoise.
+    On the laptop, with the microphone in use, the PipeWire data loop took
+    46 % of one core and the canceller about 90 % of that. Deployment stops
+    on an `audio_quantum` that is not a power of two of at least one WebRTC
+    frame (`audio_rate / 100`).
 - **CI**:
   - `unit_tests` runs on Python 3.14 with coverage's `sysmon` core. The shell
     tests moved to a `shell_tests` job that runs next to it.
