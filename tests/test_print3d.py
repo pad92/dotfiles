@@ -5,17 +5,22 @@ import grp
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    COLLECTIONS,
+    ROOT,
+    ansible_test_environment,
+    local_play,
+    play_output,
+    run_playbook,
+    write_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "ansible/site.yml"
-COLLECTIONS = ROOT / ".ansible/collections"
 ARCH_GROUPS = yaml.safe_load(
     (ROOT / "ansible/roles/packages/vars/archlinux.yml").read_text()
 )["packages_family_groups"]["Archlinux"]
@@ -56,47 +61,32 @@ class Print3dRoleTests(unittest.TestCase):
         self.environment["ANSIBLE_COLLECTIONS_PATH"] = str(COLLECTIONS)
 
     def run_role(self, options):
-        playbook = self.work / "play.yml"
-        playbook.write_text(
-            yaml.safe_dump(
-                [
-                    {
-                        "hosts": "localhost",
-                        "connection": "local",
-                        "gather_facts": False,
-                        "vars": {
-                            "print3d_packages": [],
-                            "print3d_f3d_config_dir": str(self.config_dir),
-                            "print3d_f3d_config_owner": getpass.getuser(),
-                            "print3d_f3d_config_group": grp.getgrgid(
-                                os.getgid()
-                            ).gr_name,
-                            "print3d_f3d_thumbnail_options": options,
-                            "print3d_thumbnail_cache_dir": str(self.cache),
-                        },
-                        "pre_tasks": [
-                            {
-                                "name": "Provide isolated facts",
-                                "ansible.builtin.set_fact": {
-                                    "ansible_facts": {"os_family": "Archlinux"}
-                                },
-                            }
-                        ],
-                        "roles": ["print3d"],
-                    }
-                ]
-            )
+        playbook = write_playbook(
+            self.work / "play.yml",
+            [
+                local_play(
+                    vars={
+                        "print3d_packages": [],
+                        "print3d_f3d_config_dir": str(self.config_dir),
+                        "print3d_f3d_config_owner": getpass.getuser(),
+                        "print3d_f3d_config_group": grp.getgrgid(os.getgid()).gr_name,
+                        "print3d_f3d_thumbnail_options": options,
+                        "print3d_thumbnail_cache_dir": str(self.cache),
+                    },
+                    pre_tasks=[
+                        {
+                            "name": "Provide isolated facts",
+                            "ansible.builtin.set_fact": {
+                                "ansible_facts": {"os_family": "Archlinux"}
+                            },
+                        }
+                    ],
+                    roles=["print3d"],
+                )
+            ],
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
-            cwd=self.work,
-            env=self.environment,
-            capture_output=True,
-            text=True,
-            timeout=180,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result = run_playbook(playbook, cwd=self.work, env=self.environment)
+        play_output(self, result)
         return result.stdout
 
     def seed_cache(self):

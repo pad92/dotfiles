@@ -1,15 +1,13 @@
 """Tests for the iwlwifi role, which owns /etc/modprobe.d/iwlwifi.conf."""
 
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/iwlwifi"
 POWER_SCHEME = [{"module": "iwlmvm", "options": ["power_scheme=1"]}]
 
@@ -62,14 +60,10 @@ class IwlwifiRoleTests(unittest.TestCase):
                 ]
             )
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
+        result = run_playbook(
+            playbook,
             cwd=ROOT,
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode == 0, expect_success, output)

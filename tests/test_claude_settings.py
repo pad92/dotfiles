@@ -4,15 +4,19 @@ import json
 import os
 import shutil
 import stat
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    ROOT,
+    ansible_test_environment,
+    local_play,
+    run_playbook,
+    write_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 FAKE_BINARY = "claude-dotfiles-test"
 DEFAULTS = yaml.safe_load(
     (ROOT / "ansible/roles/agent_cli/defaults/main.yml").read_text()
@@ -71,40 +75,29 @@ class ClaudeSettingsTests(unittest.TestCase):
         }
 
     def run_play(self, *, installed=True, check=False, on_path=True, extra_vars=None):
-        play = [
-            {
-                "hosts": "localhost",
-                "connection": "local",
-                "gather_facts": False,
-                "vars": {
-                    "agent_cli_home": str(self.home),
-                    # A name absent from PATH stands for "not installed".
-                    "agent_cli_claude_binary": (
-                        FAKE_BINARY if installed else "claude-dotfiles-test-absent"
-                    ),
-                    **(extra_vars or {}),
-                },
-                "tasks": [
-                    {
-                        "ansible.builtin.import_role": {
-                            "name": str(ROOT / "ansible/roles/agent_cli"),
-                            "tasks_from": "claude",
-                        }
+        play = local_play(
+            vars={
+                "agent_cli_home": str(self.home),
+                # A name absent from PATH stands for "not installed".
+                "agent_cli_claude_binary": (
+                    FAKE_BINARY if installed else "claude-dotfiles-test-absent"
+                ),
+                **(extra_vars or {}),
+            },
+            tasks=[
+                {
+                    "ansible.builtin.import_role": {
+                        "name": str(ROOT / "ansible/roles/agent_cli"),
+                        "tasks_from": "claude",
                     }
-                ],
-            }
-        ]
-        playbook = self.work / "play.yml"
-        playbook.write_text(yaml.safe_dump(play))
+                }
+            ],
+        )
+        playbook = write_playbook(self.work / "play.yml", [play])
         environment = ansible_test_environment(self.work)
         if on_path:
             environment["PATH"] = f"{self.fake_bin}{os.pathsep}{environment['PATH']}"
-        command = ["ansible-playbook", "-i", "localhost,", str(playbook)]
-        if check:
-            command.append("--check")
-        return subprocess.run(
-            command, env=environment, capture_output=True, text=True, check=False
-        )
+        return run_playbook(playbook, *(["--check"] if check else []), env=environment)
 
     def assert_succeeded(self, result, changed):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

@@ -1,18 +1,16 @@
 """Check the names of managed modprobe, modules-load and sysctl drop-ins."""
 
 import re
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLES = ROOT / "ansible/roles"
 DROP_IN_DIRS = ("/etc/modprobe.d/", "/etc/modules-load.d/", "/etc/sysctl.d/")
-VARIABLE = re.compile(r"^\{\{\s*([a-z0-9_]+)\s*\}\}$")
+VARIABLE = re.compile(r"^\{\{\s*([a-z0-9_.]+)\s*\}\}$")
 
 
 def walk_tasks(tasks):
@@ -22,15 +20,27 @@ def walk_tasks(tasks):
             yield from walk_tasks(task.get(key))
 
 
+def role_variables(role):
+    """Return the role defaults and vars, vars taking precedence."""
+    variables = {}
+    for name in ("defaults/main.yml", "vars/main.yml"):
+        path = role / name
+        if path.exists():
+            variables.update(yaml.safe_load(path.read_text()) or {})
+    return variables
+
+
 def managed_paths(role):
-    """Return the drop-in paths a role writes, with defaults resolved."""
-    defaults_file = role / "defaults/main.yml"
-    defaults = (
-        yaml.safe_load(defaults_file.read_text()) if defaults_file.exists() else {}
-    )
+    """Return the drop-in paths a role writes, with role variables resolved."""
+    variables = role_variables(role)
     paths = set()
     for tasks_file in sorted((role / "tasks").glob("*.yml")):
         for task in walk_tasks(yaml.safe_load(tasks_file.read_text())):
+            items = task.get("loop")
+            if isinstance(items, str) and VARIABLE.match(items):
+                items = variables.get(VARIABLE.match(items).group(1))
+            if not isinstance(items, list):
+                items = [{}]
             for module in (
                 "ansible.builtin.template",
                 "ansible.builtin.copy",
@@ -39,14 +49,19 @@ def managed_paths(role):
                 arguments = task.get(module)
                 if not isinstance(arguments, dict):
                     continue
-                path = arguments.get("dest") or arguments.get("sysctl_file")
-                if not isinstance(path, str):
-                    continue
-                variable = VARIABLE.match(path)
-                if variable:
-                    path = defaults.get(variable.group(1), path)
-                if path.startswith(DROP_IN_DIRS):
-                    paths.add(path)
+                for item in items:
+                    path = arguments.get("dest") or arguments.get("sysctl_file")
+                    if not isinstance(path, str):
+                        continue
+                    variable = VARIABLE.match(path)
+                    if variable and variable.group(1) == "item.dest":
+                        path = (
+                            item.get("dest", path) if isinstance(item, dict) else path
+                        )
+                    elif variable:
+                        path = variables.get(variable.group(1), path)
+                    if path.startswith(DROP_IN_DIRS):
+                        paths.add(path)
     return paths
 
 
@@ -113,14 +128,10 @@ class DropInMigrationTests(unittest.TestCase):
                 ]
             )
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(play)],
+        result = run_playbook(
+            play,
             cwd=ROOT,
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -152,6 +163,43 @@ class DropInMigrationTests(unittest.TestCase):
             },
         )
         self.assert_migrated(removed, kept)
+
+    def gpu_option_removal(self):
+        task = self.extract(
+            "gpu/tasks/main.yml",
+            "Remove GPU kernel module options the selected profiles do not need",
+        )
+        files = (ROLES / "gpu/vars/main.yml").read_text()
+        task["vars"] = yaml.safe_load(
+            files.replace("/etc/modprobe.d", str(self.etc / "modprobe.d"))
+        )
+        return task
+
+    def test_gpu_removes_options_files_the_profiles_do_not_need(self):
+        names = ["modprobe.d/nvidia.conf", "modprobe.d/i915.conf"]
+        self.seed(names)
+        self.run_task(
+            self.gpu_option_removal(),
+            {
+                "ansible_facts": {"os_family": "Archlinux"},
+                "packages_selected_groups": ["01_base", "08_intel_modern"],
+                "gpu_i915_enable_guc": None,
+            },
+        )
+        self.assert_migrated(names, [])
+
+    def test_gpu_keeps_options_files_the_profiles_select(self):
+        names = ["modprobe.d/nvidia.conf", "modprobe.d/i915.conf"]
+        self.seed(names)
+        self.run_task(
+            self.gpu_option_removal(),
+            {
+                "ansible_facts": {"os_family": "Archlinux"},
+                "packages_selected_groups": ["08_intel_modern", "09_nvidia_modern"],
+                "gpu_i915_enable_guc": 3,
+            },
+        )
+        self.assert_migrated([], names)
 
     def test_obs_removes_v4l2loopback_files_with_earlier_names(self):
         removed = [

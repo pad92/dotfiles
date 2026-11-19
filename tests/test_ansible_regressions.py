@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import ROOT, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLES = ROOT / "ansible/roles"
 
 
@@ -24,8 +24,9 @@ class AnsibleRegressionTests(unittest.TestCase):
     def run_play(self, plays, inventory="localhost,", *arguments):
         playbook = self.directory / "play.yml"
         playbook.write_text(yaml.safe_dump(plays))
-        result = subprocess.run(
-            ["ansible-playbook", "-i", inventory, str(playbook), *arguments],
+        result = run_playbook(
+            playbook,
+            *arguments,
             cwd=ROOT,
             env={
                 **os.environ,
@@ -34,10 +35,7 @@ class AnsibleRegressionTests(unittest.TestCase):
                 # such as the CI checkout, so the filters are named here.
                 "ANSIBLE_FILTER_PLUGINS": str(ROOT / "ansible/filter_plugins"),
             },
-            capture_output=True,
-            text=True,
-            timeout=90,
-            check=False,
+            inventory=inventory,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result

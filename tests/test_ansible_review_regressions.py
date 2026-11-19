@@ -10,11 +10,15 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    COLLECTIONS,
+    ROOT,
+    ansible_test_environment,
+    run_playbook,
+    write_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLES = ROOT / "ansible/roles"
-COLLECTIONS = ROOT / ".ansible/collections"
 MARKER = "dotfiles-play-continued"
 
 
@@ -36,20 +40,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         self.work = Path(self.temporary.name)
 
     def run_play(self, plays, *arguments, expect_success=True, env=None):
-        playbook = self.work / "play.yml"
-        playbook.write_text(yaml.safe_dump(plays))
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook), *arguments],
-            cwd=ROOT,
+        result = run_playbook(
+            write_playbook(self.work / "play.yml", plays),
+            *arguments,
             env={
                 **ansible_test_environment(self.work),
                 "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
                 **(env or {}),
             },
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
         output = result.stdout + result.stderr
         if expect_success:
@@ -127,18 +125,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     def test_repository_config_does_not_require_a_vault_password_file(self):
         config = self.work / "ansible.cfg"
         shutil.copy(ROOT / "ansible.cfg", config)
-        playbook = self.work / "noop.yml"
-        playbook.write_text(
-            yaml.safe_dump([{"hosts": "localhost", "gather_facts": False, "tasks": []}])
+        playbook = write_playbook(
+            self.work / "noop.yml",
+            [{"hosts": "localhost", "gather_facts": False, "tasks": []}],
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
+        result = run_playbook(
+            playbook,
             cwd=self.work,
             env={**os.environ, "ANSIBLE_CONFIG": str(config)},
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -241,20 +235,13 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         }
         for tag in ["system", "kernel_hardening", "dns", "gpu_modules", "obs"]:
             with self.subTest(tag=tag):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "ansible/site.yml",
-                        "--list-tasks",
-                        "--tags",
-                        tag,
-                    ],
-                    cwd=ROOT,
+                result = run_playbook(
+                    Path("ansible/site.yml"),
+                    "--list-tasks",
+                    "--tags",
+                    tag,
                     env=environment,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
+                    inventory=None,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 # The selection is an include, so --list-tasks shows its entry.
@@ -818,6 +805,13 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
         output = self.run_play(play)
         self.assertIn("HANDLER Report legacy sysctl values kept until reboot", output)
         self.assertFalse((sysctl_dir / "80-gamecompatibility.conf").exists())
+        self.assertEqual(
+            (sysctl_dir / "80-gamecompatibility.conf.dotfiles-backup").read_text(),
+            "vm.x = 1\n",
+        )
+        self.assertFalse(
+            (sysctl_dir / "99-cachyos-gaming.conf.dotfiles-backup").exists()
+        )
         self.assertNotIn("HANDLER ", self.run_play(play))
 
     def run_package_services(

@@ -1,15 +1,12 @@
 """Exercise check mode and changed-path output without deploying to the host."""
 
 import os
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
-
-ROOT = Path(__file__).resolve().parents[1]
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 
 
 class FileContractTests(unittest.TestCase):
@@ -21,17 +18,14 @@ class FileContractTests(unittest.TestCase):
     def run_play(self, play, *arguments, environment=None):
         path = self.work / "play.yml"
         path.write_text(yaml.safe_dump(play))
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(path), *arguments],
+        result = run_playbook(
+            path,
+            *arguments,
             cwd=ROOT,
             env={
                 **ansible_test_environment(self.work),
                 **(environment or {}),
             },
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result.stdout

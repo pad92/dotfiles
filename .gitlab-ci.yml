@@ -145,10 +145,7 @@ package_vim:
     - python3 -m pip install --no-cache-dir PyYAML==6.0.3
   # Les plugins épinglés dans le rôle dotfiles, sans leur dossier .git.
   script:
-    - mkdir package
-    - cp -a ansible/roles/dotfiles/files/home/.vim ansible/roles/dotfiles/files/home/.vimrc package/
-    - python3 scripts/ci/fetch_vim_plugins.py package
-    - tar -czf "$PACKAGE_ARCHIVE" -C package .vim .vimrc
+    - sh scripts/ci/package_vim.sh "$PACKAGE_ARCHIVE"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -157,6 +154,7 @@ package_vim:
         - 'ansible/roles/dotfiles/files/home/.vimrc'
         - 'ansible/roles/dotfiles/defaults/main.yml'
         - 'scripts/ci/fetch_vim_plugins.py'
+        - 'scripts/ci/package_vim.sh'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
       changes: *package_vim_changes
 
@@ -171,9 +169,7 @@ package_zsh:
   # L'arbre Zsh, .zshrc rendu sans Jinja et les plugins épinglés dans le rôle
   # dotfiles, sans leur dossier .git.
   script:
-    - mkdir package
-    - python3 scripts/ci/build_zsh_package.py package
-    - tar -czf "$PACKAGE_ARCHIVE" -C package .zshenv .zshrc .local
+    - sh scripts/ci/package_zsh.sh "$PACKAGE_ARCHIVE"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -184,6 +180,7 @@ package_zsh:
         - 'ansible/roles/dotfiles/defaults/main.yml'
         - 'scripts/ci/build_zsh_package.py'
         - 'scripts/ci/fetch_vim_plugins.py'
+        - 'scripts/ci/package_zsh.sh'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
       changes: *package_zsh_changes
 

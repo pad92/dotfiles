@@ -1,30 +1,28 @@
 """Exercise the systemd-resolved migration against fake NetworkManager and Docker state."""
 
 import base64
-import importlib.util
 import json
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import PLAYBOOK_TIMEOUT, ansible_test_environment
+from ansible_test_environment import (
+    load_module,
+    ROOT,
+    ansible_test_environment,
+    run_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 DETECTION = ROOT / "ansible/roles/dns/tasks/prerequisites.yml"
 TASKS = ROOT / "ansible/roles/dns/tasks/policy.yml"
 ROLE_MAIN = ROOT / "ansible/roles/dns/tasks/main.yml"
 SITE = ROOT / "ansible/site.yml"
 DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/dns/defaults/main.yml").read_text())
-SPEC = importlib.util.spec_from_file_location(
-    "dns_filters", ROOT / "ansible/filter_plugins/dns.py"
-)
-DNS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DNS)
+DNS = load_module("dns_filters", ROOT / "ansible/filter_plugins/dns.py")
 
 
 def profile(name, kind, ipv4=None, ipv6=None):
@@ -606,14 +604,9 @@ class DnsTaskTests(unittest.TestCase):
                 ]
             )
         )
-        result = subprocess.run(
-            [
-                shutil.which("ansible-playbook"),
-                "-i",
-                "localhost,",
-                str(playbook),
-                *arguments,
-            ],
+        result = run_playbook(
+            playbook,
+            *arguments,
             cwd=ROOT,
             env={
                 **ansible_test_environment(self.work),
@@ -626,10 +619,6 @@ class DnsTaskTests(unittest.TestCase):
                 "FAKE_NMCLI_ACTIVE": json.dumps(self.active),
                 "ANSIBLE_DEPRECATION_WARNINGS": "True",
             },
-            capture_output=True,
-            text=True,
-            timeout=PLAYBOOK_TIMEOUT,
-            check=False,
         )
         self.stderr = result.stderr
         if succeed:

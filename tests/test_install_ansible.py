@@ -1,4 +1,3 @@
-import importlib.util
 import json
 import os
 import subprocess
@@ -7,14 +6,15 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    load_module,
+    ROOT,
+    ansible_test_environment,
+    run_playbook,
+)
 
-ROOT = Path(__file__).parents[1]
 FILTER_PATH = ROOT / "ansible/filter_plugins/dotfiles.py"
-SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
-FILTERS = importlib.util.module_from_spec(SPEC)
-assert SPEC.loader is not None
-SPEC.loader.exec_module(FILTERS)
+FILTERS = load_module("dotfiles_filters", FILTER_PATH)
 
 
 class PackageStateTests(unittest.TestCase):
@@ -315,14 +315,7 @@ class RepositorySplitTests(unittest.TestCase):
                     ]
                 )
             )
-            result = subprocess.run(
-                ["ansible-playbook", "-i", "localhost,", str(play)],
-                env=ansible_test_environment(work),
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
-            )
+            result = run_playbook(play, env=ansible_test_environment(work))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
             "REPO=onnxruntime-cpu,ttf-montserrat AUR=obs-backgroundremoval",

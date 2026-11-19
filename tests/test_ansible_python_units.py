@@ -1,6 +1,5 @@
 """Unit tests for edge and error paths of the Ansible Python plugins and modules."""
 
-import importlib.util
 import io
 import json
 import os
@@ -12,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ansible.errors import AnsibleFilterError
+from ansible_test_environment import load_module
 from git_fixtures import git, repository
 from test_ansible_modules import (
     Module,
@@ -28,16 +28,9 @@ from test_ansible_modules import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-filters = load("dotfiles_filters_units", "ansible/filter_plugins/dotfiles.py")
-lact = load("lact_filters_units", "ansible/filter_plugins/lact.py")
-backups = load("ansible_backups_units", "scripts/ansible_backup_files.py")
+filters = load_module("dotfiles_filters_units", "ansible/filter_plugins/dotfiles.py")
+lact = load_module("lact_filters_units", "ansible/filter_plugins/lact.py")
+backups = load_module("ansible_backups_units", "scripts/ansible_backup_files.py")
 
 NVIDIA_MODERN = "01:00.0 VGA compatible controller [0300]: NVIDIA AD104 [GeForce RTX 4070] [10de:2786]"
 

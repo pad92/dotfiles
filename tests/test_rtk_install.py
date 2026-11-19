@@ -4,16 +4,19 @@ import hashlib
 import io
 import shutil
 import stat
-import subprocess
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 
-import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    ROOT,
+    ansible_test_environment,
+    local_play,
+    run_playbook,
+    write_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 VERSION = "9.9.9"
 FAKE_RTK = f"#!/bin/sh\necho 'rtk {VERSION}'\n".encode()
 
@@ -40,38 +43,26 @@ class RtkInstallTests(unittest.TestCase):
         self.digest = hashlib.sha256(self.archive.read_bytes()).hexdigest()
 
     def run_play(self, *, checksum=None, extra_vars=None):
-        play = [
-            {
-                "hosts": "localhost",
-                "connection": "local",
-                "gather_facts": False,
-                "vars": {
-                    "agent_cli_home": str(self.home),
-                    "agent_cli_rtk_version": VERSION,
-                    "agent_cli_rtk_asset": self.archive.name,
-                    "agent_cli_rtk_url": self.archive.as_uri(),
-                    "agent_cli_rtk_checksum": checksum or f"sha256:{self.digest}",
-                    **(extra_vars or {}),
-                },
-                "tasks": [
-                    {
-                        "ansible.builtin.import_role": {
-                            "name": str(ROOT / "ansible/roles/agent_cli"),
-                            "tasks_from": "rtk",
-                        }
+        play = local_play(
+            vars={
+                "agent_cli_home": str(self.home),
+                "agent_cli_rtk_version": VERSION,
+                "agent_cli_rtk_asset": self.archive.name,
+                "agent_cli_rtk_url": self.archive.as_uri(),
+                "agent_cli_rtk_checksum": checksum or f"sha256:{self.digest}",
+                **(extra_vars or {}),
+            },
+            tasks=[
+                {
+                    "ansible.builtin.import_role": {
+                        "name": str(ROOT / "ansible/roles/agent_cli"),
+                        "tasks_from": "rtk",
                     }
-                ],
-            }
-        ]
-        playbook = self.work / "play.yml"
-        playbook.write_text(yaml.safe_dump(play))
-        return subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
-            env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            check=False,
+                }
+            ],
         )
+        playbook = write_playbook(self.work / "play.yml", [play])
+        return run_playbook(playbook, env=ansible_test_environment(self.work))
 
     def test_installs_verified_binary_and_is_idempotent(self):
         first = self.run_play()

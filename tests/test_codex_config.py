@@ -2,19 +2,23 @@
 
 import shutil
 import stat
-import subprocess
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
 
-ROOT = Path(__file__).resolve().parents[1]
-# ini_file comes from community.general; CI installs the pinned version here
-# and Ansible ignores the checkout ansible.cfg that would point to it.
-COLLECTIONS = ROOT / ".ansible/collections"
+# ini_file comes from community.general, installed in COLLECTIONS.
+from ansible_test_environment import (
+    COLLECTIONS,
+    ROOT,
+    ansible_test_environment,
+    local_play,
+    run_playbook,
+    write_playbook,
+)
+
 FAKE_BINARY = "codex-dotfiles-test"
 STATUS_LINE = ["model-with-reasoning", "context-used", "used-tokens"]
 # What a real file looks like: trusted projects, a [tui] table with its own
@@ -54,41 +58,30 @@ class CodexConfigTests(unittest.TestCase):
         binary.chmod(0o755)
 
     def run_play(self, *, installed=True, check=False, status_line=None):
-        play = [
-            {
-                "hosts": "localhost",
-                "connection": "local",
-                "gather_facts": False,
-                "vars": {
-                    "agent_cli_home": str(self.home),
-                    "agent_cli_codex_binary": (
-                        FAKE_BINARY if installed else "codex-dotfiles-test-absent"
-                    ),
-                    "agent_cli_codex_status_line": (
-                        STATUS_LINE if status_line is None else status_line
-                    ),
-                },
-                "tasks": [
-                    {
-                        "ansible.builtin.import_role": {
-                            "name": str(ROOT / "ansible/roles/agent_cli"),
-                            "tasks_from": "codex",
-                        }
+        play = local_play(
+            vars={
+                "agent_cli_home": str(self.home),
+                "agent_cli_codex_binary": (
+                    FAKE_BINARY if installed else "codex-dotfiles-test-absent"
+                ),
+                "agent_cli_codex_status_line": (
+                    STATUS_LINE if status_line is None else status_line
+                ),
+            },
+            tasks=[
+                {
+                    "ansible.builtin.import_role": {
+                        "name": str(ROOT / "ansible/roles/agent_cli"),
+                        "tasks_from": "codex",
                     }
-                ],
-            }
-        ]
-        playbook = self.work / "play.yml"
-        playbook.write_text(yaml.safe_dump(play))
+                }
+            ],
+        )
+        playbook = write_playbook(self.work / "play.yml", [play])
         environment = ansible_test_environment(self.work)
         environment["PATH"] = f"{self.fake_bin}:{environment['PATH']}"
         environment["ANSIBLE_COLLECTIONS_PATH"] = str(COLLECTIONS)
-        command = ["ansible-playbook", "-i", "localhost,", str(playbook)]
-        if check:
-            command.append("--check")
-        return subprocess.run(
-            command, env=environment, capture_output=True, text=True, check=False
-        )
+        return run_playbook(playbook, *(["--check"] if check else []), env=environment)
 
     def assert_succeeded(self, result, changed):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

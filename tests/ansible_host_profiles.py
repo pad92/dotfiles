@@ -1,13 +1,16 @@
 """Resolve a machine's settings the way the playbooks do, through the inventory."""
 
 import json
-import subprocess
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment, ansible_tree
+from ansible_test_environment import (
+    ROOT,
+    ansible_test_environment,
+    ansible_tree,
+    run_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "ansible/inventory.yml"
 HOST_FILES = sorted((ROOT / "ansible/host_vars").glob("*.yml"))
 # Marks a variable that no group_vars or host_vars file sets.
@@ -62,14 +65,12 @@ def resolve_host_settings(hostname, work):
             ]
         )
     )
-    result = subprocess.run(
-        ["ansible-playbook", *inventory_arguments(hostname, work), str(playbook)],
-        cwd=work,
+    result = run_playbook(
+        Path(playbook),
+        *inventory_arguments(hostname, work),
         env=ansible_test_environment(Path(work)),
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
+        inventory=None,
+        cwd=Path(work),
     )
     if result.returncode != 0:
         raise AssertionError(result.stdout + result.stderr)

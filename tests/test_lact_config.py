@@ -1,22 +1,16 @@
 """Validate LACT discovery and migration without machine-specific identifiers."""
 
-import importlib.util
 import os
 import shutil
-import subprocess
 import tempfile
 import unittest
 from copy import deepcopy
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import load_module, ROOT, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location(
-    "lact_filters", ROOT / "ansible/filter_plugins/lact.py"
-)
-LACT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(LACT)
+LACT = load_module("lact_filters", ROOT / "ansible/filter_plugins/lact.py")
 PROFILES = {
     "Auto": {"performance_level": "auto"},
     "Adaptive": {"performance_level": "auto"},
@@ -183,16 +177,11 @@ class LactDeploymentTests(unittest.TestCase):
             ansible_config.write_text("[defaults]\n")
 
             def run(*arguments, expected_success=True):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "lact",
-                        *arguments,
-                    ],
+                result = run_playbook(
+                    playbook,
+                    "--tags",
+                    "lact",
+                    *arguments,
                     cwd=ROOT,
                     env={
                         **os.environ,
@@ -201,10 +190,6 @@ class LactDeploymentTests(unittest.TestCase):
                         "ANSIBLE_LOCAL_TEMP": str(work / "tmp"),
                         "ANSIBLE_DEPRECATION_WARNINGS": "True",
                     },
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
                 )
                 # Deep-copying lazy containers rebuilt the templar's plugin
                 # loaders, which warned about aliases.
