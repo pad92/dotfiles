@@ -20,6 +20,7 @@ parem = "parem"
 Monstre = "Monstre"
 Effet = "Effet"
 exemple = "exemple"
+appareil = "appareil"
 wronly = "wronly"
 # GNOME/freedesktop term for a program that renders previews (F3D).
 thumbnailer = "thumbnailer"

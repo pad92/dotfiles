@@ -3,9 +3,13 @@
     "format": " {status}",
     "format-disabled": "",
     "format-connected": " {num_connections}",
-    "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connecté(s)",
-    "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connecté(s)\n\n{device_enumerate}",
-    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+    "tooltip-format": "Bluetooth {controller_alias} : {status}\nclic : gestionnaire Bluetooth",
+    "tooltip-format-on": "Bluetooth {controller_alias} : activé, aucun appareil connecté\nclic : gestionnaire Bluetooth",
+    "tooltip-format-off": "Bluetooth {controller_alias} : éteint\nclic : gestionnaire Bluetooth",
+    "tooltip-format-disabled": "Bluetooth {controller_alias} : désactivé (rfkill)\nclic : gestionnaire Bluetooth",
+    "tooltip-format-connected": "Bluetooth {controller_alias} : {num_connections} connecté(s)\n{device_enumerate}\nclic : gestionnaire Bluetooth",
+    "tooltip-format-enumerate-connected": "  {device_alias}",
+    "tooltip-format-enumerate-connected-battery": "  {device_alias} : {device_battery_percentage} %",
     "format-no-controller": "",
     "on-click": "blueman-manager"
   }

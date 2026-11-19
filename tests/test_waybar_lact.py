@@ -57,6 +57,23 @@ class LactTooltipTests(unittest.TestCase):
         self.assertEqual(result["class"], "auto")
         self.assertIn("&lt;bus error&gt;", result["tooltip"])
 
+    def test_click_hint_only_when_the_click_can_work(self):
+        with patch("subprocess.run", side_effect=self.run_query):
+            self.assertIn("clic pour changer", API["status"]()["tooltip"])
+
+        def query(arguments, **kwargs):
+            if arguments == ["lact", "cli", "profile", "list"]:
+                return subprocess.CompletedProcess(arguments, 0, "Default\nAuto\n", "")
+            return self.run_query(arguments, **kwargs)
+
+        with patch("subprocess.run", side_effect=query):
+            result = API["status"]()
+            with self.assertRaises(ValueError):
+                API["cycle_profile"]()
+        self.assertEqual(result["class"], "unavailable")
+        self.assertNotIn("clic", result["tooltip"])
+        self.assertIn("Profils LACT requis", result["tooltip"])
+
     def test_unavailable_lact_hides_the_indicator(self):
         with patch("subprocess.run", side_effect=FileNotFoundError("lact")):
             self.assertEqual(API["status"](), {"text": ""})

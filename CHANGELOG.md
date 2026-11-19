@@ -125,6 +125,15 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **Waybar tooltips**:
+  - The screen recording tooltip is now in French, like the rest of the bar.
+  - The Bluetooth tooltips no longer show controller or device MAC
+    addresses, and they list connected devices by name, with their battery
+    when known.
+  - The volume tooltip names both clicks: next output and `pavucontrol`.
+  - The headset module reads `headsetcontrol -o json` and shows a tooltip
+    with the device name, the charge state and the time of the reading,
+    since Waybar polls it only once an hour.
 - **Documentation**:
   - The README documents the Neovim, Vim and Zsh packages with one section and one
     command each, and no longer repeats the screenshot, editor
@@ -301,6 +310,14 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Waybar tooltips**:
+  - The screen recording tooltip escapes the output path, so a directory
+    containing `&` or `<` no longer breaks the Pango markup.
+  - The LACT tooltip offers "clic pour changer" only when the three required
+    profiles exist; otherwise it shows `GPU profils?` and lists them, since
+    the click would fail.
+  - The Bluetooth tooltip has its own text when the adapter is off or
+    blocked by rfkill, instead of the generic format.
 - **make clean**: `make clean` failed with "Unable to resolve managed paths"
   since ansible-core 2.22, which shows Vault values as `$REDACTED$` in what
   `ansible-inventory` prints: a secret integer made the JSON invalid. The

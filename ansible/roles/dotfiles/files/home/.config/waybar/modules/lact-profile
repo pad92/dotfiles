@@ -62,8 +62,11 @@ def status() -> dict[str, str]:
     except (OSError, subprocess.SubprocessError):
         return {"text": ""}
     text, css_class = PROFILE_DISPLAY.get(profile, ("?", "unknown"))
-    tooltip = f"LACT : {profile or 'aucun'} — clic pour changer"
-    if not set(PROFILES).issubset(available):
+    tooltip = f"LACT : {profile or 'aucun'}"
+    if set(PROFILES).issubset(available):
+        tooltip += " — clic pour changer"
+    else:
+        # cycle_profile() refuses to run without these profiles: no click hint.
         text, css_class = "GPU profils?", "unavailable"
         tooltip += "\nProfils LACT requis : " + ", ".join(PROFILES)
     tooltip += "\n\n" + "\n".join(

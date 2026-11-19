@@ -288,7 +288,9 @@ A running user systemd manager is required to apply either state.
 Both Waybar layouts include the LACT indicator. Its tooltip shows the active
 LACT profile, the power-profiles-daemon profile and service state, and the
 ananicy-cpp service state. Missing services and read errors are reported there.
-The tooltip refreshes every five seconds; clicking still cycles LACT profiles.
+The tooltip refreshes every five seconds; clicking cycles the LACT profiles
+`Auto`, `Adaptive` and `PreferMaximumPerformance`. When one of them is missing,
+the indicator shows `GPU profils?`, lists them, and drops the click hint.
 The indicator is hidden when LACT is unavailable. The script uses Python's
 standard library and `powerprofilesctl`, supplied by power-profiles-daemon.
 Deploy with `dotfiles_deploy`; the role reloads Waybar when its configuration

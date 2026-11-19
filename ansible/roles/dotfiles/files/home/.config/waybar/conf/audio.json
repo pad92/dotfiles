@@ -12,13 +12,16 @@
       "car": "",
       "default": ["", ""]
     },
+    "tooltip-format": "{desc} : {volume} %\nclic : sortie suivante — clic droit : pavucontrol",
     "on-click": "~/.config/waybar/modules/cycle-default-sink",
     "on-click-right": "pavucontrol"
   },
   "custom/headsetcontrol": {
     "format": "{}",
     "exec": "~/.config/waybar/modules/headsetcontrol",
-    "tooltip": false,
+    "return-type": "json",
+    "hide-empty-text": true,
+    "tooltip": true,
     "interval": 3600
   }
 }
