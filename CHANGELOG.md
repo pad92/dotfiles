@@ -125,6 +125,31 @@ Release history and changes planned for the next version.
 
 ### Changed
 
+- **hyprlock**:
+  - `playerctlock.sh` reads every MPRIS field with a single
+    `playerctl metadata --format` call and keeps the result for two seconds in
+    `$XDG_RUNTIME_DIR/hyprlock-mpris/metadata`. The media labels, which
+    refresh together, now share one `playerctl` call instead of starting
+    one each. Tested in `tests/hyprlock-playerctlock.sh`.
+  - `status.sh` reads the power supply attributes with `read` instead of
+    one `cat` process per file.
+- **Waybar**: the LACT profile and VPN modules poll every 30 seconds
+  instead of 5. A click still refreshes them at once, and the VPN toggle
+  still sends its signal.
+- **Ansible facts**: the playbooks gather the `min` and `hardware` fact
+  subsets instead of `all`; no role reads the network or virtual facts.
+  `workstation_fact_subset` still overrides it.
+- **pre-commit**: the unit and shell test hook (`make coverage test-shell`)
+  runs before a push instead of before each commit. Run
+  `pre-commit install` again to install the pre-push hook.
+- **GitLab CI**:
+  - `shell_tests` runs `make test-shell`, so the Makefile holds the one
+    list of shell tests.
+  - The new `pages_tests` job runs `scripts/ci/test_gen_pages.py` when the
+    documentation generator, its tests or the Markdown files change.
+- **Ansible filters**: `protected_package` is the only package protection
+  rule; the unused `parse_package_state` and `protected_package` Jinja
+  filters are no longer registered.
 - **Waybar tooltips**:
   - The bar is in English only: the VPN, LACT, headset and Bluetooth
     tooltips are no longer in French, and the clock and its calendar use
@@ -317,8 +342,22 @@ Release history and changes planned for the next version.
   - The installer keeps each game's DPI when it toggles MangoHud or enables
     every game, and still leaves custom launch options alone.
 
+### Removed
+
+- **Zsh**: dead code that nothing loaded or called: `init/spectrum.zsh`,
+  `init/termite.zsh`, `functions/archive.zsh`, the `_extract` completion
+  and the `github` plugin. The deployment removes these files from the home
+  directory.
+- **OBS**: the unused `obs_v4l2loopback_options` register.
+
 ### Fixed
 
+- **Documentation**:
+  - `dist/arch/dns-migration.md` names the current DNS variables
+    (`dns_manage`, `dns_relay_files`, `dns_docker_bridge_ip`) and their
+    `host_vars` file.
+  - `dist/arch/install.md` names `gpu_initramfs_generator`.
+  - The README tag table lists `iwlwifi` and `dotfiles_rtk`.
 - **Waybar tooltips**:
   - The screen recording tooltip escapes the output path, so a directory
     containing `&` or `<` no longer breaks the Pango markup.

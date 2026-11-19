@@ -23,7 +23,6 @@
     owner: root
     group: root
     mode: '0644'
-  register: obs_v4l2loopback_options
   notify: Report v4l2loopback reload required
 
 - name: Load v4l2loopback at boot

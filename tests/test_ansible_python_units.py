@@ -193,6 +193,7 @@ class PackageFilterTests(unittest.TestCase):
         self.assertTrue(filters.protected_package("linux-cachyos"))
         self.assertTrue(filters.protected_package("glibc"))
         self.assertFalse(filters.protected_package("jq"))
+        self.assertTrue(filters.protected_package("jq", {"jq"}))
         self.assertEqual(
             filters.package_removal_candidates(
                 ["jq", "extra", "linux-lts", "old"],
@@ -269,7 +270,10 @@ class PackageFilterTests(unittest.TestCase):
         self.assertIs(exported["dotfiles_to_lua"], filters.to_lua)
         self.assertIs(exported["usb_vendor_present"], filters.usb_vendor_present)
         self.assertIs(exported["add_detected_group"], filters.add_detected_group)
-        self.assertEqual(len(exported), 17)
+        self.assertEqual(len(exported), 15)
+        # Python helpers, called by other filters but never by a template.
+        self.assertNotIn("parse_package_state", exported)
+        self.assertNotIn("protected_package", exported)
         self.assertEqual(
             set(lact.FilterModule().filters()), {"lact_gpu_ids", "lact_config"}
         )

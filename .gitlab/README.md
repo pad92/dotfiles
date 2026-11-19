@@ -27,7 +27,8 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues. |
 | `unit_tests`         | test     | Every default-branch, tag and scheduled pipeline; elsewhere, changes to code, tests, roles, scripts or CI settings  | Run the Python suite in parallel under coverage.                            |
-| `shell_tests`        | test     | Same as `unit_tests`                                                                                                | Run the shell and zsh test scripts next to the Python suite.                |
+| `shell_tests`        | test     | Same as `unit_tests`                                                                                                | Run `make test-shell` next to the Python suite.                             |
+| `pages_tests`        | test     | Same changes as `build_pages_review`, on any branch; never on tags                                                  | Run the page generator tests (`test_gen_pages.py`).                         |
 | `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.  |
 | `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.               |
 | `package_zsh`        | package  | Every default-branch pipeline; elsewhere, changes to the Zsh tree, `.zshrc.j2` or the build scripts                 | Package Zsh configuration and pinned plugins as `zsh.tar.gz`.               |
@@ -56,8 +57,9 @@ The job runs on Python 3.14 with `COVERAGE_CORE=sysmon`, which makes branch
 coverage cheaper than the default tracer. Tests started as subprocesses, such as
 `ansible-playbook`, are not traced.
 
-`shell_tests` runs the scripts of `tests/*.sh` and `tests/*.zsh` next to
-`unit_tests`, on the same Python image and requirements. It only reads the pip
+`shell_tests` runs `make test-shell`, the shell and zsh scripts of `tests/`,
+next to `unit_tests`, on the same Python image and requirements. The Makefile
+holds the list, so a new script runs in CI and locally alike. It only reads the pip
 cache, so the two concurrent jobs never overwrite each other's archive.
 
 On merge requests and branch pushes, the two jobs run only when a change
@@ -68,6 +70,14 @@ skip them. A branch with an open merge request runs them only in the merge
 request pipeline, not in the push pipeline. A new branch has no diff to
 compare, so GitLab runs them. When a test starts reading
 another path, add it to `.unit_test_rules` in `.gitlab-ci.yml`.
+
+### `pages_tests`
+
+This job runs `scripts/ci/test_gen_pages.py` on `alpine:latest` with `git`,
+`python3`, `py3-markdown` and `py3-pygments`, on the changes that start
+`build_pages_review`, plus the test file and the Hyprtoolkit palette that the
+style tests compare with `style.css`. Some tests build a throwaway Git
+repository; the Pages jobs do not install Git, so the generator tests run apart.
 
 ### `pages`
 

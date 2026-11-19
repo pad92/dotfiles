@@ -12,21 +12,64 @@ readonly CACHE_RETENTION_MINUTES=1440
 readonly FAILURE_RETRY_MINUTES=5
 readonly MAX_CACHE_FILES=100
 readonly MAX_CACHE_ARTIFACTS=300
+# The hyprlock labels update together: the first one queries playerctl, the
+# others read its snapshot while it is fresh.
+readonly SNAPSHOT_MAX_AGE_SECONDS=2
+readonly SNAPSHOT_SEPARATOR=$'\x1f'
+readonly -a METADATA_KEYS=(
+    playerName status xesam:title xesam:artist xesam:album xesam:url mpris:artUrl mpris:length
+)
+declare -A METADATA=()
 
 usage()
 {
     echo "Usage: $0 --title | --arturl | --artist | --length | --status | --album | --source"
 }
 
+# Fills METADATA from one playerctl call, or from the snapshot of a label that
+# ran less than SNAPSHOT_MAX_AGE_SECONDS ago. Call it outside $(...), so the
+# values reach the functions below.
+load_metadata()
+{
+    local snapshot="" output="" format="" key now mtime fresh=0
+
+    if prepare_art_dir; then
+        snapshot="$ART_DIR/metadata"
+        if [[ -f $snapshot && ! -L $snapshot ]]; then
+            printf -v now '%(%s)T' -1
+            mtime=$(stat -c %Y -- "$snapshot" 2>/dev/null) || mtime=0
+            (( now - mtime >= 0 && now - mtime <= SNAPSHOT_MAX_AGE_SECONDS )) && fresh=1
+        fi
+    fi
+
+    if (( fresh )); then
+        IFS= read -r -d '' output < "$snapshot" || true
+    else
+        for key in "${METADATA_KEYS[@]}"; do
+            format+="{{ $key }}$SNAPSHOT_SEPARATOR"
+        done
+        output=$(timeout 2s playerctl metadata --format "${format}end" 2>/dev/null) || output=""
+        if [[ -n $snapshot ]] && printf '%s' "$output" > "$snapshot.$$"; then
+            mv -f -- "$snapshot.$$" "$snapshot" || rm -f -- "$snapshot.$$"
+        fi
+    fi
+
+    # Without a player, or with a truncated snapshot, every field stays empty.
+    [[ $output == *"${SNAPSHOT_SEPARATOR}end" ]] || return 0
+    for key in "${METADATA_KEYS[@]}"; do
+        METADATA[$key]=${output%%"$SNAPSHOT_SEPARATOR"*}
+        output=${output#*"$SNAPSHOT_SEPARATOR"}
+    done
+}
+
 get_metadata()
 {
-    local key=$1
-    timeout 2s playerctl metadata --format "{{ $key }}" 2>/dev/null || true
+    printf '%s\n' "${METADATA[$1]-}"
 }
 
 get_status()
 {
-    timeout 2s playerctl status 2>/dev/null || true
+    get_metadata status
 }
 
 escape_metadata()
@@ -116,17 +159,15 @@ get_source_info()
     esac
 }
 
-init_art_dir()
+# Sets ART_DIR to a private directory of the user; -O compares the owner with
+# the effective user without starting stat.
+prepare_art_dir()
 {
-    local uid cache_file
-    local -a excess_cache_files
-
-    uid=$(id -u) || return 1
     if [[ -n ${XDG_RUNTIME_DIR:-} && -d $XDG_RUNTIME_DIR && ! -L $XDG_RUNTIME_DIR \
-        && -w $XDG_RUNTIME_DIR && $(stat -c %u -- "$XDG_RUNTIME_DIR" 2>/dev/null) == "$uid" ]]; then
+        && -w $XDG_RUNTIME_DIR && -O $XDG_RUNTIME_DIR ]]; then
         ART_DIR="$XDG_RUNTIME_DIR/hyprlock-mpris"
     else
-        ART_DIR="${TMPDIR:-/tmp}/hyprlock-mpris-$uid"
+        ART_DIR="${TMPDIR:-/tmp}/hyprlock-mpris-$EUID"
     fi
 
     [[ ! -L $ART_DIR ]] || return 1
@@ -134,8 +175,15 @@ init_art_dir()
     if [[ ! -e $ART_DIR ]]; then
         mkdir -m 700 -- "$ART_DIR" || return 1
     fi
-    [[ -d $ART_DIR && ! -L $ART_DIR \
-        && $(stat -c %u -- "$ART_DIR" 2>/dev/null) == "$uid" ]] || return 1
+    [[ -d $ART_DIR && ! -L $ART_DIR && -O $ART_DIR ]]
+}
+
+init_art_dir()
+{
+    local cache_file
+    local -a excess_cache_files
+
+    prepare_art_dir || return 1
     chmod 700 -- "$ART_DIR" || return 1
     find "$ART_DIR" -maxdepth 1 -type f -name 'mpris_artUrl_*' \
         -mmin "+$CACHE_RETENTION_MINUTES" -delete 2>/dev/null || true
@@ -346,6 +394,8 @@ if (( $# != 1 )); then
     usage
     exit 1
 fi
+
+load_metadata
 
 case "$1" in
     --title)
