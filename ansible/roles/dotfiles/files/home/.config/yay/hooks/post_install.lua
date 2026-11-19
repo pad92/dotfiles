@@ -1,9 +1,5 @@
 local yay = rawget(_G, "yay")
 
-if require("hook_switch").disabled("post_install") then
-  return
-end
-
 yay.create_autocmd("PostInstall", {
   desc = "post-install checks: orphans and pacnew files",
   callback = function(event)

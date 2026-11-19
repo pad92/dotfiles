@@ -1,9 +1,5 @@
 local yay = rawget(_G, "yay")
 
-if require("hook_switch").disabled("orphan_check") then
-  return
-end
-
 local known_maintainers = {}
 
 local state_path = (os.getenv("XDG_DATA_HOME") or os.getenv("HOME") .. "/.local/share") .. "/yay/maintainers.lua"

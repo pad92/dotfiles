@@ -1,9 +1,5 @@
 local yay = rawget(_G, "yay")
 
-if require("hook_switch").disabled("pkgbuild_scan") then
-  return
-end
-
 local suspicious = {
   { "curl[^|]*|[%s]*sh", "pipe from curl into shell" },
   { "curl[^|]*|[%s]*bash", "pipe from curl into shell" },
