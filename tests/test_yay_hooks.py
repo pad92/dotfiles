@@ -2,8 +2,9 @@
 
 Each hook has an on/off switch in the environment, YAY_<HOOK NAME>, that
 init.lua checks through hook_switch.lua before loading the hook: 0, off, false
-or no turn the hook off, any other value or no value keeps it on. recent_update is also checked for what it does: it holds
-back AUR upgrades modified less than 48 hours ago.
+or no (any case, surrounding spaces ignored) turn the hook off, any other value
+or no value keeps it on. recent_update is also checked for what it does: it
+holds back AUR upgrades modified less than 48 hours ago.
 """
 
 import json
@@ -27,7 +28,7 @@ HOOKS = {
     "post_install": "PostInstall",
     "recent_update": "UpgradeSelect",
 }
-OFF_VALUES = ("0", "off", "false", "no", "OFF", "False")
+OFF_VALUES = ("0", "off", "false", "no", "OFF", "False", " off", "0\n")
 ON_VALUES = ("", "1", "on", "yes", "true", "2")
 
 # arg[1] = yay config dir, arg[2] = "upgrade" to call the UpgradeSelect
@@ -102,13 +103,16 @@ def run_init(switches=None, upgrade=False):
         env.update(switches or {})
         runner = Path(data_home) / "runner.lua"
         runner.write_text(RUNNER)
-        out = subprocess.run(
+        result = subprocess.run(
             [LUA, str(runner), str(YAY), "upgrade" if upgrade else ""],
             capture_output=True,
             text=True,
-            check=True,
             env=env,
-        ).stdout.splitlines()
+        )
+    # Show the Lua error, not only the exit status.
+    if result.returncode != 0:
+        raise AssertionError(f"init.lua failed:\n{result.stderr}")
+    out = result.stdout.splitlines()
     loaded, events, excluded, warnings = (json.loads(line) for line in out)
     return loaded, events, excluded, warnings
 
@@ -152,7 +156,9 @@ class HookSwitchTest(unittest.TestCase):
                     # Turning a check off is never silent.
                     self.assertEqual(
                         warnings,
-                        [f"{hook} hook disabled by {var(hook)}={value.lower()}"],
+                        [
+                            f"{hook} hook disabled by {var(hook)}={value.strip().lower()}"
+                        ],
                     )
 
     def test_all_hooks_off(self):

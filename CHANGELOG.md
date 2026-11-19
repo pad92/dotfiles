@@ -9,8 +9,9 @@ Release history and changes planned for the next version.
 - **yay**: each Lua hook has an on/off switch in the environment, and
   `init.lua` loads a hook only when its switch is on (new `hook_switch.lua`):
   `YAY_ORPHAN_CHECK`, `YAY_PKGBUILD_SCAN`, `YAY_POST_INSTALL` and
-  `YAY_RECENT_UPDATE`. `0`, `off`, `false` or `no` turn the hook off, for example `YAY_RECENT_UPDATE=0 yay -Syu` to skip the 48-hour
-  AUR cooldown once. Any other value keeps the hook on, and yay prints a
+  `YAY_RECENT_UPDATE`. `0`, `off`, `false` or `no` turn the hook off, for
+  example `YAY_RECENT_UPDATE=0 yay -Syu` to skip the 48-hour AUR cooldown
+  once. Any other value keeps the hook on, and yay prints a
   warning for each hook that is off. Tested in `tests/test_yay_hooks.py`.
 - **Zsh package**:
   - The `package_zsh` GitLab job and the `package-zsh.yml` GitHub workflow
