@@ -89,6 +89,12 @@ PROHIBITED_PACKAGE_NAMES = {
     "man",
     "mlocate",
     "p7zip",
+    # Its `realtime` group lets every process of the user lower its nice
+    # value: Chromium and Electron then raise their threads to -8, the
+    # processes they start inherit it, and a CPU-heavy job started from them
+    # takes the CPU from a WebRTC call. rtkit gives PipeWire real-time
+    # scheduling instead.
+    "realtime-privileges",
     "tlp",
     "xf86-video-intel",
 }
@@ -213,6 +219,14 @@ class ArchPackageGroupTests(unittest.TestCase):
         for command, package in VAULT_TOGGLE_COMMAND_PACKAGES.items():
             with self.subTest(command=command):
                 self.assertIn(package, packages)
+
+    def test_default_groups_install_rtkit_with_pipewire(self):
+        # Without realtime-privileges, rtkit is the only way PipeWire gets
+        # real-time scheduling. It is only an optional dependency of
+        # pipewire, so the list must name it.
+        installed = self.default_group_packages()
+        self.assertIn("pipewire", installed)
+        self.assertIn("rtkit", installed)
 
     def test_default_groups_install_the_notification_font(self):
         font = next(

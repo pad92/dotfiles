@@ -109,17 +109,23 @@ class InstallGuideRoleTests(unittest.TestCase):
             }
         )
 
-    def test_base_group_users_join_realtime(self):
-        output = self.run_user_groups(["01_base"], ["realtime", "wheel"])
-        self.assertIn("JOIN ['realtime']", output)
+    def test_razer_group_users_join_plugdev(self):
+        output = self.run_user_groups(["25_razer"], ["plugdev", "wheel"])
+        self.assertIn("JOIN ['plugdev']", output)
 
-    def test_missing_realtime_group_is_reported_not_created(self):
-        output = self.run_user_groups(["01_base"], ["wheel"])
+    def test_missing_plugdev_group_is_reported_not_created(self):
+        output = self.run_user_groups(["25_razer"], ["wheel"])
         self.assertIn("JOIN []", output)
-        self.assertIn("group does not exist: realtime", output)
+        self.assertIn("group does not exist: plugdev", output)
 
-    def test_unselected_base_group_joins_nothing(self):
-        output = self.run_user_groups(["20_apps"], ["realtime"])
+    def test_unselected_razer_group_joins_nothing(self):
+        output = self.run_user_groups(["20_apps"], ["plugdev"])
+        self.assertIn("JOIN []", output)
+
+    def test_base_group_does_not_join_realtime(self):
+        # realtime lets every user process take a negative nice value, which
+        # starves a WebRTC call under load (see test_arch_package_lists).
+        output = self.run_user_groups(["01_base"], ["realtime", "wheel"])
         self.assertIn("JOIN []", output)
 
     # time_sync: never run two NTP clients.

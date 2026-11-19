@@ -594,11 +594,22 @@ uwsm app -- alacritty
 
 ## Real-time audio scheduling
 
-The `realtime-privileges` package sets PAM limits and creates a `realtime`
-group for real-time scheduling. This can help prevent audio dropouts under high
-CPU load. It is part of the `01_base` group, and the `package_services` tag adds
-the regular user to `realtime`. Log out and back in, or reboot, for the new
-group membership to take effect.
+PipeWire gets real-time scheduling from `rtkit`, part of the `01_base` group.
+Do not install `realtime-privileges`: its limits let Chromium and Electron apps
+run at nice -8, along with every process they start, and that load then
+starves a WebRTC call in Firefox.
+
+On a machine that already has it, a deploy does not remove it. Reconcile with
+`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"` and type `REMOVE`;
+the reconcile only removes packages this repository installed, so otherwise
+run `sudo pacman -Rs realtime-privileges`. Log out and back in, since the
+limits are read at login.
+
+To check that PipeWire has a real-time thread (`FF` class):
+
+```sh
+ps -L -o cls=,rtprio=,comm= -p "$(pgrep -u "$USER" -x pipewire)"
+```
 
 ## Security follow-up
 

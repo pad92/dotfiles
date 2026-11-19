@@ -50,7 +50,7 @@ Release history and changes planned for the next version.
   (Wi-Fi and audio power saving on portable machines), `wireless_regdom`
   (`FR` on the workstations) and `gnome_keyring` (a TTY login unlocks the
   keyring). `package_services` also enables `fstrim.timer` and
-  `paccache.timer` and adds the user to `realtime`.
+  `paccache.timer`.
 - **Ansible Vault**: `vault-toggle` encrypts or decrypts a file in place and
   refuses to decrypt a file Git would commit. Zed, now installed with
   `10_sre_devops` and its `tasks.json` and `keymap.json` managed, runs it on
@@ -301,6 +301,18 @@ Release history and changes planned for the next version.
 
 ### Fixed
 
+- **Teams audio under load**: `01_base` installs `rtkit` instead of
+  `realtime-privileges`, and `package_services` no longer adds the user to
+  `realtime`. Its limits let Chromium and Electron run their threads at nice
+  -8, and the processes they start inherited it: a test run from Claude
+  Desktop took the CPU from a Teams call in Firefox (nice 0), whose voice
+  crackled and sped up. PipeWire now gets real-time scheduling from rtkit.
+  `make install` leaves an installed `realtime-privileges` in place: a
+  reconcile (`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`)
+  offers to remove it (`REMOVE` confirmation) when this repository installed
+  it, otherwise run `sudo pacman -Rs realtime-privileges`. Leaving the group
+  is optional (`sudo gpasswd -d "$USER" realtime`); log in again, since the
+  limits are read at login.
 - **make clean**: `make clean` failed with "Unable to resolve managed paths"
   since ansible-core 2.22, which shows Vault values as `$REDACTED$` in what
   `ansible-inventory` prints: a secret integer made the JSON invalid. The
