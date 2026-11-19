@@ -22,7 +22,7 @@ system-wide client hardening stay in the `hardening` role.
 | :------------------------------- | :-------------------------------------- | :----------------------------------------------------------------------- |
 | `ssh_config_options`             | `vault_ssh_config_options`, else `{}`   | `Host *` options, as `{Option: value}`. A list repeats the option.       |
 | `ssh_config_fragments`           | `vault_ssh_config_fragments`, else `{}` | Per-host blocks, as `{file name: OpenSSH text}`, written to `config.d/`. |
-| `ssh_config_fragments_exclusive` | `false`                                 | Delete the files of `config.d/` that the vault does not list.            |
+| `ssh_config_fragments_exclusive` | `false`                                 | Delete the files of `config.d/` that the vault does not list (not dirs). |
 | `ssh_authorized_keys`            | `vault_ssh_authorized_keys`, else `[]`  | Public keys allowed to log in; set, the list replaces the file.          |
 | `ssh_known_hosts`                | `vault_ssh_known_hosts`, else `[]`      | Pinned host keys, as `[{name, key}]`; added, the other entries stay.     |
 | `ssh_keys`                       | `vault_ssh_keys`, else `[]`             | Key pairs, as `[{name, private, public}]`; `public` is optional.         |
@@ -47,15 +47,20 @@ ansible-vault encrypt --vault-password-file .vault ansible/group_vars/all/vault_
 ansible-vault edit --vault-password-file .vault ansible/group_vars/all/vault_ssh.yml
 ```
 
-A copy that still holds a key placeholder fails the run before any change.
+A copy that still holds a key placeholder fails the run before any change:
+private keys must hold an OpenSSH private key, and public keys,
+`authorized_keys` lines and `known_hosts` keys a key type followed by its
+base64 blob.
 Do not keep the sample itself in `group_vars/all`: Ansible loads every `.yml`
 file there.
 
 ## Behavior
 
 Before writing anything, the role checks the values. Each one lands in a
-line-based file, so a newline in an option or a key, or a slash in a file
-name, fails the run with a message that names the rule and never the value.
+line-based file, so a newline in an option or a key, an option value that is
+not a single scalar, a slash in a file name, or a key name already used in
+`~/.ssh` (`config`, `known_hosts`, an `ssh_extra_dirs` entry...) fails the run
+with a message that names the rule and never the value.
 
 - `~/.ssh`, `config.d/` and the extra directories are `0700`.
 - `~/.ssh/config` (`0600`) includes `config.d/*` first, then the `Host *`

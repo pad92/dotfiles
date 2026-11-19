@@ -41,6 +41,18 @@ def fingerprints(listing: str) -> list[str]:
     ]
 
 
+def agent_pid(home: Path) -> str:
+    """The pid of the gpg-agent of home, started on demand."""
+    result = subprocess.run(
+        ["gpg-connect-agent", "--homedir", str(home), "getinfo pid", "/bye"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    return next(line for line in result.stdout.splitlines() if line.startswith("D "))
+
+
 def stop_agents(home: Path):
     """gpg starts an agent per home directory; stop it with the test."""
     if home.exists():
@@ -192,6 +204,56 @@ class GpgTaskTests(RolePlayMixin, unittest.TestCase):
         self.assertIn(
             "the armor does not hold the key of the fingerprint",
             " ".join(output.split()),
+        )
+
+    @unittest.skipUnless(
+        GPG and shutil.which("gpg-connect-agent"), "requires gpg-connect-agent"
+    )
+    def test_common_conf_change_restarts_the_agent_other_files_reload_it(self):
+        # common.conf (use-keyboxd...) is read only at start: a reload is not
+        # enough, the daemons must stop so the import already uses it.
+        self.run_play({"vault_gpg_config": {"gpg.conf": ["armor"]}})
+        before = agent_pid(self.gnupg)
+        self.run_play({"vault_gpg_config": {"gpg.conf": ["armor", "no-greeting"]}})
+        self.assertEqual(agent_pid(self.gnupg), before)
+        self.run_play(
+            {
+                "vault_gpg_config": {
+                    "gpg.conf": ["armor", "no-greeting"],
+                    "common.conf": ["use-keyboxd"],
+                }
+            }
+        )
+        self.assertNotEqual(agent_pid(self.gnupg), before)
+
+    # --- Check mode ------------------------------------------------------------
+
+    @unittest.skipUnless(GPG, "requires gpg")
+    def test_check_mode_on_a_fresh_home_succeeds_and_writes_nothing(self):
+        # make check runs the playbook with --check before the first deploy:
+        # gpg itself would create ~/.gnupg if the role ran it.
+        fingerprint, secret, _public = self.make_gpg_key("fresh")
+        self.run_play(
+            {
+                "vault_gpg_config": {"gpg.conf": ["armor"]},
+                "vault_gpg_keys": [
+                    {"fingerprint": fingerprint, "armor": secret, "trust": "ultimate"}
+                ],
+            },
+            extra=("--check",),
+        )
+        self.assertEqual(list(self.home.iterdir()), [])
+
+    @unittest.skipUnless(GPG, "requires gpg")
+    def test_check_mode_on_a_deployed_keyring_succeeds_and_changes_nothing(self):
+        fingerprint, _secret, public = self.make_gpg_key("deployed")
+        key = {"fingerprint": fingerprint, "armor": public, "trust": "marginal"}
+        self.run_play({"vault_gpg_keys": [key]})
+        self.run_play(
+            {"vault_gpg_keys": [{**key, "trust": "full"}]}, extra=("--check",)
+        )
+        self.assertIn(
+            f"{fingerprint}:4:", gpg(self.gnupg, "--export-ownertrust").splitlines()
         )
 
     # --- Validation ----------------------------------------------------------

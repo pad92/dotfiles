@@ -32,7 +32,11 @@
         that:
           - ssh_config_options is mapping
           - ssh_config_options.keys() | reject('match', '^[A-Za-z]+$') | list | length == 0
-          - option_values | select('mapping') | list | length == 0
+          # One scalar per line: a nested list or a null value would be
+          # written as its Python representation.
+          - >-
+            option_values | reject('string') | reject('number') | reject('boolean')
+              | list | length == 0
           - option_values | map('string') | select('search', '[\r\n]') | list | length == 0
           - ssh_config_fragments is mapping
           - ssh_config_fragments.keys() | reject('match', file_name) | list | length == 0
@@ -40,32 +44,56 @@
           - ssh_authorized_keys is sequence and ssh_authorized_keys is not string
           - ssh_authorized_keys | reject('string') | list | length == 0
           - ssh_authorized_keys | map('trim') | select('search', '[\r\n]') | list | length == 0
+          # A key type followed by its base64 blob: the <...> placeholders of
+          # the sample never match, so they cannot replace authorized_keys.
+          - ssh_authorized_keys | reject('search', public_key) | list | length == 0
           - ssh_known_hosts is sequence and ssh_known_hosts is not string
           - ssh_known_hosts | reject('mapping') | list | length == 0
           - ssh_known_hosts | rejectattr('name', 'defined') | list | length == 0
           - ssh_known_hosts | rejectattr('key', 'defined') | list | length == 0
+          - >-
+            ssh_known_hosts | map(attribute='key') | reject('string') | list
+              | length == 0
+          - >-
+            ssh_known_hosts | map(attribute='key') | map('trim')
+              | select('search', '[\r\n]') | list | length == 0
+          - >-
+            ssh_known_hosts | map(attribute='key') | reject('search', public_key)
+              | list | length == 0
           - ssh_keys is sequence and ssh_keys is not string
           - ssh_keys | reject('mapping') | list | length == 0
           - ssh_keys | rejectattr('name', 'defined') | list | length == 0
           - ssh_keys | rejectattr('private', 'defined') | list | length == 0
           - ssh_keys | map(attribute='name') | reject('match', file_name) | list | length == 0
           - >-
-            ssh_keys | map(attribute='name') | select('in', reserved_names) | list
-              | length == 0
+            ssh_keys | map(attribute='name') | select('in', reserved_names + ssh_extra_dirs)
+              | list | length == 0
           - ssh_keys | map(attribute='name') | select('search', '[.]pub$') | list | length == 0
           - >-
             ssh_keys | map(attribute='private') | reject('search', 'PRIVATE KEY-----') | list
+              | length == 0
+          - >-
+            ssh_keys | selectattr('public', 'defined') | map(attribute='public')
+              | reject('string') | list | length == 0
+          - >-
+            ssh_keys | selectattr('public', 'defined') | map(attribute='public')
+              | map('trim') | reject('match', public_key ~ '[^\r\n]*$') | list
               | length == 0
         fail_msg: >-
           Invalid SSH settings in the vault. ssh_config_options: {Option:
           value} with letter-only options and single-line values.
           ssh_config_fragments and ssh_keys names: letters, digits, dot, dash
           or underscore, not starting with a dot; key names other than config,
-          authorized_keys, known_hosts and *.pub; private: an OpenSSH private
-          key. authorized_keys: one key per line. known_hosts: [{name, key}].
+          authorized_keys, known_hosts, ssh_extra_dirs and *.pub; private: an
+          OpenSSH private key; public: one public key line. authorized_keys:
+          one public key per line. known_hosts: [{name, key}], key being one
+          known_hosts line.
       vars:
-        option_values: '{{ ssh_config_options.values() | list | flatten(levels=1) }}'
+        option_values: >-
+          {{ ssh_config_options.values() | list | flatten(levels=1, skip_nulls=false) }}
         file_name: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
+        # Key type and the start of its base64 blob, as in ssh-keygen output.
+        public_key: '(^|[ ,])(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+ AAAA[A-Za-z0-9+/]'
         reserved_names:
           [config, config.d, authorized_keys, known_hosts, known_hosts.old]
 
@@ -104,10 +132,13 @@
         # .invalid never resolves (RFC 6761).
         ssh_validate: '{{ ssh_binary }} -G -F %s ssh-role-validate.invalid'
 
+    # Files and links only: a directory is never removed with its content.
+    # Hidden files stay: the Include glob (*) does not read them.
     - name: List the per-host SSH files
       ansible.builtin.find:
         paths: '{{ ssh_dir }}/config.d'
         file_type: any
+        hidden: false
       register: ssh_fragment_files
       when: ssh_config_managed and ssh_config_fragments_exclusive
 
@@ -117,7 +148,7 @@
         path: '{{ item }}'
         state: absent
       loop: >-
-        {{ ssh_fragment_files.files | map(attribute='path')
+        {{ ssh_fragment_files.files | rejectattr('isdir') | map(attribute='path')
            | reject('in', ssh_config_fragments.keys()
                           | map('regex_replace', '^', ssh_dir ~ '/config.d/') | list)
            | list }}

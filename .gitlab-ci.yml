@@ -43,7 +43,9 @@ stages:
 
 .alpine_test_tools:
   before_script:
-    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4 tar
+    # openssh-client-default (ssh, ssh-keygen) and gnupg: the ssh and gpg
+    # role tests run the real tools, known_hosts needs ssh-keygen.
+    - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4 tar openssh-client-default gnupg
 
 # Python 3.14 et le coeur sysmon de coverage allègent le traçage ; les tests
 # lancés en sous-processus ne sont pas tracés (voir .coveragerc). Le partage en

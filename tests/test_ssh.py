@@ -158,8 +158,22 @@ class SshTaskTests(RolePlayMixin, unittest.TestCase):
         self.assertFalse(manual.exists())
         self.assertTrue((self.ssh / "config.d/bastion").exists())
 
+    def test_purge_keeps_directories_and_hidden_files_of_config_d(self):
+        # The purge deletes only regular fragments: a directory is never
+        # removed with its content, and OpenSSH's * skips hidden files.
+        nested = self.ssh / "config.d/tool/state"
+        nested.parent.mkdir(parents=True, mode=0o700)
+        nested.write_text("kept\n")
+        hidden = self.ssh / "config.d/.keep"
+        hidden.write_text("")
+        self.run_play({**ssh_settings(), "ssh_config_fragments_exclusive": True})
+        self.assertTrue(nested.is_file())
+        self.assertEqual(nested.read_text(), "kept\n")
+        self.assertTrue(hidden.exists())
+
     # --- Keys ----------------------------------------------------------------
 
+    @unittest.skipUnless(SSH_KEYGEN, "known_hosts requires ssh-keygen")
     def test_keys_and_authorized_keys_are_written_with_private_modes(self):
         self.ssh.mkdir(mode=0o700)
         learnt = "learnt.example.test ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILearntKey\n"
@@ -192,6 +206,7 @@ class SshTaskTests(RolePlayMixin, unittest.TestCase):
         # Keys only: the role does not take over ~/.ssh/config.
         self.assertFalse((self.ssh / "config").exists())
 
+    @unittest.skipUnless(SSH_KEYGEN, "known_hosts requires ssh-keygen")
     def test_second_run_changes_nothing(self):
         settings = {**ssh_settings(), **ssh_keys()}
         self.run_play(settings)
@@ -218,6 +233,25 @@ class SshTaskTests(RolePlayMixin, unittest.TestCase):
             {"vault_ssh_keys": [{"name": "id.pub", "private": FAKE_PRIVATE}]},
             {"vault_ssh_keys": [{"name": "../id", "private": FAKE_PRIVATE}]},
             {"vault_ssh_keys": [{"name": "id", "private": FAKE_PUBLIC}]},
+            # A name the role creates as a directory (ssh_extra_dirs).
+            {"vault_ssh_keys": [{"name": "sockets", "private": FAKE_PRIVATE}]},
+            # Only scalars render as one option line.
+            {"vault_ssh_config_options": {"SetEnv": [["A=1", "B=2"]]}},
+            {"vault_ssh_config_options": {"ForwardAgent": None}},
+            # Placeholders left from the sample: never written to ~/.ssh.
+            {"vault_ssh_authorized_keys": ["<one public key line>"]},
+            {
+                "vault_ssh_keys": [
+                    {"name": "id", "private": FAKE_PRIVATE, "public": "<line>"}
+                ]
+            },
+            {"vault_ssh_keys": [{"name": "id", "private": FAKE_PRIVATE, "public": 1}]},
+            {"vault_ssh_known_hosts": [{"name": HOST, "key": "<the line>"}]},
+            {
+                "vault_ssh_known_hosts": [
+                    {"name": HOST, "key": f"{HOST_KEY}\n{HOST_KEY}"}
+                ]
+            },
         ]:
             with self.subTest(overrides=overrides):
                 output = self.run_play(overrides, succeed=False)
@@ -230,6 +264,24 @@ class SshTaskTests(RolePlayMixin, unittest.TestCase):
         # A copy encrypted without its placeholders replaced must not deploy.
         output = self.run_play(load_sample(), succeed=False)
         self.assertIn("Invalid SSH settings", output)
+        self.assertEqual(list(self.home.iterdir()), [])
+
+    def test_sample_with_only_its_private_key_filled_is_refused(self):
+        # The authorized_keys placeholder alone would replace every key
+        # allowed to log in: it must stop the run before anything is written.
+        sample = load_sample()
+        for key in sample["vault_ssh_keys"]:
+            key.update(private=FAKE_PRIVATE, public=FAKE_PUBLIC)
+        output = self.run_play(sample, succeed=False)
+        self.assertIn("Invalid SSH settings", output)
+        self.assertEqual(list(self.home.iterdir()), [])
+
+    # --- Check mode ------------------------------------------------------------
+
+    @unittest.skipUnless(SSH_KEYGEN, "known_hosts requires ssh-keygen")
+    def test_check_mode_on_a_fresh_home_succeeds_and_writes_nothing(self):
+        # make check runs the playbook with --check before the first deploy.
+        self.run_play({**ssh_settings(), **ssh_keys()}, extra=("--check",))
         self.assertEqual(list(self.home.iterdir()), [])
 
     @unittest.skipUnless(
@@ -283,6 +335,7 @@ class SshTaskTests(RolePlayMixin, unittest.TestCase):
 
     # --- Secrets stay out of the output --------------------------------------
 
+    @unittest.skipUnless(SSH_KEYGEN, "known_hosts requires ssh-keygen")
     def test_vault_values_never_reach_the_output_even_with_diff_and_verbose(self):
         output = self.run_play(
             {**ssh_settings(), **ssh_keys()}, extra=("--diff", "-vv")

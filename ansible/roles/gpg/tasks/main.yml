@@ -66,8 +66,26 @@
         dest: '{{ gpg_homedir }}/{{ item.key }}'
         mode: '0600'
       loop: '{{ gpg_config | dict2items }}'
+      register: gpg_config_files
       no_log: '{{ gpg_no_log }}'
       notify: Reload the GnuPG daemons
+
+    # The daemons read common.conf (use-keyboxd...) only when they start, so
+    # a reload is not enough: stop them before the import below. The next gpg
+    # call starts them again with the new file.
+    - name: Stop the GnuPG daemons after a common.conf change
+      ansible.builtin.command:
+        argv:
+          - '{{ gpg_gpgconf_binary }}'
+          - --homedir
+          - '{{ gpg_homedir }}'
+          - --kill
+          - all
+      when: >-
+        gpg_config_files.results | default([]) | selectattr('changed')
+          | selectattr('item.key', 'eq', 'common.conf') | list | length > 0
+      # The change is the file written above, already reported changed.
+      changed_when: false
 
     # gpg exits with 2 when the keyring lacks the key.
     - name: Look for the GnuPG keys in the keyring
@@ -104,7 +122,8 @@
       no_log: '{{ gpg_no_log }}'
 
     # An armor that holds another key would be imported again on every run:
-    # check that each fingerprint is now in the keyring.
+    # check that each imported fingerprint is now in the keyring. The keys
+    # found by the first lookup are not listed again.
     - name: Check the imported GnuPG keys
       ansible.builtin.command:
         argv: *gpg_list_key
@@ -112,6 +131,7 @@
       loop_control:
         extended: true
         extended_allitems: false
+      when: gpg_key_present.results[ansible_loop.index0].rc | default(0) != 0
       register: gpg_key_imported
       changed_when: false
       failed_when: false
@@ -127,7 +147,8 @@
           import: the armor does not hold the key of the fingerprint.
       vars:
         missing: >-
-          {{ gpg_key_imported.results | rejectattr('rc', 'eq', 0)
+          {{ gpg_key_imported.results | selectattr('rc', 'defined')
+             | rejectattr('rc', 'eq', 0)
              | map(attribute='ansible_loop.index0') | list }}
 
     - name: Read the GnuPG owner trust

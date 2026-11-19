@@ -19,7 +19,7 @@ repository hold no key or address.
 | `gpg_config`         | `vault_gpg_config`, else `{}` | GnuPG files, as `{name.conf: [lines]}`. Listed files are replaced. |
 | `gpg_keys`           | `vault_gpg_keys`, else `[]`   | Keys, as `[{fingerprint, armor, trust}]`; `trust` is optional.     |
 | `gpg_binary`         | `gpg`                         | GnuPG binary.                                                      |
-| `gpg_gpgconf_binary` | `gpgconf`                     | Binary that reloads the GnuPG daemons.                             |
+| `gpg_gpgconf_binary` | `gpgconf`                     | Binary that reloads or stops the GnuPG daemons.                    |
 | `gpg_home`           | the user's home               | Home directory that holds `.gnupg`.                                |
 | `gpg_homedir`        | `{{ gpg_home }}/.gnupg`       | GnuPG home directory.                                              |
 | `gpg_no_log`         | `true`                        | Hide the vault values from the output and `--diff`.                |
@@ -60,7 +60,10 @@ line, a file name that is not `name.conf`, a fingerprint that is not the full
 run with a message that names the rule and never the value.
 
 - `~/.gnupg` is `0700` and the configuration files `0600`. A changed file
-  reloads the daemons with `gpgconf --reload`.
+  reloads the daemons with `gpgconf --reload`. A changed `common.conf` stops
+  them with `gpgconf --kill all` before the import, because the daemons read
+  it only when they start; they start again on the next gpg call. Switching
+  to `use-keyboxd` does not move the keys of an existing `pubring.kbx`.
 - A key whose fingerprint is not in the keyring is imported from its armor.
   If the armor holds another key, the run fails instead of importing it again
   on every run.
