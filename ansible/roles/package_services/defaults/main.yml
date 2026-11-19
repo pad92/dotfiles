@@ -31,5 +31,13 @@ package_services_device_requirements:
 package_services_user_groups_by_group:
   Archlinux:
     25_razer: [plugdev]
+# Groups the regular users must leave, by OS family, whatever the selected
+# package groups. An older deploy added them to `realtime`; staying in it keeps
+# its negative nice limits even after the role stops adding new members.
+package_services_retired_user_groups:
+  Archlinux: [realtime]
+# Caps the nice value of package_services_group_users at 0: a user line wins
+# over the group limits that packages add to limits.d.
+package_services_nice_limits_file: /etc/security/limits.d/90-no-negative-nice.conf
 package_services_group_users:
   - "{{ ansible_facts['user_id'] }}"

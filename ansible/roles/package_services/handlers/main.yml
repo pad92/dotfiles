@@ -4,3 +4,18 @@
     msg: >-
       Group membership changed ({{ package_services_user_groups_present
       | join(', ') }}). Log out and back in for it to take effect.
+
+- name: Report leaving a package group requires login
+  ansible.builtin.debug:
+    msg: >-
+      Left {{ package_services_retired_memberships | map(attribute='leave')
+      | flatten | unique | sort | join(', ') }}. Close every session of the
+      user, or reboot, for it to take effect: the systemd user manager keeps
+      the limits it started with.
+
+- name: Report the nice limit requires login
+  ansible.builtin.debug:
+    msg: >-
+      Nice values below 0 are now refused for {{ package_services_group_users
+      | join(', ') }}. Close every session of the user, or reboot, for it to
+      take effect: the systemd user manager keeps the limits it started with.
