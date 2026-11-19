@@ -162,12 +162,13 @@ chassis type, names a laptop or another portable chassis. Set it in
 a portable machine Waybar adds the backlight and battery modules, and
 Hyprland turns off blur and shadows (`dotfiles_hypr_effects_enabled`).
 
-Waybar tooltips are in French and share one layout: `Nom : état` on the first
-line, then details, then one line per click at the end (`clic : action`, then
-`clic droit : action`). A tooltip shows no click line when the click would do
-nothing or fail. Custom modules escape what they print, since Waybar reads
-their tooltip as Pango markup. `tests/test_waybar_tooltips.py` checks the
-layout and that each format string uses known placeholders.
+Waybar is in English only, including the clock (`en_US.UTF-8`). Its tooltips
+share one layout: `Name: state` on the first line, then details, then one line
+per click at the end (`click: action`, then `right-click: action`). A tooltip
+shows no click line when the click would do nothing or fail. Custom modules
+escape what they print, since Waybar reads their tooltip as Pango markup. `tests/test_waybar_tooltips.py` checks the
+layout, that each format string uses known placeholders, and that no French
+label remains.
 
 A Waybar `temperature#<name>` module appears only when
 `dotfiles_waybar_temperature_sensors` has a sensor of that name:
@@ -297,7 +298,7 @@ LACT profile, the power-profiles-daemon profile and service state, and the
 ananicy-cpp service state. Missing services and read errors are reported there.
 The tooltip refreshes every five seconds; clicking cycles the LACT profiles
 `Auto`, `Adaptive` and `PreferMaximumPerformance`. When one of them is missing,
-the indicator shows `GPU profils?`, lists them, and drops the click hint.
+the indicator shows `GPU profiles?`, lists them, and drops the click hint.
 The indicator is hidden when LACT is unavailable. The script uses Python's
 standard library and `powerprofilesctl`, supplied by power-profiles-daemon.
 Deploy with `dotfiles_deploy`; the role reloads Waybar when its configuration

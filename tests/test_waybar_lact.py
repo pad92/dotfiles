@@ -28,13 +28,13 @@ class LactTooltipTests(unittest.TestCase):
             result = API["status"]()
         self.assertEqual(result["class"], "auto")
         self.assertNotIn("balanced", result["text"])
-        self.assertIn("LACT : Auto", result["tooltip"])
-        self.assertIn("Profil d’énergie : balanced", result["tooltip"])
-        self.assertIn("ananicy-cpp : active (running)", result["tooltip"])
+        self.assertIn("LACT: Auto", result["tooltip"])
+        self.assertIn("Power profile: balanced", result["tooltip"])
+        self.assertIn("ananicy-cpp: active (running)", result["tooltip"])
 
     def test_missing_and_failed_services_remain_readable(self):
         for output, expected in [
-            ("LoadState=not-found", "non installé"),
+            ("LoadState=not-found", "not installed"),
             (
                 "LoadState=loaded\nActiveState=failed\nSubState=failed",
                 "failed (failed)",
@@ -60,7 +60,7 @@ class LactTooltipTests(unittest.TestCase):
     def test_click_hint_only_when_the_click_can_work(self):
         with patch("subprocess.run", side_effect=self.run_query):
             self.assertTrue(
-                API["status"]()["tooltip"].endswith("\nclic : profil suivant")
+                API["status"]()["tooltip"].endswith("\nclick: next profile")
             )
 
         def query(arguments, **kwargs):
@@ -73,8 +73,8 @@ class LactTooltipTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 API["cycle_profile"]()
         self.assertEqual(result["class"], "unavailable")
-        self.assertNotIn("clic", result["tooltip"])
-        self.assertIn("Profils LACT requis", result["tooltip"])
+        self.assertNotIn("click", result["tooltip"])
+        self.assertIn("Required LACT profiles", result["tooltip"])
 
     def test_unavailable_lact_hides_the_indicator(self):
         with patch("subprocess.run", side_effect=FileNotFoundError("lact")):

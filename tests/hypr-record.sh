@@ -290,7 +290,7 @@ wait_for "the recording to start" recording_started
 status_json=$("$RECORD" status)
 [[ $(jq -r .class <<< "$status_json") == recording && $(jq -r .text <<< "$status_json") == REC ]] \
     || fail "status did not report the live recording: $status_json"
-[[ $(jq -r .tooltip <<< "$status_json") == "Enregistrement : $TEST_DIR/R&amp;D &lt;videos&gt;"/rec-*.mp4$'\n'"clic : arrêter" ]] \
+[[ $(jq -r .tooltip <<< "$status_json") == "Recording: $TEST_DIR/R&amp;D &lt;videos&gt;"/rec-*.mp4$'\n'"click: stop" ]] \
     || fail "status did not name the escaped destination, then the click: $status_json"
 "$RECORD" stop
 wait "$supervisor" || fail "stopping from Waybar did not finish the recording"

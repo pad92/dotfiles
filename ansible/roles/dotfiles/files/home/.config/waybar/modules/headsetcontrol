@@ -9,7 +9,7 @@ import json
 import subprocess
 import time
 
-READABLE = {"BATTERY_AVAILABLE": "", "BATTERY_CHARGING": " (en charge)"}
+READABLE = {"BATTERY_AVAILABLE": "", "BATTERY_CHARGING": " (charging)"}
 
 
 def status() -> dict[str, str]:
@@ -30,9 +30,9 @@ def status() -> dict[str, str]:
         level, state = battery.get("level"), battery.get("status")
         if state not in READABLE or not isinstance(level, int) or level < 0:
             continue
-        name = device.get("product") or device.get("device") or "Casque"
+        name = device.get("product") or device.get("device") or "Headset"
         tooltip = (
-            f"{name} : {level} %{READABLE[state]}\n" f"lu à {time.strftime('%H:%M')}"
+            f"{name}: {level}%{READABLE[state]}\n" f"read at {time.strftime('%H:%M')}"
         )
         return {
             "text": f"HS {level}%",

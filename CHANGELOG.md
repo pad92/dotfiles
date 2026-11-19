@@ -126,13 +126,16 @@ Release history and changes planned for the next version.
 ### Changed
 
 - **Waybar tooltips**:
-  - Every tooltip follows one layout: `Nom : état` first, then details,
-    then one `clic : action` line per click, last. This changes the
+  - The bar is in English only: the VPN, LACT, headset and Bluetooth
+    tooltips are no longer in French, and the clock and its calendar use
+    `en_US.UTF-8` instead of `fr_FR.UTF-8`, so the calendar weeks start on
+    Sunday.
+  - Every tooltip follows one layout: `Name: state` first, then details,
+    then one `click: action` line per click, last. This changes the
     recording, volume, LACT, VPN, headset and temperature tooltips.
-  - The CPU, memory, battery and backlight modules have French tooltips
-    instead of Waybar's English defaults; the battery one shows the power
-    draw and the time left.
-  - The screen recording tooltip is now in French, like the rest of the bar.
+  - The CPU, memory, battery and backlight modules have their own tooltips
+    instead of Waybar's defaults; the battery one shows the power draw and
+    the time left.
   - The Bluetooth tooltips no longer show controller or device MAC
     addresses, and they list connected devices by name, with their battery
     when known.
@@ -319,8 +322,8 @@ Release history and changes planned for the next version.
 - **Waybar tooltips**:
   - The screen recording tooltip escapes the output path, so a directory
     containing `&` or `<` no longer breaks the Pango markup.
-  - The LACT tooltip offers "clic pour changer" only when the three required
-    profiles exist; otherwise it shows `GPU profils?` and lists them, since
+  - The LACT tooltip offers a click hint only when the three required
+    profiles exist; otherwise it shows `GPU profiles?` and lists them, since
     the click would fail.
   - The Bluetooth tooltip has its own text when the adapter is off or
     blocked by rfkill, instead of the generic format.
