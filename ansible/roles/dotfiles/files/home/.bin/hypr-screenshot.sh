@@ -26,10 +26,10 @@
 #   - Waybar shows fixed CPU, memory, volume and Bluetooth values and leaves
 #     out the VPN, LACT and headset modules; an unknown module stops the run;
 #   - Fastfetch modules that would describe the real machine print fixed
-#     text instead: a 1997 PC for the CPU, GPU and memory, small fixed
-#     figures for the busiest processes, "hidden" for the model, disk,
-#     kernel, uptime and packages; a module the script does not know stops
-#     the run;
+#     made-up values instead: a 1997 PC for the model, CPU, GPU, memory
+#     and disk, small fixed figures for the busiest processes, and plausible
+#     kernel, package, uptime and load figures; a module the script does not
+#     know stops the run;
 #   - animations are disabled, the pointer is hidden, the built-in
 #     wallpaper is pinned and dwindle always splits to the right, so two
 #     runs give the same frames.
@@ -124,6 +124,17 @@ log()
 has()
 {
     command -v "$1" >/dev/null 2>&1
+}
+
+# in_list NEEDLE ITEM... - true when NEEDLE is one of the ITEMs.
+in_list()
+{
+    local needle="$1" item
+    shift
+    for item; do
+        [[ $item == "$needle" ]] && return 0
+    done
+    return 1
 }
 
 # Check user input before anything is started.
@@ -335,21 +346,18 @@ WAYBAR_DROPPED=(custom/vpn custom/lact-profile custom/headsetcontrol)
 # INCLUDE files. Waybar gives the main config precedence over its includes.
 waybar_fixed_overrides()
 {
-    local entry overrides='{}'
-    for entry in "${WAYBAR_FIXED[@]}"; do
-        overrides=$(jq -s --argjson acc "$overrides" --arg name "${entry%%:*}" \
-            --arg value "${entry#*:}" '
-            (add | .[$name] // error("Waybar module \($name) is not defined")) as $module
+    jq -s '
+        add as $all
+        | reduce ($ARGS.positional[] | capture("^(?<name>[^:]+):(?<value>.*)$")) as $e ({};
+            ($all[$e.name] // error("Waybar module \($e.name) is not defined")) as $module
             | ($module["format-icons"] | if type == "object" then .default else . end
                 | if type == "array" then last else "" end) as $icon
             | ($module.format | gsub("\\{icon\\}"; $icon)
-                | gsub("\\{[a-z_]*\\}"; $value)) as $text
-            | $acc + {($name): ($module
+                | gsub("\\{[^{}]*\\}"; $e.value)) as $text
+            | . + {($e.name): ($module
                 | with_entries(select(.key | startswith("format")) | select(.value | type == "string")
                     | .value = $text)
-                + {tooltip: false})}' "$@") || return 1
-    done
-    printf '%s\n' "$overrides"
+                + {tooltip: false})})' "$@" --args "${WAYBAR_FIXED[@]}"
 }
 
 # render_waybar_config DST - the Waybar config of a host without temperature
@@ -360,10 +368,9 @@ render_waybar_config()
 {
     local modules=() includes files=() module include overrides
     while IFS= read -r module; do
-        if [[ " ${WAYBAR_DROPPED[*]} " == *" $module "* ]]; then
+        if in_list "$module" "${WAYBAR_DROPPED[@]}"; then
             continue
-        elif [[ " ${WAYBAR_SHOWN[*]} " != *" $module "* \
-            && " ${WAYBAR_FIXED[*]} " != *" $module:"* ]]; then
+        elif ! in_list "$module" "${WAYBAR_SHOWN[@]}" "${WAYBAR_FIXED[@]%%:*}"; then
             die "unknown Waybar module '$module' in $DOTFILES_DEFAULTS"
         fi
         modules+=("$module")
@@ -393,12 +400,14 @@ HYPRLOCK_WALLPAPER="$(sed -n '/^dotfiles_hyprlock_wallpaper_source:/{n;s/^ *//p;
 
 # Fastfetch modules that describe the session the demo shows, kept as they are.
 FASTFETCH_SHOWN=(os wm terminal shell theme break custom)
-# Modules that would describe the real machine, as NAME:KEY[:VALUE]. They become
-# custom modules showing VALUE ("hidden" by default), so nothing is detected at
-# all. The CPU, GPU and memory of a 1997 PC stand in for the real ones.
-FASTFETCH_HIDDEN=(kernel:Kernel packages:Packages uptime:Uptime host:Host
-    "cpu:CPU:Intel Pentium MMX @ 233 MHz" loadavg:Loadavg
-    "gpu:GPU:3dfx Voodoo Graphics (4 MB)" "memory:Memory:256 MiB" disk:Disk)
+# Modules that would describe the real machine, as NAME:KEY:VALUE. They become
+# custom modules showing the made-up VALUE, so nothing is detected at all. A
+# 1997 PC stands in for the real hardware; the software figures stay plausible.
+FASTFETCH_HIDDEN=("kernel:Kernel:Linux 6.12.0" "packages:Packages:1024 (pacman)"
+    "uptime:Uptime:3 hours, 14 mins" "host:Host:Beige tower PC (1997)"
+    "cpu:CPU:Intel Pentium MMX @ 233 MHz" "loadavg:Loadavg:0.42, 0.37, 0.31"
+    "gpu:GPU:3dfx Voodoo Graphics (4 MB)" "memory:Memory:256 MiB"
+    "disk:Disk:1.2 GiB / 3.2 GiB (37%) - ext4")
 # The "top" modules, as SORT:VALUE: the processes they measure would show more
 # memory than the 256 MiB above, so they print a fixed line too.
 FASTFETCH_TOP=("cpu:nvim (46) - CPU 4%" "memory:alacritty (31) - MEM 24.0 MiB")
@@ -423,8 +432,9 @@ fastfetch_top_line()
 }
 
 # render_fastfetch_config SRC DST - copy the Fastfetch config SRC to DST with the
-# machine modules hidden. Any other module fails, so a module added to the
-# config later cannot leak into the pictures unnoticed.
+# machine modules hidden. Only the module list is checked, one module per line;
+# any other module or layout fails, so a module added to the config later
+# cannot leak into the pictures unnoticed.
 render_fastfetch_config()
 {
     local line name entry indent comma known key value
@@ -432,10 +442,15 @@ render_fastfetch_config()
     local -a object=()
     : >"$2"
     while IFS= read -r line || [[ -n $line ]]; do
-        [[ $line =~ \"modules\"[[:space:]]*:[[:space:]]*\[ ]] && in_modules=1
-        [[ $line =~ ^[[:space:]]*\] ]] && in_modules=""
-        # A multi-line module is read whole; only "top" is known in that form.
-        if [[ ${#object[@]} -gt 0 || ( -n $in_modules && $line =~ ^[[:space:]]*\{[[:space:]]*$ ) ]]; then
+        if [[ -z $in_modules ]]; then
+            # Everything outside the module list is copied as it is.
+            if [[ $line =~ \"modules\"[[:space:]]*: ]]; then
+                [[ $line =~ \"modules\"[[:space:]]*:[[:space:]]*\[[[:space:]]*$ ]] \
+                    || die "the Fastfetch modules in $1 must start on their own line: $line"
+                in_modules=1
+            fi
+        elif ((${#object[@]} > 0)) || [[ $line =~ ^[[:space:]]*\{[[:space:]]*$ ]]; then
+            # A multi-line module is read whole; only "top" is known in that form.
             object+=("$line")
             [[ $line =~ ^[[:space:]]*\}(,?)[[:space:]]*$ ]] || continue
             if ! [[ ${object[*]} =~ \"type\"[[:space:]]*:[[:space:]]*\"top\" ]] \
@@ -444,22 +459,30 @@ render_fastfetch_config()
             fi
             object=()
             continue
-        elif [[ $line =~ \"type\"[[:space:]]*:[[:space:]]*\"([a-z]+)\" ]]; then
+        elif [[ $line =~ ^[[:space:]]*\] ]]; then
+            in_modules=""
+        elif [[ $line =~ ^[[:space:]]*(//.*)?$ ]]; then
+            : # blank line or comment
+        elif [[ $line =~ ^[[:space:]]*\{[^{}]*\}[[:space:]]*,?[[:space:]]*$ \
+            && $line =~ \"type\"[[:space:]]*:[[:space:]]*\"([a-z]+)\" ]]; then
             name="${BASH_REMATCH[1]}"
-            [[ " ${FASTFETCH_SHOWN[*]} " == *" $name "* ]] \
+            in_list "$name" "${FASTFETCH_SHOWN[@]}" \
                 || die "unknown Fastfetch module '$name' in $1"
         elif [[ $line =~ ^([[:space:]]*)\"([a-z]+)\"(,?)[[:space:]]*$ ]]; then
             indent="${BASH_REMATCH[1]}" name="${BASH_REMATCH[2]}" comma="${BASH_REMATCH[3]}"
             known=""
             for entry in "${FASTFETCH_HIDDEN[@]}"; do
                 [[ ${entry%%:*} == "$name" ]] || continue
-                key=${entry#*:} value=hidden
-                [[ $key == *:* ]] && value=${key#*:} key=${key%%:*}
+                key=${entry#*:}
+                [[ $key == *:* ]] || die "no stand-in value for the Fastfetch module '$name'"
+                value=${key#*:} key=${key%%:*}
                 line="$indent{ \"type\": \"custom\", \"key\": \"$key\", \"format\": \"$value\" }$comma"
                 known=1
             done
-            [[ -n $known || " ${FASTFETCH_SHOWN[*]} " == *" $name "* ]] \
+            [[ -n $known ]] || in_list "$name" "${FASTFETCH_SHOWN[@]}" \
                 || die "unknown Fastfetch module '$name' in $1"
+        else
+            die "unsupported line in the Fastfetch modules of $1: $line"
         fi
         printf '%s\n' "$line" >>"$2"
     done <"$1"
@@ -652,9 +675,9 @@ active_window_x()
     hctl activewindow -j | jq -er '.at[0]'
 }
 
-# active_window_left FROM_X - true once the focused window no longer starts at
-# FROM_X, so a move has been applied by the layout.
-active_window_left()
+# active_window_moved FROM_X - true once the focused window no longer starts
+# at FROM_X, so a move has been applied by the layout.
+active_window_moved()
 {
     local x
     x="$(active_window_x)" && [[ $x != "$1" ]]
@@ -667,7 +690,7 @@ move_window()
     from="$(active_window_x)" || die "no focused window to move"
     [[ $(hctl dispatch "hl.dsp.window.move({ direction = \"$2\" })") == ok ]] \
         || die "Hyprland rejected the move '$2'"
-    wait_until "the window to move $2" active_window_left "$from"
+    wait_until "the window to move $2" active_window_moved "$from"
     demo_frame "$1" "$DELAY_MOVE"
 }
 

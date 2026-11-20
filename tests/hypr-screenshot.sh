@@ -343,8 +343,12 @@ grep -q '"type": "top"' "$ff_out" && fail "a Fastfetch top module measures real 
     || fail "the hidden modules did not keep their place in the layout"
 grep -qF '{ "type": "custom", "key": "CPU", "format": "Intel Pentium MMX @ 233 MHz" },' "$ff_out" \
     || fail "the CPU line does not show the stand-in value"
-grep -qF '{ "type": "custom", "key": "Disk", "format": "hidden" },' "$ff_out" \
-    || fail "a module without a stand-in value is not hidden"
+grep -qF '{ "type": "custom", "key": "Disk", "format": "1.2 GiB / 3.2 GiB (37%) - ext4" }' "$ff_out" \
+    || fail "the Disk line does not show the stand-in value"
+grep -q '"format": "hidden"' "$ff_out" && fail "a Fastfetch module shows a placeholder instead of a made-up value"
+# shellcheck disable=SC2034 # read by render_fastfetch_config
+(FASTFETCH_HIDDEN=(disk:Disk); render_fastfetch_config "$ff_src" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "a Fastfetch module without a stand-in value was accepted"
 grep -qF '{ "type": "custom", "key": "RAM process", "format": "alacritty (31) - MEM 24.0 MiB" },' "$ff_out" \
     || fail "the RAM process line does not show the stand-in value"
 grep -qx os <<<"$ff_modules" || fail "a session module was dropped"
@@ -369,6 +373,21 @@ printf '{ "modules": [\n  {\n    "type": "gpu",\n    "key": "x",\n  },\n] }\n' >
 printf '{ "modules": [\n  {\n    "type": "top",\n    "key": "x",\n    "sort": "pid",\n  },\n] }\n' >"$TEST_DIR/ff-top.jsonc"
 (render_fastfetch_config "$TEST_DIR/ff-top.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
     && fail "a top module without a stand-in value was accepted"
+
+# Modules hidden in another layout are refused instead of copied as they are.
+printf '{ "modules": ["os", "cpu"] }\n' >"$TEST_DIR/ff-inline.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-inline.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "an inline Fastfetch module list was copied unfiltered"
+printf '{ "modules": [\n  "os", "cpu",\n] }\n' >"$TEST_DIR/ff-pair.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-pair.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "two Fastfetch modules on one line were copied unfiltered"
+
+# Keys outside the module list, comments and nested arrays are not modules.
+printf '{\n  "logo": {\n    "type": "small",\n  },\n  // "gpu",\n  "modules": [\n    // "gpu",\n    {\n      "type": "top",\n      "key": "a",\n      "sort": "cpu",\n      "showTypes": [\n        "cpu"\n      ],\n    },\n    {\n      "type": "top",\n      "key": "b",\n      "sort": "memory",\n    },\n    "os",\n  ],\n}\n' >"$TEST_DIR/ff-layout.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-layout.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    || fail "a Fastfetch config with logo type, comments or nested arrays was rejected"
+grep -q '"type": "top"' "$TEST_DIR/ff.out" && fail "a top module after a nested array was not hidden"
+grep -q '"type": "small"' "$TEST_DIR/ff.out" || fail "the Fastfetch logo type was changed"
 
 printf 'PASS: hypr-screenshot Fastfetch anonymised\n'
 

@@ -173,8 +173,8 @@ Release history and changes planned for the next version.
   demo. It starts on the empty desktop, opens the editor and the terminal one
   by one, and moves the terminal across and back before the launcher,
   notification and lock frames. Fastfetch shows a 1997 PC (Pentium MMX 233,
-  3dfx Voodoo, 256 MiB) with matching fixed process figures, and "hidden" for
-  the model, disk, kernel, uptime and packages; Waybar shows fixed CPU, memory,
+  3dfx Voodoo, 256 MiB, 3.2 GiB disk) with matching fixed process figures,
+  and plausible made-up kernel, package, uptime and load values; Waybar shows fixed CPU, memory,
   volume and Bluetooth values and leaves out the VPN, LACT and headset modules.
 - **Steam Optimize**: the mouse DPI is set per game with `--dpi <N>` (`[p]` in
   `steam-optimize -i`) and ignored without `razer-cli`. GTA V needs `[p]` once
