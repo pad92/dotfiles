@@ -121,6 +121,15 @@ Release history and changes planned for the next version.
     documentation-only changes on branches.
   - `package_vim.sh` and `package_zsh.sh` are shared by GitLab and GitHub.
     ansible-core is pinned to 2.22.0.
+  - A new commit on a branch cancels the test and lint jobs of its previous
+    pipeline (`interruptible`, `workflow:auto_cancel`), so they no longer
+    share the runner with the current one.
+  - The two longest deploy tests (file copy, zsh plugin tree) are split in
+    two so the workers run them in parallel; the file-copy scenarios need
+    fewer playbook runs.
+  - Test playbooks use Ansible pipelining. The heaviest tests (Vim pack,
+    tmux, rendered dotfiles, DNS, reload handlers) drop the repeated
+    idempotency and check-mode runs that other assertions already cover.
 - **DNS**: `/etc/resolv.conf` links to the resolved stub unless a VPN client
   owns it; the old NetworkManager and dnsmasq files are backed up then
   removed.

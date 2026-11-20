@@ -716,11 +716,11 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             "Report session restart required",
         ]:
             self.assertIn(f"HANDLER {handler}", first)
-        self.assertNotIn("HANDLER ", self.run_play(play))
+        # Unchanged files notify nothing: only the edited file's handler runs.
         (source / ".config/hypr/config.lua").write_text("two\n")
         output = self.run_play(play)
         self.assertIn("HANDLER Restart Hyprlauncher", output)
-        self.assertNotIn("HANDLER Restart hypridle", output)
+        self.assertEqual(output.count("RUNNING HANDLER"), 1, output)
         (source / ".config/hypr/hypridle.conf").write_text("two\n")
         self.assertIn("HANDLER Restart hypridle", self.run_play(play))
 
