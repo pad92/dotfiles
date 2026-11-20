@@ -351,6 +351,142 @@ class VpnWaybarTests(unittest.TestCase):
         )
         self.assertIn(["pkill", "-RTMIN+9", "-x", "waybar"], self.calls)
 
+    def connected_tunnel(self):
+        """Fake the unit cgroup, pppd PID files and interface counters."""
+        root = self.config.parent
+        module = self.api["status"].__globals__
+        module["CGROUP_ROOT"] = root / "cgroup"
+        module["PPP_PID_DIR"] = root / "pppd"
+        module["NET_ROOT"] = root / "net"
+        module["PROC_ROOT"] = root / "proc"
+        module["CLOCK_TICKS"] = 100
+        self.cgroup = "/system.slice/openfortivpn@work.service"
+        procs = root / "cgroup" / self.cgroup.lstrip("/") / "cgroup.procs"
+        procs.parent.mkdir(parents=True)
+        procs.write_text("100\n200\n")
+        (root / "pppd").mkdir()
+        # A stale file of an earlier tunnel names a PID outside the unit.
+        (root / "pppd/ppp0.pid").write_text("999\n")
+        (root / "pppd/ppp1.pid").write_text("200\n")
+        for name in ("ppp0", "ppp1"):
+            (root / "net" / name / "statistics").mkdir(parents=True)
+        self.set_counters(ifindex=11, rx=1024, tx=0)
+        self.set_uptime(pid="200", seconds=3725)
+        self.runtime = root / "runtime"
+        self.runtime.mkdir()
+        self.write_config()
+        self.state = "active"
+
+    def set_uptime(self, pid, seconds, boot=5000.5):
+        """pppd started `seconds` ago, `boot` seconds after the boot."""
+        proc = self.config.parent / "proc"
+        (proc / pid).mkdir(parents=True, exist_ok=True)
+        (proc / "uptime").write_text(f"{boot} 1234.0\n")
+        # A command name with spaces and a ")" must not shift the fields.
+        fields = ["S"] + ["0"] * 18 + [str(round((boot - seconds) * 100)), "0"]
+        (proc / pid / "stat").write_text(f"{pid} (pppd (a) b) {' '.join(fields)}\n")
+
+    def set_counters(self, ifindex, rx, tx):
+        net = self.config.parent / "net/ppp1"
+        (net / "ifindex").write_text(f"{ifindex}\n")
+        (net / "statistics/rx_bytes").write_text(f"{rx}\n")
+        (net / "statistics/tx_bytes").write_text(f"{tx}\n")
+
+    def tunnel_run(self, arguments, **_kwargs):
+        self.calls.append(arguments)
+        if arguments[:2] == ["systemctl", "show"]:
+            output = (
+                self.cgroup if "--property=ControlGroup" in arguments else self.state
+            )
+        elif arguments[:2] == ["ip", "-j"]:
+            self.assertEqual(arguments[-1], "ppp1")
+            output = json.dumps(
+                [{"ifname": "ppp1", "addr_info": [{"local": "10.0.0.5"}]}]
+            )
+        else:
+            output = ""
+        return subprocess.CompletedProcess(arguments, 0, output + "\n", "")
+
+    def tooltip_at(self, moment, runtime=True):
+        environment = {"XDG_RUNTIME_DIR": str(self.runtime)} if runtime else {}
+        with (
+            patch("subprocess.run", side_effect=self.tunnel_run),
+            patch("time.monotonic", return_value=moment),
+            patch.dict("os.environ", environment, clear=True),
+        ):
+            result = self.api["status"]()
+        self.assertEqual(result["class"], "connected")
+        return result["tooltip"].split("\n")
+
+    def test_connected_tooltip_shows_the_tunnel_address_and_rate(self):
+        self.connected_tunnel()
+        self.assertEqual(
+            self.tooltip_at(100.0),
+            [
+                "VPN: connected",
+                "IP: 10.0.0.5",
+                "uptime: 1h 02m",
+                "down: measuring, 1.0 KiB total",
+                "up: measuring, 0 B total",
+                "click: disconnect",
+            ],
+        )
+        # 3 MiB down and 30 KiB up over the 30 seconds of the Waybar interval.
+        self.set_counters(ifindex=11, rx=1024 + 3 * 1024**2, tx=30 * 1024)
+        self.assertEqual(
+            self.tooltip_at(130.0)[3:5],
+            ["down: 102.4 KiB/s, 3.0 MiB total", "up: 1.0 KiB/s, 30.0 KiB total"],
+        )
+
+    def test_a_new_tunnel_restarts_the_measure_instead_of_a_bogus_rate(self):
+        self.connected_tunnel()
+        self.tooltip_at(100.0)
+        # Reconnected: new interface index, counters back near zero.
+        self.set_counters(ifindex=12, rx=10, tx=5)
+        self.assertEqual(
+            self.tooltip_at(130.0)[3:5],
+            ["down: measuring, 10 B total", "up: measuring, 5 B total"],
+        )
+
+    def test_without_runtime_directory_no_sample_is_written(self):
+        self.connected_tunnel()
+        self.tooltip_at(100.0, runtime=False)
+        lines = self.tooltip_at(130.0, runtime=False)
+        self.assertEqual(lines[3], "down: measuring, 1.0 KiB total")
+        self.assertEqual(list(self.runtime.iterdir()), [])
+
+    def test_missing_tunnel_keeps_the_state_and_reports_the_traffic_error(self):
+        self.connected_tunnel()
+        (self.config.parent / "pppd/ppp1.pid").unlink()
+        lines = self.tooltip_at(100.0)
+        self.assertEqual(lines[0], "VPN: connected")
+        self.assertRegex(lines[1], r"^traffic: unavailable \(no pppd interface")
+        self.assertEqual(lines[-1], "click: disconnect")
+
+    def test_uptime_is_the_age_of_the_tunnel_pppd(self):
+        self.connected_tunnel()
+        # The stale ppp0.pid names PID 999: its age must not be shown.
+        self.set_uptime(pid="999", seconds=90000)
+        self.assertEqual(self.tooltip_at(100.0)[2], "uptime: 1h 02m")
+
+    def test_duration_keeps_the_two_largest_units(self):
+        duration = self.api["duration"]
+        self.assertEqual(
+            [duration(-1), duration(59), duration(60), duration(3599)],
+            ["0s", "59s", "1m", "59m"],
+        )
+        self.assertEqual(
+            [duration(3600), duration(86399), duration(90061)],
+            ["1h 00m", "23h 59m", "1d 01h"],
+        )
+
+    def test_human_bytes_switches_units_at_1024(self):
+        human = self.api["human_bytes"]
+        self.assertEqual(
+            [human(1023), human(1024), human(1024**3 * 2048)],
+            ["1023 B", "1.0 KiB", "2048.0 GiB"],
+        )
+
     def test_waybar_refresh_signal_matches_the_module_settings(self):
         settings = json.loads((WAYBAR / "conf/system.json").read_text())["custom/vpn"]
         self.assertEqual(settings["signal"], self.api["WAYBAR_SIGNAL"])

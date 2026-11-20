@@ -58,6 +58,10 @@ The role writes:
 - The Waybar file: the unit name and the login URL. A click on the module
   starts the unit and opens the login page; it turns yellow while it waits for
   the browser and green once the tunnel is up. A second click disconnects.
+  While connected, the tooltip shows the address of the `ppp` interface run
+  by the unit, how long its `pppd` has been up (a reconnection restarts it),
+  the rate averaged since the previous refresh (30 seconds) and the bytes
+  received and sent since the tunnel came up.
 
 From a terminal:
 

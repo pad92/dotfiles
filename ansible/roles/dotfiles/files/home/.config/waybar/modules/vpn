@@ -3,16 +3,31 @@
 
 Ansible writes the unit name and the login URL to CONFIG only when the VPN
 gateway is in the Vault, so the module stays hidden on other hosts.
+
+While connected, the tooltip adds the tunnel address, uptime and traffic. The
+tunnel is the interface of the pppd process in the unit's cgroup, and its
+uptime is the age of that process; the rate is the average since the previous
+refresh, whose sample is kept in the runtime directory.
 """
 
 import argparse
 import html
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 CONFIG = Path("/etc/openfortivpn/waybar.json")
+CGROUP_ROOT = Path("/sys/fs/cgroup")
+# pppd writes <interface>.pid here; the file outlives the process, so only a
+# PID still in the unit's cgroup identifies the tunnel.
+PPP_PID_DIR = Path("/run/pppd")
+NET_ROOT = Path("/sys/class/net")
+PROC_ROOT = Path("/proc")
+CLOCK_TICKS = os.sysconf("SC_CLK_TCK")
+SAMPLE_NAME = "waybar-vpn-traffic.json"
 # Waybar refreshes the module on SIGRTMIN+<signal>, as set in system.json.
 WAYBAR_SIGNAL = 9
 STATES = {
@@ -54,6 +69,127 @@ def active_state(unit: str) -> str:
     return run(["systemctl", "show", unit, "--property=ActiveState", "--value"])
 
 
+def tunnel(unit: str) -> tuple[str, str]:
+    """Return the interface and PID of the pppd process that runs in the unit."""
+    cgroup = run(["systemctl", "show", unit, "--property=ControlGroup", "--value"])
+    if not cgroup.startswith("/"):
+        raise ValueError(f"{unit} has no control group")
+    pids = set((CGROUP_ROOT / cgroup.lstrip("/") / "cgroup.procs").read_text().split())
+    for pid_file in sorted(PPP_PID_DIR.glob("*.pid")):
+        try:
+            pid = pid_file.read_text().strip()
+            if pid in pids and (NET_ROOT / pid_file.stem).is_dir():
+                return pid_file.stem, pid
+        except FileNotFoundError:
+            continue
+    raise ValueError("no pppd interface in the VPN unit")
+
+
+def addresses(interface: str) -> list[str]:
+    links = json.loads(run(["ip", "-j", "-4", "address", "show", "dev", interface]))
+    return [
+        info["local"]
+        for link in links
+        for info in link.get("addr_info", [])
+        if isinstance(info.get("local"), str)
+    ]
+
+
+def uptime(pid: str) -> float:
+    """Seconds since the process started, from /proc."""
+    # The command name may hold spaces or parentheses: split after the last ")".
+    fields = (PROC_ROOT / pid / "stat").read_text().rsplit(")", 1)[1].split()
+    started = int(fields[19]) / CLOCK_TICKS  # field 22: starttime, in ticks
+    return float((PROC_ROOT / "uptime").read_text().split()[0]) - started
+
+
+def duration(seconds: float) -> str:
+    total = max(int(seconds), 0)
+    days, rest = divmod(total, 86400)
+    hours, rest = divmod(rest, 3600)
+    minutes, rest = divmod(rest, 60)
+    if days:
+        return f"{days}d {hours:02d}h"
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    return f"{minutes}m" if minutes else f"{rest}s"
+
+
+def human_bytes(count: float) -> str:
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if count < 1024 or unit == "GiB":
+            return f"{count:.0f} {unit}" if unit == "B" else f"{count:.1f} {unit}"
+        count /= 1024
+    raise AssertionError("unreachable")
+
+
+def sample_path() -> Path | None:
+    # Without a private runtime directory, skip the rate rather than write a
+    # predictable file in a shared one.
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    return Path(runtime) / SAMPLE_NAME if runtime else None
+
+
+def traffic(interface: str) -> list[str]:
+    """Return the rate since the previous call and the total of this tunnel."""
+    net = NET_ROOT / interface
+    current = {
+        "ifindex": int((net / "ifindex").read_text()),
+        "time": time.monotonic(),
+        "rx": int((net / "statistics/rx_bytes").read_text()),
+        "tx": int((net / "statistics/tx_bytes").read_text()),
+    }
+    path = sample_path()
+    previous: dict[str, object] = {}
+    if path is not None:
+        try:
+            loaded = json.loads(path.read_text())
+            previous = loaded if isinstance(loaded, dict) else {}
+        except (OSError, ValueError):
+            previous = {}
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(current))
+        temporary.replace(path)
+    before_time = previous.get("time")
+    elapsed = (
+        current["time"] - before_time if isinstance(before_time, (int, float)) else 0
+    )
+    before = {
+        key: value
+        for key in ("rx", "tx")
+        if isinstance(value := previous.get(key), int)
+    }
+    # A new tunnel gets a new ifindex and counters from zero: no rate then.
+    comparable = (
+        elapsed > 0
+        and previous.get("ifindex") == current["ifindex"]
+        and len(before) == 2
+        and all(value <= current[key] for key, value in before.items())
+    )
+    lines = []
+    for label, key in (("down", "rx"), ("up", "tx")):
+        rate = (
+            human_bytes((current[key] - before[key]) / elapsed) + "/s"
+            if comparable
+            else "measuring"
+        )
+        lines.append(f"{label}: {rate}, {human_bytes(current[key])} total")
+    return lines
+
+
+def details(unit: str) -> list[str]:
+    """Address, uptime and traffic lines; an error stays in the tooltip."""
+    try:
+        interface, pid = tunnel(unit)
+        return [
+            f"IP: {', '.join(addresses(interface)) or 'none'}",
+            f"uptime: {duration(uptime(pid))}",
+            *traffic(interface),
+        ]
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+        return [f"traffic: unavailable ({error})"]
+
+
 def status() -> dict[str, str]:
     try:
         config = load_config()
@@ -67,6 +203,9 @@ def status() -> dict[str, str]:
             "class": "unknown",
         }
     css_class, tooltip = STATES.get(state, DISCONNECTED)
+    if state == "active":
+        name, *clicks = tooltip.split("\n")
+        tooltip = "\n".join([name, *details(config["unit"]), *clicks])
     return {"text": "VPN", "tooltip": html.escape(tooltip), "class": css_class}
 
 
