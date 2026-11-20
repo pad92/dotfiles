@@ -81,6 +81,7 @@ class InstallGuideRoleTests(unittest.TestCase):
                 "Read the system groups",
                 "Add the regular users to the selected groups",
                 "Remove the regular users from the retired groups",
+                "Create the directory of the nice limit",
                 "Forbid negative nice values",
             ]
         ]
@@ -188,15 +189,22 @@ class InstallGuideRoleTests(unittest.TestCase):
         # cachyos-settings gives @audio a nice limit of -11, as realtime did:
         # a user line wins over a group line in pam_limits, so leaving
         # realtime alone does not stop Chromium threads from running at -8.
-        limits = self.work / "90-no-negative-nice.conf"
-        tasks = load_tasks("package_services")
-        task = next(
-            task for task in tasks if task["name"] == "Forbid negative nice values"
+        # limits.d is missing on a host where no package created it.
+        limits = self.work / "limits.d" / "90-no-negative-nice.conf"
+        names = (
+            "Create the directory of the nice limit",
+            "Forbid negative nice values",
         )
+        selected = [
+            task for task in load_tasks("package_services") if task["name"] in names
+        ]
+        self.assertEqual([task["name"] for task in selected], list(names))
         # The test runs without root: keep the content, drop the chown.
-        task.pop("notify", None)
-        for key in ("owner", "group"):
-            task["ansible.builtin.copy"].pop(key)
+        for task in selected:
+            task.pop("notify", None)
+            module = next(key for key in task if key.startswith("ansible.builtin."))
+            for key in ("owner", "group"):
+                task[module].pop(key)
         self.run_play(
             {
                 "vars": {
@@ -204,7 +212,7 @@ class InstallGuideRoleTests(unittest.TestCase):
                     "package_services_group_users": ["alice", "bob"],
                     "package_services_nice_limits_file": str(limits),
                 },
-                "tasks": [task],
+                "tasks": selected,
             }
         )
         lines = [

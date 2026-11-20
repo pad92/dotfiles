@@ -160,6 +160,15 @@
 # the nice value of the users whatever groups they are in, such as `audio`,
 # to which cachyos-settings gives a limit of -11. Without it, Chromium and
 # Electron threads run at -8 with every process they start.
+# pam owns no limits.d: a host where no package added one lacks the directory.
+- name: Create the directory of the nice limit
+  ansible.builtin.file:
+    path: '{{ package_services_nice_limits_file | dirname }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Forbid negative nice values
   ansible.builtin.copy:
     dest: '{{ package_services_nice_limits_file }}'

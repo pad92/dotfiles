@@ -208,7 +208,8 @@ Release history and changes planned for the next version.
   appears.
 - **Teams audio under load**: `rtkit` replaces `realtime-privileges`, and
   `/etc/security/limits.d/90-no-negative-nice.conf` caps the user's nice value
-  at 0, so Electron apps no longer starve a Teams call. Close every session or
+  at 0, so Electron apps no longer starve a Teams call. The role creates
+  `limits.d` on hosts that lack it. Close every session or
   reboot to apply it. A reconcile offers to remove `realtime-privileges`;
   otherwise run `sudo pacman -Rs realtime-privileges`.
 - **Tests**: tests run from a worktree no longer rewrite `.git/config`, and an
