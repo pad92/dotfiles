@@ -4,11 +4,12 @@
 #
 # A throwaway Hyprland instance loads the Hyprland config of this repository on
 # a virtual headless output of fixed size and opens Waybar, an editor and a
-# terminal. That desktop is saved as a still WebP. The script then plays a
-# short demo on it, captured frame by frame into an animated WebP: Hyprlauncher
-# opens and searches for an application, Mako shows a notification, and
-# Hyprlock locks the screen. Both files are written atomically, so a failed
-# run never leaves a broken image behind.
+# terminal. That desktop is saved as a still WebP. Every step is also captured
+# frame by frame into an animated WebP: the demo starts on the empty desktop,
+# opens the windows one by one, moves the terminal across and back, then
+# Hyprlauncher opens and searches for an application, Mako shows a
+# notification, and Hyprlock locks the screen. Both files are written
+# atomically, so a failed run never leaves a broken image behind.
 #
 # Nothing personal ends up in the pictures:
 #   - clients run in user, mount, UTS and PID namespaces as user "demo" on
@@ -22,8 +23,16 @@
 #     Wayland socket to open its nested window) and skips its
 #     `hyprland.start` hooks, so no gsettings, polkit agent, clipboard watcher
 #     or `uwsm app` unit is started;
-#   - animations are disabled, the pointer is hidden and the built-in
-#     wallpaper is pinned, so two runs give the same frames.
+#   - Waybar shows fixed CPU, memory, volume and Bluetooth values and leaves
+#     out the VPN, LACT and headset modules; an unknown module stops the run;
+#   - Fastfetch modules that would describe the real machine print fixed
+#     text instead: a 1997 PC for the CPU, GPU and memory, small fixed
+#     figures for the busiest processes, "hidden" for the model, disk,
+#     kernel, uptime and packages; a module the script does not know stops
+#     the run;
+#   - animations are disabled, the pointer is hidden, the built-in
+#     wallpaper is pinned and dwindle always splits to the right, so two
+#     runs give the same frames.
 # Hyprland opens its nested output as a window on the host until the headless
 # output replaces it; that is expected.
 #
@@ -61,8 +70,14 @@ DEMO_HOST=dotfiles
 DEMO_HOME=/home/$DEMO_USER
 SANDBOX_PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
 
+# Seconds a new or moved window gets to draw before its frame is captured.
+WINDOW_DELAY=1
+
 # Frame display times in the demo, in hundredths of a second.
+DELAY_EMPTY=100
+DELAY_WINDOW_OPEN=100
 DELAY_DESKTOP=250
+DELAY_MOVE=120
 DELAY_LAUNCHER_OPEN=50
 DELAY_KEYSTROKE=25
 DELAY_SEARCH_RESULT=150
@@ -92,6 +107,7 @@ SANDBOX_PID=""
 NESTED_WAYLAND=""
 FRAME_FILES=()
 FRAME_DELAYS=()
+STILL_FRAME=""
 ICON_THEME_VARS=()
 
 die()
@@ -229,10 +245,12 @@ end
 dofile(config_dir .. "/hyprland.lua")
 hl.on = on
 
--- Fixed visuals: no animation mid-capture, no stray pointer, and the same
--- built-in wallpaper every run instead of a random one.
+-- Fixed visuals: no animation mid-capture, no stray pointer, the same
+-- built-in wallpaper every run instead of a random one, and new windows split
+-- to the right instead of towards the hidden pointer.
 hl.config({
   animations = { enabled = false },
+  dwindle = { force_split = 2 },
   cursor = { invisible = true },
   misc = { force_default_wallpaper = 2 },
 })
@@ -301,26 +319,151 @@ json_array()
     jq -n '$ARGS.positional' --args "$@" | sed '2,$s/^/  /'
 }
 
+# Waybar modules that read the state of the real machine, as NAME:VALUE. They
+# keep their glyphs, but every placeholder shows VALUE and every state (muted,
+# connected, disabled...) shows the same text, so the picture says nothing
+# about the host. Their tooltips are off.
+WAYBAR_FIXED=(cpu:12 memory:34 pulseaudio:50 bluetooth:on)
+# Modules whose state is private to the sandbox (its own runtime directory
+# and D-Bus session bus), kept as they are.
+WAYBAR_SHOWN=(custom/recording tray)
+# Modules about hardware or connections of the real machine, left out.
+WAYBAR_DROPPED=(custom/vpn custom/lact-profile custom/headsetcontrol)
+
+# waybar_fixed_overrides INCLUDE... - the JSON object that replaces the format
+# strings of the WAYBAR_FIXED modules, built from their definitions in the
+# INCLUDE files. Waybar gives the main config precedence over its includes.
+waybar_fixed_overrides()
+{
+    local entry overrides='{}'
+    for entry in "${WAYBAR_FIXED[@]}"; do
+        overrides=$(jq -s --argjson acc "$overrides" --arg name "${entry%%:*}" \
+            --arg value "${entry#*:}" '
+            (add | .[$name] // error("Waybar module \($name) is not defined")) as $module
+            | ($module["format-icons"] | if type == "object" then .default else . end
+                | if type == "array" then last else "" end) as $icon
+            | ($module.format | gsub("\\{icon\\}"; $icon)
+                | gsub("\\{[a-z_]*\\}"; $value)) as $text
+            | $acc + {($name): ($module
+                | with_entries(select(.key | startswith("format")) | select(.value | type == "string")
+                    | .value = $text)
+                + {tooltip: false})}' "$@") || return 1
+    done
+    printf '%s\n' "$overrides"
+}
+
 # render_waybar_config DST - the Waybar config of a host without temperature
-# sensors or battery, from the role defaults (no Ansible in the demo).
+# sensors or battery, from the role defaults (no Ansible in the demo), with the
+# modules that read the real machine fixed or left out. A module that is not
+# listed above stops the run, so a new one cannot leak into the pictures.
 render_waybar_config()
 {
-    local modules includes
-    mapfile -t modules < <(yaml_list dotfiles_waybar_modules_right "$DOTFILES_DEFAULTS" \
+    local modules=() includes files=() module include overrides
+    while IFS= read -r module; do
+        if [[ " ${WAYBAR_DROPPED[*]} " == *" $module "* ]]; then
+            continue
+        elif [[ " ${WAYBAR_SHOWN[*]} " != *" $module "* \
+            && " ${WAYBAR_FIXED[*]} " != *" $module:"* ]]; then
+            die "unknown Waybar module '$module' in $DOTFILES_DEFAULTS"
+        fi
+        modules+=("$module")
+    done < <(yaml_list dotfiles_waybar_modules_right "$DOTFILES_DEFAULTS" \
         | grep -v -e '{{' -e '^temperature#')
     mapfile -t includes < <(yaml_list dotfiles_waybar_includes "$DOTFILES_DEFAULTS" \
         | grep -v '/temperature\.json$')
     ((${#modules[@]} > 0 && ${#includes[@]} > 0)) \
         || die "no Waybar modules or includes in $DOTFILES_DEFAULTS"
-    render_template "$DOTFILES_TEMPLATES/.config/waybar/config.j2" "$1" \
+    for include in "${includes[@]}"; do
+        files+=("$DOTFILES_HOME/${include#\~/}")
+    done
+    overrides=$(waybar_fixed_overrides "${files[@]}") \
+        || die "cannot fix the Waybar modules from ${files[*]}"
+    render_template "$DOTFILES_TEMPLATES/.config/waybar/config.j2" "$1.tmp" \
         "dotfiles_waybar_modules_right_json=$(json_array "${modules[@]}")" \
         "dotfiles_waybar_includes_json=$(json_array "${includes[@]}")"
+    jq --argjson fixed "$overrides" '. + $fixed' "$1.tmp" >"$1" \
+        || die "cannot add the fixed Waybar modules to $1"
+    rm -f -- "$1.tmp"
 }
 
 # The Hyprlock background, from the role defaults; the demo reads it in the
 # repository mounted at ~/.dotfiles rather than in a deployed copy.
 HYPRLOCK_WALLPAPER="$(sed -n '/^dotfiles_hyprlock_wallpaper_source:/{n;s/^ *//p;}' \
     "$DOTFILES_DEFAULTS")"
+
+# Fastfetch modules that describe the session the demo shows, kept as they are.
+FASTFETCH_SHOWN=(os wm terminal shell theme break custom)
+# Modules that would describe the real machine, as NAME:KEY[:VALUE]. They become
+# custom modules showing VALUE ("hidden" by default), so nothing is detected at
+# all. The CPU, GPU and memory of a 1997 PC stand in for the real ones.
+FASTFETCH_HIDDEN=(kernel:Kernel packages:Packages uptime:Uptime host:Host
+    "cpu:CPU:Intel Pentium MMX @ 233 MHz" loadavg:Loadavg
+    "gpu:GPU:3dfx Voodoo Graphics (4 MB)" "memory:Memory:256 MiB" disk:Disk)
+# The "top" modules, as SORT:VALUE: the processes they measure would show more
+# memory than the 256 MiB above, so they print a fixed line too.
+FASTFETCH_TOP=("cpu:nvim (46) - CPU 4%" "memory:alacritty (31) - MEM 24.0 MiB")
+
+# fastfetch_top_line LINES... - one custom module in place of the multi-line
+# "top" object LINES (from "{" to "}"), keeping its key, indent and comma.
+fastfetch_top_line()
+{
+    local line indent="" comma="" key="" sort="" entry value=""
+    for line in "$@"; do
+        [[ $line =~ ^([[:space:]]*)\{[[:space:]]*$ ]] && indent="${BASH_REMATCH[1]}"
+        [[ $line =~ ^[[:space:]]*\}(,?)[[:space:]]*$ ]] && comma="${BASH_REMATCH[1]}"
+        [[ $line =~ \"key\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] && key="${BASH_REMATCH[1]}"
+        [[ $line =~ \"sort\"[[:space:]]*:[[:space:]]*\"([a-z]+)\" ]] && sort="${BASH_REMATCH[1]}"
+    done
+    for entry in "${FASTFETCH_TOP[@]}"; do
+        [[ ${entry%%:*} == "$sort" ]] && value="${entry#*:}"
+    done
+    [[ -n $key && -n $value ]] || return 1
+    printf '%s{ "type": "custom", "key": "%s", "format": "%s" }%s\n' \
+        "$indent" "$key" "$value" "$comma"
+}
+
+# render_fastfetch_config SRC DST - copy the Fastfetch config SRC to DST with the
+# machine modules hidden. Any other module fails, so a module added to the
+# config later cannot leak into the pictures unnoticed.
+render_fastfetch_config()
+{
+    local line name entry indent comma known key value
+    local in_modules=""
+    local -a object=()
+    : >"$2"
+    while IFS= read -r line || [[ -n $line ]]; do
+        [[ $line =~ \"modules\"[[:space:]]*:[[:space:]]*\[ ]] && in_modules=1
+        [[ $line =~ ^[[:space:]]*\] ]] && in_modules=""
+        # A multi-line module is read whole; only "top" is known in that form.
+        if [[ ${#object[@]} -gt 0 || ( -n $in_modules && $line =~ ^[[:space:]]*\{[[:space:]]*$ ) ]]; then
+            object+=("$line")
+            [[ $line =~ ^[[:space:]]*\}(,?)[[:space:]]*$ ]] || continue
+            if ! [[ ${object[*]} =~ \"type\"[[:space:]]*:[[:space:]]*\"top\" ]] \
+                || ! fastfetch_top_line "${object[@]}" >>"$2"; then
+                die "unknown Fastfetch module in $1: ${object[*]}"
+            fi
+            object=()
+            continue
+        elif [[ $line =~ \"type\"[[:space:]]*:[[:space:]]*\"([a-z]+)\" ]]; then
+            name="${BASH_REMATCH[1]}"
+            [[ " ${FASTFETCH_SHOWN[*]} " == *" $name "* ]] \
+                || die "unknown Fastfetch module '$name' in $1"
+        elif [[ $line =~ ^([[:space:]]*)\"([a-z]+)\"(,?)[[:space:]]*$ ]]; then
+            indent="${BASH_REMATCH[1]}" name="${BASH_REMATCH[2]}" comma="${BASH_REMATCH[3]}"
+            known=""
+            for entry in "${FASTFETCH_HIDDEN[@]}"; do
+                [[ ${entry%%:*} == "$name" ]] || continue
+                key=${entry#*:} value=hidden
+                [[ $key == *:* ]] && value=${key#*:} key=${key%%:*}
+                line="$indent{ \"type\": \"custom\", \"key\": \"$key\", \"format\": \"$value\" }$comma"
+                known=1
+            done
+            [[ -n $known || " ${FASTFETCH_SHOWN[*]} " == *" $name "* ]] \
+                || die "unknown Fastfetch module '$name' in $1"
+        fi
+        printf '%s\n' "$line" >>"$2"
+    done <"$1"
+}
 
 # build_demo_home DIR - the home directory of the demo user, made of links to
 # the repository as mounted in the sandbox and of rendered templates.
@@ -330,12 +473,15 @@ build_demo_home()
     mkdir -p -- "$home/.config" "$home/.local/share/nvim" "$home/.local/share/dotfiles" \
         "$home/.dotfiles"
 
-    for name in alacritty fastfetch nvim; do
+    for name in alacritty nvim; do
         ln -s -- "$(sandbox_path "$DOTFILES_HOME/.config/$name")" "$home/.config/$name"
     done
     for name in .bin .zshenv; do
         ln -s -- "$(sandbox_path "$DOTFILES_HOME/$name")" "$home/$name"
     done
+    mkdir -p -- "$home/.config/fastfetch"
+    render_fastfetch_config "$DOTFILES_HOME/.config/fastfetch/config.jsonc" \
+        "$home/.config/fastfetch/config.jsonc"
     # Same place as dotfiles_zsh_dest in the role defaults.
     ln -s -- "$(sandbox_path "$DOTFILES_HOME/zsh")" "$home/.local/share/dotfiles/zsh"
 
@@ -498,6 +644,31 @@ wait_until()
         ((SECONDS < deadline)) || die "timed out waiting for $what"
         sleep "$POLL_INTERVAL"
     done
+}
+
+# active_window_x - left edge of the focused window.
+active_window_x()
+{
+    hctl activewindow -j | jq -er '.at[0]'
+}
+
+# active_window_left FROM_X - true once the focused window no longer starts at
+# FROM_X, so a move has been applied by the layout.
+active_window_left()
+{
+    local x
+    x="$(active_window_x)" && [[ $x != "$1" ]]
+}
+
+# move_window OUTPUT DIRECTION - move the focused window and capture it.
+move_window()
+{
+    local from
+    from="$(active_window_x)" || die "no focused window to move"
+    [[ $(hctl dispatch "hl.dsp.window.move({ direction = \"$2\" })") == ok ]] \
+        || die "Hyprland rejected the move '$2'"
+    wait_until "the window to move $2" active_window_left "$from"
+    demo_frame "$1" "$DELAY_MOVE"
 }
 
 # send_key KEY - type KEY into the focused surface of the instance.
@@ -664,9 +835,11 @@ spawn()
     printf '%s\n' "$quoted" >&"$CLIENTS_FD"
 }
 
+# populate OUTPUT - open the desktop step by step, one frame per step, and
+# leave the full desktop as the still frame (STILL_FRAME).
 populate()
 {
-    local windows=0
+    local output="$1" windows=0
 
     if has waybar; then
         spawn waybar
@@ -674,20 +847,53 @@ populate()
     fi
     # Mako only maps a surface once a notification arrives.
     has mako && spawn mako
+    # Drop the config-load and start-hyprland banners of Hyprland itself.
+    hctl dismissnotify >/dev/null 2>&1 || true
+    demo_frame "$output" "$DELAY_EMPTY"
 
-    # One client at a time, so dwindle always splits the same way.
+    # One client at a time, so they always open in the same order.
     if has nvim; then
         spawn "$TERM_EMU" -e nvim "$DEMO_HOME/.dotfiles/$EDITOR_FILE"
         windows=$((windows + 1))
         wait_until "the editor window" client_count_is "$windows"
+        demo_frame "$output" "$DELAY_WINDOW_OPEN"
     fi
     # A login-like shell: the zshrc greets with fastfetch when SHLVL is 1.
     spawn env SHLVL=0 "$TERM_EMU"
     windows=$((windows + 1))
     wait_until "the terminal window" client_count_is "$windows"
 
-    # Drop the config-load and start-hyprland banners of Hyprland itself.
     hctl dismissnotify >/dev/null 2>&1 || true
+    sleep "$SETTLE"
+    STILL_FRAME=${#FRAME_FILES[@]}
+    capture_frame "$output" "$DELAY_DESKTOP"
+}
+
+# demo_move OUTPUT - move the focused terminal to the other half of the
+# screen, then back to its place, so the following steps run over the same
+# layout as the still. The direction comes from its position, so the moves
+# stay valid whatever side the layout opened it on.
+demo_move()
+{
+    local output="$1" x there back
+    client_count_is 2 || { log "only one window, skipping the moves"; return 0; }
+    x="$(active_window_x)" || die "no focused window to move"
+    if ((x < ${RES%x*} / 2)); then
+        there=r back=l
+    else
+        there=l back=r
+    fi
+    move_window "$output" "$there"
+    move_window "$output" "$back"
+}
+
+# demo_frame OUTPUT DELAY - let a new or moved window draw, then capture it.
+# Only the animation uses these frames, so a still-only run skips them.
+demo_frame()
+{
+    [[ -n $DEMO_OUT ]] || return 0
+    sleep "$WINDOW_DELAY"
+    capture_frame "$@"
 }
 
 # capture_frame OUTPUT DELAY - grab the output as the next demo frame.
@@ -769,15 +975,14 @@ main()
     start_sandbox
     output="$(use_headless_output)"
     log "capturing output $output"
-    populate
-    sleep "$SETTLE"
-    capture_frame "$output" "$DELAY_DESKTOP"
+    populate "$output"
 
-    write_atomically "$OUT" encode_webp "$encoder" "${FRAME_FILES[0]}" \
+    write_atomically "$OUT" encode_webp "$encoder" "${FRAME_FILES[$STILL_FRAME]}" \
         || die "WebP encoding with '$encoder' failed"
     log "saved $RES still ($encoder, WebP q$WEBP_QUALITY) to $OUT"
 
     [[ -n $DEMO_OUT ]] || return 0
+    demo_move "$output"
     demo_launcher "$output"
     demo_notification "$output"
     demo_lock "$output"
