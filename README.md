@@ -6,11 +6,12 @@
 A Hyprland desktop for Arch Linux and CachyOS, with Zsh, Neovim, Alacritty,
 tmux, Waybar, and Mako, set up by a single Ansible playbook.
 
-[![Hyprland demo: a Hyprlauncher search, a Mako notification, and the Hyprlock screen over Neovim, Fastfetch, and Waybar](./dist/hyprland-demo.webp)](./dist/hyprland.webp)
+[![Hyprland demo: Neovim and Fastfetch windows open on an empty desktop and move, then a Hyprlauncher search, a Mako notification, and the Hyprlock screen](./dist/hyprland-demo.webp)](./dist/hyprland.webp)
 
-Searching with Hyprlauncher, a Mako notification, then Hyprlock, recorded by
-`make screenshot` from the Hyprland config in this repository. Click it for the
-full-size still.
+Neovim and a Fastfetch terminal opening on an empty desktop, the terminal
+moving across and back, a Hyprlauncher search, a Mako notification, then
+Hyprlock, recorded by `make screenshot` from the Hyprland config in this
+repository. Click it for the full-size still.
 
 [Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
 [Arch installation guide](./dist/arch/install.md) · [Ansible guide](./ansible/README.md)

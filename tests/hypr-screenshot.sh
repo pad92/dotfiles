@@ -234,3 +234,192 @@ write_atomically "$OUT" writing_encoder || fail "a successful encode reported fa
 [[ $(<"$OUT") == "new image" ]] || fail "a successful encode did not replace the image"
 
 printf 'PASS: hypr-screenshot atomic output\n'
+
+# --- A window move is captured only once the layout has applied it ---------
+# The fake instance logs each dispatch; when MOVE_APPLIES is set the focused
+# window jumps between x=0 and x=960, and the dispatch is rejected for "u".
+cat >"$TEST_DIR/bin/hyprctl" <<'EOF'
+#!/bin/sh
+shift 2 # -i SIG
+case "$1" in
+    activewindow) printf '{"at":[%s,40]}\n' "$(cat "$FAKE_STATE/x")" ;;
+    clients) cat "$FAKE_STATE/clients" ;;
+    dispatch)
+        printf '%s\n' "$2" >>"$FAKE_STATE/dispatched"
+        case "$2" in *'"u"'*) printf 'error\n'; exit 0 ;; esac
+        if [ -n "${MOVE_APPLIES:-}" ]; then
+            if [ "$(cat "$FAKE_STATE/x")" = 0 ]; then x=960; else x=0; fi
+            printf '%s\n' "$x" >"$FAKE_STATE/x"
+        fi
+        printf 'ok\n'
+        ;;
+esac
+EOF
+cat >"$TEST_DIR/bin/grim" <<'EOF'
+#!/bin/sh
+: >"$3"
+EOF
+chmod +x "$TEST_DIR/bin/hyprctl" "$TEST_DIR/bin/grim"
+
+move_case()
+{
+    rm -rf "$TEST_DIR/state" && mkdir -p "$TEST_DIR/state"
+    printf '0\n' >"$TEST_DIR/state/x"
+    # The settings below are read by the sourced functions.
+    # shellcheck disable=SC2030,SC2031,SC2034
+    (
+        export FAKE_STATE="$TEST_DIR/state" MOVE_APPLIES="$2"
+        SIG=showcase WORK_DIR="$TEST_DIR/state" STARTUP_TIMEOUT=1 POLL_INTERVAL=0.05 WINDOW_DELAY=0
+        FRAME_FILES=() FRAME_DELAYS=()
+        move_window HEADLESS-2 "$1" >/dev/null 2>&1 || exit 1
+        printf '%s %s\n' "${#FRAME_FILES[@]}" "${FRAME_DELAYS[0]}"
+    )
+}
+
+[[ $(move_case l 1) == "1 $DELAY_MOVE" ]] \
+    || fail "an applied move was not captured as one frame"
+grep -qxF 'hl.dsp.window.move({ direction = "l" })' "$TEST_DIR/state/dispatched" \
+    || fail "unexpected move dispatch: $(cat "$TEST_DIR/state/dispatched")"
+move_case l "" >/dev/null && fail "a move the layout never applied was captured"
+move_case u 1 >/dev/null && fail "a rejected move was captured"
+
+# A still-only run (empty DEMO_OUT) takes no demo frame.
+frame_case()
+{
+    # shellcheck disable=SC2030,SC2031,SC2034
+    (
+        DEMO_OUT="$1" WORK_DIR="$TEST_DIR/state" WINDOW_DELAY=0
+        FRAME_FILES=() FRAME_DELAYS=()
+        demo_frame HEADLESS-2 "$DELAY_EMPTY" || exit 1
+        printf '%s\n' "${#FRAME_FILES[@]}"
+    )
+}
+[[ $(frame_case "$TEST_DIR/demo.webp") == 1 ]] || fail "a demo run did not capture its frame"
+[[ $(frame_case "") == 0 ]] || fail "a still-only run captured a demo frame"
+
+# demo_move goes towards the other half of the screen and back, and leaves a
+# lone window alone. START_X is where the terminal opened, CLIENTS the mapped
+# client list; prints the dispatched directions and the frame count.
+demo_move_case()
+{
+    rm -rf "$TEST_DIR/state" && mkdir -p "$TEST_DIR/state"
+    printf '%s\n' "$1" >"$TEST_DIR/state/x"
+    printf '%s\n' "$2" >"$TEST_DIR/state/clients"
+    : >"$TEST_DIR/state/dispatched"
+    # shellcheck disable=SC2030,SC2031,SC2034
+    (
+        export FAKE_STATE="$TEST_DIR/state" MOVE_APPLIES=1
+        SIG=showcase WORK_DIR="$TEST_DIR/state" STARTUP_TIMEOUT=1 POLL_INTERVAL=0.05
+        WINDOW_DELAY=0 RES=1920x1080 DEMO_OUT="$TEST_DIR/demo.webp"
+        FRAME_FILES=() FRAME_DELAYS=()
+        demo_move HEADLESS-2 >/dev/null 2>&1 || exit 1
+        dirs="$(sed -n 's/.*direction = "\(.\)".*/\1/p' "$FAKE_STATE/dispatched" | tr -d '\n')"
+        printf '%s %s\n' "${dirs:--}" "${#FRAME_FILES[@]}"
+    )
+}
+two='[{"mapped":true},{"mapped":true}]'
+[[ $(demo_move_case 0 "$two") == "rl 2" ]] \
+    || fail "a window on the left half did not go right and back: $(demo_move_case 0 "$two")"
+[[ $(demo_move_case 1200 "$two") == "lr 2" ]] \
+    || fail "a window on the right half did not go left and back: $(demo_move_case 1200 "$two")"
+[[ $(demo_move_case 0 '[{"mapped":true},{"mapped":false}]') == "- 0" ]] \
+    || fail "a lone mapped window was moved"
+
+printf 'PASS: hypr-screenshot window moves\n'
+
+# --- Fastfetch shows no detail of the real machine --------------------------
+ff_src="$ROOT_DIR/ansible/roles/dotfiles/files/home/.config/fastfetch/config.jsonc"
+ff_out="$TEST_DIR/fastfetch.jsonc"
+(render_fastfetch_config "$ff_src" "$ff_out") 2>/dev/null \
+    || fail "the repository Fastfetch config was rejected"
+# Every module of the rendered config: bare names and "type" values.
+ff_modules=$(sed -nE -e 's/^[[:space:]]*"([a-z]+)",?[[:space:]]*$/\1/p' \
+    -e 's/.*"type"[[:space:]]*:[[:space:]]*"([a-z]+)".*/\1/p' "$ff_out")
+for leak in kernel packages uptime host cpu loadavg gpu memory disk; do
+    grep -qx -- "$leak" <<<"$ff_modules" && fail "Fastfetch module '$leak' reaches the picture"
+done
+grep -q '"type": "top"' "$ff_out" && fail "a Fastfetch top module measures real processes"
+[[ $(grep -c '"type": "custom"' "$ff_out") == 11 ]] \
+    || fail "the hidden modules did not keep their place in the layout"
+grep -qF '{ "type": "custom", "key": "CPU", "format": "Intel Pentium MMX @ 233 MHz" },' "$ff_out" \
+    || fail "the CPU line does not show the stand-in value"
+grep -qF '{ "type": "custom", "key": "Disk", "format": "1.2 GiB / 3.2 GiB (37%) - ext4" }' "$ff_out" \
+    || fail "the Disk line does not show the stand-in value"
+grep -q '"format": "hidden"' "$ff_out" && fail "a Fastfetch module shows a placeholder instead of a made-up value"
+# shellcheck disable=SC2034 # read by render_fastfetch_config
+(FASTFETCH_HIDDEN=(disk:Disk); render_fastfetch_config "$ff_src" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "a Fastfetch module without a stand-in value was accepted"
+grep -qF '{ "type": "custom", "key": "RAM process", "format": "alacritty (31) - MEM 24.0 MiB" },' "$ff_out" \
+    || fail "the RAM process line does not show the stand-in value"
+grep -qx os <<<"$ff_modules" || fail "a session module was dropped"
+# Everything before the modules is copied as it is, the logo object included.
+[[ $(sed -n '1,/"modules"/p' "$ff_out") == $(sed -n '1,/"modules"/p' "$ff_src") ]] \
+    || fail "the Fastfetch logo settings were changed"
+jq -e . >/dev/null 2>&1 < <(sed -E 's#^[[:space:]]*//.*##' "$ff_out" | tr -d '\n' | sed -E 's/,[[:space:]]*([]}])/\1/g') \
+    || fail "the rendered Fastfetch config is not valid JSONC"
+
+# A module the script does not know is refused, as a bare name or an object.
+printf '{ "modules": [\n  "os",\n  "battery",\n] }\n' >"$TEST_DIR/ff-bare.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-bare.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "an unknown bare Fastfetch module was accepted"
+printf '{ "modules": [\n  { "type": "cpu", "key": "x" },\n] }\n' >"$TEST_DIR/ff-object.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-object.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "a Fastfetch module in object form bypassed the filter"
+
+# A multi-line module other than "top", or a "top" sorted on something else.
+printf '{ "modules": [\n  {\n    "type": "gpu",\n    "key": "x",\n  },\n] }\n' >"$TEST_DIR/ff-multi.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-multi.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "a multi-line Fastfetch module bypassed the filter"
+printf '{ "modules": [\n  {\n    "type": "top",\n    "key": "x",\n    "sort": "pid",\n  },\n] }\n' >"$TEST_DIR/ff-top.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-top.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "a top module without a stand-in value was accepted"
+
+# Modules hidden in another layout are refused instead of copied as they are.
+printf '{ "modules": ["os", "cpu"] }\n' >"$TEST_DIR/ff-inline.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-inline.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "an inline Fastfetch module list was copied unfiltered"
+printf '{ "modules": [\n  "os", "cpu",\n] }\n' >"$TEST_DIR/ff-pair.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-pair.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    && fail "two Fastfetch modules on one line were copied unfiltered"
+
+# Keys outside the module list, comments and nested arrays are not modules.
+printf '{\n  "logo": {\n    "type": "small",\n  },\n  // "gpu",\n  "modules": [\n    // "gpu",\n    {\n      "type": "top",\n      "key": "a",\n      "sort": "cpu",\n      "showTypes": [\n        "cpu"\n      ],\n    },\n    {\n      "type": "top",\n      "key": "b",\n      "sort": "memory",\n    },\n    "os",\n  ],\n}\n' >"$TEST_DIR/ff-layout.jsonc"
+(render_fastfetch_config "$TEST_DIR/ff-layout.jsonc" "$TEST_DIR/ff.out") 2>/dev/null \
+    || fail "a Fastfetch config with logo type, comments or nested arrays was rejected"
+grep -q '"type": "top"' "$TEST_DIR/ff.out" && fail "a top module after a nested array was not hidden"
+grep -q '"type": "small"' "$TEST_DIR/ff.out" || fail "the Fastfetch logo type was changed"
+
+printf 'PASS: hypr-screenshot Fastfetch anonymised\n'
+
+# --- Waybar shows no live state of the real machine -------------------------
+wb_out="$TEST_DIR/waybar.json"
+(render_waybar_config "$wb_out") 2>/dev/null || fail "the repository Waybar config was rejected"
+wb_right=$(jq -r '."modules-right"[]' "$wb_out")
+for leak in custom/vpn custom/lact-profile custom/headsetcontrol; do
+    grep -qx -- "$leak" <<<"$wb_right" && fail "Waybar module '$leak' reaches the picture"
+done
+for fixed in cpu memory pulseaudio bluetooth; do
+    grep -qx -- "$fixed" <<<"$wb_right" || fail "Waybar module '$fixed' was dropped"
+    # One text for every state, no placeholder left and no tooltip.
+    texts=$(jq -r --arg m "$fixed" '.[$m] | to_entries[] | select(.key | startswith("format")) | .value' "$wb_out")
+    [[ -n $texts && $(sort -u <<<"$texts" | wc -l) == 1 ]] \
+        || fail "Waybar module '$fixed' has a text per state: $texts"
+    grep -q '[{}]' <<<"$texts" && fail "Waybar module '$fixed' keeps a placeholder: $texts"
+    [[ $(jq --arg m "$fixed" '.[$m].tooltip' "$wb_out") == false ]] \
+        || fail "Waybar module '$fixed' keeps its tooltip"
+done
+# Each format key of the include is overridden, so no live variant is merged in.
+wb_src="$ROOT_DIR/ansible/roles/dotfiles/files/home/.config/waybar/conf"
+missing=$(jq -rs --slurpfile out "$wb_out" '
+    add as $src | ["cpu", "memory", "pulseaudio", "bluetooth"][] as $m
+    | $src[$m] | keys[] | select(startswith("format") and . != "format-icons")
+    | select($out[0][$m][.] == null) | "\($m).\(.)"' "$wb_src"/*.json)
+[[ -z $missing ]] || fail "live Waybar formats are not overridden: $missing"
+
+# A module the script does not know is refused.
+printf 'dotfiles_waybar_modules_right:\n  - cpu\n  - network\ndotfiles_waybar_includes:\n  - ~/.config/waybar/conf/system.json\n' \
+    >"$TEST_DIR/waybar-defaults.yml"
+(DOTFILES_DEFAULTS="$TEST_DIR/waybar-defaults.yml" render_waybar_config "$TEST_DIR/wb.out") 2>/dev/null \
+    && fail "an unknown Waybar module was accepted"
+
+printf 'PASS: hypr-screenshot Waybar anonymised\n'
