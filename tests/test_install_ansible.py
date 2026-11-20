@@ -197,20 +197,25 @@ class InstallerTargetTests(unittest.TestCase):
                 self.assertNotIn("ansible-playbook", result.stdout)
                 self.assertIn("make plan takes no TAGS or SKIP_TAGS", result.stderr)
 
-    def test_install_obs_always_runs_the_obs_playbook(self):
-        for arguments in [("install-obs",), ("install-obs", "PLAYBOOK=site")]:
+    def test_install_obs_always_runs_the_obs_profile(self):
+        for arguments in [
+            ("install-obs",),
+            ("install-obs", "TAGS=dotfiles", "SKIP_TAGS=obs_config"),
+        ]:
             with self.subTest(arguments=arguments):
                 result = self.dry_run(*arguments)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn('ansible/obs.yml" --limit', result.stdout)
+                self.assertIn('ansible/site.yml" --limit', result.stdout)
+                self.assertIn('--tags "obs"', result.stdout)
+                self.assertNotIn("--skip-tags", result.stdout)
 
     def test_install_obs_runs_after_another_playbook_run(self):
         for first in ["deploy", "install"]:
             with self.subTest(first=first):
                 result = self.dry_run(first, "install-obs")
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn('ansible/site.yml" --limit', result.stdout)
-                self.assertIn('ansible/obs.yml" --limit', result.stdout)
+                self.assertEqual(result.stdout.count('ansible/site.yml" --limit'), 2)
+                self.assertEqual(result.stdout.count('--tags "obs"'), 1)
 
     def test_galaxy_installs_pinned_collections_with_or_without_force(self):
         for target, forced in [("galaxy", False), ("galaxy-force", True)]:
@@ -227,14 +232,15 @@ class InstallerTargetTests(unittest.TestCase):
     def test_unknown_playbook_is_refused(self):
         result = self.dry_run("deploy", "PLAYBOOK=backup")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("PLAYBOOK=backup is not one of: site obs", result.stderr)
+        self.assertIn("PLAYBOOK=backup is not one of: site", result.stderr)
         # Several playbooks at once would build a path such as "site obs.yml",
-        # and % is a wildcard for $(filter), not a playbook name.
-        for playbook in ["site obs", "", "%", "s%"]:
+        # and % is a wildcard for $(filter), not a playbook name. obs is no
+        # longer a playbook: it is the obs tag of site.yml.
+        for playbook in ["site obs", "obs", "", "%", "s%"]:
             with self.subTest(playbook=playbook):
                 result = self.dry_run("deploy", f"PLAYBOOK={playbook}")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("is not one of: site obs", result.stderr)
+                self.assertIn("is not one of: site", result.stderr)
         # Targets that do not run a playbook stay usable.
         self.assertEqual(self.dry_run("help", "PLAYBOOK=backup").returncode, 0)
 

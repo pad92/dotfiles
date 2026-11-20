@@ -58,7 +58,13 @@ def ansible_tree(work: Path, source: Path = ROOT / "ansible") -> Path:
 
 def ansible_test_environment(work: Path) -> dict[str, str]:
     config = work / "ansible.cfg"
-    config.write_text("[defaults]\ninterpreter_python = auto_silent\n")
+    # Pipelining sends each module to the Python on stdin instead of copying it
+    # to a temporary file first. Every module task gets a bit cheaper, and the
+    # suite runs a few thousand of them.
+    config.write_text(
+        "[defaults]\ninterpreter_python = auto_silent\n"
+        "[connection]\npipelining = True\n"
+    )
     return {
         **os.environ,
         "ANSIBLE_CONFIG": str(config),

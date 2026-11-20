@@ -75,8 +75,11 @@ Release history and changes planned for the next version.
     `dotfiles_zsh_link_dest` to `dotfiles_zsh_dest`, `dotfiles_vim_plugins`
     to `dotfiles_vim_pack_plugins` and `dotfiles_hypr_touch_output` to
     `dotfiles_hypr_touch_monitor`.
-  - Removed: the `dotfiles_submodules`, `dotfiles_runtime`, `vim` and
-    `packages_select` tags, `dotfiles_update_vim_plugins`,
+  - Removed: the `dotfiles_submodules`, `dotfiles_runtime`, `vim`,
+    `packages_select`, `packages_install`, `packages_reconcile`,
+    `pacman_config`, `makepkg_config`, `gpu_modules`, `amd_cpu_performance`,
+    `mako_reload` and `waybar_reload` tags, `PLAYBOOK=obs` (use `TAGS=obs`),
+    `ansible/obs.yml`, `dotfiles_update_vim_plugins`,
     `dotfiles_plugin_managers`, `dotfiles_waybar_host_config`, `copy: false`
     in `dotfiles_trees`, `ansible/backup.yml`, and Hyprland's
     `hosts/<hostname>.lua`, `hosts/common.lua` and `is-host.sh`.
@@ -90,7 +93,14 @@ Release history and changes planned for the next version.
     reports another hostname.
   - The `system` role is split into `lact`, `gaming`, `package_services`,
     `docker`, `hardening`, `dns`, `vpn`, `gpu`, `cpu_power`,
-    `package_manager` and `agent_cli`; the old tags still work.
+    `package_manager` and `agent_cli`.
+  - `site.yml` now holds the OBS profile that `ansible/obs.yml` used to run.
+    Passing only `--tags obs` installs OBS and nothing else; the profile runs
+    on Arch only, adds to the saved package selection and refuses to
+    reconcile.
+  - Each role has a single tag named after it, and the `system` and
+    `dotfiles` tags group several roles. `dotfiles_deploy` still runs the
+    `dotfiles` role on its own.
   - Package groups are selected first, `packages_action=plan` changes
     nothing, and only the `min` and `hardware` facts are gathered.
   - With `21_steam`, `scx_loader.service` is masked so `ananicy-cpp` does not
@@ -121,6 +131,15 @@ Release history and changes planned for the next version.
     documentation-only changes on branches.
   - `package_vim.sh` and `package_zsh.sh` are shared by GitLab and GitHub.
     ansible-core is pinned to 2.22.0.
+  - A new commit on a branch cancels the test and lint jobs of its previous
+    pipeline (`interruptible`, `workflow:auto_cancel`), so they no longer
+    share the runner with the current one.
+  - The two longest deploy tests (file copy, zsh plugin tree) are split in
+    two so the workers run them in parallel; the file-copy scenarios need
+    fewer playbook runs.
+  - Test playbooks use Ansible pipelining. The heaviest tests (Vim pack,
+    tmux, rendered dotfiles, DNS, reload handlers) drop the repeated
+    idempotency and check-mode runs that other assertions already cover.
 - **DNS**: `/etc/resolv.conf` links to the resolved stub unless a VPN client
   owns it; the old NetworkManager and dnsmasq files are backed up then
   removed.
@@ -143,7 +162,8 @@ Release history and changes planned for the next version.
   `playerctl` call.
 - **Makefile**: `make deploy` and `make check` take `HOST`, `PLAYBOOK`,
   `TAGS`, `SKIP_TAGS` and `BECOME_PASS=1`. New `plan`, `tags`, `tasks`,
-  `verify`, `galaxy` and `galaxy-force` targets.
+  `verify`, `galaxy` and `galaxy-force` targets. `PLAYBOOK` only accepts
+  `site`, and `make install-obs` now runs `make deploy TAGS=obs`.
 - **Pages**: Gruvbox colours with a theme menu, menus on hover, and URLs
   without the `.md/index.html` suffix (old links no longer resolve).
 - **pre-commit**: the test hook runs before a push, so a coverage drop stops

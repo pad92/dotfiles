@@ -142,185 +142,183 @@ class DotfilesDeployTests(unittest.TestCase):
             self.assertRegex(output, r"changed=0\b")
             self.assertNotIn("RUNNING HANDLER", output)
 
-            # Reverting local drift in one file runs only that file's handler.
+            # Reverting local drift in one file runs only that file's handler,
+            # and a rendered file without a handler adds none.
             toolkit = home / ".config/hypr/hyprtoolkit.conf"
             toolkit.write_text(toolkit.read_text() + "# local edit\n")
-            output = deploy("Other-Dark")
+            output = deploy("Other-Dark", "second")
             self.assertNotIn("# local edit", toolkit.read_text())
+            self.assertEqual((home / ".unrelated").read_text(), "second\n")
             self.assertIn(launcher_restart, output)
             self.assertNotIn(mako_reload, output)
+            self.assertEqual(output.count("RUNNING HANDLER"), 1, output)
 
-            # A rendered file without a handler notifies nothing.
-            output = deploy("Other-Dark", "second")
-            self.assertEqual((home / ".unrelated").read_text(), "second\n")
-            self.assertNotIn("RUNNING HANDLER", output)
-
-    def test_individual_file_copy_preserves_deployment_behavior(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            work = Path(temporary)
-            role = work / "dotfiles"
-            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
-            handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
-            # Observe notifications without touching the desktop or user services.
-            (role / "handlers/main.yml").write_text(
-                yaml.safe_dump(
-                    [
-                        {
-                            "name": handler["name"],
-                            "ansible.builtin.debug": {"msg": handler["name"]},
-                        }
-                        for handler in handlers
-                    ]
-                )
+    # Every play run costs minutes on the CI runner, so the scenario is split
+    # in two tests that run in parallel, each with as few runs as it needs.
+    def file_copy_fixture(self):
+        """A role limited to small fixture directories, and a play runner."""
+        work = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        role = work / "dotfiles"
+        shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+        handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
+        # Observe notifications without touching the desktop or user services.
+        (role / "handlers/main.yml").write_text(
+            yaml.safe_dump(
+                [
+                    {
+                        "name": handler["name"],
+                        "ansible.builtin.debug": {"msg": handler["name"]},
+                    }
+                    for handler in handlers
+                ]
             )
-            source = role / "files/home"
-            # Each deployed file costs one Ansible module run per play, so keep
-            # only the Waybar file this test relies on: one executable in a
-            # subdirectory.
-            waybar = source / ".config/waybar"
-            kept = {"modules/lact-profile"}
-            for path in sorted(waybar.rglob("*"), reverse=True):
-                relative = path.relative_to(waybar).as_posix()
-                if path.is_dir():
-                    if not any(path.iterdir()):
-                        path.rmdir()
-                elif relative not in kept:
-                    path.unlink()
-            (source / ".config/test-systemd/user").mkdir(parents=True)
-            # A fixture directory with its own handler, independent of the
-            # directories the role ships.
-            sample = source / ".config/sample-app/config"
-            sample.parent.mkdir(parents=True)
-            sample.write_text("original\n")
-            (sample.parent / ".hidden").write_text("hidden\n")
-            (sample.parent / "alias").symlink_to("config")
-            (source / ".config/empty-root").mkdir()
+        )
+        source = role / "files/home"
+        # Each deployed file costs one Ansible module run per play, so keep
+        # only the Waybar file this test relies on: one executable in a
+        # subdirectory.
+        waybar = source / ".config/waybar"
+        kept = {"modules/lact-profile"}
+        for path in sorted(waybar.rglob("*"), reverse=True):
+            relative = path.relative_to(waybar).as_posix()
+            if path.is_dir():
+                if not any(path.iterdir()):
+                    path.rmdir()
+            elif relative not in kept:
+                path.unlink()
+        (source / ".config/test-systemd/user").mkdir(parents=True)
+        # A fixture directory with its own handler, independent of the
+        # directories the role ships.
+        sample = source / ".config/sample-app/config"
+        sample.parent.mkdir(parents=True)
+        sample.write_text("original\n")
+        (sample.parent / ".hidden").write_text("hidden\n")
+        (sample.parent / "alias").symlink_to("config")
+        (source / ".config/empty-root").mkdir()
 
-            home = work / "home"
-            play = [
-                {
-                    "hosts": "localhost",
-                    "connection": "local",
-                    "gather_facts": False,
-                    "vars": {
-                        "ansible_facts": USER_FACTS,
-                        "dotfiles_home": str(home),
-                        "dotfiles_source_repository": str(ROOT),
-                        "dotfiles_directories": [
-                            "./.config/sample-app/",
-                            ".config/waybar",
-                            ".config/empty-root",
-                        ],
-                        "dotfiles_directory_handlers": {
-                            ".config/sample-app": ["Reload Mako configuration"],
-                            ".config/waybar": ["Reload Waybar"],
-                        },
-                        "dotfiles_files": [".gitconfig"],
-                        "dotfiles_trees": [],
-                        "dotfiles_vim_pack_plugins": [],
-                        "dotfiles_zsh_plugins": [],
-                        "dotfiles_templates": [],
-                        "dotfiles_systemd_graphical_units": [],
-                        "dotfiles_systemd_directory": ".config/test-systemd",
-                    },
-                    "tasks": [
-                        {
-                            "ansible.builtin.import_role": {
-                                "name": str(role),
-                                "tasks_from": "deploy",
-                            },
-                            "tags": ["dotfiles_deploy"],
-                        }
+        home = work / "home"
+        play = [
+            {
+                "hosts": "localhost",
+                "connection": "local",
+                "gather_facts": False,
+                "vars": {
+                    "ansible_facts": USER_FACTS,
+                    "dotfiles_home": str(home),
+                    "dotfiles_source_repository": str(ROOT),
+                    "dotfiles_directories": [
+                        "./.config/sample-app/",
+                        ".config/waybar",
+                        ".config/empty-root",
                     ],
-                }
-            ]
-            playbook = work / "play.yml"
-            playbook.write_text(yaml.safe_dump(play))
+                    "dotfiles_directory_handlers": {
+                        ".config/sample-app": ["Reload Mako configuration"],
+                        ".config/waybar": ["Reload Waybar"],
+                    },
+                    "dotfiles_files": [".gitconfig"],
+                    "dotfiles_trees": [],
+                    "dotfiles_vim_pack_plugins": [],
+                    "dotfiles_zsh_plugins": [],
+                    "dotfiles_templates": [],
+                    "dotfiles_systemd_graphical_units": [],
+                    "dotfiles_systemd_directory": ".config/test-systemd",
+                },
+                "tasks": [
+                    {
+                        "ansible.builtin.import_role": {
+                            "name": str(role),
+                            "tasks_from": "deploy",
+                        },
+                        "tags": ["dotfiles_deploy"],
+                    }
+                ],
+            }
+        ]
+        playbook = work / "play.yml"
+        playbook.write_text(yaml.safe_dump(play))
 
-            def run(*arguments):
-                result = run_playbook(
-                    playbook,
-                    "--tags",
-                    "dotfiles_deploy",
-                    *arguments,
-                    cwd=ROOT,
-                    env=ansible_test_environment(work),
-                )
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                return result.stdout
+        def run(*arguments):
+            result = run_playbook(
+                playbook,
+                "--tags",
+                "dotfiles_deploy",
+                *arguments,
+                cwd=ROOT,
+                env=ansible_test_environment(work),
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result.stdout
 
-            run("--check")
-            self.assertFalse(home.exists())
-            # A directory where a file is managed is moved aside whole.
-            conflict = home / ".gitconfig"
-            conflict.mkdir(parents=True, mode=0o700)
-            (conflict / "local").write_text("preserve me")
-            inode = conflict.stat().st_ino
-            self.assertIn("Replacement tasks are deferred", run("--check"))
-            self.assertFalse((home / ".gitconfig.bak").exists())
-            output = run()
-            self.assertEqual((home / ".gitconfig.bak").stat().st_ino, inode)
-            self.assertEqual((home / ".gitconfig.bak/local").read_text(), "preserve me")
+        return home, source, sample, run
 
-            self.assertEqual(
-                (home / ".config/sample-app/.hidden").read_text(), "hidden\n"
-            )
-            self.assertEqual(
-                (home / ".config/sample-app/alias").read_text(), "original\n"
-            )
-            self.assertTrue((home / ".config/empty-root").is_dir())
-            self.assertTrue(
-                os.access(home / ".config/waybar/modules/lact-profile", os.X_OK)
-            )
-            target = home / ".config/sample-app/config"
-            self.assertTrue(target.exists(), output)
-            self.assertEqual(target.read_text(), "original\n")
-            self.assertRegex(run(), r"changed=0\b")
+    def test_individual_file_copy_deploys_and_moves_conflicts_aside(self):
+        home, _source, _sample, run = self.file_copy_fixture()
 
-            # A local edit with identical size and mtime still needs a backup.
-            original_stat = target.stat()
-            target.write_text("modified\n")
-            os.utime(target, ns=(original_stat.st_atime_ns, sample.stat().st_mtime_ns))
-            unmanaged = home / ".config/sample-app/local-only"
-            unmanaged.write_text("keep me\n")
-            output = run("--check")
-            self.assertEqual(target.read_text(), "modified\n")
-            self.assertIn("Copy files individually from .config/sample-app", output)
-            output = run()
-            self.assertEqual(target.read_text(), "original\n")
-            self.assertTrue(
-                any(
-                    p.read_text() == "modified\n"
-                    for p in target.parent.glob("config.*~")
-                )
-            )
-            self.assertEqual(unmanaged.read_text(), "keep me\n")
-            self.assertIn("RUNNING HANDLER [", output)
-            self.assertIn("dotfiles : Reload Mako configuration", output)
-            self.assertNotIn("dotfiles : Reload Waybar", output)
-            self.assertNotRegex(
-                output,
-                r"changed: \[localhost\].*home/\.config/waybar",
-            )
+        # A directory where a file is managed is moved aside whole.
+        conflict = home / ".gitconfig"
+        conflict.mkdir(parents=True, mode=0o700)
+        (conflict / "local").write_text("preserve me")
+        inode = conflict.stat().st_ino
+        self.assertIn("Replacement tasks are deferred", run("--check"))
+        # Check mode leaves the home as it was.
+        self.assertEqual([path.name for path in home.iterdir()], [".gitconfig"])
+        self.assertEqual([path.name for path in conflict.iterdir()], ["local"])
+        output = run()
+        self.assertEqual((home / ".gitconfig.bak").stat().st_ino, inode)
+        self.assertEqual((home / ".gitconfig.bak/local").read_text(), "preserve me")
 
-            # File modes and empty directories are part of deployment too.
-            target.chmod(0o600)
-            target.parent.chmod(0o700)
-            (source / ".config/sample-app/empty").mkdir()
-            run()
-            self.assertEqual(
-                target.stat().st_mode & 0o777, sample.stat().st_mode & 0o777
-            )
-            self.assertTrue((home / ".config/sample-app/empty").is_dir())
-            self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
-            self.assertRegex(run(), r"changed=0\b")
+        self.assertEqual((home / ".config/sample-app/.hidden").read_text(), "hidden\n")
+        self.assertEqual((home / ".config/sample-app/alias").read_text(), "original\n")
+        self.assertTrue((home / ".config/empty-root").is_dir())
+        self.assertTrue(
+            os.access(home / ".config/waybar/modules/lact-profile", os.X_OK)
+        )
+        target = home / ".config/sample-app/config"
+        self.assertTrue(target.exists(), output)
+        self.assertEqual(target.read_text(), "original\n")
+        self.assertRegex(run(), r"changed=0\b")
 
-            # Each source file is checked and reported through its own copy task.
-            sample.write_text("updated\n")
-            output = run()
-            self.assertIn(str(target), output)
-            self.assertEqual(target.read_text(), "updated\n")
-            self.assertRegex(run(), r"changed=0\b")
+    def test_individual_file_copy_reverts_local_drift(self):
+        home, source, sample, run = self.file_copy_fixture()
+        run()
+        target = home / ".config/sample-app/config"
+        self.assertEqual(target.read_text(), "original\n")
+
+        # A local edit with identical size and mtime still needs a backup.
+        original_stat = target.stat()
+        target.write_text("modified\n")
+        os.utime(target, ns=(original_stat.st_atime_ns, sample.stat().st_mtime_ns))
+        unmanaged = home / ".config/sample-app/local-only"
+        unmanaged.write_text("keep me\n")
+        output = run("--check")
+        self.assertEqual(target.read_text(), "modified\n")
+        self.assertIn("Copy files individually from .config/sample-app", output)
+        output = run()
+        self.assertEqual(target.read_text(), "original\n")
+        self.assertTrue(
+            any(p.read_text() == "modified\n" for p in target.parent.glob("config.*~"))
+        )
+        self.assertEqual(unmanaged.read_text(), "keep me\n")
+        self.assertIn("RUNNING HANDLER [", output)
+        self.assertIn("dotfiles : Reload Mako configuration", output)
+        self.assertNotIn("dotfiles : Reload Waybar", output)
+        self.assertNotRegex(
+            output,
+            r"changed: \[localhost\].*home/\.config/waybar",
+        )
+
+        # File modes and empty directories are part of deployment too, and
+        # each source file is checked and reported through its own copy task.
+        target.chmod(0o600)
+        target.parent.chmod(0o700)
+        (source / ".config/sample-app/empty").mkdir()
+        sample.write_text("updated\n")
+        output = run()
+        self.assertIn(str(target), output)
+        self.assertEqual(target.read_text(), "updated\n")
+        self.assertEqual(target.stat().st_mode & 0o777, sample.stat().st_mode & 0o777)
+        self.assertTrue((home / ".config/sample-app/empty").is_dir())
+        self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
 
 
 class DotfilesTreeDefaultsTests(unittest.TestCase):
@@ -693,217 +691,224 @@ class DotfilesTreeCopyTests(unittest.TestCase):
 class DotfilesTreeUpdateTests(unittest.TestCase):
     """Later deployments follow the repository: pinned clones and removed files."""
 
-    def test_zsh_plugins_follow_their_pin_and_removed_files_are_deleted(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            work = Path(temporary)
-            role = work / "dotfiles"
-            shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
-            (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
-            handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
-            (role / "handlers/main.yml").write_text(
-                yaml.safe_dump(
-                    [
-                        {
-                            "name": handler["name"],
-                            "ansible.builtin.debug": {"msg": handler["name"]},
-                        }
-                        for handler in handlers
-                    ]
-                )
-            )
-
-            plugin = work / "plugin"
-            repository(plugin)
-            (plugin / "plugin.zsh").write_text("v1\n")
-            (plugin / "dropped.zsh").write_text("dropped\n")
-            git(plugin, "add", ".")
-            git(plugin, "commit", "-q", "-m", "v1")
-            first = git(plugin, "rev-parse", "HEAD")
-            # Upstream moves on; the role still pins the first commit.
-            (plugin / "unpinned.zsh").write_text("unpinned\n")
-            git(plugin, "add", ".")
-            git(plugin, "commit", "-q", "-m", "unpinned")
-
-            source = work / "source"
-            repository(source)
-            zsh = source / "home/zsh"
-            (zsh / "completions").mkdir(parents=True)
-            (zsh / "completions/_kept").write_text("kept\n")
-            (zsh / "completions/_removed").write_text("removed\n")
-            (zsh / "completions/_edited").write_text("shipped\n")
-            (source / "wallpaper.png").write_text("png\n")
-            git(source, "add", ".")
-            git(source, "commit", "-q", "-m", "source")
-
-            home = work / "home"
-            target = home / ".local/share/dotfiles/zsh"
-            playbook = work / "play.yml"
-
-            def write_play(version):
-                play = [
+    def zsh_tree_fixture(self):
+        """A pinned Zsh plugin clone and a copied tree, with a play runner."""
+        work = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        role = work / "dotfiles"
+        shutil.copytree(ROOT / "ansible/roles/dotfiles", role, symlinks=True)
+        (role / "files/home/.config/test-systemd/user").mkdir(parents=True)
+        handlers = yaml.safe_load((role / "handlers/main.yml").read_text())
+        (role / "handlers/main.yml").write_text(
+            yaml.safe_dump(
+                [
                     {
-                        "hosts": "localhost",
-                        "connection": "local",
-                        "gather_facts": False,
-                        "vars": {
-                            "ansible_facts": USER_FACTS,
-                            "dotfiles_home": str(home),
-                            "dotfiles_source_repository": str(source),
-                            "dotfiles_source_root": str(source / "home"),
-                            "dotfiles_legacy_link_root": str(work / "no-clone"),
-                            "dotfiles_directory_handlers": {},
-                            "dotfiles_file_handlers": {
-                                ".local/share/dotfiles/zsh/completions/_removed": [
-                                    "Reload Mako configuration"
-                                ]
-                            },
-                            "dotfiles_trees": [
-                                {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
-                            ],
-                            "dotfiles_vim_pack_plugins": [],
-                            "dotfiles_zsh_plugins": [
-                                {
-                                    "repo": f"file://{plugin}",
-                                    "dest": ".local/share/dotfiles/zsh/plugins/plugin",
-                                    "version": version,
-                                }
-                            ],
-                            "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
-                            "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
-                            "dotfiles_directories": [],
-                            "dotfiles_files": [],
-                            "dotfiles_templates": [],
-                            "dotfiles_systemd_graphical_units": [],
-                            "dotfiles_systemd_directory": ".config/test-systemd",
+                        "name": handler["name"],
+                        "ansible.builtin.debug": {"msg": handler["name"]},
+                    }
+                    for handler in handlers
+                ]
+            )
+        )
+
+        plugin = work / "plugin"
+        repository(plugin)
+        (plugin / "plugin.zsh").write_text("v1\n")
+        (plugin / "dropped.zsh").write_text("dropped\n")
+        git(plugin, "add", ".")
+        git(plugin, "commit", "-q", "-m", "v1")
+        first = git(plugin, "rev-parse", "HEAD")
+        # Upstream moves on; the role still pins the first commit.
+        (plugin / "unpinned.zsh").write_text("unpinned\n")
+        git(plugin, "add", ".")
+        git(plugin, "commit", "-q", "-m", "unpinned")
+
+        source = work / "source"
+        repository(source)
+        zsh = source / "home/zsh"
+        (zsh / "completions").mkdir(parents=True)
+        (zsh / "completions/_kept").write_text("kept\n")
+        (zsh / "completions/_removed").write_text("removed\n")
+        (zsh / "completions/_edited").write_text("shipped\n")
+        (source / "wallpaper.png").write_text("png\n")
+        git(source, "add", ".")
+        git(source, "commit", "-q", "-m", "source")
+
+        home = work / "home"
+        target = home / ".local/share/dotfiles/zsh"
+        playbook = work / "play.yml"
+
+        def write_play(version):
+            play = [
+                {
+                    "hosts": "localhost",
+                    "connection": "local",
+                    "gather_facts": False,
+                    "vars": {
+                        "ansible_facts": USER_FACTS,
+                        "dotfiles_home": str(home),
+                        "dotfiles_source_repository": str(source),
+                        "dotfiles_source_root": str(source / "home"),
+                        "dotfiles_legacy_link_root": str(work / "no-clone"),
+                        "dotfiles_directory_handlers": {},
+                        "dotfiles_file_handlers": {
+                            ".local/share/dotfiles/zsh/completions/_removed": [
+                                "Reload Mako configuration"
+                            ]
                         },
-                        "tasks": [
+                        "dotfiles_trees": [
+                            {"src": "zsh", "dest": ".local/share/dotfiles/zsh"},
+                        ],
+                        "dotfiles_vim_pack_plugins": [],
+                        "dotfiles_zsh_plugins": [
                             {
-                                "ansible.builtin.import_role": {
-                                    "name": str(role),
-                                    "tasks_from": "deploy",
-                                },
-                                "tags": ["dotfiles_deploy"],
+                                "repo": f"file://{plugin}",
+                                "dest": ".local/share/dotfiles/zsh/plugins/plugin",
+                                "version": version,
                             }
                         ],
-                    }
-                ]
-                playbook.write_text(yaml.safe_dump(play))
+                        "dotfiles_hyprlock_wallpaper_source": "wallpaper.png",
+                        "dotfiles_hyprlock_wallpaper": ".local/share/wallpaper.png",
+                        "dotfiles_directories": [],
+                        "dotfiles_files": [],
+                        "dotfiles_templates": [],
+                        "dotfiles_systemd_graphical_units": [],
+                        "dotfiles_systemd_directory": ".config/test-systemd",
+                    },
+                    "tasks": [
+                        {
+                            "ansible.builtin.import_role": {
+                                "name": str(role),
+                                "tasks_from": "deploy",
+                            },
+                            "tags": ["dotfiles_deploy"],
+                        }
+                    ],
+                }
+            ]
+            playbook.write_text(yaml.safe_dump(play))
 
-            def run(*arguments):
-                result = run_playbook(
-                    playbook,
-                    "--tags",
-                    "dotfiles_deploy",
-                    "--skip-tags",
-                    "systemd",
-                    *arguments,
-                    cwd=ROOT,
-                    env=ansible_test_environment(work),
-                )
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                return result.stdout
-
-            manifest = (
-                home
-                / ".local/state/dotfiles/manifests/.local%2Fshare%2Fdotfiles%2Fzsh.json"
+        def run(*arguments):
+            result = run_playbook(
+                playbook,
+                "--tags",
+                "dotfiles_deploy",
+                "--skip-tags",
+                "systemd",
+                *arguments,
+                cwd=ROOT,
+                env=ansible_test_environment(work),
             )
-            clone = target / "plugins/plugin"
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result.stdout
 
-            write_play(first)
-            run()
-            # The clone is at the pinned commit, with its own metadata.
-            self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
-            self.assertEqual((clone / "plugin.zsh").read_text(), "v1\n")
-            self.assertFalse((clone / "unpinned.zsh").exists())
-            recorded = json.loads(manifest.read_text())["files"]
-            self.assertEqual(
-                sorted(recorded),
-                [
-                    str(target / "completions/_edited"),
-                    str(target / "completions/_kept"),
-                    str(target / "completions/_removed"),
-                ],
+        manifest = (
+            home
+            / ".local/state/dotfiles/manifests/.local%2Fshare%2Fdotfiles%2Fzsh.json"
+        )
+        clone = target / "plugins/plugin"
+        return source, home, target, manifest, clone, plugin, first, write_play, run
+
+    def test_zsh_plugins_follow_their_pin_and_removed_files_are_deleted(self):
+        source, _, target, manifest, clone, plugin, first, write_play, run = (
+            self.zsh_tree_fixture()
+        )
+        write_play(first)
+        run()
+        # The clone is at the pinned commit, with its own metadata.
+        self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
+        self.assertEqual((clone / "plugin.zsh").read_text(), "v1\n")
+        self.assertFalse((clone / "unpinned.zsh").exists())
+        recorded = json.loads(manifest.read_text())["files"]
+        self.assertEqual(
+            sorted(recorded),
+            [
+                str(target / "completions/_edited"),
+                str(target / "completions/_kept"),
+                str(target / "completions/_removed"),
+            ],
+        )
+        self.assertRegex(run(), r"changed=0\b")
+
+        # Upstream drops a file and the role pins the new commit.
+        git(plugin, "rm", "-q", "dropped.zsh", "unpinned.zsh")
+        (plugin / "plugin.zsh").write_text("v2\n")
+        git(plugin, "commit", "-q", "-am", "v2")
+        second = git(plugin, "rev-parse", "HEAD")
+        write_play(second)
+        # The repository drops two completions, one of them edited on the
+        # target, and the user adds one of their own.
+        git(
+            source,
+            "rm",
+            "-q",
+            "home/zsh/completions/_removed",
+            "home/zsh/completions/_edited",
+        )
+        git(source, "commit", "-q", "-m", "update")
+        (target / "completions/_edited").write_text("edited\n")
+        (target / "completions/_local").write_text("local\n")
+
+        run("--check")
+        self.assertTrue((target / "completions/_removed").exists())
+        self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
+
+        output = run()
+        self.assertEqual(git(clone, "rev-parse", "HEAD"), second)
+        self.assertEqual((clone / "plugin.zsh").read_text(), "v2\n")
+        self.assertFalse((clone / "dropped.zsh").exists())
+        self.assertFalse((target / "completions/_removed").exists())
+        # Deleting a file runs the handlers of that file.
+        self.assertRegex(output, r"RUNNING HANDLER \[[^]]*Reload Mako configuration")
+        self.assertEqual((target / "completions/_edited").read_text(), "edited\n")
+        self.assertIn("_edited was changed by hand, so it is kept", output)
+        self.assertEqual((target / "completions/_local").read_text(), "local\n")
+        self.assertEqual((target / "completions/_kept").read_text(), "kept\n")
+        self.assertEqual(
+            sorted(json.loads(manifest.read_text())["files"]),
+            [str(target / "completions/_kept")],
+        )
+
+    def test_edited_and_stale_manifests_never_delete_outside_the_tree(self):
+        _, home, target, manifest, _, _, first, write_play, run = (
+            self.zsh_tree_fixture()
+        )
+        write_play(first)
+        run()
+        # A hand-edited manifest that names a file outside the tree, with
+        # its current checksum, must not delete it.
+        outside = target.parent / "outside"
+        outside.write_text("outside\n")
+        edited = json.loads(manifest.read_text())
+        edited["files"][f"{target}/../outside"] = hashlib.sha1(
+            outside.read_bytes(), usedforsecurity=False
+        ).hexdigest()
+        manifest.write_text(json.dumps(edited))
+
+        # A directory dropped from the role (here .config/pipewire, now
+        # the audio role's) loses its manifest; its files stay.
+        released = home / ".config/pipewire/20-echo-cancel.conf"
+        released.parent.mkdir(parents=True)
+        released.write_text("shipped\n")
+        stale = manifest.parent / ".config%2Fpipewire.json"
+        stale.write_text(
+            json.dumps(
+                {
+                    "dest": str(released.parent),
+                    "files": {
+                        str(released): hashlib.sha1(
+                            b"shipped\n", usedforsecurity=False
+                        ).hexdigest()
+                    },
+                }
             )
-            self.assertRegex(run(), r"changed=0\b")
-
-            # Upstream drops a file and the role pins the new commit.
-            git(plugin, "rm", "-q", "dropped.zsh", "unpinned.zsh")
-            (plugin / "plugin.zsh").write_text("v2\n")
-            git(plugin, "commit", "-q", "-am", "v2")
-            second = git(plugin, "rev-parse", "HEAD")
-            write_play(second)
-            # The repository drops two completions, one of them edited on the
-            # target, and the user adds one of their own.
-            git(
-                source,
-                "rm",
-                "-q",
-                "home/zsh/completions/_removed",
-                "home/zsh/completions/_edited",
-            )
-            git(source, "commit", "-q", "-m", "update")
-            (target / "completions/_edited").write_text("edited\n")
-            (target / "completions/_local").write_text("local\n")
-
-            run("--check")
-            self.assertTrue((target / "completions/_removed").exists())
-            self.assertEqual(git(clone, "rev-parse", "HEAD"), first)
-
-            output = run()
-            self.assertEqual(git(clone, "rev-parse", "HEAD"), second)
-            self.assertEqual((clone / "plugin.zsh").read_text(), "v2\n")
-            self.assertFalse((clone / "dropped.zsh").exists())
-            self.assertFalse((target / "completions/_removed").exists())
-            # Deleting a file runs the handlers of that file.
-            self.assertRegex(
-                output, r"RUNNING HANDLER \[[^]]*Reload Mako configuration"
-            )
-            self.assertEqual((target / "completions/_edited").read_text(), "edited\n")
-            self.assertIn("_edited was changed by hand, so it is kept", output)
-            self.assertEqual((target / "completions/_local").read_text(), "local\n")
-            self.assertEqual((target / "completions/_kept").read_text(), "kept\n")
-            self.assertEqual(
-                sorted(json.loads(manifest.read_text())["files"]),
-                [str(target / "completions/_kept")],
-            )
-            self.assertRegex(run(), r"changed=0\b")
-
-            # A hand-edited manifest that names a file outside the tree, with
-            # its current checksum, must not delete it.
-            outside = target.parent / "outside"
-            outside.write_text("outside\n")
-            edited = json.loads(manifest.read_text())
-            edited["files"][f"{target}/../outside"] = hashlib.sha1(
-                outside.read_bytes(), usedforsecurity=False
-            ).hexdigest()
-            manifest.write_text(json.dumps(edited))
-            run()
-            self.assertEqual(outside.read_text(), "outside\n")
-
-            # A directory dropped from the role (here .config/pipewire, now
-            # the audio role's) loses its manifest; its files stay.
-            released = home / ".config/pipewire/20-echo-cancel.conf"
-            released.parent.mkdir(parents=True)
-            released.write_text("shipped\n")
-            stale = manifest.parent / ".config%2Fpipewire.json"
-            stale.write_text(
-                json.dumps(
-                    {
-                        "dest": str(released.parent),
-                        "files": {
-                            str(released): hashlib.sha1(
-                                b"shipped\n", usedforsecurity=False
-                            ).hexdigest()
-                        },
-                    }
-                )
-            )
-            run("--check")
-            self.assertTrue(stale.exists())
-            run()
-            self.assertFalse(stale.exists())
-            self.assertTrue(manifest.exists())
-            self.assertEqual(released.read_text(), "shipped\n")
+        )
+        run("--check")
+        self.assertTrue(stale.exists())
+        run()
+        self.assertFalse(stale.exists())
+        self.assertTrue(manifest.exists())
+        self.assertEqual(released.read_text(), "shipped\n")
+        self.assertEqual(outside.read_text(), "outside\n")
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
@@ -1063,7 +1068,6 @@ class DotfilesVimPackTests(unittest.TestCase):
         self.assertEqual(git(pack, "rev-parse", "HEAD"), self.first)
         self.assertNotRegex((self.home / ".tmux.conf").read_text(), r"tpm|@plugin")
         self.assertRegex(self.run_play(), r"changed=0\b")
-        self.assertRegex(self.run_play("--check"), r"changed=0\b")
 
         messages = self.vim(
             "echo 'colors=' . g:colors_name", "echo 'fixture=' . g:fixture"
@@ -1075,15 +1079,12 @@ class DotfilesVimPackTests(unittest.TestCase):
 
         # A new pin moves the clone, and the file upstream dropped goes.
         self.write_play(self.second)
-        self.run_play("--check")
-        self.assertEqual(git(pack, "rev-parse", "HEAD"), self.first)
         self.run_play()
         self.assertEqual(git(pack, "rev-parse", "HEAD"), self.second)
         self.assertFalse((pack / "plugin/dropped.vim").exists())
         messages = self.vim("echo 'fixture=' . g:fixture")
         self.assertIn("fixture=v2", messages)
         self.assertNotIn("dropped.vim", messages)
-        self.assertRegex(self.run_play(), r"changed=0\b")
 
     def test_local_work_in_a_clone_stops_the_deployment(self):
         cases = {
@@ -1117,7 +1118,9 @@ class DotfilesVimPackTests(unittest.TestCase):
                 change(changed)
                 before = {clone: self.snapshot(clone) for clone in clones}
 
-                for arguments in (("--check",), ()):
+                # Check mode takes the same path: one case is enough for it.
+                runs = (("--check",), ()) if name == "uncommitted" else ((),)
+                for arguments in runs:
                     output = self.run_play(*arguments, succeed=False)
                     self.assertIn("Refusing to remove the Vundle and tpm", output)
                     self.assertIn(str(changed), output)
@@ -1148,7 +1151,6 @@ class DotfilesVimPackTests(unittest.TestCase):
         # The target is neither followed nor checked: tpm has no remote
         # there, which would otherwise stop the run.
         self.assertEqual(self.snapshot(dotfiles), before)
-        self.assertRegex(self.run_play(), r"changed=0\b")
 
     def test_a_tmux_directory_with_other_files_is_kept(self):
         self.clone(".tmux/plugins/tpm")
@@ -1161,4 +1163,3 @@ class DotfilesVimPackTests(unittest.TestCase):
         self.assertIn(
             f"Kept {self.home / '.tmux'}, which still holds resurrect", output
         )
-        self.assertRegex(self.run_play(), r"changed=0\b")

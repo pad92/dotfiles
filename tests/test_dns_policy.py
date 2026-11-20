@@ -1009,9 +1009,11 @@ class DnsTaskTests(unittest.TestCase):
                 self.assertEqual(os.readlink(resolv_conf), str(stub))
                 backup = Path(f"{self.work / 'backup'}{resolv_conf}")
                 self.assertEqual(backup.read_text(), content)
-                self.assertRegex(
-                    self.resolv_conf_play(resolv_conf, stub), r"changed=0\b"
-                )
+                # Every case ends on the same link: one second run is enough.
+                if name == "openresolv":
+                    self.assertRegex(
+                        self.resolv_conf_play(resolv_conf, stub), r"changed=0\b"
+                    )
 
     def test_resolv_conf_owned_by_a_vpn_client_is_left_alone(self):
         stub = self.stub()

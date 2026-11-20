@@ -99,7 +99,7 @@ class HostProfileTests(unittest.TestCase):
                 self.assertNotIn("ansible_connection", variables or {})
 
     def test_playbooks_gather_user_facts_and_check_the_target_first(self):
-        for playbook in ["site.yml", "obs.yml"]:
+        for playbook in ["site.yml"]:
             play = yaml.safe_load((ROOT / "ansible" / playbook).read_text())[0]
             step = next(
                 task

@@ -12,8 +12,8 @@ Documentation goes from the general to the specific:
 
 1. This file: requirements, layout, inventory, `make` targets and the rules
    every role follows.
-2. [Playbooks](PLAYBOOKS.md): what `site.yml` and `obs.yml` run, in which
-   order, with which tags and conditions.
+2. [Playbooks](PLAYBOOKS.md): what `site.yml` and its OBS profile run, in
+   which order, with which tags and conditions.
 3. The README of each role (see [Roles](#roles)): its requirements,
    variables and behavior.
 
@@ -39,7 +39,7 @@ On each target:
 | `inventory.yml`            | The workstations, by hostname.                           |
 | `group_vars/all/`          | Settings shared by every host; `vault.yml` is encrypted. |
 | `host_vars/<hostname>.yml` | Settings of one host.                                    |
-| `site.yml`, `obs.yml`      | Playbooks, described in [PLAYBOOKS.md](PLAYBOOKS.md).    |
+| `site.yml`                 | The playbook, see [PLAYBOOKS.md](PLAYBOOKS.md).          |
 | `tasks/`                   | Tasks shared by the playbooks (`target.yml`).            |
 | `roles/`                   | One role per function.                                   |
 | `library/`                 | Custom modules (`dotfiles_*`).                           |
@@ -61,7 +61,7 @@ make deploy BECOME_PASS=1
 | Variable       | Effect                                                                |
 | :------------- | :-------------------------------------------------------------------- |
 | `HOST`         | Inventory host to configure. Default: `uname -n` up to the first dot. |
-| `PLAYBOOK`     | `site` (default) or `obs`.                                            |
+| `PLAYBOOK`     | Only `site` exists; `TAGS=obs` runs its OBS profile.                  |
 | `TAGS`         | Run only these tags.                                                  |
 | `SKIP_TAGS`    | Skip these tags.                                                      |
 | `BECOME_PASS`  | `1` asks for the sudo password.                                       |

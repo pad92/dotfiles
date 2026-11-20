@@ -37,10 +37,10 @@ file is removed when the role no longer manages any of these controls. See the
 [CachyOS CPU tuning guide](https://wiki.cachyos.org/fr/configuration/general_system_tweaks/)
 for firmware requirements.
 
-Tags: `cpu_power`, `amd_cpu_performance`.
+Tags: `cpu_power`, `system`.
 
 ```sh
-make deploy TAGS=amd_cpu_performance BECOME_PASS=1
+make deploy TAGS=cpu_power BECOME_PASS=1
 ```
 
 ## Dependencies

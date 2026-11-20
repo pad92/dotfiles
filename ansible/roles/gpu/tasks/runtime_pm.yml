@@ -16,7 +16,7 @@
   ansible.builtin.debug:
     msg: >-
       Hybrid graphics detection is incomplete; the runtime PM rule is preserved.
-      Check the power supply metadata and GPU drivers, then rerun the gpu_modules tasks.
+      Check the power supply metadata and GPU drivers, then rerun the gpu role.
   when:
     - gpu_hybrid_laptop_detection.stdout | trim == 'unknown'
     - "'09_nvidia_modern' in packages_selected_groups"

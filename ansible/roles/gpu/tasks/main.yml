@@ -9,7 +9,6 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
-  tags: [gpu_modules]
 
 - name: Select the initramfs generator
   ansible.builtin.set_fact:
@@ -22,7 +21,6 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
-  tags: [gpu_modules]
 
 - name: Validate initramfs generator selection
   ansible.builtin.assert:
@@ -41,14 +39,12 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
-  tags: [gpu_modules]
 
 - name: Configure hardware-detected hybrid runtime power management
   ansible.builtin.import_tasks: runtime_pm.yml
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
-  tags: [gpu_modules]
 
 - name: Remove GPU module options written under earlier names
   ansible.builtin.file:
@@ -61,7 +57,6 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
   notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
 
 - name: Validate i915 GuC setting
   ansible.builtin.assert:
@@ -78,7 +73,6 @@
     - ansible_facts['os_family'] == 'Archlinux'
     - packages_selected_groups is defined
     - gpu_i915_enable_guc is not none
-  tags: [gpu_modules]
 
 - name: Configure GPU kernel module options for the selected profiles
   ansible.builtin.template:
@@ -95,7 +89,6 @@
     - packages_selected_groups is defined
     - item.enabled | bool
   notify: Regenerate Arch initramfs
-  tags: [gpu_modules]
 
 - name: Remove GPU kernel module options the selected profiles do not need
   ansible.builtin.file:
@@ -109,4 +102,3 @@
     - packages_selected_groups is defined
     - not item.enabled | bool
   notify: Regenerate Arch initramfs
-  tags: [gpu_modules]

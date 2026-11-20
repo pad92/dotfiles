@@ -23,15 +23,15 @@ options in `/etc/pacman.conf`, and enables the standard `multilib`
 repository. Enabling `multilib` triggers `pacman -Syu`, which synchronizes the
 package databases and upgrades the installed packages.
 
-Tags: `pacman`, `pacman_config`. The `packages`, `packages_install`,
-`packages_reconcile` and `yay` tags run it too, since installation needs it.
+Tags: `pacman`. The `packages` and `yay` tags run it too, since installation
+needs it.
 
 ## makepkg
 
 makepkg builds for the local CPU (native flags) without generating separate
 debug packages. A package built this way may not run on a different CPU.
 
-Tags: `makepkg`, `makepkg_config`, `system`.
+Tags: `makepkg`, `system`.
 
 ```sh
 make deploy TAGS=makepkg BECOME_PASS=1

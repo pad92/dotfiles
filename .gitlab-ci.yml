@@ -1,5 +1,5 @@
 ---
-# Documentation GitLab CI : https://docs.gitlab.com/ee/ci/
+# GitLab CI reference: https://docs.gitlab.com/ee/ci/
 
 include:
   - template: Jobs/Secret-Detection.gitlab-ci.yml
@@ -10,6 +10,13 @@ default:
   tags:
     - chataigne
 
+# A new commit on a branch cancels the interruptible jobs (tests and lint) of
+# the branch's previous pipeline, so they stop competing for the runner's CPUs.
+# Package, Pages and release jobs always run to the end.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
 stages:
   - test
   - validate
@@ -17,10 +24,10 @@ stages:
   - pages
   - release
 
-# Les tests ne lisent que le code, les rôles, les scripts et leur outillage :
-# une modification limitée à la documentation ou aux fichiers statiques ne les relance
-# pas. La branche par défaut, les tags et les pipelines hors push et merge
-# request (planifiés ou lancés à la main) les exécutent toujours en entier.
+# The tests read only code, roles, scripts and their tooling, so a change to
+# documentation or static files alone does not rerun them. The default branch,
+# tags, and pipelines not started by a push or a merge request (scheduled or
+# manual ones) always run all of them.
 .unit_test_rules:
   rules:
     - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -45,12 +52,13 @@ stages:
   before_script:
     - apk add --no-cache bash zsh coreutils findutils grep file flock imagemagick git jq make lua5.4 tar
 
-# Python 3.14 et le coeur sysmon de coverage allègent le traçage ; les tests
-# lancés en sous-processus ne sont pas tracés (voir .coveragerc). Le partage en
-# deux tranches a été essayé : elles se disputaient les CPU du même runner et
-# durèrent plus longtemps que le job unique.
+# Python 3.14 and coverage's sysmon core make tracing cheaper. Tests run in a
+# subprocess are not traced (see .coveragerc). Splitting the suite into two
+# jobs was tried: they fought over the same runner's CPUs and took longer than
+# the single job.
 unit_tests:
   stage: test
+  interruptible: true
   image: python:3.14-alpine
   rules: !reference [.unit_test_rules, rules]
   variables:
@@ -89,10 +97,11 @@ unit_tests:
         coverage_format: cobertura
         path: coverage.xml
 
-# Les tests shell n'ont besoin que d'ansible-vault : ils tournent en même temps
-# que la suite Python au lieu de la suivre.
+# The shell tests need only ansible-vault, so they run alongside the Python
+# suite instead of after it.
 shell_tests:
   stage: test
+  interruptible: true
   image: python:3.14-alpine
   rules: !reference [.unit_test_rules, rules]
   variables:
@@ -113,6 +122,7 @@ shell_tests:
 
 ansible_lint:
   stage: validate
+  interruptible: true
   image: python:3.13-slim
   before_script:
     - >-
@@ -132,9 +142,9 @@ ansible_lint:
     paths:
       - '$PACKAGE_ARCHIVE'
 
-# Les archives Vim, Zsh et Neovim sont maintenues sur la branche par défaut pour
-# alimenter leurs URLs publiques ; ailleurs, elles ne sont construites que si
-# leur configuration change.
+# The default branch always rebuilds the Vim, Zsh and Neovim archives behind
+# their public URLs; other branches build them only when their configuration
+# changes.
 package_vim:
   extends: .package_config
   image: python:3.13-alpine
@@ -143,7 +153,7 @@ package_vim:
   before_script:
     - apk add --no-cache git tar
     - python3 -m pip install --no-cache-dir PyYAML==6.0.3
-  # Les plugins épinglés dans le rôle dotfiles, sans leur dossier .git.
+  # The plugins pinned in the dotfiles role, without their .git directories.
   script:
     - sh scripts/ci/package_vim.sh "$PACKAGE_ARCHIVE"
   rules:
@@ -166,8 +176,8 @@ package_zsh:
   before_script:
     - apk add --no-cache git tar
     - python3 -m pip install --no-cache-dir PyYAML==6.0.3
-  # L'arbre Zsh, .zshrc rendu sans Jinja et les plugins épinglés dans le rôle
-  # dotfiles, sans leur dossier .git.
+  # The Zsh tree, .zshrc rendered without Jinja, and the plugins pinned in the
+  # dotfiles role, without their .git directories.
   script:
     - sh scripts/ci/package_zsh.sh "$PACKAGE_ARCHIVE"
   rules:
@@ -202,23 +212,23 @@ package_nvim:
   stage: pages
   image: python:3.14-alpine
   script:
-    # Mêmes versions que les paquets Arch locaux (voir le fichier).
+    # Same versions as the local Arch packages (see the file).
     - pip install --quiet --disable-pip-version-check --root-user-action=ignore -r scripts/ci/pages-requirements.txt
     - sh scripts/ci/build_pages.sh
   artifacts:
     paths:
       - public
 
-# Job Pages : Génère et déploie la documentation sur main et les tags de release
+# Builds and deploys the documentation on main and on release tags.
 pages:
   extends: .pages_build
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
-        # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
+        # Every Markdown file is published (see scripts/ci/gen_pages.py).
         - '**/*.md'
-        # Les images liées sont aussi copiées dans le site (asset_extensions de scripts/ci/pages.json).
+        # Linked images are copied into the site too (asset_extensions in scripts/ci/pages.json).
         - '**/*.gif'
         - '**/*.jpeg'
         - '**/*.jpg'
@@ -235,17 +245,17 @@ pages:
         - 'scripts/ci/pages-requirements.txt'
         - '.gitlab-ci.yml'
 
-# Job de validation Pages : construct les docs sur les branches non-déployées
+# Builds the documentation on branches that do not deploy it, as a check.
 build_pages_review:
   extends: .pages_build
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
+    # Every Markdown file is published (see scripts/ci/gen_pages.py).
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       changes: &pages_review_inputs
         - '**/*.md'
-        # Les images liées sont aussi copiées dans le site (asset_extensions de scripts/ci/pages.json).
+        # Linked images are copied into the site too (asset_extensions in scripts/ci/pages.json).
         - '**/*.gif'
         - '**/*.jpeg'
         - '**/*.jpg'
@@ -268,9 +278,8 @@ build_pages_review:
       - public
     expire_in: 1 week
 
-# Tests du générateur de pages, dans un job à part : ils ont besoin de git,
-# absent des jobs Pages, qui gardent ainsi la découverte des Markdown
-# par parcours du dépôt.
+# The page generator tests have their own job because they need git. The Pages
+# jobs have no git, so they keep finding Markdown files by walking the tree.
 pages_tests:
   stage: test
   image: python:3.14-alpine

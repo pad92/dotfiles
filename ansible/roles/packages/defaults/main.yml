@@ -6,7 +6,7 @@ packages_state_directory: >-
   {{ ansible_facts['env'].get('XDG_STATE_HOME') or
      ansible_facts['user_dir'] ~ '/.local/state' }}/dotfiles
 packages_action: install
-# Partial profiles (ansible/obs.yml) add their groups to the saved selection
+# Partial profiles (site.yml --tags obs) add their groups to the saved selection
 # instead of replacing it with their narrower list.
 packages_state_merge_selection: false
 packages_upgrade_system: false
