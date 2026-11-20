@@ -1,4 +1,3 @@
-import importlib.util
 import json
 import re
 import unittest
@@ -6,6 +5,7 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import load_module
 
 PACKAGE_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/archlinux.yml"
 DOTFILES_DEFAULTS = (
@@ -62,10 +62,7 @@ STEAM_OPTIMIZE_RUNTIME_PACKAGES = {
 }
 CACHYOS_VARS = Path(__file__).parents[1] / "ansible/roles/packages/vars/cachyos.yml"
 FILTER_PATH = Path(__file__).parents[1] / "ansible/filter_plugins/dotfiles.py"
-SPEC = importlib.util.spec_from_file_location("dotfiles_filters", FILTER_PATH)
-FILTERS = importlib.util.module_from_spec(SPEC)
-assert SPEC.loader is not None
-SPEC.loader.exec_module(FILTERS)
+FILTERS = load_module("dotfiles_filters", FILTER_PATH)
 PACKAGE_NAME = re.compile(r"^[a-z0-9@._+-]+$")
 ALLOWED_CROSS_GROUP_DUPLICATES = {
     "libva-nvidia-driver",

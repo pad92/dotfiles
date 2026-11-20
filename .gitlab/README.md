@@ -23,18 +23,19 @@ All jobs inherit the `chataigne` runner tag from `default:tags`.
 
 ## Jobs
 
-| Job                  | Stage    | Runs when                                                                                                           | Purpose                                                                     |
-| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues. |
-| `unit_tests`         | test     | Every default-branch, tag and scheduled pipeline; elsewhere, changes to code, tests, roles, scripts or CI settings  | Run the Python suite in parallel under coverage.                            |
-| `shell_tests`        | test     | Same as `unit_tests`                                                                                                | Run the shell and zsh test scripts next to the Python suite.                |
-| `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and the pinned Ansible tools, then run `make lint-ansible`.  |
-| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.               |
-| `package_zsh`        | package  | Every default-branch pipeline; elsewhere, changes to the Zsh tree, `.zshrc.j2` or the build scripts                 | Package Zsh configuration and pinned plugins as `zsh.tar.gz`.               |
-| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests                   | Package Neovim configuration as `nvim.tar.gz`.                              |
-| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag                        | Build and deploy the documentation site to `public/`.                       |
-| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                                           | Build the documentation site for review without deploying it.               |
-| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                                  | Publish a release with notes from `CHANGELOG.md`.                           |
+| Job                  | Stage    | Runs when                                                                                                           | Purpose                                                                                                    |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Security scanners    | test     | Scanner template rules match                                                                                        | Scan source, infrastructure configuration, and commits for security issues.                                |
+| `unit_tests`         | test     | Every default-branch, tag and scheduled pipeline; elsewhere, changes to code, tests, roles, scripts or CI settings  | Run the Python suite in parallel under coverage.                                                           |
+| `shell_tests`        | test     | Same as `unit_tests`                                                                                                | Run `make test-shell` next to the Python suite.                                                            |
+| `pages_tests`        | test     | Same changes as `build_pages_review`, on any branch; never on tags                                                  | Run the page generator tests (`test_gen_pages.py`).                                                        |
+| `ansible_lint`       | validate | Branch and tag pipelines                                                                                            | Install `make` and `requirements-ansible.txt`, which includes the test pins, then run `make lint-ansible`. |
+| `package_vim`        | package  | Every default-branch pipeline; elsewhere, changes to `.vim/`, `.vimrc`, the role defaults or `fetch_vim_plugins.py` | Package Vim configuration and pinned plugins as `vim.tar.gz`.                                              |
+| `package_zsh`        | package  | Every default-branch pipeline; elsewhere, changes to the Zsh tree, `.zshrc.j2` or the build scripts                 | Package Zsh configuration and pinned plugins as `zsh.tar.gz`.                                              |
+| `package_nvim`       | package  | Every default-branch pipeline; elsewhere, changes to `.config/nvim/` in pushes and merge requests                   | Package Neovim configuration as `nvim.tar.gz`.                                                             |
+| `pages`              | pages    | Default branch when a Markdown file or the page generator changes, or a `vX.Y.Z` release tag                        | Build and deploy the documentation site to `public/`.                                                      |
+| `build_pages_review` | pages    | Non-default branch or merge request with matching changes                                                           | Build the documentation site for review without deploying it.                                              |
+| `create_release`     | release  | A tag is pushed (`$CI_COMMIT_TAG`)                                                                                  | Publish a release with notes from `CHANGELOG.md`.                                                          |
 
 ### `unit_tests` and `shell_tests`
 
@@ -56,8 +57,9 @@ The job runs on Python 3.14 with `COVERAGE_CORE=sysmon`, which makes branch
 coverage cheaper than the default tracer. Tests started as subprocesses, such as
 `ansible-playbook`, are not traced.
 
-`shell_tests` runs the scripts of `tests/*.sh` and `tests/*.zsh` next to
-`unit_tests`, on the same Python image and requirements. It only reads the pip
+`shell_tests` runs `make test-shell`, the shell and zsh scripts of `tests/`,
+next to `unit_tests`, on the same Python image and requirements. The Makefile
+holds the list, so a new script runs in CI and locally alike. It only reads the pip
 cache, so the two concurrent jobs never overwrite each other's archive.
 
 On merge requests and branch pushes, the two jobs run only when a change
@@ -69,11 +71,21 @@ request pipeline, not in the push pipeline. A new branch has no diff to
 compare, so GitLab runs them. When a test starts reading
 another path, add it to `.unit_test_rules` in `.gitlab-ci.yml`.
 
+### `pages_tests`
+
+This job runs `scripts/ci/test_gen_pages.py` on `python:3.14-alpine` with
+`git` and the `markdown` and `pygments` versions pinned in
+`scripts/ci/pages-requirements.txt`, on the changes that start
+`build_pages_review`, plus the test file and the Hyprtoolkit palette that the
+style tests compare with `style.css`. Some tests build a throwaway Git
+repository; the Pages jobs do not install Git, so the generator tests run apart.
+
 ### `pages`
 
-This job runs on `alpine:latest`, installs `python3`, `py3-markdown` and
-`py3-pygments`, and
-calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
+This job runs on `python:3.14-alpine`, installs the `markdown` and `pygments`
+versions pinned in
+[`scripts/ci/pages-requirements.txt`](../scripts/ci/pages-requirements.txt),
+and calls [`scripts/ci/build_pages.sh`](../scripts/ci/build_pages.sh). The GitHub
 `deploy-pages.yml` workflow and local `post-commit` hook use the same script.
 Every Markdown file of the repository becomes a page, and relative links to
 other files point to the GitLab file browser at `CI_COMMIT_SHA`. The canonical
@@ -119,8 +131,10 @@ to extract that version's section from `CHANGELOG.md`, then passes the notes to
 | `build_pages.sh`           | GitLab `pages`, GitHub `deploy-pages.yml`, local `post-commit` hook |
 | `extract_release_notes.sh` | GitLab `create_release`, GitHub `release.yml`                       |
 | `gen_pages.py`             | `build_pages.sh`, with the settings of `pages.json`                 |
+| `package_vim.sh`           | GitLab `package_vim`, GitHub `package-vim.yml`                      |
+| `package_zsh.sh`           | GitLab `package_zsh`, GitHub `package-zsh.yml`                      |
 
-Both shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
+The shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
 the `alpine` job.
 
 ## Variables & secrets

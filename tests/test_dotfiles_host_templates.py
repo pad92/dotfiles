@@ -10,9 +10,8 @@ from pathlib import Path
 
 import yaml
 from ansible_host_profiles import inventory_arguments
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/dotfiles"
 RENDERED = {
     "home/.config/hypr/hypridle.conf.j2": "hypridle.conf",
@@ -110,21 +109,13 @@ class HostTemplateTests(unittest.TestCase):
         ]
         playbook = self.work / f"play-{hostname}.yml"
         playbook.write_text(yaml.safe_dump(play))
-        command = [
-            "ansible-playbook",
+        result = run_playbook(
+            playbook,
             *inventory_arguments(hostname, self.work),
-            str(playbook),
-        ]
-        if extra_vars:
-            command += ["-e", json.dumps(extra_vars)]
-        result = subprocess.run(
-            command,
-            cwd=self.work,
+            *(["-e", json.dumps(extra_vars)] if extra_vars else []),
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
+            inventory=None,
+            cwd=self.work,
         )
         if check:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -173,7 +164,7 @@ class HostTemplateTests(unittest.TestCase):
         self.assertEqual(temperature["temperature#gpu"]["tooltip-format"][:5], "GPU: ")
         self.assertRegex(
             hypridle,
-            r"timeout = 3600\n\s+on-timeout = ~/.bin/hyprlock-carousel-suspend.sh",
+            r"timeout = 3600\n\s+on-timeout = ~/.bin/hyprlock-carousel-idle.sh suspend",
         )
         self.assertNotIn("is-host", hypridle)
         self.assertIn('monitor_mode = "highrr"', settings)

@@ -1,6 +1,5 @@
 """OBS profile: host-derived settings, demo scenes, detection scripts, ownership."""
 
-import importlib.util
 import json
 import os
 import re
@@ -12,24 +11,19 @@ from pathlib import Path
 import yaml
 from ansible.errors import AnsibleFilterError
 from ansible_host_profiles import resolve_host_settings
-from ansible_test_environment import ansible_test_environment, ansible_tree
+from ansible_test_environment import (
+    COLLECTIONS,
+    ROOT,
+    ansible_test_environment,
+    ansible_tree,
+    load_module,
+    run_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/obs"
-# Pinned by ansible/requirements.yml, as ansible.cfg does for real runs: the
-# test ansible.cfg replaces the repository one, which sets collections_path.
-COLLECTIONS = ROOT / ".ansible/collections"
 
-
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-obs = load("obs_filters", "ansible/filter_plugins/obs.py")
-dotfiles = load("dotfiles_filters_obs", "ansible/filter_plugins/dotfiles.py")
+obs = load_module("obs_filters", "ansible/filter_plugins/obs.py")
+dotfiles = load_module("dotfiles_filters_obs", "ansible/filter_plugins/dotfiles.py")
 
 # Captured on PadsP5560: Intel iGPU drives the desktop, the RTX is secondary.
 HYBRID_LAPTOP_NODES = "renderD128 i915 1\nrenderD129 nvidia 0\n"
@@ -350,13 +344,9 @@ class WebcamTests(unittest.TestCase):
                         ]
                     )
                 )
-                result = subprocess.run(
-                    ["ansible-playbook", "-i", "localhost,", str(play)],
+                result = run_playbook(
+                    play,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(
@@ -482,13 +472,9 @@ class BrandThemeTests(unittest.TestCase):
                         ]
                     )
                 )
-                result = subprocess.run(
-                    ["ansible-playbook", "-i", "localhost,", str(play)],
+                result = run_playbook(
+                    play,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(f"RESULT={expected}", result.stdout)
@@ -669,13 +655,9 @@ class WebcamBackgroundTests(unittest.TestCase):
                         ]
                     )
                 )
-                result = subprocess.run(
-                    ["ansible-playbook", "-i", "localhost,", str(play)],
+                result = run_playbook(
+                    play,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(f"RESULT={expected}", result.stdout)
@@ -847,13 +829,9 @@ class FirefoxPolicyTests(unittest.TestCase):
                 ]
             )
         )
-        return subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(play)],
+        return run_playbook(
+            play,
             env=ansible_test_environment(work),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
 
     def test_role_merges_the_policy_once_and_keeps_other_policies(self):
@@ -956,13 +934,9 @@ class PackageStateSelectionTests(unittest.TestCase):
                     ]
                 )
             )
-            result = subprocess.run(
-                ["ansible-playbook", "-i", "localhost,", str(play)],
+            result = run_playbook(
+                play,
                 env=ansible_test_environment(work),
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             return json.loads(state.read_text())
@@ -1096,13 +1070,9 @@ class ConfigOwnershipTests(unittest.TestCase):
         pgrep.chmod(0o755)
         environment = ansible_test_environment(work)
         environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
-        return subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(play)],
+        return run_playbook(
+            play,
             env=environment,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
 
     def assert_ran(self, result):
@@ -1213,29 +1183,20 @@ class ProfileContractTests(unittest.TestCase):
     def test_obs_profile_refuses_reconcile_before_any_role(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
-            result = subprocess.run(
-                [
-                    "ansible-playbook",
-                    "-i",
-                    "localhost,",
-                    "-c",
-                    "local",
-                    str(ansible_tree(work) / "obs.yml"),
-                    "-e",
-                    "packages_action=reconcile",
-                    "-e",
-                    "ansible_become=false",
-                    "--tags",
-                    "always",
-                ],
+            result = run_playbook(
+                ansible_tree(work) / "obs.yml",
+                "-c",
+                "local",
+                "-e",
+                "packages_action=reconcile",
+                "-e",
+                "ansible_become=false",
+                "--tags",
+                "always",
                 env={
                     **ansible_test_environment(work),
                     "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
                 },
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
             )
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn(

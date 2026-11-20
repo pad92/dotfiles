@@ -9,6 +9,7 @@ on:
       - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/vim.sh'
       - 'scripts/ci/fetch_vim_plugins.py'
+      - 'scripts/ci/package_vim.sh'
       - '.github/workflows/package-vim.yml'
   pull_request:
     branches: ['main']
@@ -18,6 +19,7 @@ on:
       - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/vim.sh'
       - 'scripts/ci/fetch_vim_plugins.py'
+      - 'scripts/ci/package_vim.sh'
 
 concurrency:
   group: vim-${{ github.workflow }}-${{ github.ref }}
@@ -39,10 +41,7 @@ jobs:
       - name: Package Vim configuration and plugins
         run: |
           pip install --quiet PyYAML==6.0.3
-          mkdir package
-          cp -a ansible/roles/dotfiles/files/home/.vim ansible/roles/dotfiles/files/home/.vimrc package/
-          python3 scripts/ci/fetch_vim_plugins.py package
-          tar -czf vim.tar.gz -C package .vim .vimrc
+          sh scripts/ci/package_vim.sh vim.tar.gz
 
       - name: Upload package
         uses: actions/upload-artifact@v4

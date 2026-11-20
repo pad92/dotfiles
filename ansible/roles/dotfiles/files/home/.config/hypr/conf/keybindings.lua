@@ -95,11 +95,7 @@ hl.bind(
 -- the lock screen.
 hl.bind("CTRL + Print", hl.dsp.exec_cmd(config.utils.record_window), { description = "Record window" })
 hl.bind("CTRL + SHIFT + Print", hl.dsp.exec_cmd(config.utils.record_screen), { description = "Record screen" })
-hl.bind(
-  config.mainMod .. " + CTRL + P",
-  hl.dsp.exec_cmd(config.utils.record_window),
-  { description = "Record window" }
-)
+hl.bind(config.mainMod .. " + CTRL + P", hl.dsp.exec_cmd(config.utils.record_window), { description = "Record window" })
 hl.bind(
   config.mainMod .. " + CTRL + SHIFT + P",
   hl.dsp.exec_cmd(config.utils.record_screen),

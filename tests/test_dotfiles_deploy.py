@@ -12,11 +12,10 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import PLAYBOOK_TIMEOUT, ansible_test_environment
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 from git_fixtures import git, repository
 from vim_fixtures import VIM_ERROR, start_vim
 
-ROOT = Path(__file__).resolve().parents[1]
 # The role owns its files by the SSH user that tasks/target.yml describes.
 USER_FACTS = {"user_id": getpass.getuser(), "user_gid": os.getgid()}
 
@@ -93,22 +92,13 @@ class DotfilesDeployTests(unittest.TestCase):
             playbook.write_text(yaml.safe_dump(play))
 
             def run(*arguments):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "dotfiles_deploy",
-                        *arguments,
-                    ],
+                result = run_playbook(
+                    playbook,
+                    "--tags",
+                    "dotfiles_deploy",
+                    *arguments,
                     cwd=ROOT,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=PLAYBOOK_TIMEOUT,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
@@ -248,22 +238,13 @@ class DotfilesDeployTests(unittest.TestCase):
             playbook.write_text(yaml.safe_dump(play))
 
             def run(*arguments):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "dotfiles_deploy",
-                        *arguments,
-                    ],
+                result = run_playbook(
+                    playbook,
+                    "--tags",
+                    "dotfiles_deploy",
+                    *arguments,
                     cwd=ROOT,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=PLAYBOOK_TIMEOUT,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
@@ -521,24 +502,15 @@ class DotfilesTreeCopyTests(unittest.TestCase):
             playbook.write_text(yaml.safe_dump(play))
 
             def run(*arguments):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "dotfiles_deploy",
-                        "--skip-tags",
-                        "systemd",
-                        *arguments,
-                    ],
+                result = run_playbook(
+                    playbook,
+                    "--tags",
+                    "dotfiles_deploy",
+                    "--skip-tags",
+                    "systemd",
+                    *arguments,
                     cwd=ROOT,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=PLAYBOOK_TIMEOUT,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
@@ -652,24 +624,15 @@ class DotfilesTreeCopyTests(unittest.TestCase):
         playbook.write_text(yaml.safe_dump(play))
         outputs = []
         for arguments in (["--check"], []):
-            result = subprocess.run(
-                [
-                    "ansible-playbook",
-                    "-i",
-                    "localhost,",
-                    str(playbook),
-                    "--tags",
-                    "dotfiles_deploy",
-                    "--skip-tags",
-                    "systemd",
-                    *arguments,
-                ],
+            result = run_playbook(
+                playbook,
+                "--tags",
+                "dotfiles_deploy",
+                "--skip-tags",
+                "systemd",
+                *arguments,
                 cwd=ROOT,
                 env=ansible_test_environment(work),
-                capture_output=True,
-                text=True,
-                timeout=PLAYBOOK_TIMEOUT,
-                check=False,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             outputs.append(result.stdout)
@@ -827,24 +790,15 @@ class DotfilesTreeUpdateTests(unittest.TestCase):
                 playbook.write_text(yaml.safe_dump(play))
 
             def run(*arguments):
-                result = subprocess.run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        "localhost,",
-                        str(playbook),
-                        "--tags",
-                        "dotfiles_deploy",
-                        "--skip-tags",
-                        "systemd",
-                        *arguments,
-                    ],
+                result = run_playbook(
+                    playbook,
+                    "--tags",
+                    "dotfiles_deploy",
+                    "--skip-tags",
+                    "systemd",
+                    *arguments,
                     cwd=ROOT,
                     env=ansible_test_environment(work),
-                    capture_output=True,
-                    text=True,
-                    timeout=PLAYBOOK_TIMEOUT,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
@@ -1031,24 +985,15 @@ class DotfilesVimPackTests(unittest.TestCase):
         self.playbook.write_text(yaml.safe_dump(play))
 
     def run_play(self, *arguments, succeed=True):
-        result = subprocess.run(
-            [
-                "ansible-playbook",
-                "-i",
-                "localhost,",
-                str(self.playbook),
-                "--tags",
-                "dotfiles_deploy",
-                "--skip-tags",
-                "systemd",
-                *arguments,
-            ],
+        result = run_playbook(
+            self.playbook,
+            "--tags",
+            "dotfiles_deploy",
+            "--skip-tags",
+            "systemd",
+            *arguments,
             cwd=ROOT,
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=PLAYBOOK_TIMEOUT,
-            check=False,
         )
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode == 0, succeed, output)

@@ -6,154 +6,65 @@ Release history and changes planned for the next version.
 
 ### Added
 
-- **yay**: each Lua hook has an on/off switch in the environment, and
-  `init.lua` loads a hook only when its switch is on (new `hook_switch.lua`):
-  `YAY_ORPHAN_CHECK`, `YAY_PKGBUILD_SCAN`, `YAY_POST_INSTALL` and
-  `YAY_RECENT_UPDATE`. `0`, `off`, `false` or `no` turn the hook off, for
-  example `YAY_RECENT_UPDATE=0 yay -Syu` to skip the 48-hour AUR cooldown
-  once. Any other value keeps the hook on, and yay prints a
-  warning for each hook that is off. Tested in `tests/test_yay_hooks.py`.
-- **Zsh package**:
-  - The `package_zsh` GitLab job and the `package-zsh.yml` GitHub workflow
-    publish `zsh.tar.gz` with `.zshenv`, a rendered `.zshrc`, the Zsh tree and
-    the third-party plugins at their pinned commits. `.zprofile` is left out.
-  - `scripts/ci/build_zsh_package.py` builds it, with tests in
-    `tests/test_zsh_package.py`.
-- **Intel Wi-Fi**: the `iwlwifi` role (`iwlwifi` tag) writes the module
-  options a host lists in `iwlwifi_module_options` to
-  `/etc/modprobe.d/iwlwifi.conf`, and backs up the file it replaces. The
-  laptop sets `iwlmvm power_scheme=1`.
-- **Steam**: with `21_steam`, the hardening drop-in also sets
-  `vm.dirty_ratio = 10` and `vm.dirty_background_ratio = 5`.
-- **3D printing**: the `24_3dprint` group (PrusaSlicer, F3D) and the `print3d`
-  role (`3dprint` tag), which makes F3D thumbnails render in Nautilus.
 - **AI coding agents**:
   - The `dotfiles_claude` tag merges token-saving settings into
-    `~/.claude/settings.json`: autocompact at 60 %, tool search, the enabled
-    plugins and a `permissions.deny` list for `node_modules`, `.venv` and
-    `__pycache__`. Other entries of those tables are kept and the `OTEL_*`
-    variables are not managed.
-  - The same tag removes the user-scope `caveman` MCP server, whose binary is
-    missing, with `claude mcp remove`.
-  - The Claude Code status line shows the context tokens next to its gauge
-    (`31% 63k/200k`).
-  - The `dotfiles_codex` tag sets the Codex status line in
-    `~/.codex/config.toml` and leaves the rest of the file alone.
-  - Install `claude-code`, `claude-desktop` (AUR), `openai-codex` and
-    `agent-browser` (DOM snapshots for agents, instead of screenshots) with
-    `10_sre_devops`.
-  - Install RTK (`rtk-oss`, pinned release verified by SHA-256) in `~/.local/bin`
-    and merge its `PreToolUse` Bash hook into `settings.json` (tag
-    `dotfiles_rtk`), so Claude Code reads condensed command output.
-- **Ansible roles** for steps of the Arch install guide that were manual:
-  `time_sync` (systemd-timesyncd when no other NTP client runs), `power_save`
-  (Wi-Fi and audio power saving on portable machines), `wireless_regdom`
-  (`FR` on the workstations) and `gnome_keyring` (a TTY login unlocks the
-  keyring). `package_services` also enables `fstrim.timer` and
-  `paccache.timer`.
-- **Ansible Vault**: `vault-toggle` encrypts or decrypts a file in place and
-  refuses to decrypt a file Git would commit. Zed, now installed with
-  `10_sre_devops` and its `tasks.json` and `keymap.json` managed, runs it on
-  the active file with `CTRL + ALT + V`.
-- **Audio**:
-  - The `audio` role (tags `dotfiles` and `audio`) writes the PipeWire and
-    WirePlumber files.
-  - RNNoise runs after the WebRTC echo canceller on the clean source.
-  - Add the `voice.radio` effect. The effects come from `audio_voice_effects`,
-    and `swh-plugins` moves to the new `26_voice_effects` group.
-  - `audio_disable_suspend` keeps audio devices awake per host (default
-    `true`).
-- **DNS**: the `dns` tag makes systemd-resolved the only resolver (no LLMNR,
-  mDNS for resolving only, no fallback servers); `dns_manage: false` leaves it
-  alone. `dist/arch/dns-migration.md` covers hosts set up with openresolv and
-  the dnsmasq relay.
+    `~/.claude/settings.json` (autocompact at 60 %, tool search, plugins, a
+    `permissions.deny` list) and removes the broken `caveman` MCP server. The
+    status line shows the context tokens (`31% 63k/200k`).
+  - The `dotfiles_codex` tag sets the Codex status line, and `dotfiles_rtk`
+    installs a pinned, checksummed RTK with its Claude Code `PreToolUse` hook.
+  - `10_sre_devops` installs `claude-code`, `claude-desktop` (AUR),
+    `openai-codex` and `agent-browser`.
+- **Ansible**:
+  - New roles for manual steps of the Arch install guide: `time_sync`,
+    `power_save`, `wireless_regdom` and `gnome_keyring`. `package_services`
+    enables `fstrim.timer` and `paccache.timer`.
+  - `vault-toggle` encrypts or decrypts a Vault file in place and refuses to
+    decrypt a tracked file. Zed (now in `10_sre_devops`) runs it with
+    `CTRL + ALT + V`.
+  - New roles `iwlwifi` (per-host module options), `print3d` (`24_3dprint`
+    group, F3D thumbnails in Nautilus) and `audio` (PipeWire and WirePlumber
+    files).
+- **Audio**: RNNoise after the WebRTC echo canceller, a `voice.radio` effect
+  (`audio_voice_effects`, `26_voice_effects` group) and
+  `audio_disable_suspend` (default `true`).
+- **DNS**: the `dns` tag makes systemd-resolved the only resolver;
+  `dns_manage: false` opts out. `dist/arch/dns-migration.md` covers hosts set up
+  with openresolv and dnsmasq.
 - **Hyprland**:
-  - Screen recording with `hypr-record.sh` and wf-recorder: `CTRL + Print` for
-    a window or a region, `CTRL + SHIFT + Print` for the focused screen, the
-    same key to stop. The MP4 goes to `~/Videos/Recordings`, and a Waybar
-    `REC` indicator stops the recording on click.
-  - `bitdepth: 10` in a monitor entry gives a 10-bit framebuffer. The ASUS
-    XG32WCS and the PadsP5560 panel use it.
-  - `SUPER + F1` lists the loaded keybindings in Hyprlauncher. Every bind has
-    a description, and `tests/hypr-keybinds.sh` fails on a new one without.
-- **Makefile**:
-  - `make clean` removes dotfile backups and the leftovers of earlier
-    migrations: broken links, retired submodule metadata, stale worktree
-    records, Python caches and files a role no longer ships. It asks for
-    `REMOVE` before deleting backups or Git metadata, and `DRY_RUN=1` only
-    lists.
-  - `make pages` builds the documentation site and opens it.
-- **OBS**:
-  - `make install-obs` installs OBS (`22_obs` group), and the `obs` role
-    configures it from the host: encoder (after a test encode), canvas, frame
-    rate and webcam. It creates the "Enregistrement" and "Streaming" profiles
-    and three scene collections (Sombre, Clair, Gruvbox) once, then leaves
-    them to OBS.
-  - The virtual camera works in web meetings such as Teams (v4l2loopback
-    `exclusive_caps=1`, and Firefox reads V4L2 cameras directly).
-  - obs-backgroundremoval cuts out the webcam background (`obs_webcam_model`,
-    `obs_webcam_background=blur`). A warning shows when no webcam is found.
-  - Partial profiles add their groups to the saved package selection instead
-    of replacing it, and a DKMS package brings the running kernel's headers.
-- **Pages**:
-  - The menu follows the tree of the Markdown files, so a new README shows up
-    without a setting change. Page titles come from the first heading.
-  - Each page has a description, Open Graph and Twitter tags and a canonical
-    URL. Every build writes `sitemap.xml` and `robots.txt` for
-    `https://dotfiles.depad.fr/` (`SITE_URL` overrides it).
-  - The site settings live in `scripts/ci/pages.json`; an invalid one stops
-    the build with exit code 2.
-  - A Gruvbox favicon (`favicon.ico`, a 192 px PNG, `apple-touch-icon.png`).
-- **Razer**: a `21_steam` host with a Razer USB device gets the `25_razer`
-  group (OpenRazer), joins `plugdev` and enables the `openrazer-daemon` user
-  unit; `packages_razer_detection: false` turns this off. Other hosts no
-  longer get that unit enabled.
-- **VPN**: the `23_vpn` group (`openfortivpn`, PadsP5560 only) and the `vpn`
-  tag, with SAML login in the browser and DNS handed to systemd-resolved. The
-  gateway lives only in the Vault (`vault_vpn.yml`); without it the role does
-  nothing. A polkit rule and a Waybar `VPN` indicator let the user connect
-  and disconnect without a password.
-- **Zsh**:
-  - commands that only ship a bash completion (`wg`, `fdisk`,
-    `virt-install`, ...) complete through `bashcompinit`, and `sops` and
-    `git-lfs` from the scripts they generate.
-  - `btop`, `gamescope`, `waybar`, `hyprctl` and `lact`, which ship no
-    completion, get their options from `--help` (`_gnu_generic`). The list is
-    `_dotfiles_generic_help_commands`.
-  - fzf's `**<TAB>` completion is loaded. Its key bindings are not, so
-    Ctrl-R keeps the history search of `key-bindings.zsh`.
+  - Screen recording (`CTRL + Print`, `CTRL + SHIFT + Print`) to
+    `~/Videos/Recordings`, with a Waybar `REC` indicator.
+  - `bitdepth: 10` in a monitor entry for a 10-bit framebuffer.
+  - `SUPER + F1` lists the keybindings; every bind needs a description.
+- **Makefile**: `make clean` removes backups and migration leftovers (asks for
+  `REMOVE`, `DRY_RUN=1` only lists), and `make pages` builds and opens the
+  site.
+- **OBS**: `make install-obs` installs OBS and configures it from the host
+  (encoder, canvas, webcam, profiles, three scene collections). The virtual
+  camera works in Teams and Firefox, and obs-backgroundremoval blurs the
+  webcam background.
+- **Pages**: the menu follows the Markdown tree, and every page gets SEO tags, a
+  canonical URL, a sitemap and a Gruvbox favicon. Settings live in
+  `scripts/ci/pages.json`.
+- **Razer**: a `21_steam` host with a Razer USB device gets OpenRazer
+  (`25_razer`); `packages_razer_detection: false` turns this off.
+- **Steam**: `21_steam` sets `vm.dirty_ratio = 10` and
+  `vm.dirty_background_ratio = 5`.
+- **VPN**: `23_vpn` (`openfortivpn`, PadsP5560) with SAML login, resolved DNS
+  and a Waybar toggle that needs no password. The gateway lives only in the
+  Vault.
+- **yay**: each Lua hook can be turned off from the environment
+  (`YAY_ORPHAN_CHECK`, `YAY_PKGBUILD_SCAN`, `YAY_POST_INSTALL`,
+  `YAY_RECENT_UPDATE`), for example `YAY_RECENT_UPDATE=0 yay -Syu`.
+- **Zsh**: completion for commands that ship only a bash completion or only
+  `--help`, fzf's `**<TAB>`, and a `zsh.tar.gz` package published by CI.
 
 ### Changed
 
-- **Waybar tooltips**:
-  - The bar is in English only: the VPN, LACT, headset and Bluetooth
-    tooltips are no longer in French, and the clock and its calendar use
-    `en_US.UTF-8` instead of `fr_FR.UTF-8`, so the calendar weeks start on
-    Sunday.
-  - Every tooltip follows one layout: `Name: state` first, then details,
-    then one `click: action` line per click, last. This changes the
-    recording, volume, LACT, VPN, headset and temperature tooltips.
-  - The CPU, memory, battery and backlight modules have their own tooltips
-    instead of Waybar's defaults; the battery one shows the power draw and
-    the time left.
-  - The Bluetooth tooltips no longer show controller or device MAC
-    addresses, and they list connected devices by name, with their battery
-    when known.
-  - The volume tooltip names both clicks: next output and `pavucontrol`.
-  - The headset module reads `headsetcontrol -o json` and shows a tooltip
-    with the device name, the charge state and the time of the reading,
-    since Waybar polls it only once an hour.
-- **Documentation**:
-  - The README documents the Neovim, Vim and Zsh packages with one section and one
-    command each, and no longer repeats the screenshot, editor
-    package and AMD EPP explanations.
-  - The `make clean` details moved to `ansible/README.md`, and the `backup.sh`
-    internals to the script header.
 - **Upgrade notes**:
-  - Each target needs an SSH server that accepts the user's key and an entry
-    in `ansible/inventory.yml`, with its settings in
-    `ansible/host_vars/<hostname>.yml`. `host_vars/localhost.yml`, the maps
-    keyed by hostname, `vault_dotfiles_monitor_outputs` and
+  - Each target needs an SSH server, an entry in `ansible/inventory.yml` and
+    its settings in `ansible/host_vars/<hostname>.yml`. `host_vars/localhost.yml`,
+    the maps keyed by hostname, `vault_dotfiles_monitor_outputs` and
     `vault.yml-example` are gone, and `packages_host_groups` is a list.
   - Renamed variables (an old name is ignored): `system_dns_manage` to
     `dns_manage`, `system_ipv6_enabled[_by_hostname]` to
@@ -169,290 +80,149 @@ Release history and changes planned for the next version.
     `dotfiles_plugin_managers`, `dotfiles_waybar_host_config`, `copy: false`
     in `dotfiles_trees`, `ansible/backup.yml`, and Hyprland's
     `hosts/<hostname>.lua`, `hosts/common.lua` and `is-host.sh`.
-  - An application or OBS scene that named `Mic_Clean` needs `voice.clean` or
-    the default source.
-  - With Docker, `docker0` moves to `10.184.1.1/28` (13 containers at most on
-    the default bridge) and `docker.service` needs a restart.
-  - Once deployed, the home no longer uses `~/.dotfiles`, which can be
-    deleted.
+  - Replace `Mic_Clean` with `voice.clean` or the default source.
+  - With Docker, `docker0` moves to `10.184.1.1/28`; restart
+    `docker.service`.
+  - Run `pre-commit install` again for the new pre-push hook.
+  - Once deployed, `~/.dotfiles` can be deleted.
 - **Ansible**:
-  - The playbooks reach the workstations over SSH. `HOST` defaults to the
-    short hostname, the roles read the home, user and devices on the target,
-    and a play stops when the machine reports another hostname.
+  - The playbooks reach the workstations over SSH and stop when the target
+    reports another hostname.
   - The `system` role is split into `lact`, `gaming`, `package_services`,
-    `docker`, `hardening`, `dns`, `vpn`, `gpu` and `cpu_power`, plus
-    `package_manager` (pacman, makepkg) and `agent_cli` (status lines). The
-    `system` tag and the former task tags still work.
-  - Package groups are selected first, and `packages_action=plan` skips every
-    role that changes the host.
-  - With `21_steam`, the `gaming` tag masks `scx_loader.service`, so
-    `ananicy-cpp` no longer runs next to a sched-ext scheduler.
-  - Every role has a `meta/main.yml` and a README in the Galaxy layout.
+    `docker`, `hardening`, `dns`, `vpn`, `gpu`, `cpu_power`,
+    `package_manager` and `agent_cli`; the old tags still work.
+  - Package groups are selected first, `packages_action=plan` changes
+    nothing, and only the `min` and `hardware` facts are gathered.
+  - With `21_steam`, `scx_loader.service` is masked so `ananicy-cpp` does not
+    run next to a sched-ext scheduler.
+  - Every role has a `meta/main.yml` and a README.
 - **Audio**:
-  - The PipeWire nodes are named `voice.<name>`, with French descriptions.
-  - The echo canceller and RNNoise are WirePlumber smart filters on the
-    default source, which stays the microphone.
-  - Keep the Vader, Chipmunk, Robot and Church effects; drop Monster, Helium
-    and Metallic.
-  - Bluetooth enables every codec again, and LDAC uses adaptive quality.
-  - Deployment removes an unedited `10-realtime.conf` and stops before writing
-    through a linked PipeWire or WirePlumber directory.
-  - The echo canceller uses less CPU. It works in mono, so a stereo
-    microphone no longer doubles the WebRTC work. It asks for a 1024-sample
-    quantum (`audio_quantum`): its 480-sample request was rounded down to 256,
-    which woke the graph every 5.3 ms. Voice detection, whose result PipeWire
-    never reads, is off, and transient suppression runs only without RNNoise.
-    On the laptop, with the microphone in use, the PipeWire data loop took
-    46 % of one core and the canceller about 90 % of that. Deployment stops
-    on an `audio_quantum` that is not a power of two of at least one WebRTC
-    frame (`audio_rate / 100`).
+  - Nodes are named `voice.<name>`; the echo canceller and RNNoise are
+    WirePlumber smart filters on the default source.
+  - Monster, Helium and Metallic are dropped. Bluetooth enables every codec,
+    with adaptive LDAC.
+  - The echo canceller works in mono with a 1024-sample quantum
+    (`audio_quantum`) and no voice detection, which cuts its CPU use.
+- **Backup** (`backup.sh`):
+  - Broader exclusions (caches, runtimes, models, `*.qcow2`, sockets), and
+    symlinks are backed up.
+  - `/etc` no longer ends with status 23 on directory times and root-only host
+    keys.
+  - A missing or empty source is refused, and rsync stops at
+    `BACKUP_MAX_DELETIONS` deletions (default 1000; `--force-delete` lifts it).
+  - No dry run before each source, which halves the run time.
+  - A failed source no longer stops the other one, and the exit status is the
+    worst one. ssh runs in batch mode with keepalives.
 - **CI**:
-  - `unit_tests` runs on Python 3.14 with coverage's `sysmon` core. The shell
-    tests moved to a `shell_tests` job that runs next to it.
-  - The two test jobs are skipped on branches and merge requests whose
-    changes touch only documentation, assets or other files the tests do not
-    read. The default branch, tags and scheduled pipelines still run them.
-    A branch with an open merge request runs them only in the merge request
-    pipeline, and `shell_tests` shares the Python image and requirements of
-    `unit_tests` and only reads the pip cache.
-  - `check-yaml` runs with `--unsafe` so that it still checks `.gitlab-ci.yml`
-    and its `!reference` tags.
-  - `scripts/ci/run_unit_tests.py` replaces `run_unit_tests.sh`. It spreads
-    the tests over `JOBS` workers from the durations of the previous run, and
-    fails if fewer tests ran than were discovered. `JOBS` follows the CPUs and
-    the container limits.
-  - The `unit_tests` job caches pip and the Ansible collections, which the
-    jobs install with `make galaxy`.
-  - Pin ansible-core 2.22.0, the Arch version.
-  - The pre-commit `test` hook runs `make coverage test-shell`, so a drop
-    below the coverage floor fails the commit.
-- **DNS**: `/etc/resolv.conf` links to the resolved stub, unless another
-  program such as a VPN client owns it. Deployment removes the former
-  NetworkManager DNS files and dnsmasq relay, with a backup in
-  `/var/lib/dotfiles/dns-backup`. With Docker, containers use resolved, VPN
-  split DNS included.
-- **Documentation**:
-  - `ansible/README.md` keeps the overview, `ansible/PLAYBOOKS.md` describes
-    the playbooks, and each role has its README.
-  - The Arch install guide follows the ArchWiki and the CachyOS wiki. It drops
-    the steps Ansible now applies, uses `systemd-resolvconf`, a 1 GiB ESP,
-    zram and the CachyOS repositories, and describes the makepkg build flags
-    Ansible writes.
-  - The README opens with the animated demo and lists every Hyprland
-    shortcut.
-  - The README has an "Editor packages" section that installs the Neovim
-    and Vim archives with one `curl` or `wget` command each.
+  - Python 3.14 with coverage's `sysmon` core. `run_unit_tests.py` spreads the
+    tests over workers from the previous durations, and the pip and Ansible
+    collection caches are kept.
+  - New `shell_tests` and `pages_tests` jobs. Test jobs skip
+    documentation-only changes on branches.
+  - `package_vim.sh` and `package_zsh.sh` are shared by GitLab and GitHub.
+    ansible-core is pinned to 2.22.0.
+- **DNS**: `/etc/resolv.conf` links to the resolved stub unless a VPN client
+  owns it; the old NetworkManager and dnsmasq files are backed up then
+  removed.
+- **Documentation**: one README per role, `ansible/PLAYBOOKS.md`, an Arch guide
+  aligned with the ArchWiki and CachyOS, and a README that opens with the
+  demo and lists every Hyprland shortcut.
 - **Dotfiles**:
   - `~/.vim`, the Zsh tree and the Hyprlock background are copied instead of
-    linked into the clone. Only tracked files are copied, and what programs
-    added through the old link is brought over.
-  - A manifest per copied directory (`~/.local/state/dotfiles/manifests/`)
-    lets the next deployment delete the files the repository no longer ships,
-    unless they were edited.
-  - Vundle, tpm and the Git submodules are gone. Vim and Zsh plugins are
-    cloned on the target at pinned commits, and every Vim plugin is now
-    installed. `vim.tar.gz` ships them, so `scripts/vim.sh` no longer needs
-    Git. Deployment cleans up `~/.vim/bundle/` and `~/.tmux/plugins/`, and
-    stops on unpushed Git work there.
-  - Host-dependent files (Waybar, `hypridle.conf`, Hyprland
-    `hosts/settings.lua`) are rendered from `host_vars` and
-    `group_vars/all/main.yml` instead of one copy per host.
-  - `dotfiles_icon_theme` (default `Papirus-Dark`) sets the icon theme of GTK,
-    hyprtoolkit and Mako.
-  - On a portable machine (`form_factor` or `dotfiles_is_portable`), Waybar
-    shows the backlight and battery, and Hyprland drops blur and shadows.
-  - Only PadsTower suspends, after one hour
-    (`dotfiles_hypridle_suspend_timeout`).
-- **Makefile**:
-  - `make deploy` runs a playbook on `HOST` and `make check` previews it.
-    `PLAYBOOK`, `TAGS`, `SKIP_TAGS` and `BECOME_PASS=1` replace the options
-    written in `ANSIBLE_ARGS`; `make install` and `make install-obs` stay as
-    aliases.
-  - Add `make plan`, `make tags`, `make tasks`, `make verify`, `make galaxy`
-    and `make galaxy-force`. `make help` lists the variables.
-  - `make ansible-backup-ls` and `make ansible-backup-rm` become aliases of
-    `make clean DRY_RUN=1` and `make clean`.
-- **Pages**: the site takes the Gruvbox colours of `hyprtoolkit.conf.j2`, with
-  a Light, Dark or Auto theme menu. Menus open on hover, and code uses the
-  Pygments `gruvbox-dark` and `gruvbox-light` styles.
-  Page URLs drop the `.md/index.html` suffix: `dist/arch/install.md` is
-  published as `dist/arch/install.html`. Links to the old paths no longer
-  resolve.
-- **Backup**:
-  - The exclusion list is more generic and now also covers regenerable
-    caches, runtimes, model files and `*.qcow2` virtual machine images.
-  - The exclusion list also skips `.ssh/agent/` (forwarded agent sockets) and
-    `.steam/steam.pipe`, which rsync reported as non-regular files.
-  - `backup.sh` passes `--omit-dir-times --omit-link-times`, and the exclusion
-    list skips the root-only `ssh/ssh_host_*_key` files, so `/etc` no longer
-    ends with status 23 on `failed to set times` and unreadable host keys.
-  - `backup.sh` backs up symlinks (`--no-links` is gone, `--perms` was
-    redundant with `--archive`).
-  - `backup.sh` refuses a source that is missing or empty, and rsync stops a
-    source at `BACKUP_MAX_DELETIONS` deletions (default 1000,
-    `--max-deletions=N` per run, status 25; files already deleted stay
-    deleted). `--force-delete` lifts the limit.
-  - `backup.sh` no longer runs a dry run before each source, which doubled the
-    rsync time. The "Estimated volume" lines are gone; rsync's `--stats` and
-    the remote disk space delta remain.
-  - Recoverable deletions with `--backup-dir` were left out: they would keep
-    every replaced file on the NAS with no pruning.
-  - rsync status 24 (vanished files) is a warning; any other failure is
-    reported, both sources still run, the summary is printed and the exit
-    status is the worst one. Status 23 on unreadable files notes that rsync
-    skips deletions on I/O errors.
-  - `--clean-packages` runs after a successful backup only.
-  - ssh uses `BatchMode`, keepalives, `-n` and a private control socket
-    directory.
-- **Scripts**: `hypr-screenshot.sh` also records an animated WebP demo. It
-  runs as `demo@dotfiles` in namespaces, so no real user or host shows up,
-  and its frames are reproducible.
-- **Steam Optimize**:
-  - The mouse DPI is set per game with `--dpi <N>` in the Steam launch
-    option, and `steam-optimize -i` sets it with `[p]`. No game profile
-    changes the DPI any more: GTA V and GTA V Enhanced need `[p]` once to
-    keep 800 DPI.
-  - Without `razer-cli`, `--dpi` is logged and ignored and `[p]` is hidden.
-    An invalid `--dpi` value is ignored too; the game still launches.
-  - The installer keeps each game's DPI when it toggles MangoHud or enables
-    every game, and still leaves custom launch options alone.
+    linked. A manifest lets the next deployment delete files the repository no
+    longer ships, unless they were edited.
+  - Vundle, tpm and the submodules are gone; Vim and Zsh plugins are cloned
+    at pinned commits.
+  - Waybar, `hypridle.conf` and Hyprland `hosts/settings.lua` are rendered
+    from `host_vars`. Portable machines get backlight and battery modules and
+    no blur.
+  - `dotfiles_icon_theme` (default `Papirus-Dark`) sets the icon theme. Only
+    PadsTower suspends, after one hour.
+- **hypridle and hyprlock**: `hyprlock-carousel-idle.sh dpms|suspend`
+  replaces the two carousel scripts, and the media labels share one cached
+  `playerctl` call.
+- **Makefile**: `make deploy` and `make check` take `HOST`, `PLAYBOOK`,
+  `TAGS`, `SKIP_TAGS` and `BECOME_PASS=1`. New `plan`, `tags`, `tasks`,
+  `verify`, `galaxy` and `galaxy-force` targets.
+- **Pages**: Gruvbox colours with a theme menu, menus on hover, and URLs
+  without the `.md/index.html` suffix (old links no longer resolve).
+- **pre-commit**: the test hook runs before a push, so a coverage drop stops
+  the push.
+- **Scripts**: `hypr-screenshot.sh` also records an anonymised animated WebP
+  demo.
+- **Steam Optimize**: the mouse DPI is set per game with `--dpi <N>` (`[p]` in
+  `steam-optimize -i`) and ignored without `razer-cli`. GTA V needs `[p]` once
+  to keep 800 DPI.
+- **Waybar**:
+  - English only; the calendar weeks now start on Sunday.
+  - Every tooltip follows `Name: state`, details, then one line per click.
+    CPU, memory, battery, backlight and headset get their own tooltips, and
+    Bluetooth no longer shows MAC addresses.
+  - The LACT and VPN modules poll every 30 seconds instead of 5.
+
+### Removed
+
+- **Zsh**: unused `spectrum`, `termite`, `archive` and `github` code; the
+  deployment removes it from the home.
 
 ### Fixed
 
-- **Waybar tooltips**:
-  - The screen recording tooltip escapes the output path, so a directory
-    containing `&` or `<` no longer breaks the Pango markup.
-  - The LACT tooltip offers a click hint only when the three required
-    profiles exist; otherwise it shows `GPU profiles?` and lists them, since
-    the click would fail.
-  - The Bluetooth tooltip has its own text when the adapter is off or
-    blocked by rfkill, instead of the generic format.
-- **Teams audio under load**: `01_base` installs `rtkit` instead of
-  `realtime-privileges`, and `package_services` no longer adds the user to
-  `realtime`. Its limits let Chromium and Electron run their threads at nice
-  -8, and the processes they start inherited it: a test run from Claude
-  Desktop took the CPU from a Teams call in Firefox (nice 0), whose voice
-  crackled and sped up. PipeWire now gets real-time scheduling from rtkit.
-  On a host deployed before, `package_services` removes the user from
-  `realtime`. Leaving it is not enough, since `cachyos-settings` gives
-  `audio` the same nice limit, so the role also writes
-  `/etc/security/limits.d/90-no-negative-nice.conf`, whose per-user line
-  wins over the group ones. Close every session or reboot: the systemd user
-  manager keeps the limits it started with.
-  `make install` leaves an installed `realtime-privileges` in
-  place: a reconcile (`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`)
-  offers to remove it (`REMOVE` confirmation) when this repository installed
-  it, otherwise run `sudo pacman -Rs realtime-privileges`.
-- **make clean**: `make clean` failed with "Unable to resolve managed paths"
-  since ansible-core 2.22, which shows Vault values as `$REDACTED$` in what
-  `ansible-inventory` prints: a secret integer made the JSON invalid. The
-  backup script now reads the inventory through `--output /dev/stdout`, which
-  skips that display; the values still go only through the pipe.
-- **Wi-Fi power saving**: the `power_save` role no longer writes the `iwlwifi`
-  and `iwlmvm`/`iwldvm` options by default. Its `zz-dotfiles-power-save.conf`
-  sorted after, and so overrode, a local `iwlwifi.conf`, forcing `power_save=1`
-  and U-APSD on Intel adapters that crash their firmware ("Queue stuck"),
-  which broke DNS over Wi-Fi. Set `power_save_wifi: true` to restore it; the
-  Wi-Fi groups now live in their own `power_save_wifi_module_options`, so
-  overriding the audio list keeps the switch working. The file is renamed
-  `power-save.conf` and the earlier `zz-` and `00-dotfiles-` files are removed.
-  A module that another `/etc/modprobe.d/*.conf` file already configures is
-  left out and listed in the run output, so a local file, audio included, keeps
-  control whatever its name. The stale options stop applying after a reboot.
-  An invalid `power_save_wifi` value fails the run.
-- **Kernel drop-in names**: the managed files use plain names, without the
-  `zz-` or `00-dotfiles-` prefixes: `nvidia.conf`, `i915.conf`,
-  `v4l2loopback.conf` (`modprobe.d` and `modules-load.d`), `60-hardening.conf`
-  and `70-bpf.conf`. Each role removes or backs up the file of the former name.
-  Reboot afterwards, since the initramfs embeds `/etc/modprobe.d`.
-- **CI tests**: the `ansible-playbook` runs of the play tests share one
-  `PLAYBOOK_TIMEOUT` (600 s, `TEST_PLAYBOOK_TIMEOUT` to override) instead of
-  60 to 180 s. On the loaded runner a single play took over two minutes, so
-  `unit_tests` failed on timeouts rather than on assertions.
-- **Waybar**: the workspace module is now `ext/workspaces`, so clicking a
-  workspace number switches to it. `hyprland/workspaces` sent the legacy
-  `dispatch workspace N`, which the Lua Hyprland config rejects.
-- **SwayOSD**: `package_services` enables `swayosd-libinput-backend.service`
-  with `11_hyprland`; without it the server could not see Caps Lock and the
-  ON/OFF pop-up never appeared.
-- **CI**:
-  - The unit test job installs GNU `tar`, which Ansible's `unarchive` needs
-    and the busybox `tar` of the Alpine image cannot replace (the RTK install
-    test failed).
-- **Zsh**: a completion installed by a package is available at the next
-  shell start. The cached `.zcompdump` was reused for up to 24 hours, so new
-  completions were missing until then. It is now rebuilt as soon as a
-  directory of `fpath` changes.
 - **Ansible**:
-  - Missing packages from the official repositories go to pacman again
-    instead of yay, which cannot use sudo.
-  - Become tasks no longer warn about `junk after the JSON data` (sudo runs
-    with `TERM=dumb`, for systemd 258).
-  - The `docker_daemon_dns` and `lact_config` filters no longer print
-    `PluginLoader with aliases` warnings.
-  - `bluetooth.service` is enabled only when the host has a controller.
-  - Deployment removes the broken user unit links the repository used to
-    ship (`arch-update.timer`, the tracker miners).
-  - `01_base` installs `libnewt`, which `uwsm select` needs.
-- **Audio**: the echo canceller options match PipeWire 1.6, a missing LADSPA
-  plugin no longer stops PipeWire, and a quote in a description no longer
-  breaks the file.
+  - Missing official packages go to pacman again instead of yay.
+  - No more `junk after the JSON data` or `PluginLoader` warnings.
+  - `bluetooth.service` is enabled only with a controller, broken user unit
+    links are removed, and `01_base` installs `libnewt` for `uwsm select`.
+- **Audio**: the echo canceller options match PipeWire 1.6, and a missing
+  LADSPA plugin or a quote in a description no longer breaks PipeWire.
+- **Backup**: file names with non-ASCII characters, newlines or spaces are
+  decoded correctly, remote paths are validated and quoted, and temporary
+  files are always removed.
+- **CI**:
+  - The play tests share a 600 s timeout (`TEST_PLAYBOOK_TIMEOUT`), and the
+    unit test job installs GNU `tar`.
+  - The Pages jobs install Markdown and Pygments from
+    `scripts/ci/pages-requirements.txt`, pinned to the Arch versions, so CI
+    renders the site like the local hooks. A test fails when they drift.
+- **Documentation**: the DNS migration guide, the install guide and the README
+  tag table match the current variables and tags.
 - **Hyprland**:
-  - The volume and brightness keys keep working after an audio deployment:
-    `swayosd-server` is a user unit tied to `pipewire-pulse.service`.
-  - `include/layout.lua` places the monitors from relations in
-    `dotfiles_hypr_monitors` (`right_of`, `above`, ...) and the size each one
-    reports, again on hotplug. The cursor reaches every monitor on PadsP5560,
-    the "monitor overlaps" warning is gone, and the Dell P2423DE keeps
-    2560x1440 on PadsTower.
-- **Pages**:
-  - Every Markdown file is published, with its links rewritten for the site.
-    A broken link or anchor fails the build, and the `test-gen-pages` hook
-    catches it before the commit.
-  - Heading ids follow GitHub, fenced code follows CommonMark, and
-    `[[_TOC_]]` works as on GitLab.
-  - The minifier no longer glues words around inline elements.
-  - CDN files carry Subresource Integrity hashes, and both Pages jobs
-    highlight code with Pygments.
-- **Backup**:
-  - `backup.sh` no longer loses the dry-run plan after the first 16 deletions
-    (ssh read it from stdin), so the added and modified volumes are right.
-  - Non-ASCII, newline and space escapes (`\#NNN`) in file names decode
-    correctly, so deleted-file sizes are looked up on the right path.
-  - Exclude files are joined with a newline between them, and temporary files
-    and the ssh socket directory are removed on every exit.
-  - The hostname and user are validated before the remote path is built, and
-    remote paths are quoted.
-  - The package baseline is kept unless the new list is complete; an unknown
-    distribution skips the list with a message. A non-numeric `du` output no
-    longer aborts a finished run.
-- **Scripts**: `hypr-screenshot.sh` no longer runs the Hyprland autostart in
-  the live session, and its terminal shows fastfetch again.
-- **Steam Optimize**:
-  - `workspace:N` finds the monitor that holds workspace N, or the one its
-    workspace rule names, even when another workspace is shown there.
-    Gamescope used to start at its default resolution in that case.
-  - `21_steam` installs `python-vdf` for the installer, and `25_razer`
-    installs `razer-cli` (AUR) for the mouse DPI.
-  - The DOOM label says mouse smoothing off: `m_smooth 0` never turned off
-    VSync.
-  - BattlEye profiles (GTA V, GTA V Enhanced) only set
-    `PROTON_BATTLEYE_RUNTIME`, as in the working ProtonDB reports for GTA V
-    Enhanced. Proton 11.0, GE-Proton11 and proton-cachyos never read
-    `PROTON_BATTLEYE_RUNTIME_ALWAYS_COPY` or `_LEGACY_EXEC`.
-- **Tests**:
-  - Tests run from a linked worktree no longer rewrite this repository's
-    `.git/config`: `make` drops Git's repository variables.
-  - An encrypted local Vault no longer makes the playbook tests and the
-    monitor check fail.
+  - The volume and brightness keys survive an audio deployment.
+  - Monitors are placed from relations (`right_of`, `above`, ...) and their
+    reported size, again on hotplug, which fixes the PadsP5560 cursor and
+    PadsTower's Dell P2423DE resolution.
+- **Kernel drop-ins**: managed files drop the `zz-` and `00-dotfiles-`
+  prefixes (`nvidia.conf`, `i915.conf`, `v4l2loopback.conf`,
+  `60-hardening.conf`, `70-bpf.conf`); the old files are removed. Reboot
+  afterwards, since the initramfs embeds `/etc/modprobe.d`.
+- **make clean**: works again with ansible-core 2.22, whose redacted Vault
+  values broke the inventory JSON.
+- **Pages**: every Markdown file is published, broken links fail the build,
+  headings and code follow GitHub and CommonMark, and CDN files carry SRI
+  hashes.
+- **Scripts**: `hypr-screenshot.sh` no longer runs the autostart in the live
+  session.
+- **Steam Optimize**: `workspace:N` finds the right monitor, `python-vdf` and
+  `razer-cli` are installed, and BattlEye profiles only set
+  `PROTON_BATTLEYE_RUNTIME`.
+- **SwayOSD**: the libinput backend is enabled, so the Caps Lock pop-up
+  appears.
+- **Teams audio under load**: `rtkit` replaces `realtime-privileges`, and
+  `/etc/security/limits.d/90-no-negative-nice.conf` caps the user's nice value
+  at 0, so Electron apps no longer starve a Teams call. Close every session or
+  reboot to apply it. A reconcile offers to remove `realtime-privileges`;
+  otherwise run `sudo pacman -Rs realtime-privileges`.
+- **Tests**: tests run from a worktree no longer rewrite `.git/config`, and an
+  encrypted local Vault no longer breaks them.
 - **tmux**: true colour works again.
-- **Zsh**:
-  - Plugin and `zsh-completions` completions are registered, and the bundled
-    copies that hid better ones (`_ansible`, `_hugo`, `_fwupdmgr`, ...) are
-    gone.
-  - Host completion follows every `Include` of `~/.ssh/config` and reads the
-    right `ssh_known_hosts`.
-  - The completion dump is rebuilt once a day instead of in every shell.
+- **Waybar**: clicking a workspace switches to it again (`ext/workspaces`),
+  and the recording, LACT and Bluetooth tooltips handle special characters,
+  missing profiles and a blocked adapter.
+- **Wi-Fi power saving**: `power_save` no longer forces `iwlwifi` power saving,
+  which crashed some Intel firmwares and broke DNS over Wi-Fi.
+  `power_save_wifi: true` restores it, and a module configured by another
+  `/etc/modprobe.d` file is left alone. Reboot to drop the stale options.
+- **Zsh**: plugin completions are registered, host completion follows ssh
+  `Include`s, and `.zcompdump` is rebuilt once a day or when `fpath` changes.
 
 ## [v6.2.0](https://gitlab.com/pad92/dotfiles/-/releases/v6.2.0)
 

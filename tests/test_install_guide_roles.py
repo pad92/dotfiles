@@ -1,17 +1,19 @@
 """Tests for the roles that automate the post-install steps of the Arch guide."""
 
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    COLLECTIONS,
+    ROOT,
+    ansible_test_environment,
+    run_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 ROLES = ROOT / "ansible/roles"
-COLLECTIONS = ROOT / ".ansible/collections"
 
 ARCH_LOGIN = """#%PAM-1.0
 
@@ -50,17 +52,13 @@ class InstallGuideRoleTests(unittest.TestCase):
                 ]
             )
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
+        result = run_playbook(
+            playbook,
             cwd=ROOT,
             env={
                 **ansible_test_environment(self.work),
                 "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
             },
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
         output = result.stdout + result.stderr
         if expect_success:

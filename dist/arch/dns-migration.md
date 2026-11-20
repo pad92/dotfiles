@@ -4,7 +4,7 @@ This note is for hosts installed with the earlier version of the
 [Arch installation guide](./install.md), which used openresolv with
 `rc-manager=resolvconf` in `/etc/NetworkManager/conf.d/rc-manager.conf`. Some
 of these hosts also run a dnsmasq relay on `127.0.0.1`, added by hand outside
-the guide: its files are listed in `system_dns_relay_files`, and NetworkManager
+the guide: its files are listed in `dns_relay_files`, and NetworkManager
 profiles point their DNS at it. Steps marked "with the relay" apply only to
 those hosts.
 
@@ -17,7 +17,7 @@ Docker settings.
 ## 1. Before you start
 
 With Docker selected, the role moves `docker0` to `10.184.1.1/28`
-(`system_docker_bridge_ip`). While your VPN is still connected, check that no
+(`dns_docker_bridge_ip`). While your VPN is still connected, check that no
 LAN or VPN route covers that address, and that the default bridge has no more
 than 13 containers:
 
@@ -57,7 +57,7 @@ appear:
 | `DNS policy skipped, nothing was changed`                                           | Install or start what the message names (systemd-resolved, NetworkManager, `nmcli`), then run again.                                                                |
 | `Require the Docker bridge address to be free for resolved` fails                   | Another program listens on port 53 on the Docker bridge address or on all addresses. Stop or reconfigure it.                                                        |
 | `Require systemd-resolved to listen on the Docker bridge` fails (not in check mode) | resolved did not bind port 53 on the bridge address, and `daemon.json` was not changed. Read `journalctl -u systemd-resolved`, fix the cause, then run again.       |
-| `Pin the Docker bridge and its DNS server` fails on `fixed-cidr`                    | The `fixed-cidr` lies outside the new bridge network. Change `fixed-cidr` in `/etc/docker/daemon.json`, or set `system_docker_bridge_ip`.                           |
+| `Pin the Docker bridge and its DNS server` fails on `fixed-cidr`                    | The `fixed-cidr` lies outside the new bridge network. Change `fixed-cidr` in `/etc/docker/daemon.json`, or set `dns_docker_bridge_ip`.                              |
 | `Report legacy NetworkManager settings left in place`                               | These files set more than the DNS mode. Remove their `dns=` and `rc-manager=` lines yourself, or they keep overriding resolved.                                     |
 | `Report profiles moved to DHCP DNS`                                                 | With the relay. Nothing to do: these profiles will take their DNS servers from DHCP. Check that each one gets servers from its network.                             |
 | `Report static profiles that pointed at the relay`                                  | With the relay. These profiles do not use automatic addressing and would have no DNS left. Set their servers yourself, using the `server=` lines the message lists. |
@@ -114,10 +114,10 @@ loopback servers, the next run of the tag links it back to the stub.
 Undo before step 6: going back needs openresolv, and dnsmasq with the relay.
 
 First stop later runs from migrating the host again, full runs included. Add
-this to `ansible/host_vars/localhost.yml`:
+this to `ansible/host_vars/<hostname>.yml`:
 
 ```yaml
-system_dns_manage: false
+dns_manage: false
 ```
 
 ### Restore the files

@@ -8,9 +8,6 @@
   ansible.builtin.stat:
     path: '{{ dotfiles_home }}/.config/waybar/config'
     follow: false
-    get_checksum: false
-    get_mime: false
-    get_attributes: false
   register: dotfiles_waybar_config_stat
 
 - name: Recognize the legacy Waybar host selection link
@@ -48,9 +45,6 @@
   ansible.builtin.stat:
     path: '{{ dotfiles_home }}/{{ item }}'
     follow: false
-    get_checksum: false
-    get_mime: false
-    get_attributes: false
   loop: '{{ dotfiles_managed_paths }}'
   register: dotfiles_target_stats
   loop_control:
@@ -111,9 +105,6 @@
   ansible.builtin.stat:
     path: '{{ dotfiles_home }}/{{ item.item }}.bak'
     follow: false
-    get_checksum: false
-    get_mime: false
-    get_attributes: false
   loop: '{{ dotfiles_target_stats.results }}'
   # Conflicting symlinks are moved too, so their targets stay recoverable.
   when:
@@ -166,9 +157,6 @@
   ansible.builtin.stat:
     path: '{{ dotfiles_legacy_link_root }}/{{ item.src }}'
     follow: true
-    get_checksum: false
-    get_mime: false
-    get_attributes: false
   loop: '{{ dotfiles_legacy_tree_links }}'
   loop_control:
     label: '{{ item.dest }}'

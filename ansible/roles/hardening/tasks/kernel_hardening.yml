@@ -79,6 +79,7 @@
   register: hardening_legacy_gaming_sysctls
   tags: [kernel_hardening]
 
+# Only the files the check above found are backed up, then removed.
 - name: Back up legacy gaming sysctl files
   ansible.builtin.copy:
     src: '{{ item }}'
@@ -88,14 +89,9 @@
     owner: root
     group: root
     mode: '0644'
-  loop:
-    - /etc/sysctl.d/80-gamecompatibility.conf
-    - /etc/sysctl.d/99-cachyos-gaming.conf
-  loop_control:
-    index_var: hardening_legacy_gaming_sysctl_index
-  when: >-
-    hardening_legacy_gaming_sysctls.results[
-    hardening_legacy_gaming_sysctl_index].stat.exists
+  loop: >-
+    {{ hardening_legacy_gaming_sysctls.results
+       | selectattr('stat.exists') | map(attribute='item') | list }}
   tags: [kernel_hardening]
 
 - name: Remove legacy gaming sysctl files
@@ -103,9 +99,9 @@
     path: '{{ item }}'
     state: absent
   notify: Report legacy sysctl values kept until reboot
-  loop:
-    - /etc/sysctl.d/80-gamecompatibility.conf
-    - /etc/sysctl.d/99-cachyos-gaming.conf
+  loop: >-
+    {{ hardening_legacy_gaming_sysctls.results
+       | selectattr('stat.exists') | map(attribute='item') | list }}
   tags: [kernel_hardening]
 
 - name: Persist reversible unprivileged BPF restriction

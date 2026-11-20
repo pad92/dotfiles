@@ -3,20 +3,28 @@
 mains=""
 batteries=""
 
+# Reads the first line of a sysfs attribute without starting a process.
+attr()
+{
+    IFS= read -r value 2>/dev/null < "$1"
+}
+
 for ps in /sys/class/power_supply/*; do
     [ -d "$ps" ] && [ -r "$ps/type" ] || continue
-    type=$(cat "$ps/type" 2>/dev/null) || continue
+    attr "$ps/type" || continue
+    type=$value
 
     case "$type" in
         Mains|USB|USB_C|USB_PD|USB_PD_DRP|USB_DCP|USB_CDP|USB_ACA|Wireless)
-            if [ "$(cat "$ps/online" 2>/dev/null)" = "1" ]; then
+            if attr "$ps/online" && [ "$value" = "1" ]; then
                 mains=""
             fi
             ;;
         Battery)
             # Exclude peripheral batteries (mouse, keyboard, etc.).
-            [ "$(cat "$ps/scope" 2>/dev/null)" = "Device" ] && continue
-            cap=$(cat "$ps/capacity" 2>/dev/null) || continue
+            attr "$ps/scope" && [ "$value" = "Device" ] && continue
+            attr "$ps/capacity" || continue
+            cap=$value
             case "$cap" in
                 ''|*[!0-9]*) continue ;;
             esac

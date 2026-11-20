@@ -181,6 +181,7 @@ test-shell: ## Run the shell integration tests
 	sh tests/hybrid-gpu.sh
 	bash tests/awww-monitor-scale.sh
 	bash tests/hyprlock-playerctlock.sh
+	bash tests/hyprlock-carousel-idle.sh
 	bash tests/claude-statusline.sh
 	bash tests/hypr-keybinds.sh
 	bash tests/hypr-screenshot.sh

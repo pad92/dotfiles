@@ -1,5 +1,4 @@
 import hashlib
-import importlib.util
 import io
 import os
 import shutil
@@ -11,16 +10,13 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from ansible_test_environment import load_module
 from git_fixtures import git, repository
 
 ROOT = Path(__file__).parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-SPEC = importlib.util.spec_from_file_location(
-    "clean_obsolete", SCRIPTS / "clean_obsolete.py"
-)
-clean = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(clean)
+clean = load_module("clean_obsolete", SCRIPTS / "clean_obsolete.py")
 
 
 class HomeTestCase(unittest.TestCase):

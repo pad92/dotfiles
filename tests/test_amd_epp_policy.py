@@ -2,14 +2,13 @@
 
 import os
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
+from ansible_test_environment import ROOT, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 TASKS = ROOT / "ansible/roles/cpu_power/tasks/amd_epp_policy.yml"
 
 
@@ -90,19 +89,15 @@ module.exit_json(changed=True, path=str(path), changed_files=[str(path)])
         )
 
     def run_play(self, *arguments):
-        return subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(self.playbook), *arguments],
-            cwd=ROOT,
+        return run_playbook(
+            self.playbook,
+            *arguments,
             env={
                 **os.environ,
                 "ANSIBLE_LOCAL_TEMP": str(self.directory / "ansible"),
                 "ANSIBLE_LIBRARY": str(self.directory / "library"),
                 "DOTFILES_TEST_PREFERENCES": str(self.available_preferences),
             },
-            text=True,
-            capture_output=True,
-            timeout=60,
-            check=False,
         )
 
     def snapshot(self):

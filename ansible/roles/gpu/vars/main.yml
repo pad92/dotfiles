@@ -1,0 +1,14 @@
+---
+# Kernel module option files: written when `enabled` is true, removed otherwise.
+gpu_modprobe_files:
+  - src: gpu-modprobe.conf.j2
+    dest: /etc/modprobe.d/nvidia.conf
+    enabled: >-
+      {{ packages_selected_groups | default([])
+         | intersect(['09_nvidia_legacy', '09_nvidia_modern'])
+         | length > 0 }}
+  - src: i915-modprobe.conf.j2
+    dest: /etc/modprobe.d/i915.conf
+    enabled: >-
+      {{ gpu_i915_enable_guc is not none
+         and '08_intel_modern' in packages_selected_groups | default([]) }}

@@ -2,14 +2,12 @@
 
 import os
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-
-ROOT = Path(__file__).resolve().parents[1]
+from ansible_test_environment import ROOT, run_playbook
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
@@ -70,18 +68,15 @@ module.exit_json(changed=changed, path=str(path), changed_files=[str(path)] if c
 
             def run(*arguments):
                 path.write_text(yaml.safe_dump(play))
-                result = subprocess.run(
-                    ["ansible-playbook", "-i", "localhost,", str(path), *arguments],
+                result = run_playbook(
+                    path,
+                    *arguments,
                     cwd=ROOT,
                     env={
                         **os.environ,
                         "ANSIBLE_LOCAL_TEMP": str(work / "tmp"),
                         "ANSIBLE_LIBRARY": str(library),
                     },
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout

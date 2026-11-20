@@ -2,7 +2,6 @@
 
 import platform
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,7 +15,11 @@ from ansible_host_profiles import (
     inventory_arguments,
     resolve_host_settings,
 )
-from ansible_test_environment import ansible_test_environment, ansible_tree
+from ansible_test_environment import (
+    ansible_test_environment,
+    ansible_tree,
+    run_playbook,
+)
 
 WORKSTATION = yaml.safe_load(
     (ROOT / "ansible/group_vars/all/packages.yml").read_text()
@@ -129,18 +132,12 @@ class HostProfileTests(unittest.TestCase):
                 ]
             )
         )
-        return subprocess.run(
-            [
-                "ansible-playbook",
-                *inventory_arguments(hostname, self.work),
-                str(playbook),
-            ],
-            cwd=self.work,
+        return run_playbook(
+            playbook,
+            *inventory_arguments(hostname, self.work),
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
+            inventory=None,
+            cwd=self.work,
         )
 
     # host_vars name a machine: applying them to another one must fail early.

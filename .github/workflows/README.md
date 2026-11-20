@@ -20,7 +20,8 @@ self-hosted **Gitea** instance. Workflows that share CI logic use scripts from
 
 ### `deploy-pages.yml`
 
-The workflow installs `markdown` and `pygments`, then runs
+The workflow installs the `markdown` and `pygments` versions pinned in
+[`scripts/ci/pages-requirements.txt`](../../scripts/ci/pages-requirements.txt), then runs
 [`scripts/ci/build_pages.sh`](../../scripts/ci/build_pages.sh), which renders
 every Markdown file tracked by Git into `public/` with
 [`gen_pages.py`](../../scripts/ci/gen_pages.py). Any change to a `.md` file
@@ -137,7 +138,9 @@ set) and skips the build only for the local hook.
 Packages the Vim configuration as a `vim-package` artifact, with the plugins
 pinned in `dotfiles_vim_pack_plugins`. `scripts/ci/fetch_vim_plugins.py` reads
 that list from the role defaults and clones each plugin under
-`.vim/pack/dotfiles/start/` without its `.git` directory.
+`.vim/pack/dotfiles/start/` without its `.git` directory. The steps live in
+`scripts/ci/package_vim.sh`, shared with the GitLab `package_vim` job;
+`package-zsh.yml` calls `scripts/ci/package_zsh.sh` the same way.
 
 ### `package-nvim.yml`
 
@@ -169,8 +172,10 @@ workflow to publish releases on either forge.
 | `build_pages.sh`           | `deploy-pages.yml`, GitLab `pages`, local `post-commit` hook |
 | `extract_release_notes.sh` | `release.yml`, GitLab `create_release`                       |
 | `gen_pages.py`             | `build_pages.sh`, with the settings of `pages.json`          |
+| `package_vim.sh`           | `package-vim.yml`, GitLab `package_vim`                      |
+| `package_zsh.sh`           | `package-zsh.yml`, GitLab `package_zsh`                      |
 
-Both shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
+The shell scripts use **POSIX `sh`**, so they run on minimal CI images such as
 GitLab's Alpine image.
 
 ## Variables & secrets

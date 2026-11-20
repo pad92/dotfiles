@@ -1,10 +1,12 @@
 ---
 # The plays escalate with become, which would gather the facts as root. They
 # are gathered as the SSH user instead, so user_id, user_dir and env describe
-# the account whose home the roles configure.
+# the account whose home the roles configure. The roles read only the min
+# facts plus processor, processor_nproc and form_factor (hardware); the
+# network and virtual subsets would only slow the run down.
 - name: Gather the facts of the SSH user
   ansible.builtin.setup:
-    gather_subset: '{{ workstation_fact_subset | default(["all"]) }}'
+    gather_subset: '{{ workstation_fact_subset | default(["min", "hardware"]) }}'
   become: false
   tags: [always]
 

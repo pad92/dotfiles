@@ -1,4 +1,3 @@
-import importlib.util
 import os
 import tempfile
 import unittest
@@ -6,12 +5,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ansible.parsing.vault import VaultLib, VaultSecret
-from ansible_test_environment import ansible_test_environment, ansible_tree
+from ansible_test_environment import ansible_test_environment, ansible_tree, load_module
 
 SCRIPT = Path(__file__).parents[1] / "scripts/ansible_backup_files.py"
-SPEC = importlib.util.spec_from_file_location("ansible_backups", SCRIPT)
-backups = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(backups)
+backups = load_module("ansible_backups", SCRIPT)
 
 
 class AnsibleBackupTests(unittest.TestCase):

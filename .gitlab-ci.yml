@@ -107,18 +107,9 @@ shell_tests:
   before_script:
     - !reference [.alpine_test_tools, before_script]
     - python3 -m pip install -r requirements-test.txt
+  # The Makefile holds the list, so a new test runs here and locally alike.
   script:
-    - bash tests/awww-monitor-scale.sh
-    - bash tests/hyprlock-playerctlock.sh
-    - bash tests/claude-statusline.sh
-    - bash tests/hypr-keybinds.sh
-    - bash tests/hypr-screenshot.sh
-    - bash tests/hypr-record.sh
-    - bash tests/vault-toggle.sh
-    - bash tests/backup.sh
-    - zsh tests/arch-clean-no-orphans.zsh
-    - zsh tests/git-pull-recursive.zsh
-    - zsh tests/zsh-completion.zsh
+    - make test-shell
 
 ansible_lint:
   stage: validate
@@ -154,10 +145,7 @@ package_vim:
     - python3 -m pip install --no-cache-dir PyYAML==6.0.3
   # Les plugins épinglés dans le rôle dotfiles, sans leur dossier .git.
   script:
-    - mkdir package
-    - cp -a ansible/roles/dotfiles/files/home/.vim ansible/roles/dotfiles/files/home/.vimrc package/
-    - python3 scripts/ci/fetch_vim_plugins.py package
-    - tar -czf "$PACKAGE_ARCHIVE" -C package .vim .vimrc
+    - sh scripts/ci/package_vim.sh "$PACKAGE_ARCHIVE"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -166,6 +154,7 @@ package_vim:
         - 'ansible/roles/dotfiles/files/home/.vimrc'
         - 'ansible/roles/dotfiles/defaults/main.yml'
         - 'scripts/ci/fetch_vim_plugins.py'
+        - 'scripts/ci/package_vim.sh'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
       changes: *package_vim_changes
 
@@ -180,9 +169,7 @@ package_zsh:
   # L'arbre Zsh, .zshrc rendu sans Jinja et les plugins épinglés dans le rôle
   # dotfiles, sans leur dossier .git.
   script:
-    - mkdir package
-    - python3 scripts/ci/build_zsh_package.py package
-    - tar -czf "$PACKAGE_ARCHIVE" -C package .zshenv .zshrc .local
+    - sh scripts/ci/package_zsh.sh "$PACKAGE_ARCHIVE"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -193,6 +180,7 @@ package_zsh:
         - 'ansible/roles/dotfiles/defaults/main.yml'
         - 'scripts/ci/build_zsh_package.py'
         - 'scripts/ci/fetch_vim_plugins.py'
+        - 'scripts/ci/package_zsh.sh'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
       changes: *package_zsh_changes
 
@@ -212,9 +200,10 @@ package_nvim:
 
 .pages_build:
   stage: pages
-  image: alpine:latest
+  image: python:3.14-alpine
   script:
-    - apk add --no-cache python3 py3-markdown py3-pygments
+    # Mêmes versions que les paquets Arch locaux (voir le fichier).
+    - pip install --quiet --disable-pip-version-check --root-user-action=ignore -r scripts/ci/pages-requirements.txt
     - sh scripts/ci/build_pages.sh
   artifacts:
     paths:
@@ -243,6 +232,7 @@ pages:
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/pages.json'
         - 'scripts/ci/build_pages.sh'
+        - 'scripts/ci/pages-requirements.txt'
         - '.gitlab-ci.yml'
 
 # Job de validation Pages : construct les docs sur les branches non-déployées
@@ -251,9 +241,9 @@ build_pages_review:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
+    # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-      changes:
-        # Tous les Markdown sont publiés (voir scripts/ci/gen_pages.py).
+      changes: &pages_review_inputs
         - '**/*.md'
         # Les images liées sont aussi copiées dans le site (asset_extensions de scripts/ci/pages.json).
         - '**/*.gif'
@@ -269,10 +259,29 @@ build_pages_review:
         - 'scripts/ci/gen_pages.py'
         - 'scripts/ci/pages.json'
         - 'scripts/ci/build_pages.sh'
+        - 'scripts/ci/pages-requirements.txt'
+        - 'scripts/ci/test_gen_pages.py'
+        # The generator tests check style.css against this palette.
+        - 'ansible/roles/dotfiles/templates/home/.config/hypr/hyprtoolkit.conf.j2'
   artifacts:
     paths:
       - public
     expire_in: 1 week
+
+# Tests du générateur de pages, dans un job à part : ils ont besoin de git,
+# absent des jobs Pages, qui gardent ainsi la découverte des Markdown
+# par parcours du dépôt.
+pages_tests:
+  stage: test
+  image: python:3.14-alpine
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - changes: *pages_review_inputs
+  script:
+    - apk add --no-cache git
+    - pip install --quiet --disable-pip-version-check --root-user-action=ignore -r scripts/ci/pages-requirements.txt
+    - python3 scripts/ci/test_gen_pages.py
 
 create_release:
   stage: release

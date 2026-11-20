@@ -188,6 +188,7 @@ variables, package ownership, and system settings.
 | `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                               |
 | `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
 | `power_save`                               | Set audio (and opt-in Wi-Fi) power-saving module options on a portable machine. |
+| `iwlwifi`                                  | Write the Intel Wi-Fi module options a host lists.                              |
 | `wireless_regdom`                          | Set the Wi-Fi regulatory domain (`wireless_regdom_country`).                    |
 | `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
@@ -199,6 +200,7 @@ variables, package ownership, and system settings.
 | `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
 | `agent_cli`                                | Set the Claude Code and Codex status lines and the Claude Code token savings.   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
+| `dotfiles_rtk`                             | Install RTK and merge its Claude Code hook (`agent_cli_rtk_enabled`).           |
 | `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
 | `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |
 | `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
@@ -398,10 +400,12 @@ exit status are documented at the top of the script.
 | `make lint-ansible` | Run ansible-lint, yamllint, and the playbook syntax check.                  |
 | `make screenshot`   | Render the desktop showcase at the top of this page (`RES`, `SETTLE`, ...). |
 
-The pre-commit hook runs `make coverage` and the shell tests, as the CI does, so
-a commit that lowers the coverage below the `.coveragerc` floor is refused
-locally. It needs coverage.py (`python-coverage`, installed with the
-`10_sre_devops` packages).
+The pre-push hook runs `make coverage` and the shell tests, as the CI does, so
+a push that lowers the coverage below the `.coveragerc` floor is refused
+locally. Commits stay fast: the suite takes minutes. It needs coverage.py
+(`python-coverage`, installed with the `10_sre_devops` packages). A clone set
+up before this hook moved needs `pre-commit install` again to install the
+pre-push hook.
 
 GitLab, GitHub, and Gitea share the scripts in [`scripts/ci/`](./scripts/ci/);
 see the [GitHub workflows](./.github/workflows/README.md) and
@@ -411,4 +415,4 @@ is mirrored on [GitLab](https://gitlab.com/pad92/dotfiles),
 [GitHub](https://github.com/pad92/dotfiles), and
 [Codeberg](https://codeberg.org/pad7/.dotfiles).
 
-_Maintained by [pad](https://gitlab.com/pad92)🐐 since 2015._
+_Maintained by [pad](https://gitlab.com/pad92) since 2015._

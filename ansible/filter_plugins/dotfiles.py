@@ -331,8 +331,17 @@ def detect_sysfs_graphics_groups(devices: Any) -> list[str]:
     return []
 
 
-def protected_package(package: str) -> bool:
-    return package in PROTECTED_PACKAGES or package.startswith("linux-")
+def protected_package(package: str, extra: Any = ()) -> bool:
+    """Kernels, PROTECTED_PACKAGES and the host's extra packages are never removed."""
+    return (
+        package in PROTECTED_PACKAGES
+        or package in extra
+        or package.startswith("linux-")
+    )
+
+
+def _extra_protected(protected: Any) -> set[str]:
+    return set(protected) if isinstance(protected, (list, set, tuple)) else set()
 
 
 def package_removal_candidates(
@@ -347,15 +356,11 @@ def package_removal_candidates(
     installed_set = set(installed)
     desired_set = set(desired)
     owned_set = set(owned)
-    protected_set = set(PROTECTED_PACKAGES)
-    if isinstance(protected, (list, set, tuple)):
-        protected_set.update(protected)
+    extra = _extra_protected(protected)
     return sorted(
         package
         for package in installed_set & owned_set - desired_set
-        if valid_package_name(package)
-        and package not in protected_set
-        and not package.startswith("linux-")
+        if valid_package_name(package) and not protected_package(package, extra)
     )
 
 
@@ -365,14 +370,10 @@ def safe_removal_preview(preview: Any, desired: Any, protected: Any = None) -> b
         return False
     if not isinstance(desired, (list, tuple, set)):
         return False
-    protected_set = set(PROTECTED_PACKAGES)
-    if isinstance(protected, (list, set, tuple)):
-        protected_set.update(protected)
+    extra = _extra_protected(protected)
     values = set(preview)
     return all(valid_package_name(item) for item in values) and not (
-        values & set(desired)
-        or values & protected_set
-        or any(item.startswith("linux-") for item in values)
+        values & set(desired) or any(protected_package(item, extra) for item in values)
     )
 
 
@@ -526,12 +527,10 @@ class FilterModule:
             "add_detected_group": add_detected_group,
             "dkms_kernel_headers": dkms_kernel_headers,
             "recorded_package_groups": recorded_package_groups,
-            "parse_package_state": parse_package_state,
             "parse_package_state_json": parse_package_state_json,
             "detect_graphics_groups": detect_graphics_groups,
             "graphics_controllers_found": graphics_controllers_found,
             "detect_sysfs_graphics_groups": detect_sysfs_graphics_groups,
-            "protected_package": protected_package,
             "package_removal_candidates": package_removal_candidates,
             "safe_removal_preview": safe_removal_preview,
             "unneeded_graphics_packages": unneeded_graphics_packages,

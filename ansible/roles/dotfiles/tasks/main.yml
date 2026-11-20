@@ -5,4 +5,10 @@
 
 - name: Deploy dotfiles
   ansible.builtin.import_tasks: deploy.yml
+  # The stat calls of deploy.yml only need the type and owner of each path.
+  module_defaults:
+    ansible.builtin.stat:
+      get_checksum: false
+      get_mime: false
+      get_attributes: false
   tags: [dotfiles_deploy]

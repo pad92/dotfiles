@@ -516,7 +516,7 @@ Select the matching NVIDIA driver group in the dotfiles installer. It separates
 legacy and modern hardware; avoid mixing both groups. Ansible manages the
 NVIDIA module options and regenerates the initramfs when its configuration
 changes. It detects `mkinitcpio` or `dracut`; if both or neither are installed,
-set `system_initramfs_generator` to the one in use. For manual driver changes,
+set `gpu_initramfs_generator` to the one in use. For manual driver changes,
 follow the driver's initramfs instructions.
 
 ## Nvidia Prime

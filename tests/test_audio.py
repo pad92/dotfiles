@@ -12,9 +12,15 @@ import unittest
 from pathlib import Path
 
 import yaml
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import (
+    ROOT,
+    ansible_test_environment,
+    local_play,
+    play_output,
+    run_playbook,
+    write_playbook,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "ansible/site.yml"
 ROLE = ROOT / "ansible/roles/audio"
 DOTFILES = ROOT / "ansible/roles/dotfiles"
@@ -140,47 +146,30 @@ class AudioRoleTests(unittest.TestCase):
     def run_role(
         self, os_family="Archlinux", groups=("26_voice_effects",), succeed=True, **extra
     ):
-        playbook = self.work / "play.yml"
-        playbook.write_text(
-            yaml.safe_dump(
-                [
-                    {
-                        "hosts": "localhost",
-                        "connection": "local",
-                        "gather_facts": False,
-                        "environment": {"PATH": self.path},
-                        "vars": {
-                            "packages_selected_groups": list(groups),
-                            "audio_config_home": str(self.config),
-                            **extra,
-                        },
-                        "pre_tasks": [
-                            {
-                                "name": "Provide isolated facts",
-                                "ansible.builtin.set_fact": {
-                                    "ansible_facts": {"os_family": os_family}
-                                },
-                            }
-                        ],
-                        "roles": ["audio"],
-                    }
-                ]
-            )
+        playbook = write_playbook(
+            self.work / "play.yml",
+            [
+                local_play(
+                    environment={"PATH": self.path},
+                    vars={
+                        "packages_selected_groups": list(groups),
+                        "audio_config_home": str(self.config),
+                        **extra,
+                    },
+                    pre_tasks=[
+                        {
+                            "name": "Provide isolated facts",
+                            "ansible.builtin.set_fact": {
+                                "ansible_facts": {"os_family": os_family}
+                            },
+                        }
+                    ],
+                    roles=["audio"],
+                )
+            ],
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
-            cwd=self.work,
-            env=self.environment,
-            capture_output=True,
-            text=True,
-            timeout=180,
-            check=False,
-        )
-        output = result.stdout + result.stderr
-        if succeed:
-            self.assertEqual(result.returncode, 0, output)
-        else:
-            self.assertNotEqual(result.returncode, 0, output)
+        result = run_playbook(playbook, cwd=self.work, env=self.environment)
+        play_output(self, result, succeed)
         return result.stdout
 
     def assert_smart_filter_chain(self, text, chain):

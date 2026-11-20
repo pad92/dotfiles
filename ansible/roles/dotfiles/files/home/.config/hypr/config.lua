@@ -6,6 +6,14 @@ local font_size = tk.font_size or 10
 local cursor_theme = os.getenv("XCURSOR_THEME") or "Adwaita"
 local cursor_size = tonumber(os.getenv("XCURSOR_SIZE")) or 24
 
+-- Shell command that sets the cursor zoom to the jq expression applied to the
+-- current zoom factor.
+local function zoom_cmd(jq_expr)
+  return "hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor -j | jq '"
+    .. jq_expr
+    .. "')}})\""
+end
+
 local config = {
   mainMod = "SUPER",
 
@@ -119,8 +127,8 @@ local config = {
       .. ' && printf \'%%s\\n\' "$selection" | cliphist decode > "$tmp"'
       .. ' && [ -s "$tmp" ]; then wl-copy < "$tmp"; fi',
     -- Lua parser disables `hyprctl keyword`, so push zoom via `hyprctl eval` + hl.config (partial merge).
-    zoom_in = "hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor -j | jq '.float * 1.3')}})\"",
-    zoom_out = "hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor -j | jq 'if .float / 1.3 < 1 then 1 else .float / 1.3 end')}})\"",
+    zoom_in = zoom_cmd(".float * 1.3"),
+    zoom_out = zoom_cmd("if .float / 1.3 < 1 then 1 else .float / 1.3 end"),
     zoom_reset = 'hyprctl eval "hl.config({cursor={zoom_factor=1}})"',
   },
 

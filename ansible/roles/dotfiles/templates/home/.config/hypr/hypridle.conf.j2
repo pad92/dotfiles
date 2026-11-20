@@ -21,7 +21,7 @@ listener {
 
 listener {
     timeout = {{ dotfiles_hypridle_dpms_timeout }}
-    on-timeout = ~/.bin/hyprlock-carousel-dpms.sh
+    on-timeout = ~/.bin/hyprlock-carousel-idle.sh dpms
     on-resume  = hyprctl dispatch 'hl.dsp.dpms({action = "on"})'
 }
 {% if dotfiles_hypridle_suspend_timeout | int > 0 %}
@@ -29,7 +29,7 @@ listener {
 # Suspend after inactivity (dotfiles_hypridle_suspend_timeout, in seconds).
 listener {
     timeout = {{ dotfiles_hypridle_suspend_timeout }}
-    on-timeout = ~/.bin/hyprlock-carousel-suspend.sh
+    on-timeout = ~/.bin/hyprlock-carousel-idle.sh suspend
     on-resume  = hyprctl dispatch 'hl.dsp.dpms({action = "on"})'
 }
 {% endif %}

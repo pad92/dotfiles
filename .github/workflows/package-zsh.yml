@@ -10,6 +10,7 @@ on:
       - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/ci/build_zsh_package.py'
       - 'scripts/ci/fetch_vim_plugins.py'
+      - 'scripts/ci/package_zsh.sh'
       - '.github/workflows/package-zsh.yml'
   pull_request:
     branches: ['main']
@@ -20,6 +21,7 @@ on:
       - 'ansible/roles/dotfiles/defaults/main.yml'
       - 'scripts/ci/build_zsh_package.py'
       - 'scripts/ci/fetch_vim_plugins.py'
+      - 'scripts/ci/package_zsh.sh'
 
 concurrency:
   group: zsh-${{ github.workflow }}-${{ github.ref }}
@@ -41,9 +43,7 @@ jobs:
       - name: Package Zsh configuration and plugins
         run: |
           pip install --quiet PyYAML==6.0.3
-          mkdir package
-          python3 scripts/ci/build_zsh_package.py package
-          tar -czf zsh.tar.gz -C package .zshenv .zshrc .local
+          sh scripts/ci/package_zsh.sh zsh.tar.gz
 
       - name: Upload package
         uses: actions/upload-artifact@v4

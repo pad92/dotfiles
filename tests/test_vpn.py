@@ -12,9 +12,8 @@ from unittest.mock import patch
 
 import yaml
 from ansible_host_profiles import configured_hostnames, resolve_host_settings
-from ansible_test_environment import ansible_test_environment
+from ansible_test_environment import ROOT, ansible_test_environment, run_playbook
 
-ROOT = Path(__file__).resolve().parents[1]
 TASKS = ROOT / "ansible/roles/vpn/tasks/main.yml"
 SITE = ROOT / "ansible/site.yml"
 DEFAULTS = yaml.safe_load((ROOT / "ansible/roles/vpn/defaults/main.yml").read_text())
@@ -90,14 +89,10 @@ class VpnTaskTests(unittest.TestCase):
                 ]
             )
         )
-        result = subprocess.run(
-            ["ansible-playbook", "-i", "localhost,", str(playbook)],
+        result = run_playbook(
+            playbook,
             cwd=ROOT,
             env=ansible_test_environment(self.work),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
         )
         output = result.stdout + result.stderr
         if succeed:

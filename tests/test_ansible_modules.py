@@ -1,7 +1,6 @@
 """Exercise production modules against temporary files and mocked system boundaries."""
 
 import hashlib
-import importlib.util
 import os
 import subprocess
 import sys
@@ -10,34 +9,28 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from ansible_test_environment import load_module
 from git_fixtures import git, repository
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-files = load(
+files = load_module(
     "ansible.module_utils.dotfiles_files", "ansible/module_utils/dotfiles_files.py"
 )
 sys.modules["ansible.module_utils.dotfiles_files"] = files
-backup = load("backup_module", "ansible/library/dotfiles_backup.py")
-sysfs = load("sysfs_module", "ansible/library/dotfiles_sysfs.py")
-initramfs = load("initramfs_module", "ansible/library/dotfiles_initramfs.py")
-makepkg = load("makepkg_module", "ansible/library/dotfiles_makepkg.py")
+backup = load_module("backup_module", "ansible/library/dotfiles_backup.py")
+sysfs = load_module("sysfs_module", "ansible/library/dotfiles_sysfs.py")
+initramfs = load_module("initramfs_module", "ansible/library/dotfiles_initramfs.py")
+makepkg = load_module("makepkg_module", "ansible/library/dotfiles_makepkg.py")
 
-tree = load("tree_module", "ansible/library/dotfiles_tree.py")
+tree = load_module("tree_module", "ansible/library/dotfiles_tree.py")
 
-aur = load("aur_module", "ansible/library/dotfiles_aur.py")
+aur = load_module("aur_module", "ansible/library/dotfiles_aur.py")
 
-retired = load("retired_module", "ansible/library/dotfiles_retired_plugins.py")
+retired = load_module("retired_module", "ansible/library/dotfiles_retired_plugins.py")
 
-obsolete = load("obsolete_module", "ansible/library/dotfiles_obsolete_files.py")
+obsolete = load_module("obsolete_module", "ansible/library/dotfiles_obsolete_files.py")
 
 
 class Result(Exception):
