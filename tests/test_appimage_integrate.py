@@ -16,6 +16,7 @@ AppImageError = SCRIPT["AppImageError"]
 integrate = SCRIPT["integrate"]
 parse_7z_listing = SCRIPT["parse_7z_listing"]
 replace_exec_program = SCRIPT["replace_exec_program"]
+MAX_ICON_BYTES = SCRIPT["MAX_ICON_BYTES"]
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"pixels"
 LISTING = """
@@ -32,6 +33,7 @@ Folder = -
 Mode = lrwxrwxrwx
 
 Path = app.desktop
+Size = 210
 Folder = -
 Mode = -rw-r--r--
 
@@ -50,14 +52,18 @@ class FakeReader(ArchiveReader):
 
     def __init__(self, files: dict[str, bytes | str]) -> None:
         self.files = files
+        self.reads: list[str] = []
 
     def entries(self):
         return {
-            name: ArchiveEntry(is_dir=False, is_link=isinstance(value, str))
+            name: ArchiveEntry(
+                is_dir=False, is_link=isinstance(value, str), size=len(value)
+            )
             for name, value in self.files.items()
         }
 
     def read(self, name: str) -> bytes:
+        self.reads.append(name)
         value = self.files[name]
         return value.encode() if isinstance(value, str) else value
 
@@ -114,6 +120,8 @@ class AppImageIntegrationTests(unittest.TestCase):
         self.assertTrue(entries[".DirIcon"].is_link)
         self.assertTrue(entries["usr"].is_dir)
         self.assertFalse(entries["app.desktop"].is_link)
+        self.assertEqual(entries["app.desktop"].size, 210)
+        self.assertIsNone(entries["usr"].size)
 
     def test_listing_without_files_is_an_error(self):
         with self.assertRaises(AppImageError):
@@ -122,9 +130,22 @@ class AppImageIntegrationTests(unittest.TestCase):
     def test_exec_program_is_replaced_and_arguments_kept(self):
         self.assertEqual(
             replace_exec_program('"/opt/my app" --x %F', "/home/u/A $1.AppImage"),
-            '"/home/u/A \\$1.AppImage" --x %F',
+            # Quoted-argument escape, then the string-value escape: \\$.
+            '"/home/u/A \\\\$1.AppImage" --x %F',
         )
         self.assertEqual(replace_exec_program("app", "/a.AppImage"), '"/a.AppImage"')
+
+    def test_exec_percent_in_the_path_is_not_a_field_code(self):
+        self.assertEqual(
+            replace_exec_program("app %U", "/home/u/100%U.AppImage"),
+            '"/home/u/100%%U.AppImage" %U',
+        )
+
+    def test_exec_env_prefix_is_kept(self):
+        self.assertEqual(
+            replace_exec_program("env GDK_BACKEND=x11 FOO= app %U", "/a.AppImage"),
+            'env GDK_BACKEND=x11 FOO= "/a.AppImage" %U',
+        )
 
     def test_writes_entry_pointing_at_appimage_and_copied_icon(self):
         appimage = self.add(
@@ -144,6 +165,52 @@ class AppImageIntegrationTests(unittest.TestCase):
         # The extra keys belong to [Desktop Entry], before the action group.
         self.assertLess(text.index("TryExec="), text.index("[Desktop Action new]"))
         self.assertFalse(self.run_integration(), "a second run changes nothing")
+
+    def test_dbus_activatable_is_dropped(self):
+        self.add(
+            "App.AppImage",
+            {"app.desktop": desktop("App", "DBusActivatable=true\n")},
+        )
+        self.run_integration()
+        self.assertNotIn("DBusActivatable", self.entry("app").read_text())
+
+    def test_oversized_icon_is_not_read(self):
+        path = self.add(
+            "App.AppImage",
+            {"app.desktop": desktop("App"), "app.png": PNG + bytes(MAX_ICON_BYTES)},
+        )
+        self.run_integration()
+        self.assertNotIn("app.png", self.images[path].reads)
+        self.assertIn("Icon=app\n", self.entry("app").read_text())
+
+    def test_name_with_a_control_character_is_skipped(self):
+        self.add("App\nNoDisplay=true.AppImage", {"app.desktop": desktop("App")})
+        self.run_integration()
+        self.assertFalse(self.entry("app").exists())
+
+    def test_entry_of_an_appimage_outside_the_source_is_kept(self):
+        self.add("App.AppImage", {"app.desktop": desktop("App")})
+        other = self.source.parent / "Other"
+        other.mkdir()
+        appimage = other / "Tool.AppImage"
+        appimage.write_bytes(b"\x7fELF")
+        self.images[appimage] = FakeReader({"tool.desktop": desktop("Tool")})
+        integrate(other, self.data, self.open_reader)
+        self.run_integration()
+        self.assertTrue(self.entry("tool").exists())
+        self.assertTrue(self.entry("app").exists())
+        appimage.unlink()
+        self.run_integration()
+        self.assertFalse(self.entry("tool").exists(), "gone AppImage, gone entry")
+
+    def test_dangling_entry_link_does_not_stop_the_run(self):
+        applications = self.data / "applications"
+        applications.mkdir(parents=True)
+        (applications / "appimage-gone.desktop").symlink_to(self.data / "missing")
+        (applications / "broken.desktop").symlink_to(self.data / "missing")
+        self.add("App.AppImage", {"app.desktop": desktop("App")})
+        self.run_integration()
+        self.assertTrue(self.entry("app").exists())
 
     def test_icon_falls_back_to_dir_icon_symlink(self):
         self.add(

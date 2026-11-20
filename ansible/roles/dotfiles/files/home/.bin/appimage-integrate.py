@@ -42,6 +42,15 @@ SAFE_ID = re.compile(r"[^A-Za-z0-9._-]")
 # Characters the desktop entry specification requires to be escaped inside a
 # quoted Exec argument.
 EXEC_RESERVED = re.compile(r'(["`$\\])')
+# `env NAME=value ...` before the program of an Exec value.
+ENV_PREFIX = re.compile(r"env(?:\s+[A-Za-z_][A-Za-z0-9_]*=\S*)+\s+")
+# Keys dropped from the embedded entry: the script sets TryExec and the source
+# itself, and DBusActivatable would make launchers activate the D-Bus name
+# "appimage-<id>" (the new file name) instead of running Exec.
+DROPPED_KEYS = ("TryExec", "DBusActivatable", SOURCE_KEY)
+# A newline or another control character in a file name would end the line
+# and add keys to the generated entry.
+CONTROL_CHARACTER = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class AppImageError(Exception):
@@ -52,6 +61,8 @@ class AppImageError(Exception):
 class ArchiveEntry:
     is_dir: bool
     is_link: bool
+    # Uncompressed size from the listing; None when 7-Zip did not print one.
+    size: int | None = None
 
 
 class ArchiveReader:
@@ -78,9 +89,11 @@ def parse_7z_listing(text: str) -> dict[str, ArchiveEntry]:
         if not path:
             continue
         mode = fields.get("Mode", "")
+        size = fields.get("Size", "")
         entries[path] = ArchiveEntry(
             is_dir=fields.get("Folder") == "+",
             is_link=mode.startswith("l"),
+            size=int(size) if size.isdigit() else None,
         )
     return entries
 
@@ -146,6 +159,12 @@ def resolve_link(reader: ArchiveReader, name: str) -> str | None:
     return None
 
 
+def exceeds(reader: ArchiveReader, name: str, limit: int) -> bool:
+    """Whether the listing already shows the file is larger than limit."""
+    size = reader.entries()[name].size
+    return size is not None and size > limit
+
+
 def sniff_icon_extension(data: bytes) -> str | None:
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return ".png"
@@ -169,7 +188,7 @@ def find_icon(reader: ArchiveReader, icon_name: str) -> tuple[str, bytes] | None
         if "/" in candidate:
             continue
         resolved = resolve_link(reader, candidate)
-        if resolved is None:
+        if resolved is None or exceeds(reader, resolved, MAX_ICON_BYTES):
             continue
         data = reader.read(resolved)
         if not data or len(data) > MAX_ICON_BYTES:
@@ -185,12 +204,25 @@ def find_icon(reader: ArchiveReader, icon_name: str) -> tuple[str, bytes] | None
 
 
 def quote_exec_argument(value: str) -> str:
-    return '"' + EXEC_RESERVED.sub(r"\\\1", value) + '"'
+    """Quote one Exec argument as stored in the desktop file.
+
+    The quoted-argument escapes come first; then, because Exec is a string
+    value, every backslash is escaped again and a literal % becomes %%, so it
+    is not read as a field code.
+    """
+    quoted = '"' + EXEC_RESERVED.sub(r"\\\1", value) + '"'
+    return quoted.replace("\\", "\\\\").replace("%", "%%")
 
 
 def replace_exec_program(exec_value: str, program: str) -> str:
-    """Swap the program of an Exec value, keeping its arguments and field codes."""
+    """Swap the program of an Exec value, keeping its arguments and field codes.
+
+    A leading `env NAME=value ...` is kept and the program after it replaced.
+    """
     value = exec_value.lstrip()
+    env_prefix = ENV_PREFIX.match(value)
+    prefix = env_prefix.group(0) if env_prefix else ""
+    value = value[len(prefix) :]
     if value.startswith('"'):
         index = 1
         while index < len(value):
@@ -204,7 +236,7 @@ def replace_exec_program(exec_value: str, program: str) -> str:
     else:
         parts = value.split(None, 1)
         rest = " " + parts[1] if len(parts) == 2 else ""
-    return quote_exec_argument(program) + rest
+    return prefix + quote_exec_argument(program) + rest
 
 
 def rewrite_desktop(text: str, appimage: Path, icon_path: Path | None) -> str:
@@ -228,7 +260,7 @@ def rewrite_desktop(text: str, appimage: Path, icon_path: Path | None) -> str:
         if separator and in_launchable_group:
             if key == "Exec":
                 line = "Exec=" + replace_exec_program(value, str(appimage))
-            elif key in ("TryExec", SOURCE_KEY):
+            elif key in DROPPED_KEYS:
                 continue
             elif key == "Icon" and icon_path is not None:
                 if group == "Desktop Entry":
@@ -272,6 +304,8 @@ def read_integration(reader: ArchiveReader) -> Integration:
     resolved = resolve_link(reader, desktops[0])
     if resolved is None:
         raise AppImageError(f"{desktops[0]} does not resolve inside the image")
+    if exceeds(reader, resolved, MAX_DESKTOP_BYTES):
+        raise AppImageError(f"{desktops[0]} is larger than {MAX_DESKTOP_BYTES} bytes")
     data = reader.read(resolved)
     if len(data) > MAX_DESKTOP_BYTES:
         raise AppImageError(f"{desktops[0]} is larger than {MAX_DESKTOP_BYTES} bytes")
@@ -311,12 +345,21 @@ def write_if_changed(path: Path, data: bytes) -> bool:
     return True
 
 
+def read_entry(path: Path) -> str | None:
+    """Text of a desktop entry; None when it is unreadable or not UTF-8."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
 def managed_source(path: Path) -> Path | None:
     """Return the AppImage a generated entry launches, None for other entries."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return None
+    text = read_entry(path)
+    return source_from_text(text) if text is not None else None
+
+
+def source_from_text(text: str) -> Path | None:
     prefix = SOURCE_KEY + "="
     for line in text.splitlines():
         if line.startswith(prefix):
@@ -328,22 +371,28 @@ def self_integrated(applications: Path, appimages: Iterable[Path]) -> set[Path]:
     """AppImages already launched by an entry this script did not write."""
     wanted = {str(path): path for path in appimages}
     found: set[Path] = set()
+    if not wanted:
+        return found
+    # One pattern for all AppImages, longest path first. A path must end at a
+    # quote, a space or the end of the value, so /a/App.AppImage does not
+    # match /a/App.AppImage.old.
+    pattern = re.compile(
+        "("
+        + "|".join(re.escape(name) for name in sorted(wanted, key=len, reverse=True))
+        + r")(?=[\"'\s]|$)"
+    )
     for entry in applications.glob("*.desktop"):
-        if not entry.is_file() or managed_source(entry) is not None:
+        if not entry.is_file():
             continue
-        try:
-            text = entry.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
+        text = read_entry(entry)
+        if text is None or source_from_text(text) is not None:
             continue
         for line in text.splitlines():
             key, separator, value = line.partition("=")
             if not separator or key.strip() not in ("Exec", "TryExec"):
                 continue
-            for name, path in wanted.items():
-                # The path must end at a quote, a space or the end of the
-                # value, so /a/App.AppImage does not match /a/App.AppImage.old.
-                if re.search(re.escape(name) + r"(?=[\"'\s]|$)", value):
-                    found.add(path)
+            for match in pattern.finditer(value):
+                found.add(wanted[match.group(1)])
     return found
 
 
@@ -367,6 +416,9 @@ def integrate(
         )
     except FileNotFoundError:
         appimages = []
+    for path in [path for path in appimages if CONTROL_CHARACTER.search(str(path))]:
+        log(f"{path.name!r}: control character in the path, skipped")
+        appimages.remove(path)
 
     skipped = (
         self_integrated(applications, appimages) if applications.is_dir() else set()
@@ -374,7 +426,7 @@ def integrate(
     for path in sorted(skipped):
         log(f"{path.name}: launched by its own desktop entry, skipped")
 
-    integrations: dict[str, tuple[Path, Integration]] = {}
+    integrations: dict[str, tuple[Path, float, Integration]] = {}
     unreadable: set[Path] = set()
     for path in appimages:
         if path in skipped:
@@ -385,21 +437,27 @@ def integrate(
             log(f"{path.name}: {error}")
             unreadable.add(path)
             continue
+        try:
+            mtime = path.stat().st_mtime
+        except OSError as error:
+            # Removed or renamed while it was being read.
+            log(f"{path.name}: {error.strerror}, skipped")
+            continue
         previous = integrations.get(integration.entry_id)
         # Two versions of one application: the newest file wins.
-        if previous is None or path.stat().st_mtime > previous[0].stat().st_mtime:
+        if previous is None or mtime > previous[1]:
             if previous is not None:
                 log(
                     f"{previous[0].name}: older copy of {integration.entry_id}, ignored"
                 )
-            integrations[integration.entry_id] = (path, integration)
+            integrations[integration.entry_id] = (path, mtime, integration)
         else:
             log(f"{path.name}: older copy of {integration.entry_id}, ignored")
 
     changed = False
     written: set[Path] = set()
     kept_icons: set[Path] = set()
-    for entry_id, (path, integration) in integrations.items():
+    for entry_id, (path, _mtime, integration) in integrations.items():
         icon_path = None
         if integration.icon is not None and integration.icon_extension is not None:
             icon_path = icons / (entry_id + integration.icon_extension)
@@ -412,11 +470,14 @@ def integrate(
             changed = True
         written.add(target)
 
-    changed |= remove_stale(applications, icons, written, kept_icons, unreadable)
+    changed |= remove_stale(
+        source_directory, applications, icons, written, kept_icons, unreadable
+    )
     return changed
 
 
 def remove_stale(
+    source_directory: Path,
     applications: Path,
     icons: Path,
     written: set[Path],
@@ -427,7 +488,9 @@ def remove_stale(
 
     That covers a removed AppImage, one that now integrates itself, and an
     entry renamed by a new version. An entry whose AppImage is still there but
-    unreadable (a download in progress, for instance) is kept.
+    unreadable (a download in progress, for instance) is kept, and so is the
+    entry of an AppImage that still exists outside source_directory (written
+    by a run with another --source).
     """
     changed = False
     kept_ids: set[str] = set()
@@ -438,7 +501,8 @@ def remove_stale(
         if source is None:
             continue
         entry_id = entry.name.removeprefix(ENTRY_PREFIX).removesuffix(".desktop")
-        if entry in written or source in unreadable:
+        foreign = source.parent != source_directory and source.exists()
+        if entry in written or source in unreadable or foreign:
             kept_ids.add(entry_id)
             continue
         entry.unlink()
