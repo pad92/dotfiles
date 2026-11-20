@@ -137,6 +137,8 @@ dotfiles_obsolete_user_unit_links:
   # No role installs arch-update; a link to an installed timer is kept.
   - timers.target.wants/arch-update.timer
 dotfiles_systemd_graphical_units:
+  - appimage-integrate.path
+  - appimage-integrate.service
   - awww.service
   - awww_random.timer
   - hypridle.service

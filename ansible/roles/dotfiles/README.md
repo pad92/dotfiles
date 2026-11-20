@@ -125,6 +125,17 @@ Keep static files in their home-relative layout. For example,
 files under `templates/home/` and register them in `defaults/main.yml`. Scripts
 under `files/home/.bin/` deploy to `~/.bin/`, which Zsh adds to `PATH`.
 
+`appimage-integrate.path` watches `~/Applications` and starts
+`appimage-integrate.service`, which also runs once at login. For each
+`*.AppImage`, `~/.bin/appimage-integrate.py` reads the embedded desktop entry
+and icon with 7-Zip, without running the AppImage, and writes
+`~/.local/share/applications/appimage-<id>.desktop` and
+`~/.local/share/icons/appimage/<id>.<ext>`. The id comes from the embedded
+desktop file, so a new version replaces the old entry. The script removes only
+the entries it wrote (`X-AppImage-Integrate-Source`) once their AppImage is
+gone, and it skips an AppImage that another desktop entry already launches.
+Run it by hand with `systemctl --user start appimage-integrate.service`.
+
 The role checks and copies directory contents one file at a time with Ansible.
 The read-only `dotfiles_tree` module includes hidden files, empty directories,
 and source symlinks while detecting cycles. File writes use `copy` and `file`.

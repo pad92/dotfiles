@@ -25,6 +25,12 @@ Release history and changes planned for the next version.
   - New roles `iwlwifi` (per-host module options), `print3d` (`24_3dprint`
     group, F3D thumbnails in Nautilus) and `audio` (PipeWire and WirePlumber
     files).
+- **AppImage**: `appimage-integrate.path` watches `~/Applications` and adds
+  each AppImage to the application menu (`appimage-<id>.desktop`, with its
+  icon). The desktop entry is read with 7-Zip, so the AppImage never runs. A
+  new version replaces the old entry, a removed AppImage loses it, and an
+  AppImage that integrated itself is left alone. `7zip` moves from `20_apps`
+  to `11_hyprland`.
 - **Audio**: RNNoise after the WebRTC echo canceller, a `voice.radio` effect
   (`audio_voice_effects`, `26_voice_effects` group) and
   `audio_disable_suspend` (default `true`).

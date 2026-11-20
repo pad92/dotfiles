@@ -1,0 +1,14 @@
+[Unit]
+Description=Add the AppImages of ~/Applications to the application menu
+Documentation=file://%h/.bin/appimage-integrate.py
+ConditionPathIsDirectory=%h/Applications
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.bin/appimage-integrate.py
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target
