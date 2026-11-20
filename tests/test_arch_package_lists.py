@@ -69,7 +69,7 @@ ALLOWED_CROSS_GROUP_DUPLICATES = {
     "nvidia-container-toolkit",
     "nvidia-prime",
 }
-# 22_obs is a standalone profile (ansible/obs.yml) that runs without the base
+# 22_obs is a standalone profile (site.yml --tags obs) that runs without the base
 # and Hyprland groups, so it repeats exactly the runtime OBS needs from them.
 OBS_PROFILE_SHARED_PACKAGES = {
     "pipewire-pulse",

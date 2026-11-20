@@ -3,9 +3,43 @@
   hosts: all
   become: true
   gather_facts: false
+  vars:
+    # `--tags obs` alone is the OBS profile: OBS, its PipeWire/portal runtime,
+    # the GPU drivers it encodes with and the browser virtual camera. Every
+    # other role is skipped by the tag selection. ansible_run_tags is a tuple,
+    # so it is turned into a list before the comparison.
+    site_obs_only: "{{ ansible_run_tags | default([]) | list == ['obs'] }}"
+    # Evaluated lazily, after the selection has classified the GPUs. Outside
+    # the OBS profile it stays none, so the usual host selection applies.
+    packages_group_selection: >-
+      {{ (['22_obs'] + (packages_detected_graphics_groups | default([])))
+         if site_obs_only | bool else none }}
+    # The OBS profile adds its groups to the saved list instead of replacing it.
+    packages_state_merge_selection: '{{ site_obs_only | bool }}'
   pre_tasks:
+    # The OBS profile selects a few groups only, so a reconcile would treat
+    # every other managed package as obsolete. This checks an argument, not
+    # the host, so it runs before the facts are gathered.
+    - name: Refuse package reconciliation from the OBS profile
+      ansible.builtin.assert:
+        that:
+          - packages_action | default('install') != 'reconcile'
+        fail_msg: >-
+          packages_action=reconcile with --tags obs would treat every package
+          outside 22_obs as obsolete. Reconcile without tags (make deploy).
+      when: site_obs_only | bool
+      tags: [always]
+
     - name: Gather the facts of the target
       ansible.builtin.import_tasks: tasks/target.yml
+      tags: [always]
+
+    - name: Require Arch Linux for the OBS profile
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['os_family'] == 'Archlinux'
+        fail_msg: The OBS profile only defines packages for Arch Linux and CachyOS.
+      when: site_obs_only | bool
       tags: [always]
 
     - name: Require a supported Linux distribution family
@@ -31,13 +65,15 @@
       tags: [always]
   # One role per function. The plan action (packages_action=plan) is read-only
   # for the whole playbook, so every role that changes the host skips it. The
-  # system tag still selects every role of the former system role.
+  # system tag still selects every role of the former system role. Each role
+  # has one tag of its own; system and dotfiles group several roles.
   roles:
     - role: package_manager
       when: packages_action | default('install') != 'plan'
       tags: [package_manager]
+    # The obs tag also runs this role, which installs the OBS profile groups.
     - role: packages
-      tags: [packages]
+      tags: [packages, obs]
     - role: lact
       when: packages_action | default('install') != 'plan'
       tags: [system, lact]
@@ -56,7 +92,7 @@
       when:
         - packages_action | default('install') != 'plan'
         - "'12_containers_docker' in (packages_selected_groups | default([]))"
-      tags: [system, docker, package_services]
+      tags: [system, docker]
     - role: hardening
       when: packages_action | default('install') != 'plan'
       tags: [system, hardening]
@@ -74,10 +110,10 @@
       tags: [system, vpn]
     - role: gpu
       when: packages_action | default('install') != 'plan'
-      tags: [system, gpu, gpu_modules]
+      tags: [system, gpu]
     - role: cpu_power
       when: packages_action | default('install') != 'plan'
-      tags: [system, cpu_power, amd_cpu_performance]
+      tags: [system, cpu_power]
     - role: time_sync
       when: packages_action | default('install') != 'plan'
       tags: [system, time_sync]

@@ -137,7 +137,8 @@ Tags: `obs`, `obs_config`, `obs_virtualcam`.
 
 ## Dependencies
 
-None. The `packages` role installs `22_obs`; the `obs.yml` playbook runs both.
+None. The `packages` role installs `22_obs`, and `make deploy TAGS=obs` runs
+both roles.
 
 ## Example Playbook
 

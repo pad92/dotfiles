@@ -233,7 +233,7 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             "ANSIBLE_CONFIG": str(ROOT / "ansible.cfg"),
             "ANSIBLE_LOCAL_TEMP": str(self.work / "ansible-local"),
         }
-        for tag in ["system", "kernel_hardening", "dns", "gpu_modules", "obs"]:
+        for tag in ["system", "kernel_hardening", "dns", "gpu", "obs"]:
             with self.subTest(tag=tag):
                 result = run_playbook(
                     Path("ansible/site.yml"),

@@ -49,7 +49,7 @@ so it applies without a reboot. Removing the rule leaves `power/control` at
 Peripheral batteries marked `Device` do not count. If the battery or GPU
 detection is incomplete, the existing rule is kept and the run asks for a new
 attempt once the drivers load, so a first installation may need a second run
-of the `gpu_modules` tasks after a reboot.
+with `TAGS=gpu` after a reboot.
 
 An active GPU workload or a monitoring client can keep the NVIDIA GPU awake.
 After deployment and reboot, check idle runtime suspend, `prime-run`
@@ -68,7 +68,7 @@ regenerates the initramfs after the module configuration changes. The
 giving a partial report. Package hooks and other external writers are not
 audited.
 
-Tags: `gpu`, `gpu_modules`.
+Tags: `gpu`, `system`.
 
 ## Dependencies
 

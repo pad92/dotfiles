@@ -107,7 +107,7 @@ the next roles change the host.
 
 | Variable       | Effect                                                      |
 | :------------- | :---------------------------------------------------------- |
-| `PLAYBOOK`     | `site` (default, the workstation) or `obs` (OBS only).      |
+| `PLAYBOOK`     | Only `site` exists; `TAGS=obs` runs its OBS profile.        |
 | `HOST`         | Inventory host or pattern; defaults to this machine.        |
 | `TAGS`         | Run only these comma-separated tags (`--tags`).             |
 | `SKIP_TAGS`    | Skip these comma-separated tags (`--skip-tags`).            |
@@ -123,14 +123,14 @@ the next roles change the host.
 | Preview the dotfiles only            | `make check TAGS=dotfiles`                                   |
 | Remove packages this installer added | `make deploy ANSIBLE_ARGS="-e packages_action=reconcile"`    |
 | Set up the Steam group               | `make deploy TAGS=packages,gaming BECOME_PASS=1`             |
-| Install only OBS and its demo scenes | `make deploy PLAYBOOK=obs BECOME_PASS=1`                     |
+| Install only OBS and its demo scenes | `make deploy TAGS=obs BECOME_PASS=1`                         |
 | Upgrade the whole system on Arch     | `make deploy ANSIBLE_ARGS="-e packages_upgrade_system=true"` |
 | Install the pinned collections       | `make galaxy`, or `make galaxy-force` to reinstall them      |
 | Remove backups and leftovers         | `make clean`, or `make clean DRY_RUN=1` to list them only    |
 | Build and open the documentation     | `make pages`                                                 |
 
-`make install` and `make install-obs` remain as aliases of `make deploy` and
-`make deploy PLAYBOOK=obs`. Reconciliation previews the removals and asks for
+`make install` still works as an alias of `make deploy`, and
+`make install-obs` as an alias of `make deploy TAGS=obs`. Reconciliation previews the removals and asks for
 confirmation.
 
 `make clean` removes what deployments and earlier versions left behind: the
@@ -173,19 +173,18 @@ variables, package ownership, and system settings.
 | :----------------------------------------- | :------------------------------------------------------------------------------ |
 | `package_manager`                          | Configure pacman and makepkg.                                                   |
 | `packages`                                 | Configure pacman, then install and reconcile packages.                          |
-| `packages_install`, `packages_reconcile`   | Install packages; the latter also runs reconciliation.                          |
-| `pacman`, `pacman_config`                  | Configure `/etc/pacman.conf`.                                                   |
+| `pacman`                                   | Configure `/etc/pacman.conf`.                                                   |
 | `yay`                                      | Configure pacman and run the AUR flow only.                                     |
 | `system`                                   | Run every host role from `lact` to `gnome_keyring`, and makepkg.                |
-| `package_services`                         | Enable the services and user groups of the selected package groups, and Docker. |
+| `package_services`                         | Enable the services and user groups of the selected package groups.             |
 | `docker`                                   | Add the Docker group users.                                                     |
 | `hardening`                                | Configure SSH client defaults and desktop sysctls.                              |
 | `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                               |
 | `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.               |
 | `vpn`                                      | Configure the openfortivpn SAML VPN.                                            |
-| `gpu`, `gpu_modules`                       | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                     |
-| `makepkg`, `makepkg_config`                | Configure native Arch builds.                                                   |
-| `cpu_power`, `amd_cpu_performance`         | Apply supported AMD CPU settings.                                               |
+| `gpu`                                      | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                     |
+| `makepkg`                                  | Configure native Arch builds.                                                   |
+| `cpu_power`                                | Apply supported AMD CPU settings.                                               |
 | `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
 | `power_save`                               | Set audio (and opt-in Wi-Fi) power-saving module options on a portable machine. |
 | `iwlwifi`                                  | Write the Intel Wi-Fi module options a host lists.                              |
@@ -193,11 +192,11 @@ variables, package ownership, and system settings.
 | `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
 | `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
 | `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`: record and stream profiles, palette scenes.         |
+| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`. On its own, `obs` installs OBS and nothing else.    |
 | `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
 | `dotfiles`                                 | Run the `dotfiles`, `audio` and `agent_cli` roles.                              |
 | `audio`                                    | Write the PipeWire and WirePlumber configuration: clean mic and voice effects.  |
-| `dotfiles_deploy`                          | Deploy the configuration; clone the pinned Vim and Zsh plugins.                 |
+| `dotfiles_deploy`                          | Run only the `dotfiles` role: configuration, pinned Vim and Zsh plugins.        |
 | `agent_cli`                                | Set the Claude Code and Codex status lines and the Claude Code token savings.   |
 | `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
 | `dotfiles_rtk`                             | Install RTK and merge its Claude Code hook (`agent_cli_rtk_enabled`).           |
@@ -284,8 +283,8 @@ and `cachyos-settings`, which provides `game-performance`. `steam-optimize`
 works without `game-performance` and sets shader-cache limits for AMD and
 NVIDIA.
 
-The `amd_cpu_performance` tag applies the AMD P-State energy preference on
-supported CPUs; see [AMD options](./ansible/roles/cpu_power/README.md).
+The `cpu_power` tag sets the AMD P-State energy preference on supported
+CPUs; see [AMD options](./ansible/roles/cpu_power/README.md).
 
 The `lact` tag manages `/etc/lact/config.yaml` with the GPU identifiers
 reported by the running LACT daemon. It keeps existing profiles and fan curves,

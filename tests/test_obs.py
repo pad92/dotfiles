@@ -953,8 +953,12 @@ class PackageStateSelectionTests(unittest.TestCase):
         self.assertEqual(saved["selected_groups"], ["08_intel_modern", "22_obs"])
 
     def test_obs_profile_enables_the_merge(self):
-        play = yaml.safe_load((ROOT / "ansible/obs.yml").read_text())[0]
-        self.assertIs(play["vars"]["packages_state_merge_selection"], True)
+        play = yaml.safe_load((ROOT / "ansible/site.yml").read_text())[0]
+        # site.yml switches the merge on only for the `--tags obs` profile.
+        self.assertEqual(
+            play["vars"]["packages_state_merge_selection"], "{{ site_obs_only | bool }}"
+        )
+        self.assertIn("ansible_run_tags", play["vars"]["site_obs_only"])
         defaults = yaml.safe_load(
             (ROOT / "ansible/roles/packages/defaults/main.yml").read_text()
         )
@@ -1184,7 +1188,7 @@ class ProfileContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             result = run_playbook(
-                ansible_tree(work) / "obs.yml",
+                ansible_tree(work) / "site.yml",
                 "-c",
                 "local",
                 "-e",
@@ -1192,7 +1196,7 @@ class ProfileContractTests(unittest.TestCase):
                 "-e",
                 "ansible_become=false",
                 "--tags",
-                "always",
+                "obs",
                 env={
                     **ansible_test_environment(work),
                     "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),

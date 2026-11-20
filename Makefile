@@ -13,7 +13,7 @@ unexport GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS \
 # ---------------------------------------------------------------------------
 # Run options, set on the command line: make check TAGS=dotfiles HOST=PadsP5560
 # ---------------------------------------------------------------------------
-# Playbook of ansible/ to run: site (the workstation) or obs (OBS only).
+# Playbook of ansible/ to run. Only site exists; TAGS=obs runs its OBS profile.
 PLAYBOOK ?= site
 # Host of ansible/inventory.yml configured over SSH, this machine by default.
 # The short hostname, as the hostname fact that tasks/target.yml checks.
@@ -55,10 +55,10 @@ XDG_OPEN ?= xdg-open
 SCREENSHOT ?= dist/hyprland.webp
 
 # Playbooks that configure an inventory host.
-PLAYBOOKS := site obs
+PLAYBOOKS := site
 # Vault files are encrypted, not YAML: yamllint skips them.
 ANSIBLE_YAML_FILES := $(filter-out ansible/group_vars/all/vault%,$(wildcard \
-	ansible/site.yml ansible/obs.yml ansible/inventory.yml \
+	ansible/site.yml ansible/inventory.yml \
 	ansible/tasks/*.yml ansible/group_vars/*/*.yml ansible/host_vars/*.yml \
 	ansible/roles/*/defaults/*.yml ansible/roles/*/tasks/*.yml \
 	ansible/roles/*/vars/*.yml))
@@ -91,9 +91,9 @@ help: ## Show this help
 		| awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@printf '\nVariables of the Ansible targets:\n'
 	@printf '  \033[36m%-18s\033[0m %s\n' \
-		'PLAYBOOK=$(PLAYBOOK)' 'playbook of ansible/: $(PLAYBOOKS)' \
+		'PLAYBOOK=$(PLAYBOOK)' 'playbook of ansible/ (only $(PLAYBOOKS))' \
 		'HOST=$(HOST)' 'inventory host, or a pattern such as all' \
-		'TAGS=a,b' 'run only these tags (list them with make tags)' \
+		'TAGS=a,b' 'run only these tags, TAGS=obs for OBS alone (make tags lists them)' \
 		'SKIP_TAGS=a,b' 'skip these tags' \
 		'BECOME_PASS=1' 'ask for the sudo password' \
 		'ANSIBLE_ARGS=...' 'any other ansible-playbook option'
@@ -125,9 +125,13 @@ tasks: ## List the tasks that deploy would run with the current TAGS
 install: deploy ## Same as deploy
 
 # install-obs has its own recipe: as a prerequisite, deploy would run only
-# once, so `make install install-obs` would skip the OBS playbook.
-install-obs: override PLAYBOOK := obs
-install-obs: ## Same as deploy PLAYBOOK=obs: OBS, its runtime and demo scenes
+# once, so `make install install-obs` would skip the OBS profile. It also
+# forces TAGS=obs and clears SKIP_TAGS, because site.yml only switches to the
+# OBS profile when obs is the only tag.
+install-obs: override PLAYBOOK := site
+install-obs: override TAGS := obs
+install-obs: override SKIP_TAGS :=
+install-obs: ## Same as deploy TAGS=obs: install OBS only, with its demo scenes
 	$(call run_playbook)
 
 # $(call clean_obsolete,<extra options>)

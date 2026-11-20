@@ -4,7 +4,7 @@
     path: /usr/bin/makepkg
   register: package_manager_makepkg
   when: ansible_facts['os_family'] == 'Archlinux'
-  tags: [makepkg, makepkg_config]
+  tags: [makepkg]
 
 - name: Create makepkg configuration directory
   ansible.builtin.file:
@@ -16,7 +16,7 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - package_manager_makepkg.stat.exists
-  tags: [makepkg, makepkg_config]
+  tags: [makepkg]
 
 - name: Configure native makepkg builds on Arch Linux and CachyOS
   ansible.builtin.copy:
@@ -33,4 +33,4 @@
   when:
     - ansible_facts['os_family'] == 'Archlinux'
     - package_manager_makepkg.stat.exists
-  tags: [makepkg, makepkg_config]
+  tags: [makepkg]

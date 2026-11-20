@@ -38,7 +38,7 @@
   ansible.builtin.include_tasks:
     file: amd_epp_policy.yml
     apply:
-      tags: [amd_cpu_performance]
+      tags: [cpu_power]
   loop: '{{ cpu_power_amd_epp_files.files | default([]) }}'
   loop_control:
     loop_var: cpu_power_amd_policy

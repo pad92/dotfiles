@@ -136,7 +136,7 @@ def recorded_package_groups(current: Any, previous_state: Any, merge: Any) -> li
     """Return the group list to save in the package state.
 
     A full run records its own selection. A partial profile (``merge`` true,
-    such as ansible/obs.yml) adds its groups to the saved ones instead of
+    such as site.yml --tags obs) adds its groups to the saved ones instead of
     replacing the workstation selection with its narrower list.
     """
     groups = {group for group in current or [] if isinstance(group, str)}

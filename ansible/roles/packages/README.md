@@ -22,7 +22,7 @@ AUR packages are built with `yay`.
 | `packages_aur_helper_preference`    | `[yay]`                                                  | AUR helpers, in order of preference.                                                                         |
 | `packages_protected`                | `[]`                                                     | Extra packages that removals never touch.                                                                    |
 | `packages_state_directory`          | `$XDG_STATE_HOME/dotfiles`                               | Where the saved selection and the owned packages are recorded.                                               |
-| `packages_state_merge_selection`    | `false`                                                  | Add the selection to the saved one instead of replacing it (partial profiles such as `obs.yml`).             |
+| `packages_state_merge_selection`    | `false`                                                  | Add the selection to the saved one instead of replacing it, for partial runs such as `--tags obs`.           |
 | `packages_razer_detection`          | `true`                                                   | Add `packages_razer_group` when a Razer USB device is connected.                                             |
 | `packages_razer_required_group`     | `21_steam`                                               | Group that the selection must hold for the Razer detection to run.                                           |
 | `packages_razer_group`              | `25_razer`                                               | Group added by the Razer detection.                                                                          |
@@ -111,12 +111,10 @@ others) or `packages_protected`. Run `--check` to preview the changes.
 
 ## Tags
 
-| Tag                  | Runs                                                         |
-| :------------------- | :----------------------------------------------------------- |
-| `packages`           | The whole role.                                              |
-| `packages_install`   | Plan and install.                                            |
-| `packages_reconcile` | Plan, install and reconcile.                                 |
-| `yay`                | The AUR flow only, without the official repository packages. |
+| Tag        | Runs                                                         |
+| :--------- | :----------------------------------------------------------- |
+| `packages` | The whole role.                                              |
+| `yay`      | The AUR flow only, without the official repository packages. |
 
 ## Dependencies
 
