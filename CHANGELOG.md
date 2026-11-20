@@ -52,7 +52,8 @@ Release history and changes planned for the next version.
   `vm.dirty_background_ratio = 5`.
 - **VPN**: `23_vpn` (`openfortivpn`, PadsP5560) with SAML login, resolved DNS
   and a Waybar toggle that needs no password. The gateway lives only in the
-  Vault.
+  Vault. Once connected, the tooltip shows the tunnel address and uptime, the
+  rate over the last refresh and the total received and sent.
 - **yay**: each Lua hook can be turned off from the environment
   (`YAY_ORPHAN_CHECK`, `YAY_PKGBUILD_SCAN`, `YAY_POST_INSTALL`,
   `YAY_RECENT_UPDATE`), for example `YAY_RECENT_UPDATE=0 yay -Syu`.
