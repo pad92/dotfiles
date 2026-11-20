@@ -18,6 +18,8 @@ MAKO_CONFIG = (
 # Arch package providing the program behind each user unit the dotfiles role
 # enables. Adding a unit to the role without listing its package here fails.
 GRAPHICAL_UNIT_PACKAGES = {
+    "appimage-integrate.path": "7zip",
+    "appimage-integrate.service": "7zip",
     "awww.service": "awww",
     "awww_random.timer": "awww",
     "hypridle.service": "hypridle",

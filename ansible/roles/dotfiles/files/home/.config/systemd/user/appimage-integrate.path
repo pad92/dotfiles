@@ -1,0 +1,13 @@
+[Unit]
+Description=Watch ~/Applications for AppImages to add to the application menu
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Path]
+# Fires on files created, removed, renamed or closed after writing, so a
+# finished download triggers one run.
+PathChanged=%h/Applications
+Unit=appimage-integrate.service
+
+[Install]
+WantedBy=graphical-session.target
