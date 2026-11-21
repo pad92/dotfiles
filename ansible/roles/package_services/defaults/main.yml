@@ -4,9 +4,16 @@
 # fstrim.timer comes with util-linux; it trims mounted filesystems weekly and
 # skips those that do not support discard. paccache.timer comes with
 # pacman-contrib; it keeps the last three versions of each cached package.
+# linux-modules-cleanup.service comes with kernel-modules-hook: a kernel upgrade
+# keeps the running kernel's modules, so `modprobe loop` still works before the
+# reboot, and the service deletes that copy at the next boot.
 package_services_by_group:
   Archlinux:
-    01_base: [bluetooth.service, fstrim.timer, paccache.timer]
+    01_base:
+      - bluetooth.service
+      - fstrim.timer
+      - linux-modules-cleanup.service
+      - paccache.timer
     04_printers: [cups.socket]
     # Reads Caps Lock from libinput so SwayOSD shows the ON/OFF pop-up.
     11_hyprland: [swayosd-libinput-backend.service]

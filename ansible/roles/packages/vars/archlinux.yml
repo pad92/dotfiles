@@ -29,6 +29,7 @@ packages_family_groups:
       - hyphen-fr
       - inetutils
       - jq
+      - kernel-modules-hook
       - lhasa
       - lib32-mesa
       - libnewt

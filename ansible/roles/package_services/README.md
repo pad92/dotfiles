@@ -23,15 +23,19 @@ their nice value below 0.
 
 Default units on Arch Linux:
 
-| Group                  | Units                                                 |
-| :--------------------- | :---------------------------------------------------- |
-| `01_base`              | `bluetooth.service`, `fstrim.timer`, `paccache.timer` |
-| `04_printers`          | `cups.socket`                                         |
-| `12_containers_docker` | `docker.socket`                                       |
-| `20_apps`              | `fwupd-refresh.timer`                                 |
+| Group                  | Units                                                                                  |
+| :--------------------- | :------------------------------------------------------------------------------------- |
+| `01_base`              | `bluetooth.service`, `fstrim.timer`, `linux-modules-cleanup.service`, `paccache.timer` |
+| `04_printers`          | `cups.socket`                                                                          |
+| `11_hyprland`          | `swayosd-libinput-backend.service`                                                     |
+| `12_containers_docker` | `docker.socket`                                                                        |
+| `20_apps`              | `fwupd-refresh.timer`                                                                  |
 
 `fstrim.timer` trims the mounted filesystems once a week. `paccache.timer`
-keeps the last three versions of each package in the pacman cache. Debian and
+keeps the last three versions of each package in the pacman cache.
+`linux-modules-cleanup.service` (from `kernel-modules-hook`) deletes, at boot,
+the copy of the previous kernel's modules that the pacman hook keeps during an
+upgrade, so `modprobe` still works until the reboot. Debian and
 Fedora packages usually enable their own services.
 
 Default group on Arch Linux: `plugdev` with `25_razer`, which OpenRazer's udev

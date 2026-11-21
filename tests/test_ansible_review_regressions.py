@@ -879,12 +879,14 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 "cups.socket",
                 "docker.socket",
                 "fstrim.timer",
+                "linux-modules-cleanup.service",
                 "paccache.timer",
             ],
         )
         self.assertIn(
             "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket',"
-            " 'fstrim.timer', 'paccache.timer']",
+            " 'fstrim.timer', 'linux-modules-cleanup.service',"
+            " 'paccache.timer']",
             output,
         )
         self.assertNotIn("fwupd-refresh.timer", output)
