@@ -189,9 +189,16 @@ Release history and changes planned for the next version.
   3dfx Voodoo, 256 MiB, 3.2 GiB disk) with matching fixed process figures,
   and plausible made-up kernel, package, uptime and load values; Waybar shows fixed CPU, memory,
   volume and Bluetooth values and leaves out the VPN, LACT and headset modules.
-- **Steam Optimize**: the mouse DPI is set per game with `--dpi <N>` (`[p]` in
-  `steam-optimize -i`) and ignored without `razer-cli`. GTA V needs `[p]` once
-  to keep 800 DPI.
+- **Steam Optimize**:
+  - The mouse DPI is set per game with `--dpi <N>` (`[p]` in
+    `steam-optimize -i`) and ignored without `razer-cli`. GTA V needs `[p]`
+    once to keep 800 DPI.
+  - Gamescope no longer runs with `--force-grab-cursor`: the pointer is no
+    longer hidden and captured in menus. Hyprland confines it to the game
+    window only while that window is fullscreen in Hyprland; `Super+F` frees
+    it. Under Gamescope the window stays fullscreen even when the game uses its
+    own windowed mode. A game profile can bring the forced grab back with
+    `"force_grab_cursor": True`.
 - **Waybar**:
   - English only; the calendar weeks now start on Sunday.
   - Every tooltip follows `Name: state`, details, then one line per click.

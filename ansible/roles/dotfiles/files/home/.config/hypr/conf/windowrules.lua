@@ -23,7 +23,14 @@ hl.window_rule({
   match = { class = "^(?i)(gamescope|steam_app_.*)$" },
   fullscreen = true,
   immediate = true,
-  confine_pointer = 1,
+})
+-- Dynamic rule: the pointer stays confined only while the game window is
+-- fullscreen in Hyprland and is released once Hyprland un-fullscreens it
+-- (Super+F). Under Gamescope the window stays fullscreen whatever display mode
+-- the game itself uses, so the pointer stays confined there.
+hl.window_rule({
+  match = { class = "^(?i)(gamescope|steam_app_.*)$", fullscreen = true },
+  confine_pointer = true,
 })
 
 -- Audio & password manager

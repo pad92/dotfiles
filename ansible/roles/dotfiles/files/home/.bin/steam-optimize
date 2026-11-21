@@ -44,6 +44,9 @@ NVIDIA_ENV_VARS = {
 }
 
 # --- Game Profiles (Declarative Overrides Registry) ---
+#
+# "force_grab_cursor": True restores Gamescope's --force-grab-cursor for a game
+# whose camera misbehaves when the pointer is only grabbed on demand.
 
 _FORZA_PROFILE = {
     "env": {
@@ -133,7 +136,7 @@ GAME_PROFILES = {
         # below), so the controller needs a manual toggle via the Steam
         # overlay (Shift+Tab -> controller icon) on every launch.
         # Gamescope produces a black screen with audio still running even
-        # with no forced resolution/output (-f --force-grab-cursor alone is
+        # with no forced resolution/output (-f --force-grab-cursor alone was
         # enough to trigger it), and must be skipped entirely, not just run
         # minimally. Known tradeoff: without Gamescope, the game's own
         # exclusive fullscreen doesn't render under Hyprland either; use
@@ -549,8 +552,13 @@ def find_workspace_monitor(monitors: list[dict], ws_id: int) -> dict | None:
     return None
 
 
-def get_gamescope_args(monitor_selector, gamescope_supports_output):
-    args = ["-f", "--force-grab-cursor"]
+def get_gamescope_args(monitor_selector, gamescope_supports_output, grab_cursor=False):
+    # Without --force-grab-cursor, Gamescope grabs the pointer only while the
+    # game hides it (relative mouse); Hyprland's windowrules.lua confines the
+    # visible pointer to the game window while that window is fullscreen in
+    # Hyprland. Forcing the grab also hid and captured the pointer in menus,
+    # so it is opt-in per game profile.
+    args = ["-f", *(["--force-grab-cursor"] if grab_cursor else [])]
 
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         collector.gamescope = "Enabled (Default settings)"
@@ -665,6 +673,10 @@ def hyprland_end():
 
 
 # --- Game Configuration Helpers & Overrides ---
+
+
+def profile_flag(profile, key):
+    return bool(profile and profile.get(key))
 
 
 def apply_game_overrides(steam_app_id, game_cmd):
@@ -1544,7 +1556,7 @@ def main():
     if mouse_dpi is not None:
         apply_mouse_dpi(mouse_dpi)
 
-    profile_no_gamescope = bool(profile) and profile.get("no_gamescope", False)
+    profile_no_gamescope = profile_flag(profile, "no_gamescope")
     no_gamescope = no_gamescope or profile_no_gamescope
 
     if no_gamescope:
@@ -1552,7 +1564,11 @@ def main():
         collector.gamescope = f"Disabled ({reason})"
     elif cmd and os.path.basename(cmd[0]) != "gamescope":
         if shutil.which("gamescope"):
-            gs_args = get_gamescope_args(monitor_selector, gamescope_supports_output)
+            gs_args = get_gamescope_args(
+                monitor_selector,
+                gamescope_supports_output,
+                grab_cursor=profile_flag(profile, "force_grab_cursor"),
+            )
             cmd = ["gamescope"] + gs_args + ["--"] + cmd
             log_info(f"Applying Gamescope wrapper for {game_name}")
         else:
