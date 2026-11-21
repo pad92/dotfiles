@@ -19,9 +19,14 @@ These leftovers are removed:
   still hold the shipped content: a changed copy or a link is kept and
   reported, like the deployment does;
 - in the repository, Python tool caches and untracked broken links, outside
-  nested Git checkouts and Python virtual environments.
+  nested Git checkouts and Python virtual environments;
+- the obsolete launchers (.desktop files) of ~/.local/share/applications and
+  ~/.config/autostart: their TryExec or program is gone, the command is no
+  longer installed, their WINEPREFIX is deleted or their Steam game is
+  uninstalled. A path under a filesystem that is not mounted, or that cannot
+  be read, is not proof of absence: the launcher is kept.
 
-Backups, submodule metadata and worktree records go only after REMOVE is
+Backups, launchers, submodule metadata and worktree records go only after REMOVE is
 typed on a terminal: a backup holds the previous content of a file, and a
 worktree record may name a checkout on a drive that is not mounted. Caches,
 broken links and unchanged obsolete files are regenerated or hold no content
@@ -34,6 +39,8 @@ listed before anything changes, and --dry-run only lists.
 import argparse
 import importlib.util
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -58,6 +65,32 @@ REPOSITORY_SKIPPED_DIRECTORIES = frozenset(
 CACHE_DIRECTORY_NAMES = frozenset(
     {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
 )
+# Directories of the home whose .desktop launchers clean checks.
+LAUNCHER_DIRECTORIES = (".local/share/applications", ".config/autostart")
+# Where a desktop session finds commands that a shell PATH may lack.
+LAUNCHER_SEARCH_DIRECTORIES = (
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/games",
+    "/var/lib/flatpak/exports/bin",
+)
+HOME_SEARCH_DIRECTORIES = (".local/bin", ".bin", ".local/share/flatpak/exports/bin")
+# Removable media appear there only while they are mounted.
+REMOVABLE_MEDIA_ROOTS = (Path("/media"), Path("/run/media"))
+STEAM_GAME_URL = re.compile(r"^steam://(?:rungameid|run)/(\d+)/?$")
+# Larger ids are shortcuts to non-Steam games, without an app manifest.
+STEAM_APP_ID_LIMIT = 2**32
+STEAM_LIBRARY_PATH = re.compile(r'^\s*"path"\s+"((?:[^"\\]|\\.)*)"', re.MULTILINE)
+# Native and Flatpak Steam installs, relative to the home.
+STEAM_DIRECTORIES = (
+    ".local/share/Steam",
+    ".steam/steam",
+    ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+)
+# String escapes of desktop entry values, decoded before Exec is split.
+DESKTOP_ESCAPE = re.compile(r"\\(.)")
+DESKTOP_ESCAPES = {"s": " ", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
 
 
 @dataclass
@@ -70,6 +103,10 @@ class Plan:
     backups: list[Path] = field(default_factory=list)
     # Backups of system files: removed only where the user may write.
     system_backups: list[Path] = field(default_factory=list)
+    # Obsolete .desktop launcher mapped to the reason it is obsolete.
+    launchers: dict[Path, str] = field(default_factory=dict)
+    # Launcher mapped to the directory clean searched (applications...).
+    launcher_directories: dict[Path, Path] = field(default_factory=dict)
     submodule_sections: list[str] = field(default_factory=list)
     submodule_directories: list[Path] = field(default_factory=list)
     prunable_worktrees: list[str] = field(default_factory=list)
@@ -80,6 +117,7 @@ class Plan:
         return bool(
             self.backups
             or self.system_backups
+            or self.launchers
             or self.submodule_sections
             or self.submodule_directories
             or self.prunable_worktrees
@@ -155,6 +193,219 @@ def role_obsolete_files(configuration: dict, plan: Plan) -> None:
             plan.obsolete_files[path] = str(checksum)
         else:
             plan.kept.append(f"{path}: obsolete file that {reason}")
+
+
+def fstab_mount_points(system_root: Path) -> frozenset[Path]:
+    """Mount points /etc/fstab declares, mounted or not."""
+    try:
+        lines = (system_root / "etc/fstab").read_text().splitlines()
+    except FileNotFoundError:
+        return frozenset()
+    mount_points = set()
+    for line in lines:
+        fields = line.split()
+        if len(fields) >= 2 and not fields[0].startswith("#"):
+            # fstab writes a space in a path as \040.
+            target = fields[1].replace("\\040", " ")
+            if target.startswith("/"):
+                mount_points.add(Path(target))
+    return frozenset(mount_points)
+
+
+def absence_is_certain(path: Path, mount_points: frozenset[Path]) -> bool:
+    """Whether path is gone, not merely on a filesystem that is not mounted.
+
+    An unmounted fstab entry, a removable medium or an error other than
+    "no such file" leaves the absence unproven.
+    """
+    try:
+        os.lstat(path)
+        return False
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return False
+    # A link on the way (~/Games -> /mnt/games) leads to the filesystem that
+    # actually holds the path: both spellings are checked.
+    for candidate in {path, Path(os.path.realpath(path))}:
+        for ancestor in candidate.parents:
+            if ancestor in mount_points and not os.path.ismount(ancestor):
+                return False
+        # A medium that is not plugged in leaves no trace, not even its mount
+        # point under /run/media/<user>.
+        if any(candidate.is_relative_to(root) for root in REMOVABLE_MEDIA_ROOTS):
+            return False
+    return True
+
+
+def read_desktop_entry(path: Path) -> dict[str, str]:
+    """Keys of the [Desktop Entry] group; localized keys are left out."""
+    entry = {}
+    in_group = False
+    for line in path.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if line.startswith("["):
+            in_group = line == "[Desktop Entry]"
+        elif in_group and "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if "[" not in key:
+                entry.setdefault(key, unescape_desktop_value(value.strip()))
+    return entry
+
+
+def unescape_desktop_value(value: str) -> str:
+    """Decode the string escapes of the desktop entry format (\\s, \\\\...)."""
+    return DESKTOP_ESCAPE.sub(
+        lambda match: DESKTOP_ESCAPES.get(match.group(1), match.group(0)), value
+    )
+
+
+def command_search_path(root: Path) -> str:
+    directories = os.environ.get("PATH", "").split(os.pathsep)
+    directories += [str(root / name) for name in HOME_SEARCH_DIRECTORIES]
+    directories += list(LAUNCHER_SEARCH_DIRECTORIES)
+    return os.pathsep.join(directory for directory in directories if directory)
+
+
+def missing_program_reason(
+    program: str, root: Path, mount_points: frozenset[Path]
+) -> str | None:
+    """Why program cannot run, or None when it may (or cannot be judged)."""
+    if program.startswith("/"):
+        if absence_is_certain(Path(program), mount_points):
+            return f"{program} is missing"
+        return None
+    if "/" in program:
+        return None
+    if shutil.which(program, path=command_search_path(root)) is None:
+        return f"command {program} is not installed"
+    return None
+
+
+def steam_game_installed(app_id: str, root: Path) -> bool | None:
+    """Whether a Steam library holds the game; None when that is unknown.
+
+    Every Steam install (native and Flatpak) is searched: the game may come
+    from any of them, so it is missing only when all of them can tell.
+    """
+    found_install = False
+    unknown = False
+    for steam in STEAM_DIRECTORIES:
+        try:
+            text = (root / steam / "steamapps/libraryfolders.vdf").read_text()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return None
+        found_install = True
+        libraries = [
+            Path(match.replace("\\\\", "\\"))
+            for match in STEAM_LIBRARY_PATH.findall(text)
+        ]
+        if not libraries:
+            unknown = True
+        for library in libraries:
+            steamapps = library / "steamapps"
+            try:
+                if (steamapps / f"appmanifest_{app_id}.acf").exists():
+                    return True
+                if not steamapps.is_dir():
+                    # A library on a drive that is not there: unknown.
+                    unknown = True
+            except OSError:
+                unknown = True
+    if unknown or not found_install:
+        return None
+    return False
+
+
+def launcher_obsolete_reason(
+    entry: dict[str, str], root: Path, mount_points: frozenset[Path]
+) -> str | None:
+    """Why a launcher can no longer start anything, or None."""
+    try_exec = entry.get("TryExec")
+    if try_exec:
+        reason = missing_program_reason(try_exec, root, mount_points)
+        if reason:
+            return f"TryExec {reason}"
+    command = entry.get("Exec")
+    if not command:
+        return None
+    try:
+        arguments = shlex.split(command)
+    except ValueError:
+        return None
+    environment = {}
+    if arguments and Path(arguments[0]).name == "env":
+        arguments = arguments[1:]
+        while arguments and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", arguments[0]):
+            name, value = arguments.pop(0).split("=", 1)
+            environment[name] = value
+        if arguments and arguments[0].startswith("-"):
+            # env options change how the rest is read: not judged.
+            return None
+    if not arguments:
+        return None
+    reason = missing_program_reason(arguments[0], root, mount_points)
+    if reason:
+        return reason
+    prefix = environment.get("WINEPREFIX")
+    if (
+        prefix
+        and prefix.startswith("/")
+        and absence_is_certain(Path(prefix), mount_points)
+    ):
+        return f"Wine prefix {prefix} is missing"
+    for argument in arguments[1:]:
+        match = STEAM_GAME_URL.match(argument)
+        if (
+            match
+            and int(match.group(1)) < STEAM_APP_ID_LIMIT
+            and steam_game_installed(match.group(1), root) is False
+        ):
+            return f"Steam game {match.group(1)} is not installed"
+    return None
+
+
+def obsolete_launchers(
+    root: Path, configuration: dict, system_root: Path, plan: Plan
+) -> None:
+    """Launchers of the home whose program, prefix or game is gone."""
+    root = root.resolve(strict=True)
+    if os.geteuid() == 0 and root.stat().st_uid != 0:
+        # Root has its own PATH: a command only the owner's PATH finds would
+        # look uninstalled, and the MIME cache would be rewritten as root.
+        plan.kept.append(
+            f"launchers of {root}: checked only when clean runs as their owner"
+        )
+        return
+    _, managed_files = managed.managed_paths(configuration)
+    managed_files = set(managed_files)
+    mount_points = fstab_mount_points(system_root)
+    for relative_directory in LAUNCHER_DIRECTORIES:
+        directory = root / relative_directory
+        if managed.has_symlink_component(directory) or not directory.is_dir():
+            continue
+        for parent, _, child_files in os.walk(directory):
+            for name in sorted(child_files):
+                path = Path(parent) / name
+                if not name.endswith(".desktop"):
+                    continue
+                if path.relative_to(root).as_posix() in managed_files:
+                    continue
+                if is_broken_link(path):
+                    # A broken link outside managed paths is left alone.
+                    continue
+                try:
+                    entry = read_desktop_entry(path)
+                except OSError as error:
+                    plan.kept.append(f"{path}: unreadable launcher ({error})")
+                    continue
+                reason = launcher_obsolete_reason(entry, root, mount_points)
+                if reason:
+                    plan.launchers[path] = reason
+                    plan.launcher_directories[path] = directory
 
 
 def git_common_directory(repository: Path) -> Path:
@@ -381,6 +632,7 @@ def build_plan(
     system_backup_leftovers(system_root, plan)
     plan.paths.extend(home_broken_links(root, configuration))
     role_obsolete_files(configuration, plan)
+    obsolete_launchers(root, configuration, system_root, plan)
     submodule_leftovers(repository, plan)
     plan.prunable_worktrees.extend(prunable_worktrees(repository))
     repository_files(repository, plan)
@@ -405,9 +657,38 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def refresh_desktop_database(directories: set[Path]) -> None:
+    """Drop removed launchers from the MIME cache their directory keeps."""
+    program = shutil.which("update-desktop-database")
+    for directory in sorted(directories):
+        if program is None or not (directory / "mimeinfo.cache").is_file():
+            continue
+        result = subprocess.run(
+            [program, str(directory)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            print(
+                f"warning: update-desktop-database {directory} failed",
+                file=sys.stderr,
+            )
+
+
 def apply(plan: Plan, repository: Path) -> None:
     for path in plan.backups + plan.system_backups:
         remove_path(path)
+    refreshed = set()
+    for path in plan.launchers:
+        if os.path.lexists(path):
+            path.unlink()
+        directory = plan.launcher_directories[path]
+        # wine/Programs/<game>/ stays behind empty otherwise.
+        remove_empty_parents(path, directory)
+        refreshed.add(directory)
+    refresh_desktop_database(refreshed)
     for path in plan.paths:
         if path.is_symlink():
             if not path.exists():
@@ -448,6 +729,8 @@ def report(plan: Plan, dry_run: bool) -> None:
     verb = "would remove" if dry_run else "remove"
     for path in plan.backups + plan.system_backups:
         print(f"{verb} backup {path}")
+    for path, reason in plan.launchers.items():
+        print(f"{verb} obsolete launcher {path} ({reason})")
     for path in plan.paths:
         print(f"{verb} {path}")
     for path in plan.obsolete_files:
@@ -469,6 +752,8 @@ def confirmed_items(plan: Plan) -> list[str]:
     items = []
     if plan.backups or plan.system_backups:
         items.append(f"{len(plan.backups) + len(plan.system_backups)} backups")
+    if plan.launchers:
+        items.append(f"{len(plan.launchers)} obsolete launchers")
     if plan.submodule_sections or plan.submodule_directories:
         items.append(f"{len(plan.submodule_sections)} retired submodules")
     if plan.prunable_worktrees:
@@ -497,6 +782,8 @@ def confirm_removal(plan: Plan, prompt=input, interactive: bool | None = None) -
     print(f"keep {plan.kept[-1]}")
     plan.backups.clear()
     plan.system_backups.clear()
+    plan.launchers.clear()
+    plan.launcher_directories.clear()
     plan.submodule_sections.clear()
     plan.submodule_directories.clear()
     plan.prunable_worktrees.clear()
