@@ -434,6 +434,51 @@ class LauncherTests(HomeTestCase):
 
         self.assertEqual(self.plan().launchers, {})
 
+    def test_a_link_into_an_unmounted_filesystem_is_kept(self):
+        mount_point = self.root / "games"
+        mount_point.mkdir()
+        (self.system / "etc/fstab").write_text(f"UUID=1  {mount_point}  xfs  0 2\n")
+        (self.home / "Games").symlink_to(mount_point)
+        self.launcher("game.desktop", f"Exec={self.home}/Games/Game/start")
+
+        self.assertEqual(self.plan().launchers, {})
+
+    def test_desktop_escapes_are_decoded_before_the_path_is_checked(self):
+        program = self.root / "My App/run"
+        program.parent.mkdir()
+        program.write_text("")
+        # Wine writes "\\\\ ": the string escape gives "\\ ", a quoted space.
+        escaped = str(program).replace(" ", "\\\\ ")
+        self.launcher("app.desktop", f"Exec={escaped} --flag")
+
+        self.assertEqual(self.plan().launchers, {})
+        self.assertEqual(clean.unescape_desktop_value(r"a\sb\\c\q"), "a b\\c\\q")
+
+    def test_a_symlinked_home_is_still_checked(self):
+        gone = self.launcher("gone.desktop", "Exec=absent-launcher-command")
+        linked_home = self.root / "linked-home"
+        linked_home.symlink_to(self.home)
+        plan = clean.Plan()
+
+        clean.obsolete_launchers(linked_home, self.config(), self.system, plan)
+
+        self.assertEqual(list(plan.launchers), [gone.resolve()])
+
+    def test_launchers_are_not_judged_by_root_for_another_owner(self):
+        self.launcher("gone.desktop", "Exec=absent-launcher-command")
+        owner = self.home.stat().st_uid
+        with (
+            patch.object(clean.os, "geteuid", return_value=0),
+            patch.object(clean.Path, "stat", autospec=True) as stat,
+        ):
+            stat.return_value = os.stat_result(
+                (0o40755, 0, 0, 1, owner or 1000, 0, 0, 0, 0, 0)
+            )
+            plan = self.plan()
+
+        self.assertEqual(plan.launchers, {})
+        self.assertTrue(any("launchers of" in note for note in plan.kept))
+
     def test_a_removable_medium_that_is_not_there_proves_nothing(self):
         for missing in ("/run/media/user/Drive/game", "/media/Drive/game"):
             with self.subTest(missing=missing):
@@ -449,6 +494,25 @@ class LauncherTests(HomeTestCase):
         self.launcher("steam.desktop", "Exec=installed steam://rungameid/20")
 
         self.assertEqual(self.plan().launchers, {})
+
+    def test_every_steam_install_is_searched(self):
+        self.steam_library()
+        flatpak_library = self.root / "flatpak-library"
+        (flatpak_library / "steamapps").mkdir(parents=True)
+        (flatpak_library / "steamapps/appmanifest_30.acf").write_text("")
+        flatpak = (
+            self.home / ".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps"
+        )
+        flatpak.mkdir(parents=True)
+        (flatpak / "libraryfolders.vdf").write_text(
+            f'"libraryfolders"\n{{\n  "0"\n  {{\n    "path"  "{flatpak_library}"\n  }}\n}}\n'
+        )
+        self.launcher("flatpak.desktop", "Exec=installed steam://rungameid/30")
+        gone = self.launcher("gone.desktop", "Exec=installed steam://rungameid/40")
+
+        self.assertEqual(
+            self.plan().launchers, {gone: "Steam game 40 is not installed"}
+        )
 
     def test_without_steam_libraries_games_are_kept(self):
         self.launcher("steam.desktop", "Exec=installed steam://rungameid/20")
@@ -480,6 +544,52 @@ class LauncherTests(HomeTestCase):
         clean.apply(plan, self.home)
 
         self.assertTrue(launcher.exists())
+
+
+class DesktopDatabaseTests(HomeTestCase):
+    def setUp(self):
+        super().setUp()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.calls = self.root / "calls"
+        self.cached = self.root / "cached"
+        self.cached.mkdir()
+        (self.cached / "mimeinfo.cache").write_text("")
+        self.uncached = self.root / "uncached"
+        self.uncached.mkdir()
+
+    def program(self, status: int) -> None:
+        program = self.bin / "update-desktop-database"
+        program.write_text(f'#!/bin/sh\necho "$1" >> "{self.calls}"\nexit {status}\n')
+        program.chmod(0o755)
+        patcher = patch.dict(os.environ, {"PATH": str(self.bin)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_only_directories_with_a_mime_cache_are_refreshed(self):
+        self.program(0)
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            clean.refresh_desktop_database({self.cached, self.uncached})
+
+        self.assertEqual(self.calls.read_text().split(), [str(self.cached)])
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_a_failed_refresh_is_reported(self):
+        self.program(1)
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            clean.refresh_desktop_database({self.cached})
+
+        self.assertIn(
+            f"update-desktop-database {self.cached} failed", stderr.getvalue()
+        )
+
+    def test_without_the_program_nothing_runs(self):
+        with patch.dict(os.environ, {"PATH": str(self.bin)}):
+            clean.refresh_desktop_database({self.cached})
+
+        self.assertFalse(self.calls.exists())
 
 
 class RepositoryTests(HomeTestCase):

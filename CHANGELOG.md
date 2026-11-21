@@ -47,9 +47,10 @@ Release history and changes planned for the next version.
     `DRY_RUN=1` only lists).
   - `make clean` also removes `.desktop` launchers in
     `~/.local/share/applications` and `~/.config/autostart` whose program,
-    Wine prefix or Steam game is gone, after `REMOVE`. A launcher pointing to
-    an unmounted fstab filesystem, a removable medium or a missing Steam
-    library is kept.
+    Wine prefix or Steam game (native or Flatpak Steam) is gone, after
+    `REMOVE`. A launcher pointing to an unmounted fstab filesystem (directly
+    or through a link), a removable medium or a missing Steam library is kept.
+    Under `sudo` the launchers are not checked.
   - `make pages` builds and opens the site.
 - **OBS**: `make install-obs` installs OBS and configures it from the host
   (encoder, canvas, webcam, profiles, three scene collections). The virtual

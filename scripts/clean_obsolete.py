@@ -82,6 +82,15 @@ STEAM_GAME_URL = re.compile(r"^steam://(?:rungameid|run)/(\d+)/?$")
 # Larger ids are shortcuts to non-Steam games, without an app manifest.
 STEAM_APP_ID_LIMIT = 2**32
 STEAM_LIBRARY_PATH = re.compile(r'^\s*"path"\s+"((?:[^"\\]|\\.)*)"', re.MULTILINE)
+# Native and Flatpak Steam installs, relative to the home.
+STEAM_DIRECTORIES = (
+    ".local/share/Steam",
+    ".steam/steam",
+    ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+)
+# String escapes of desktop entry values, decoded before Exec is split.
+DESKTOP_ESCAPE = re.compile(r"\\(.)")
+DESKTOP_ESCAPES = {"s": " ", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
 
 
 @dataclass
@@ -216,12 +225,17 @@ def absence_is_certain(path: Path, mount_points: frozenset[Path]) -> bool:
         pass
     except OSError:
         return False
-    for ancestor in path.parents:
-        if ancestor in mount_points and not os.path.ismount(ancestor):
+    # A link on the way (~/Games -> /mnt/games) leads to the filesystem that
+    # actually holds the path: both spellings are checked.
+    for candidate in {path, Path(os.path.realpath(path))}:
+        for ancestor in candidate.parents:
+            if ancestor in mount_points and not os.path.ismount(ancestor):
+                return False
+        # A medium that is not plugged in leaves no trace, not even its mount
+        # point under /run/media/<user>.
+        if any(candidate.is_relative_to(root) for root in REMOVABLE_MEDIA_ROOTS):
             return False
-    # A medium that is not plugged in leaves no trace, not even its mount
-    # point under /run/media/<user>.
-    return not any(path.is_relative_to(root) for root in REMOVABLE_MEDIA_ROOTS)
+    return True
 
 
 def read_desktop_entry(path: Path) -> dict[str, str]:
@@ -236,8 +250,15 @@ def read_desktop_entry(path: Path) -> dict[str, str]:
             key, value = line.split("=", 1)
             key = key.strip()
             if "[" not in key:
-                entry.setdefault(key, value.strip())
+                entry.setdefault(key, unescape_desktop_value(value.strip()))
     return entry
+
+
+def unescape_desktop_value(value: str) -> str:
+    """Decode the string escapes of the desktop entry format (\\s, \\\\...)."""
+    return DESKTOP_ESCAPE.sub(
+        lambda match: DESKTOP_ESCAPES.get(match.group(1), match.group(0)), value
+    )
 
 
 def command_search_path(root: Path) -> str:
@@ -263,20 +284,27 @@ def missing_program_reason(
 
 
 def steam_game_installed(app_id: str, root: Path) -> bool | None:
-    """Whether a Steam library holds the game; None when that is unknown."""
-    for steam in (root / ".local/share/Steam", root / ".steam/steam"):
+    """Whether a Steam library holds the game; None when that is unknown.
+
+    Every Steam install (native and Flatpak) is searched: the game may come
+    from any of them, so it is missing only when all of them can tell.
+    """
+    found_install = False
+    unknown = False
+    for steam in STEAM_DIRECTORIES:
         try:
-            text = (steam / "steamapps/libraryfolders.vdf").read_text()
+            text = (root / steam / "steamapps/libraryfolders.vdf").read_text()
         except FileNotFoundError:
             continue
         except OSError:
             return None
+        found_install = True
         libraries = [
             Path(match.replace("\\\\", "\\"))
             for match in STEAM_LIBRARY_PATH.findall(text)
         ]
         if not libraries:
-            return None
+            unknown = True
         for library in libraries:
             steamapps = library / "steamapps"
             try:
@@ -284,11 +312,12 @@ def steam_game_installed(app_id: str, root: Path) -> bool | None:
                     return True
                 if not steamapps.is_dir():
                     # A library on a drive that is not there: unknown.
-                    return None
+                    unknown = True
             except OSError:
-                return None
-        return False
-    return None
+                unknown = True
+    if unknown or not found_install:
+        return None
+    return False
 
 
 def launcher_obsolete_reason(
@@ -343,6 +372,14 @@ def obsolete_launchers(
     root: Path, configuration: dict, system_root: Path, plan: Plan
 ) -> None:
     """Launchers of the home whose program, prefix or game is gone."""
+    root = root.resolve(strict=True)
+    if os.geteuid() == 0 and root.stat().st_uid != 0:
+        # Root has its own PATH: a command only the owner's PATH finds would
+        # look uninstalled, and the MIME cache would be rewritten as root.
+        plan.kept.append(
+            f"launchers of {root}: checked only when clean runs as their owner"
+        )
+        return
     _, managed_files = managed.managed_paths(configuration)
     managed_files = set(managed_files)
     mount_points = fstab_mount_points(system_root)

@@ -168,13 +168,15 @@ checkout still exists, is kept and reported.
 In `~/.local/share/applications` and `~/.config/autostart` it lists the
 `.desktop` launchers that can no longer start: their `TryExec` or `Exec`
 program is missing, the `WINEPREFIX` they set is gone, or the
-`steam://rungameid/<id>` game has no `appmanifest` in any Steam library. The
-reason is printed next to each one. The launchers the `dotfiles` role deploys
+`steam://rungameid/<id>` game has no `appmanifest` in any Steam library
+(native or Flatpak). The reason is printed next to each one. The launchers the `dotfiles` role deploys
 are left to it. An absence counts only when it is certain: a path on an fstab
 filesystem that is not mounted, on a removable medium (`/media`,
 `/run/media`), or a game whose Steam library is missing keeps the launcher.
 Empty folders left behind (such as `wine/Programs/<game>`) are removed and
 `update-desktop-database` refreshes the MIME cache when there is one.
+Under `sudo`, launchers are not checked (a note says so): root's `PATH` would
+hide the owner's programs, so run `make clean` as the home's owner for them.
 
 Everything is listed before anything changes. The backups, the launchers, the
 submodule metadata and the worktree records go only after you type `REMOVE` on
