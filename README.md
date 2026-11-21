@@ -136,11 +136,13 @@ confirmation.
 
 `make clean` removes what deployments and earlier versions left behind: the
 `.bak` backups of managed paths, broken links under deployed paths, files a
-role no longer ships, retired submodule metadata and Python caches. Ansible
+role no longer ships, retired submodule metadata, Python caches and `.desktop`
+launchers whose program, Wine prefix or Steam game is gone. Ansible
 backups of the managed files in `/etc` (`name.PID.DATE@TIME~`) are included;
 they are root-owned, so `sudo make clean CLEAN_ROOT=$HOME` removes them and a
 plain run only lists them. It lists
-everything first and asks you to type `REMOVE` before deleting backups; see
+everything first and asks you to type `REMOVE` before deleting backups and
+launchers; see
 [Cleaning up](./ansible/README.md#cleaning-up). `make ansible-backup-ls` and
 `make ansible-backup-rm` remain as aliases of `make clean DRY_RUN=1` and
 `make clean`.

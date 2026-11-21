@@ -163,9 +163,22 @@ and their clones under `.git/modules`), the records of worktrees whose
 directory is gone, the Python tool caches and untracked broken links. It does
 not look into nested Git checkouts or Python virtual environments. A
 submodule clone with a commit that no remote branch or tag holds, or whose
-checkout still exists, is kept and reported. Everything is listed before
-anything changes. The backups, the submodule metadata and the worktree records
-go only after you type `REMOVE` on a terminal; without a terminal they stay.
+checkout still exists, is kept and reported.
+
+In `~/.local/share/applications` and `~/.config/autostart` it lists the
+`.desktop` launchers that can no longer start: their `TryExec` or `Exec`
+program is missing, the `WINEPREFIX` they set is gone, or the
+`steam://rungameid/<id>` game has no `appmanifest` in any Steam library. The
+reason is printed next to each one. The launchers the `dotfiles` role deploys
+are left to it. An absence counts only when it is certain: a path on an fstab
+filesystem that is not mounted, on a removable medium (`/media`,
+`/run/media`), or a game whose Steam library is missing keeps the launcher.
+Empty folders left behind (such as `wine/Programs/<game>`) are removed and
+`update-desktop-database` refreshes the MIME cache when there is one.
+
+Everything is listed before anything changes. The backups, the launchers, the
+submodule metadata and the worktree records go only after you type `REMOVE` on
+a terminal; without a terminal they stay.
 Caches, broken links and unchanged obsolete files go without asking. `DRY_RUN` accepts only `1` (list)
 and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
 as aliases of `make clean DRY_RUN=1` and `make clean`, and

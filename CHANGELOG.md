@@ -42,9 +42,15 @@ Release history and changes planned for the next version.
     `~/Videos/Recordings`, with a Waybar `REC` indicator.
   - `bitdepth: 10` in a monitor entry for a 10-bit framebuffer.
   - `SUPER + F1` lists the keybindings; every bind needs a description.
-- **Makefile**: `make clean` removes backups and migration leftovers (asks for
-  `REMOVE`, `DRY_RUN=1` only lists), and `make pages` builds and opens the
-  site.
+- **Makefile**:
+  - `make clean` removes backups and migration leftovers (asks for `REMOVE`,
+    `DRY_RUN=1` only lists).
+  - `make clean` also removes `.desktop` launchers in
+    `~/.local/share/applications` and `~/.config/autostart` whose program,
+    Wine prefix or Steam game is gone, after `REMOVE`. A launcher pointing to
+    an unmounted fstab filesystem, a removable medium or a missing Steam
+    library is kept.
+  - `make pages` builds and opens the site.
 - **OBS**: `make install-obs` installs OBS and configures it from the host
   (encoder, canvas, webcam, profiles, three scene collections). The virtual
   camera works in Teams and Firefox, and obs-backgroundremoval blurs the

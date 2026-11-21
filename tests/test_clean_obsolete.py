@@ -341,6 +341,147 @@ class ObsoleteFileTests(HomeTestCase):
             clean.role_obsolete_files(configuration, clean.Plan())
 
 
+class LauncherTests(HomeTestCase):
+    def setUp(self):
+        super().setUp()
+        self.system = self.root / "system"
+        (self.system / "etc").mkdir(parents=True)
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        installed = self.bin / "installed"
+        installed.write_text("#!/bin/sh\n")
+        installed.chmod(0o755)
+        for patcher in (
+            patch.dict(
+                os.environ, {"PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}"}
+            ),
+            patch.object(clean, "LAUNCHER_SEARCH_DIRECTORIES", ()),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.applications = self.home / ".local/share/applications"
+
+    def launcher(self, relative: str, *lines: str) -> Path:
+        path = self.applications / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(["[Desktop Entry]", "Type=Application", *lines]))
+        return path
+
+    def steam_library(self, *app_ids: str) -> None:
+        library = self.root / "library"
+        (library / "steamapps").mkdir(parents=True)
+        for app_id in app_ids:
+            (library / f"steamapps/appmanifest_{app_id}.acf").write_text("")
+        steamapps = self.home / ".local/share/Steam/steamapps"
+        steamapps.mkdir(parents=True)
+        (steamapps / "libraryfolders.vdf").write_text(
+            f'"libraryfolders"\n{{\n  "0"\n  {{\n    "path"  "{library}"\n  }}\n}}\n'
+        )
+
+    def plan(self) -> "clean.Plan":
+        plan = clean.Plan()
+        clean.obsolete_launchers(self.home, self.config(), self.system, plan)
+        return plan
+
+    def test_lists_launchers_whose_program_prefix_or_game_is_gone(self):
+        gone = self.root / "gone"
+        prefix = self.root / "prefix"
+        prefix.mkdir()
+        self.steam_library("10")
+        obsolete = {
+            self.launcher("tryexec.desktop", f"TryExec={gone}/app", "Exec=installed"): (
+                f"TryExec {gone}/app is missing"
+            ),
+            self.launcher("path.desktop", f'Exec="{gone}/start" -x'): (
+                f"{gone}/start is missing"
+            ),
+            self.launcher(
+                "command.desktop", "Exec=absent-launcher-command app launch x"
+            ): ("command absent-launcher-command is not installed"),
+            self.launcher(
+                "wine/Programs/Game/Play.desktop",
+                f'Exec=env "WINEPREFIX={gone}/pfx" installed start %u',
+            ): f"Wine prefix {gone}/pfx is missing",
+            self.launcher(
+                "steam-gone.desktop", "Exec=installed steam://rungameid/20"
+            ): ("Steam game 20 is not installed"),
+        }
+        self.launcher("kept.desktop", f"TryExec={self.bin}/installed", "Exec=installed")
+        self.launcher("prefix.desktop", f'Exec=env "WINEPREFIX={prefix}" installed')
+        self.launcher("steam.desktop", "Exec=installed steam://rungameid/10")
+        self.launcher("shortcut.desktop", f"Exec=installed steam://rungameid/{2**40}")
+        self.launcher("link.desktop", "Type=Link", "URL=https://example.org")
+        self.launcher("hidden.desktop", "Hidden=true")
+        self.launcher("unparsable.desktop", 'Exec="unterminated')
+        self.launcher("notes.txt", "Exec=absent-launcher-command")
+        # The dotfiles role deploys this one: the deployment owns it.
+        managed_launcher = self.home / ".config/autostart/nm-applet.desktop"
+        managed_launcher.parent.mkdir(parents=True)
+        managed_launcher.write_text("[Desktop Entry]\nExec=nm-applet\n")
+
+        self.assertEqual(self.plan().launchers, obsolete)
+
+    def test_a_path_on_an_unmounted_filesystem_is_kept(self):
+        mount_point = self.root / "games"
+        mount_point.mkdir()
+        (self.system / "etc/fstab").write_text(
+            f"# comment\nUUID=1  {mount_point}  xfs  defaults  0 2\n"
+        )
+        self.launcher("game.desktop", f"Exec={mount_point}/Game/start")
+        self.launcher(
+            "wine.desktop", f"Exec=env WINEPREFIX={mount_point}/pfx installed"
+        )
+
+        self.assertEqual(self.plan().launchers, {})
+
+    def test_a_removable_medium_that_is_not_there_proves_nothing(self):
+        for missing in ("/run/media/user/Drive/game", "/media/Drive/game"):
+            with self.subTest(missing=missing):
+                self.assertFalse(clean.absence_is_certain(Path(missing), frozenset()))
+        self.assertTrue(clean.absence_is_certain(self.root / "gone", frozenset()))
+
+    def test_a_missing_steam_library_keeps_the_game(self):
+        self.steam_library()
+        vdf = self.home / ".local/share/Steam/steamapps/libraryfolders.vdf"
+        vdf.write_text(
+            vdf.read_text() + f'"1"\n{{\n  "path"  "{self.root}/absent"\n}}\n'
+        )
+        self.launcher("steam.desktop", "Exec=installed steam://rungameid/20")
+
+        self.assertEqual(self.plan().launchers, {})
+
+    def test_without_steam_libraries_games_are_kept(self):
+        self.launcher("steam.desktop", "Exec=installed steam://rungameid/20")
+
+        self.assertEqual(self.plan().launchers, {})
+
+    def test_launchers_need_remove_and_go_with_their_empty_directories(self):
+        kept = self.launcher("kept.desktop", "Exec=installed")
+        launcher = self.launcher(
+            "wine/Programs/Game/Play.desktop", "Exec=absent-launcher-command"
+        )
+        plan = self.plan()
+        self.assertTrue(plan.needs_confirmation())
+        self.assertIn("1 obsolete launchers", clean.confirmed_items(plan))
+
+        clean.confirm_removal(plan, prompt=lambda _: "REMOVE", interactive=True)
+        clean.apply(plan, self.home)
+
+        self.assertFalse(launcher.exists())
+        self.assertFalse((self.applications / "wine").exists())
+        self.assertTrue(kept.exists())
+
+    def test_launchers_are_kept_without_confirmation(self):
+        launcher = self.launcher("gone.desktop", "Exec=absent-launcher-command")
+        plan = self.plan()
+
+        with redirect_stdout(io.StringIO()):
+            clean.confirm_removal(plan, prompt=lambda _: "no", interactive=True)
+        clean.apply(plan, self.home)
+
+        self.assertTrue(launcher.exists())
+
+
 class RepositoryTests(HomeTestCase):
     def setUp(self):
         super().setUp()
