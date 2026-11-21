@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import runpy
 import tempfile
 import unittest
@@ -9,6 +10,11 @@ from unittest import mock
 
 SCRIPT_PATH = (
     Path(__file__).parents[1] / "ansible/roles/dotfiles/files/home/.bin/steam-optimize"
+)
+
+HYPR_WINDOW_RULES = (
+    Path(__file__).parents[1]
+    / "ansible/roles/dotfiles/files/home/.config/hypr/conf/windowrules.lua"
 )
 
 
@@ -193,7 +199,7 @@ class SteamOptimizeTests(unittest.TestCase):
 
         self.assertEqual(selected_session, "current-session")
 
-    def gamescope_args_with(self, workspaces):
+    def gamescope_args_with(self, workspaces, **kwargs):
         replies = {
             "monitors": MONITORS,
             "workspaces": workspaces,
@@ -210,7 +216,7 @@ class SteamOptimizeTests(unittest.TestCase):
             ),
             mock.patch("subprocess.run", side_effect=run),
         ):
-            return self.script["get_gamescope_args"]("workspace:1", True)
+            return self.script["get_gamescope_args"]("workspace:1", True, **kwargs)
 
     def test_workspace_selector_uses_rule_monitor_when_workspace_is_hidden(self):
         # Workspace 1 does not exist and the ASUS shows workspace 5: the rule
@@ -221,6 +227,21 @@ class SteamOptimizeTests(unittest.TestCase):
 
         self.assertEqual(args[:4], ["-W", "3840", "-H", "2160"])
         self.assertEqual(args[-4:], ["-r", "144", "-O", "DP-3"])
+
+    def test_gamescope_does_not_force_the_cursor_grab_by_default(self):
+        # Forcing the grab trapped the pointer in menus and windowed mode;
+        # Hyprland confines it only while the game window is fullscreen.
+        args = self.gamescope_args_with([{"id": 1, "monitor": "DP-2"}])
+
+        self.assertIn("-f", args)
+        self.assertNotIn("--force-grab-cursor", args)
+
+    def test_profile_can_force_the_gamescope_cursor_grab(self):
+        args = self.gamescope_args_with(
+            [{"id": 1, "monitor": "DP-2"}], grab_cursor=True
+        )
+
+        self.assertIn("--force-grab-cursor", args)
 
     def test_workspace_selector_follows_an_existing_workspace(self):
         args = self.gamescope_args_with(
@@ -356,6 +377,20 @@ class SteamOptimizeTests(unittest.TestCase):
 
         apps = config["UserLocalConfigStore"]["Software"]["Valve"]["Steam"]["apps"]
         self.assertEqual(apps, {"1": {}, "2": {"LaunchOptions": "custom"}})
+
+
+class GameWindowRuleTests(unittest.TestCase):
+    def test_pointer_is_confined_only_to_fullscreen_game_windows(self):
+        rules = re.findall(
+            r"hl\.window_rule\(\{.*?\}\)",
+            HYPR_WINDOW_RULES.read_text(encoding="utf-8"),
+            re.DOTALL,
+        )
+        confining = [rule for rule in rules if "confine_pointer" in rule]
+
+        self.assertEqual(len(confining), 1)
+        self.assertIn("gamescope|steam_app_", confining[0])
+        self.assertRegex(confining[0], r"match\s*=\s*\{[^}]*fullscreen\s*=\s*true")
 
 
 if __name__ == "__main__":

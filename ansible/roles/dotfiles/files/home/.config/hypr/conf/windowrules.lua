@@ -23,7 +23,12 @@ hl.window_rule({
   match = { class = "^(?i)(gamescope|steam_app_.*)$" },
   fullscreen = true,
   immediate = true,
-  confine_pointer = 1,
+})
+-- Dynamic rule: the pointer stays confined only while the game window is
+-- fullscreen (exclusive or borderless) and is released once it is windowed.
+hl.window_rule({
+  match = { class = "^(?i)(gamescope|steam_app_.*)$", fullscreen = true },
+  confine_pointer = true,
 })
 
 -- Audio & password manager
