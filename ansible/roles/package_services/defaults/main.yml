@@ -6,7 +6,8 @@
 # pacman-contrib; it keeps the last three versions of each cached package.
 # linux-modules-cleanup.service comes with kernel-modules-hook: a kernel upgrade
 # keeps the running kernel's modules, so `modprobe loop` still works before the
-# reboot, and the service deletes that copy at the next boot.
+# reboot. At the next boot the service moves that copy to /usr/lib/modules/.old,
+# which systemd-tmpfiles empties after four weeks.
 package_services_by_group:
   Archlinux:
     01_base:
@@ -19,6 +20,11 @@ package_services_by_group:
     11_hyprland: [swayosd-libinput-backend.service]
     12_containers_docker: [docker.socket]
     20_apps: [fwupd-refresh.timer]
+# Units that only run at boot: they are enabled but not started. A oneshot unit
+# such as linux-modules-cleanup.service is inactive once it has run, so
+# `state: started` would run it again, and report a change, on every deploy.
+package_services_boot_only:
+  - linux-modules-cleanup.service
 package_services_unit_directory: /usr/lib/systemd/system
 # Units that need a hardware device: such a unit is enabled only when an entry
 # matching `patterns` exists in `path`. The kernel lists each Bluetooth
