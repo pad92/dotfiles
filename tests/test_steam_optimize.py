@@ -243,6 +243,15 @@ class SteamOptimizeTests(unittest.TestCase):
 
         self.assertIn("--force-grab-cursor", args)
 
+    def test_profile_flag_handles_missing_profiles_and_keys(self):
+        profile_flag = self.script["profile_flag"]
+
+        self.assertIs(profile_flag(None, "force_grab_cursor"), False)
+        self.assertIs(profile_flag({}, "force_grab_cursor"), False)
+        self.assertIs(
+            profile_flag({"force_grab_cursor": True}, "force_grab_cursor"), True
+        )
+
     def test_workspace_selector_follows_an_existing_workspace(self):
         args = self.gamescope_args_with(
             [{"id": 1, "monitor": "DP-2"}, {"id": 5, "monitor": "DP-3"}]
