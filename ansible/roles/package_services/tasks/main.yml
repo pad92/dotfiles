@@ -58,11 +58,13 @@
       {{ package_services_missing | join(', ') }}
   when: package_services_missing | length > 0
 
+# A boot-only unit is enabled without being started: see
+# package_services_boot_only.
 - name: Enable and start services for the selected packages
   ansible.builtin.systemd_service:
     name: '{{ item }}'
     enabled: true
-    state: started
+    state: "{{ omit if item in package_services_boot_only else 'started' }}"
   loop: '{{ package_services_to_enable }}'
 
 - name: Validate the users who join package groups

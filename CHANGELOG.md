@@ -19,6 +19,10 @@ Release history and changes planned for the next version.
   - New roles for manual steps of the Arch install guide: `time_sync`,
     `power_save`, `wireless_regdom` and `gnome_keyring`. `package_services`
     enables `fstrim.timer` and `paccache.timer`.
+  - `01_base` installs `kernel-modules-hook` and `package_services` enables
+    `linux-modules-cleanup.service`: after a kernel upgrade, modules such as
+    `loop` still load until the reboot. The unit is enabled without being
+    started, so a deploy does not run the boot cleanup again.
   - `vault-toggle` encrypts or decrypts a Vault file in place and refuses to
     decrypt a tracked file. Zed (now in `10_sre_devops`) runs it with
     `CTRL + ALT + V`.

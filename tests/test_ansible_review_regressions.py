@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import jinja2
 import yaml
 from ansible_test_environment import (
     COLLECTIONS,
@@ -879,15 +880,45 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
                 "cups.socket",
                 "docker.socket",
                 "fstrim.timer",
+                "linux-modules-cleanup.service",
                 "paccache.timer",
             ],
         )
         self.assertIn(
             "ENABLE ['bluetooth.service', 'cups.socket', 'docker.socket',"
-            " 'fstrim.timer', 'paccache.timer']",
+            " 'fstrim.timer', 'linux-modules-cleanup.service',"
+            " 'paccache.timer']",
             output,
         )
         self.assertNotIn("fwupd-refresh.timer", output)
+
+    def test_boot_only_units_are_enabled_without_being_started(self):
+        # A oneshot unit is inactive once it has run: `state: started` would
+        # run linux-modules-cleanup.service again on every deploy.
+        tasks = yaml.safe_load((ROLES / "package_services/tasks/main.yml").read_text())
+        enable = next(
+            task
+            for task in tasks
+            if task["name"] == "Enable and start services for the selected packages"
+        )
+        defaults = yaml.safe_load(
+            (ROLES / "package_services/defaults/main.yml").read_text()
+        )
+        self.assertIn(
+            "linux-modules-cleanup.service", defaults["package_services_boot_only"]
+        )
+        state = enable["ansible.builtin.systemd_service"]["state"]
+        env = jinja2.Environment()
+        for item, expected in (
+            ("linux-modules-cleanup.service", "OMIT"),
+            ("fstrim.timer", "started"),
+        ):
+            rendered = env.from_string(state).render(
+                item=item,
+                omit="OMIT",
+                package_services_boot_only=defaults["package_services_boot_only"],
+            )
+            self.assertEqual(rendered, expected, item)
 
     def test_bluetooth_is_not_enabled_without_a_controller(self):
         units = ["bluetooth.service", "cups.socket"]

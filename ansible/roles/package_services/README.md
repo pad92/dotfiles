@@ -14,6 +14,7 @@ their nice value below 0.
 | Variable                                | Default                                           | Description                                                        |
 | :-------------------------------------- | :------------------------------------------------ | :----------------------------------------------------------------- |
 | `package_services_by_group`             | see below                                         | Units to enable and start, by OS family and package group.         |
+| `package_services_boot_only`            | `linux-modules-cleanup.service`                   | Units enabled but not started, because they run once at boot.      |
 | `package_services_device_requirements`  | `bluetooth.service` needs `hci*`                  | Units enabled only when a matching entry exists under `path`.      |
 | `package_services_user_groups_by_group` | see below                                         | System groups that the users join, by OS family and package group. |
 | `package_services_retired_user_groups`  | `realtime` on Arch Linux                          | Groups the users leave, by OS family, whatever the package groups. |
@@ -23,16 +24,22 @@ their nice value below 0.
 
 Default units on Arch Linux:
 
-| Group                  | Units                                                 |
-| :--------------------- | :---------------------------------------------------- |
-| `01_base`              | `bluetooth.service`, `fstrim.timer`, `paccache.timer` |
-| `04_printers`          | `cups.socket`                                         |
-| `12_containers_docker` | `docker.socket`                                       |
-| `20_apps`              | `fwupd-refresh.timer`                                 |
+| Group                  | Units                                                                                  |
+| :--------------------- | :------------------------------------------------------------------------------------- |
+| `01_base`              | `bluetooth.service`, `fstrim.timer`, `linux-modules-cleanup.service`, `paccache.timer` |
+| `04_printers`          | `cups.socket`                                                                          |
+| `11_hyprland`          | `swayosd-libinput-backend.service`                                                     |
+| `12_containers_docker` | `docker.socket`                                                                        |
+| `20_apps`              | `fwupd-refresh.timer`                                                                  |
 
 `fstrim.timer` trims the mounted filesystems once a week. `paccache.timer`
-keeps the last three versions of each package in the pacman cache. Debian and
-Fedora packages usually enable their own services.
+keeps the last three versions of each package in the pacman cache.
+During a kernel upgrade, the pacman hook of `kernel-modules-hook` keeps the
+running kernel's modules, so `modprobe` still works until the reboot. At boot,
+`linux-modules-cleanup.service` moves that copy to `/usr/lib/modules/.old`,
+which `systemd-tmpfiles` empties after four weeks. The role enables this unit
+without starting it (`package_services_boot_only`): it runs once per boot.
+Debian and Fedora packages usually enable their own services.
 
 Default group on Arch Linux: `plugdev` with `25_razer`, which OpenRazer's udev
 rule gives the device.
