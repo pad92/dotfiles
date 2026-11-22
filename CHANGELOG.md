@@ -174,10 +174,16 @@ Release history and changes planned for the next version.
     from `host_vars`. Portable machines get backlight and battery modules and
     no blur.
   - `dotfiles_icon_theme` (default `Papirus-Dark`) sets the icon theme. Only
-    PadsTower suspends, after one hour.
-- **hypridle and hyprlock**: `hyprlock-carousel-idle.sh dpms|suspend`
-  replaces the two carousel scripts, and the media labels share one cached
-  `playerctl` call.
+    PadsTower suspends, after one hour; its `host_vars` no longer disable
+    hypridle, so it follows the role default (`true`).
+- **hypridle and hyprlock**:
+  - `hyprlock-carousel-idle.sh dpms|suspend` replaces the two carousel
+    scripts, and the media labels share one cached `playerctl` call.
+  - The lock screen keeps the wallpaper sharp and its center clear, with a
+    larger clock and the date below it at the top. The discreet password field
+    at the bottom turns yellow while checking or with Caps Lock and red on
+    failure, with the attempt count. The carousel lock screen gets the same
+    style.
 - **Makefile**: `make deploy` and `make check` take `HOST`, `PLAYBOOK`,
   `TAGS`, `SKIP_TAGS` and `BECOME_PASS=1`. New `plan`, `tags`, `tasks`,
   `verify`, `galaxy` and `galaxy-force` targets. `PLAYBOOK` only accepts
@@ -189,8 +195,10 @@ Release history and changes planned for the next version.
 - **Scripts**: `hypr-screenshot.sh` also records an anonymised animated WebP
   demo. It starts on the empty desktop, opens the editor and the terminal one
   by one, and moves the terminal across and back before the launcher,
-  notification and lock frames. Fastfetch shows a 1997 PC (Pentium MMX 233,
-  3dfx Voodoo, 256 MiB, 3.2 GiB disk) with matching fixed process figures,
+  notification, logout menu and lock frames. The logout menu uses the
+  wlogout command of `SUPER + Delete`, and the notification is dismissed
+  before it opens. Fastfetch shows a 1997 PC (Pentium MMX
+  233, 3dfx Voodoo, 256 MiB, 3.2 GiB disk) with matching fixed process figures,
   and plausible made-up kernel, package, uptime and load values; Waybar shows fixed CPU, memory,
   volume and Bluetooth values and leaves out the VPN, LACT and headset modules.
 - **Steam Optimize**:
@@ -209,9 +217,19 @@ Release history and changes planned for the next version.
     CPU, memory, battery, backlight and headset get their own tooltips, and
     Bluetooth no longer shows MAC addresses.
   - The LACT and VPN modules poll every 30 seconds instead of 5.
+- **wlogout** (`SUPER + Delete`):
+  - The menu is a centered 3x2 grid (lock, logout, reboot on top; carousel,
+    suspend, shutdown below) instead of filling the screen, in Gruvbox colours
+    imported from Waybar. Hover fills the button in blue, red for reboot and
+    shutdown; keyboard focus gets a blue border.
+  - Logout runs `uwsm stop`, with `hl.dsp.exit()` as fallback. The keys are
+    unchanged (`l`, `c`, `t`, `u`, `r`, `s`).
+  - `SUPER + Delete` closes only wlogout (`pkill -x`).
 
 ### Removed
 
+- **wlogout**: the hibernate button (no host configures a resume device) and
+  the `*-hover.png` icons, which were copies of the normal ones.
 - **Zsh**: unused `spectrum`, `termite`, `archive` and `github` code; the
   deployment removes it from the home.
 

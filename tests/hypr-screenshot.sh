@@ -85,6 +85,27 @@ jq -e '(.["modules-right"] | index("clock") == null and index("tray") != null
     "$home/.config/waybar/config" >/dev/null \
     || fail "the demo Waybar config is not the generic one of the role defaults"
 [[ -L $home/.config/gtk-3.0/gtk.css ]] || fail "the demo home lost the GTK 3 stylesheet"
+# wlogout reads its layout and its style, which imports the Waybar colors.
+for file in layout style.css; do
+    [[ -L $home/.config/wlogout/$file ]] || fail "the demo home lacks wlogout/$file"
+done
+[[ -L $home/.config/waybar/style.css ]] \
+    || fail "the demo wlogout style cannot import the Waybar colors"
+
+# --- The logout menu is the one of the $mod + Delete binding ---------------
+menu=$(logout_menu_command) || fail "the logout menu command could not be read"
+grep -qF -- "|| $menu\"," "$HYPR_CONFIG_DIR/config.lua" \
+    || fail "the demo logout menu differs from utils.logout: $menu"
+# Each command passes the sed extraction, so only the allowlist rejects it.
+# shellcheck disable=SC2016 # the $(id) stays literal on purpose
+for unsafe in 'wlogout -b 3; rm -rf ~' 'wlogout -b $(id)' 'wlogout -l ~/x'; do
+    printf '    logout = "pkill -x wlogout || %s",\n' "$unsafe" >"$TEST_DIR/config.lua"
+    (HYPR_CONFIG_DIR=$TEST_DIR logout_menu_command) >/dev/null 2>&1 \
+        && fail "a logout command with shell syntax was accepted: $unsafe"
+done
+printf '    logout = "pkill -x wlogout || wlogout -b 3 -T 10",\n' >"$TEST_DIR/config.lua"
+[[ $(HYPR_CONFIG_DIR=$TEST_DIR logout_menu_command) == 'wlogout -b 3 -T 10' ]] \
+    || fail "a plain logout command was not extracted"
 # The demo follows the theme of the role defaults, whatever it is.
 theme=$(sed -n 's/^dotfiles_icon_theme: *//p' "$ROOT_DIR/ansible/roles/dotfiles/defaults/main.yml")
 grep -qx "gtk-icon-theme-name=\"$theme\"" "$home/.gtkrc-2.0" \

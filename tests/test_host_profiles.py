@@ -63,11 +63,13 @@ class HostProfileTests(unittest.TestCase):
         self.assertIs(settings["hardening_ipv6_enabled"], False)
         self.assertIs(settings["dotfiles_hypridle_enabled"], False)
 
-    def test_tower_adds_steam_and_keeps_the_ipv6_default(self):
+    # PadsTower relies on the role default for hypridle so its one-hour
+    # suspend runs.
+    def test_tower_adds_steam_and_keeps_the_ipv6_and_hypridle_defaults(self):
         settings = self.settings("PadsTower")
         self.assertEqual(settings["packages_host_groups"], WORKSTATION + ["21_steam"])
         self.assertEqual(settings["hardening_ipv6_enabled"], UNSET)
-        self.assertIs(settings["dotfiles_hypridle_enabled"], False)
+        self.assertEqual(settings["dotfiles_hypridle_enabled"], UNSET)
 
     # A fresh machine must not inherit a known host's packages or settings.
     def test_unknown_host_keeps_every_role_default(self):

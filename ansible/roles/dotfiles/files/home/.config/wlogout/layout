@@ -1,7 +1,7 @@
 {
     "label": "lock",
     "action": "~/.bin/hyprlock-guard.sh hyprlock -c ~/.config/hypr/hyprlock.conf",
-    "text": "Ḻock",
+    "text": "Ḻock",
     "keybind": "l"
 }
 {
@@ -11,21 +11,9 @@
     "keybind": "c"
 }
 {
-    "label": "reboot",
-    "action": "systemctl reboot || loginctl reboot",
-    "text": "Ṟeboot",
-    "keybind": "r"
-}
-{
-    "label": "shutdown",
-    "action": "systemctl poweroff || loginctl poweroff",
-    "text": "S̱hutdown",
-    "keybind": "s"
-}
-{
     "label": "logout",
-    "action": "uwsm stop || hyprctl dispatch exit",
-    "text": "Logouṯ",
+    "action": "uwsm stop || hyprctl dispatch 'hl.dsp.exit()'",
+    "text": "Logouṯ",
     "keybind": "t"
 }
 {
@@ -35,8 +23,14 @@
     "keybind": "u"
 }
 {
-    "label": "hibernate",
-    "action": "systemctl hibernate || loginctl hibernate",
-    "text": "H̱ibernate",
-    "keybind": "h"
+    "label": "reboot",
+    "action": "systemctl reboot || loginctl reboot",
+    "text": "Ṟeboot",
+    "keybind": "r"
+}
+{
+    "label": "shutdown",
+    "action": "systemctl poweroff || loginctl poweroff",
+    "text": "S̱hutdown",
+    "keybind": "s"
 }

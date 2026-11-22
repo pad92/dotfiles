@@ -6,12 +6,12 @@
 A Hyprland desktop for Arch Linux and CachyOS, with Zsh, Neovim, Alacritty,
 tmux, Waybar, and Mako, set up by a single Ansible playbook.
 
-[![Hyprland demo: Neovim and Fastfetch windows open on an empty desktop and move, then a Hyprlauncher search, a Mako notification, and the Hyprlock screen](./dist/hyprland-demo.webp)](./dist/hyprland.webp)
+[![Hyprland demo: Neovim and Fastfetch windows open on an empty desktop and move, then a Hyprlauncher search, a Mako notification, the logout menu, and the Hyprlock screen](./dist/hyprland-demo.webp)](./dist/hyprland.webp)
 
 Neovim and a Fastfetch terminal opening on an empty desktop, the terminal
-moving across and back, a Hyprlauncher search, a Mako notification, then
-Hyprlock, recorded by `make screenshot` from the Hyprland config in this
-repository. Click it for the full-size still.
+moving across and back, a Hyprlauncher search, a Mako notification, the
+logout menu, then Hyprlock, recorded by `make screenshot` from the Hyprland
+config in this repository. Click it for the full-size still.
 
 [Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
 [Arch installation guide](./dist/arch/install.md) · [Ansible guide](./ansible/README.md)
@@ -271,8 +271,10 @@ Settings are environment variables of the Hyprland session (for example in
 with `HYPR_RECORD_VAAPI_DEVICE` encodes on the GPU, falling back to libx264 if
 the encoder does not start.
 
-Hyprlock shows the time, battery, and current media. Its carousel option uses
-the `awww` sources; see the
+Hyprlock shows the time, date, battery, and current media, with the
+clock and date at the top and the password field at the bottom, leaving the
+wallpaper sharp and its center clear. Its carousel option uses the `awww`
+sources; see the
 [Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
 
 ## Gaming and GPUs
