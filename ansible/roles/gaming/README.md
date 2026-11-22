@@ -50,6 +50,10 @@ Deselecting Steam does not stop the services.
   `loginusers.vdf`, and falls back to the only `localconfig.vdf` when there is
   exactly one. The mouse DPI is a per-game launch option: `steam-optimize -i`
   writes `--dpi <N>` with `[p]`, and it needs `razer-cli` (`25_razer`).
+  On a monitor that Hyprland reports as HDR capable, Gamescope runs with
+  `--hdr-enabled`; steam-optimize switches the monitor to HDR just before the
+  game starts (before tearing begins, otherwise the driver refuses the change)
+  and back to SDR when it ends; `--no-hdr` keeps a game in SDR.
 - Avoid `gamemoderun` while `ananicy-cpp` runs: both change process
   priorities
   ([CachyOS gaming guide](https://wiki.cachyos.org/fr/configuration/gaming/)).

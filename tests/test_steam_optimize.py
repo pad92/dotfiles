@@ -27,6 +27,7 @@ MONITORS = [
         "height": 1440,
         "refreshRate": 59.95,
         "activeWorkspace": {"id": 2},
+        "hardwareDetails": {"hdr": False, "bt2020": False},
     },
     {
         "name": "DP-3",
@@ -35,6 +36,7 @@ MONITORS = [
         "height": 2160,
         "refreshRate": 143.9,
         "activeWorkspace": {"id": 5},
+        "hardwareDetails": {"hdr": True, "bt2020": True},
     },
 ]
 WORKSPACE_RULES = [
@@ -252,6 +254,66 @@ class SteamOptimizeTests(unittest.TestCase):
             profile_flag({"force_grab_cursor": True}, "force_grab_cursor"), True
         )
 
+    def test_hdr_is_enabled_only_on_an_hdr_monitor(self):
+        hdr_args = self.gamescope_args_with([{"id": 1, "monitor": "DP-3"}], hdr=True)
+        sdr_args = self.gamescope_args_with([{"id": 1, "monitor": "DP-2"}], hdr=True)
+
+        self.assertIn("--hdr-enabled", hdr_args)
+        self.assertNotIn("--hdr-enabled", sdr_args)
+
+    def test_hdr_stays_off_when_not_requested(self):
+        args = self.gamescope_args_with([{"id": 1, "monitor": "DP-3"}])
+
+        self.assertNotIn("--hdr-enabled", args)
+
+    def test_hdr_monitor_is_kept_for_the_early_hdr_switch(self):
+        get_args = self.script["get_gamescope_args"]
+        self.gamescope_args_with([{"id": 1, "monitor": "DP-3"}], hdr=True)
+        self.assertEqual(get_args.__globals__["_hdr_monitor"]["name"], "DP-3")
+
+        self.gamescope_args_with([{"id": 1, "monitor": "DP-2"}], hdr=True)
+        self.assertIsNone(get_args.__globals__["_hdr_monitor"])
+
+    def test_monitor_hdr_lua_keeps_the_current_mode_and_position(self):
+        monitor = dict(MONITORS[1], x=2560, y=0, scale=1.0, transform=0)
+
+        lua = self.script["monitor_hdr_lua"](monitor)
+
+        self.assertEqual(
+            lua,
+            'hl.monitor({output="DP-3", mode="3840x2160@143.9", '
+            'position="2560x0", scale=1, transform=0, bitdepth=10, cm="hdr", '
+            "sdr_max_luminance=250})",
+        )
+        self.assertNotIn("vrr", lua)
+
+    def test_enable_monitor_hdr_runs_hyprctl_eval(self):
+        monitor = dict(MONITORS[1], x=0, y=0, scale=1, transform=0)
+        result = SimpleNamespace(returncode=0)
+
+        with mock.patch("subprocess.run", return_value=result) as run:
+            self.assertTrue(self.script["enable_monitor_hdr"](monitor))
+
+        command = run.call_args_list[0].args[0]
+        self.assertEqual(command[:2], ["hyprctl", "eval"])
+        self.assertIn('cm="hdr"', command[2])
+
+    def test_monitor_without_hardware_details_is_not_hdr(self):
+        supports_hdr = self.script["monitor_supports_hdr"]
+
+        self.assertIs(supports_hdr({"name": "DP-1"}), False)
+        self.assertIs(supports_hdr({"hardwareDetails": None}), False)
+        self.assertIs(supports_hdr({"hardwareDetails": {"hdr": "yes"}}), False)
+
+    def test_hdr_env_keeps_values_set_by_the_launcher(self):
+        with mock.patch.dict(os.environ, {"DXVK_HDR": "0"}, clear=True):
+            self.script["apply_hdr_env"]()
+            env = dict(os.environ)
+
+        self.assertEqual(env["DXVK_HDR"], "0")
+        self.assertEqual(env["ENABLE_GAMESCOPE_WSI"], "1")
+        self.assertEqual(env["PROTON_ENABLE_HDR"], "1")
+
     def test_workspace_selector_follows_an_existing_workspace(self):
         args = self.gamescope_args_with(
             [{"id": 1, "monitor": "DP-2"}, {"id": 5, "monitor": "DP-3"}]
@@ -280,6 +342,14 @@ class SteamOptimizeTests(unittest.TestCase):
         parsed, _run = self.parse_args_with("--dpi", "800", "--", "game")
 
         self.assertEqual(parsed[-2:], (800, ["game"]))
+
+    def test_no_hdr_option_is_parsed(self):
+        parsed, _run = self.parse_args_with("--no-hdr", "--", "game")
+        default, _run = self.parse_args_with("--", "game")
+
+        self.assertIs(parsed[4], True)
+        self.assertIs(default[4], False)
+        self.assertEqual(parsed[-1], ["game"])
 
     def test_invalid_dpi_is_ignored_without_blocking_the_game(self):
         for value in ("abc", "0", "999999"):
