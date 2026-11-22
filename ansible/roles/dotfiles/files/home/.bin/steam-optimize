@@ -579,11 +579,16 @@ def monitor_hdr_lua(monitor: dict) -> str:
     state, so only the colour settings change. VRR is left untouched.
     """
     refresh = f"{float(monitor.get('refreshRate') or 0):.3f}".rstrip("0").rstrip(".")
-    scale = f"{float(monitor.get('scale') or 1):g}"
+    mode = f"{monitor['width']}x{monitor['height']}"
+    if refresh != "0":
+        mode += f"@{refresh}"
+    # repr() keeps every digit: a rounded fractional scale (1.33333 for 4/3)
+    # is not a clean divisor and Hyprland would replace it.
+    scale = repr(float(monitor.get("scale") or 1)).removesuffix(".0")
     return (
         "hl.monitor({"
         f"output={json.dumps(monitor['name'])}, "
-        f'mode="{monitor["width"]}x{monitor["height"]}@{refresh}", '
+        f'mode="{mode}", '
         f'position="{monitor.get("x", 0)}x{monitor.get("y", 0)}", '
         f"scale={scale}, "
         f"transform={int(monitor.get('transform') or 0)}, "
@@ -672,7 +677,9 @@ def get_gamescope_args(
     if name and gamescope_supports_output:
         args.extend(["-O", name])
 
-    hdr_enabled = hdr and monitor_supports_hdr(target_monitor)
+    hdr_enabled = bool(
+        hdr and name and w and h and monitor_supports_hdr(target_monitor)
+    )
     if hdr_enabled:
         args.append("--hdr-enabled")
         _hdr_monitor = target_monitor
@@ -1661,11 +1668,9 @@ def main():
                 grab_cursor=profile_flag(profile, "force_grab_cursor"),
                 hdr=not (no_hdr or profile_flag(profile, "no_hdr")),
             )
-            if "--hdr-enabled" in gs_args:
+            if _hdr_monitor is not None:
                 apply_hdr_env()
                 log_info_silent("HDR monitor detected; Gamescope runs with HDR")
-                if _hdr_monitor is not None:
-                    enable_monitor_hdr(_hdr_monitor)
             cmd = ["gamescope"] + gs_args + ["--"] + cmd
             log_info(f"Applying Gamescope wrapper for {game_name}")
         else:
@@ -1698,6 +1703,11 @@ def main():
     atexit.register(hyprland_end)
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGHUP, _signal_handler)
+
+    # Only once hyprland_end() is registered, so its hyprctl reload always
+    # brings the monitor back to SDR.
+    if _hdr_monitor is not None:
+        enable_monitor_hdr(_hdr_monitor)
 
     launch_command = build_launch_command(cmd, game_performance)
     log_info_silent(f"Launching: {' '.join(launch_command[4:])}")

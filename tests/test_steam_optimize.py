@@ -287,6 +287,38 @@ class SteamOptimizeTests(unittest.TestCase):
         )
         self.assertNotIn("vrr", lua)
 
+    def test_monitor_hdr_lua_keeps_a_fractional_scale_exact(self):
+        monitor = dict(MONITORS[1], x=0, y=0, scale=4 / 3, transform=0)
+
+        lua = self.script["monitor_hdr_lua"](monitor)
+
+        self.assertIn(f"scale={4 / 3!r},", lua)
+
+    def test_monitor_hdr_lua_omits_an_unknown_refresh_rate(self):
+        monitor = dict(MONITORS[1], refreshRate=0)
+
+        lua = self.script["monitor_hdr_lua"](monitor)
+
+        self.assertIn('mode="3840x2160",', lua)
+
+    def test_hdr_needs_the_monitor_size(self):
+        monitors = [dict(MONITORS[1], width=None, height=None)]
+        replies = {"monitors": monitors, "workspaces": [], "workspacerules": []}
+
+        def query(*args):
+            return replies[args[0]]
+
+        with (
+            mock.patch.dict(os.environ, {"HYPRLAND_INSTANCE_SIGNATURE": "x"}),
+            mock.patch.dict(
+                self.script["get_gamescope_args"].__globals__,
+                {"query_hyprctl_json": query},
+            ),
+        ):
+            args = self.script["get_gamescope_args"]("DP-3", True, hdr=True)
+
+        self.assertNotIn("--hdr-enabled", args)
+
     def test_enable_monitor_hdr_runs_hyprctl_eval(self):
         monitor = dict(MONITORS[1], x=0, y=0, scale=1, transform=0)
         result = SimpleNamespace(returncode=0)
