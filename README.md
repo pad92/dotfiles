@@ -271,7 +271,8 @@ Settings are environment variables of the Hyprland session (for example in
 with `HYPR_RECORD_VAAPI_DEVICE` encodes on the GPU, falling back to libx264 if
 the encoder does not start.
 
-Hyprlock shows the time, battery, and current media. Its carousel option uses
+Hyprlock shows the time, date, battery, and current media, with the
+clock and the password field centered in the logout menu's style. Its carousel option uses
 the `awww` sources; see the
 [Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
 

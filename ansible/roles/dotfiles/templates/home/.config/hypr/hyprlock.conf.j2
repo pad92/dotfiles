@@ -3,8 +3,12 @@
 # Gruvbox Dark palette, kept manually in sync with waybar/style.css,
 # .tmux.conf, gruvbox.nvim and .config/mako/config
 $text_color = rgba(ebdbb2ff)
-$entry_background_color = rgba(1d202111)
-$entry_border_color = rgba(83a59855)
+$text_dim_color = rgba(d5c4a1ff)
+# Same card as the logout menu buttons: translucent base, blue border.
+$entry_background_color = rgba(1d202180)
+$entry_border_color = rgba(83a598ff)
+$entry_check_color = rgba(fabd2fff)
+$entry_fail_color = rgba(fb4934ff)
 $entry_color = rgba(ebdbb2ff)
 $accent_secondary_color = rgba(b8bb26cc)
 $accent_secondary_dim_color = rgba(b8bb2699)
@@ -26,11 +30,11 @@ animations {
 background {
     path = {{ dotfiles_home }}/{{ dotfiles_hyprlock_wallpaper }}
     monitor =
-    blur_size = 8
-    blur_passes = 0 # 0 disables blurring
+    blur_size = 6
+    blur_passes = 2
     noise = 0.0117
-    contrast = 1.3000 # Vibrant!!!
-    brightness = 0.8000
+    contrast = 1.1000
+    brightness = 0.6000 # dimmed like the logout menu backdrop
     vibrancy = 0.2100
     vibrancy_darkness = 0.0
 }
@@ -38,7 +42,8 @@ background {
 # INPUT FIELD
 input-field {
     monitor =
-    size = 300, 40
+    size = 320, 56
+    rounding = 20
     outline_thickness = 2
     dots_size = 0.2 # Scale of input-field height, 0.2 - 0.8
     dots_spacing = 0.2 # Scale of dots' absolute size, 0.0 - 1.0
@@ -46,12 +51,17 @@ input-field {
     outer_color = $entry_border_color
     inner_color = $entry_background_color
     font_color = $entry_color
-    fade_on_empty = true
-    placeholder_text =
+    check_color = $entry_check_color
+    fail_color = $entry_fail_color
+    capslock_color = $entry_check_color
+    fail_text = $FAIL ($ATTEMPTS)
+    fade_on_empty = false
+    placeholder_text = Password
     hide_input = true
-    position = 0, 150
+    shadow_passes = 1
+    position = 0, -80
     halign = center
-    valign = bottom
+    valign = center
 }
 
 label { # Clock
@@ -60,11 +70,24 @@ label { # Clock
     shadow_passes = 1
     shadow_boost = 0.5
     color = $text_color
-    font_size = 65
+    font_size = 96
     font_family = $font_family
-    position = 0, -30
+    position = 0, 130
     halign = center
-    valign = top
+    valign = center
+}
+
+label { # Date
+    monitor =
+    text = cmd[update:60000] date +'%A %-d %B'
+    shadow_passes = 1
+    shadow_boost = 0.5
+    color = $text_dim_color
+    font_size = 20
+    font_family = $font_family
+    position = 0, 40
+    halign = center
+    valign = center
 }
 
 label { # Status
