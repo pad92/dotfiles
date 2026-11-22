@@ -179,11 +179,11 @@ Release history and changes planned for the next version.
 - **hypridle and hyprlock**:
   - `hyprlock-carousel-idle.sh dpms|suspend` replaces the two carousel
     scripts, and the media labels share one cached `playerctl` call.
-  - The lock screen matches the logout menu: a dimmed, blurred wallpaper, the
-    clock and date centered above a rounded password card with a blue border
-    that turns yellow while checking or with Caps Lock and red on failure,
-    with the attempt count. The card stays visible with a `Password`
-    placeholder. The carousel lock screen gets the same style.
+  - The lock screen keeps the wallpaper sharp and its center clear, with a
+    larger clock and the date below it at the top. The discreet password field
+    at the bottom turns yellow while checking or with Caps Lock and red on
+    failure, with the attempt count. The carousel lock screen gets the same
+    style.
 - **Makefile**: `make deploy` and `make check` take `HOST`, `PLAYBOOK`,
   `TAGS`, `SKIP_TAGS` and `BECOME_PASS=1`. New `plan`, `tags`, `tasks`,
   `verify`, `galaxy` and `galaxy-force` targets. `PLAYBOOK` only accepts

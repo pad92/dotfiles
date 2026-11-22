@@ -272,8 +272,9 @@ with `HYPR_RECORD_VAAPI_DEVICE` encodes on the GPU, falling back to libx264 if
 the encoder does not start.
 
 Hyprlock shows the time, date, battery, and current media, with the
-clock and the password field centered in the logout menu's style. Its
-carousel option uses the `awww` sources; see the
+clock and date at the top and the password field at the bottom, leaving the
+wallpaper sharp and its center clear. Its carousel option uses the `awww`
+sources; see the
 [Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
 
 ## Gaming and GPUs
