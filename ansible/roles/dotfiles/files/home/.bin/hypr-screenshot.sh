@@ -971,7 +971,7 @@ demo_notification()
 }
 
 # logout_menu_command - the wlogout command of the $mod + Delete binding
-# (utils.logout in config.lua), without its "pkill wlogout ||" toggle, so the
+# (utils.logout in config.lua), without its "pkill -x wlogout ||" toggle, so the
 # demo shows the menu with the same grid and margins.
 logout_menu_command()
 {

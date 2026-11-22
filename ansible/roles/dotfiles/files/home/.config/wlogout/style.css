@@ -21,7 +21,12 @@ button {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 22%;
-  transition: all 0.25s cubic-bezier(0.55, 0, 0.28, 1.682);
+  /* Only the icon bounces; colors must not overshoot their target. */
+  transition:
+    background-size 0.25s cubic-bezier(0.55, 0, 0.28, 1.682),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
 }
 
 /* Keyboard navigation (arrows, Tab) shows where the focus is. */

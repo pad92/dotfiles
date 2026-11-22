@@ -174,8 +174,8 @@ Release history and changes planned for the next version.
     from `host_vars`. Portable machines get backlight and battery modules and
     no blur.
   - `dotfiles_icon_theme` (default `Papirus-Dark`) sets the icon theme. Only
-    PadsTower suspends, after one hour; its `host_vars` enable hypridle again
-    (`dotfiles_hypridle_enabled: true`).
+    PadsTower suspends, after one hour; its `host_vars` no longer disable
+    hypridle, so it follows the role default (`true`).
 - **hypridle and hyprlock**: `hyprlock-carousel-idle.sh dpms|suspend`
   replaces the two carousel scripts, and the media labels share one cached
   `playerctl` call.
