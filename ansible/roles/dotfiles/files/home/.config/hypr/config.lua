@@ -106,7 +106,9 @@ local config = {
     record_screen = "~/.bin/hypr-record.sh screen",
     record_window = "~/.bin/hypr-record.sh window",
     lock = "~/.bin/hyprlock-guard.sh hyprlock -c ~/.config/hypr/hyprlock.conf",
-    logout = "pkill wlogout || wlogout -p layer-shell",
+    -- wlogout fills its 3x2 grid column by column: lock, logout and reboot on
+    -- the top row. The margins keep it centered instead of full screen.
+    logout = "pkill -x wlogout || wlogout -p layer-shell -b 3 -T 280 -B 280 -L 360 -R 360",
     vol_mute = "swayosd-client --output-volume mute-toggle",
     mic_mute = "swayosd-client --input-volume mute-toggle",
     vol_up = "swayosd-client --output-volume raise",

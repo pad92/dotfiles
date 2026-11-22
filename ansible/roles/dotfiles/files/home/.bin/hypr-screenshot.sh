@@ -8,7 +8,8 @@
 # frame by frame into an animated WebP: the demo starts on the empty desktop,
 # opens the windows one by one, moves the terminal across and back, then
 # Hyprlauncher opens and searches for an application, Mako shows a
-# notification, and Hyprlock locks the screen. Both files are written
+# notification, the logout menu (wlogout) opens, and Hyprlock locks the
+# screen. Both files are written
 # atomically, so a failed run never leaves a broken image behind.
 #
 # Nothing personal ends up in the pictures:
@@ -82,6 +83,7 @@ DELAY_LAUNCHER_OPEN=50
 DELAY_KEYSTROKE=25
 DELAY_SEARCH_RESULT=150
 DELAY_NOTIFICATION=250
+DELAY_LOGOUT_MENU=200
 DELAY_LOCK=250
 
 REPO="${DOTFILES_REPOSITORY:-${HOME}/.dotfiles}"
@@ -97,6 +99,8 @@ DOTFILES_HOME="$REPO/ansible/roles/dotfiles/files/home"
 DOTFILES_TEMPLATES="$REPO/ansible/roles/dotfiles/templates/home"
 DOTFILES_DEFAULTS="$REPO/ansible/roles/dotfiles/defaults/main.yml"
 HYPR_CONFIG_DIR="$DOTFILES_HOME/.config/hypr"
+# Layer namespace of wlogout, also blurred by conf/windowrules.lua.
+LOGOUT_NAMESPACE=logout_dialog
 TERM_EMU=alacritty
 
 HYPR_PID=""
@@ -536,6 +540,8 @@ build_demo_home()
 
     link_tree "$DOTFILES_HOME/.config/waybar" "$home/.config/waybar"
     render_waybar_config "$home/.config/waybar/config"
+    # Its style.css imports ../waybar/style.css for the colors.
+    link_tree "$DOTFILES_HOME/.config/wlogout" "$home/.config/wlogout"
 }
 
 # write_identity DIR - passwd and group files naming only root and the demo user.
@@ -964,6 +970,37 @@ demo_notification()
     capture_frame "$output" "$DELAY_NOTIFICATION"
 }
 
+# logout_menu_command - the wlogout command of the $mod + Delete binding
+# (utils.logout in config.lua), without its "pkill wlogout ||" toggle, so the
+# demo shows the menu with the same grid and margins.
+logout_menu_command()
+{
+    sed -n 's/^ *logout = ".*|| *\(wlogout [^"]*\)",$/\1/p' "$HYPR_CONFIG_DIR/config.lua" \
+        | grep -x 'wlogout[ A-Za-z0-9-]*' \
+        || die "no plain wlogout command in utils.logout of config.lua"
+}
+
+demo_logout_menu()
+{
+    local output="$1" command
+    has wlogout || { log "wlogout not found, skipping the logout menu"; return 0; }
+
+    command="$(logout_menu_command)" || return 1
+    # The hidden pointer still hovers a button, which would show it
+    # highlighted: park it in the corner, outside the centered grid.
+    [[ $(hctl dispatch 'hl.dsp.cursor.move({ x = 0, y = 0 })') == ok ]] \
+        || die "Hyprland rejected the pointer move"
+    local -a args
+    read -ra args <<<"$command"
+    spawn "${args[@]}"
+    wait_until "the logout menu" layer_mapped "$LOGOUT_NAMESPACE"
+    sleep "$REDRAW_DELAY"
+    capture_frame "$output" "$DELAY_LOGOUT_MENU"
+
+    send_key Escape
+    wait_until "the logout menu to close" layer_gone "$LOGOUT_NAMESPACE"
+}
+
 demo_lock()
 {
     local output="$1"
@@ -1008,6 +1045,7 @@ main()
     demo_move "$output"
     demo_launcher "$output"
     demo_notification "$output"
+    demo_logout_menu "$output"
     demo_lock "$output"
     write_atomically "$DEMO_OUT" encode_animation \
         || die "animated WebP encoding failed"

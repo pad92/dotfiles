@@ -1,91 +1,70 @@
+/* GTK CSS: @import has to come before any rule. */
+@import '../waybar/style.css';
+
 * {
   background-image: none;
   font-family: 'DejaVu Sans';
-}
-
-@import '../waybar/style.css';
-
-window {
-  background-color: rgba(29, 32, 33, 0.45);
-}
-
-button {
-  margin: 10px;
-  border-radius: 20px;
-  border: none;
-  color: @text;
-  background-color: @base;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20%;
   box-shadow: none;
   text-shadow: none;
 }
 
+window {
+  background-color: rgba(29, 32, 33, 0.6);
+}
+
+button {
+  margin: 12px;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  color: @text;
+  background-color: @base;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 22%;
+  transition: all 0.25s cubic-bezier(0.55, 0, 0.28, 1.682);
+}
+
+/* Keyboard navigation (arrows, Tab) shows where the focus is. */
+button:focus {
+  border-color: @blue;
+}
+
 button:hover {
+  color: @crust;
   background-color: @blue;
-  background-size: 30%;
-  transition: all 0.3s cubic-bezier(0.55, 0, 0.28, 1.682);
+  background-size: 28%;
 }
 
-/* Adjust the size of the label inside the button */
+/* Actions that close every application stand out in red. */
+#reboot:hover,
+#shutdown:hover {
+  background-color: @red;
+}
+
 button label {
-  font-size: 28px;
+  font-size: 22px;
 }
 
-/* --- Icons Configuration (Normal & Hover) --- */
 #lock {
   background-image: image(url('./icons/lock.png'));
-}
-
-#lock:hover {
-  background-image: image(url('./icons/lock-hover.png'));
 }
 
 #carousel {
   background-image: image(url('./icons/carousel.png'));
 }
 
-#carousel:hover {
-  background-image: image(url('./icons/carousel-hover.png'));
-}
-
 #logout {
   background-image: image(url('./icons/logout.png'));
-}
-
-#logout:hover {
-  background-image: image(url('./icons/logout-hover.png'));
 }
 
 #suspend {
   background-image: image(url('./icons/sleep.png'));
 }
 
-#suspend:hover {
-  background-image: image(url('./icons/sleep-hover.png'));
-}
-
-#shutdown {
-  background-image: image(url('./icons/power.png'));
-}
-
-#shutdown:hover {
-  background-image: image(url('./icons/power-hover.png'));
-}
-
 #reboot {
   background-image: image(url('./icons/restart.png'));
 }
 
-#reboot:hover {
-  background-image: image(url('./icons/restart-hover.png'));
-}
-
-#hibernate {
-  background-image: image(url('./icons/hibernate.png'));
-}
-
-#hibernate:hover {
-  background-image: image(url('./icons/hibernate-hover.png'));
+#shutdown {
+  background-image: image(url('./icons/power.png'));
 }
