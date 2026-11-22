@@ -211,6 +211,14 @@ Release history and changes planned for the next version.
     it. Under Gamescope the window stays fullscreen even when the game uses its
     own windowed mode. A game profile can bring the forced grab back with
     `"force_grab_cursor": True`.
+  - HDR only during a game: Gamescope gets `--hdr-enabled` (with
+    `ENABLE_GAMESCOPE_WSI`, `DXVK_HDR` and `PROTON_ENABLE_HDR`) when Hyprland
+    reports the target monitor as HDR capable. steam-optimize switches that
+    monitor to HDR (10-bit, SDR content at 250 nits) before the game starts and
+    the end-of-game `hyprctl reload` brings it back to SDR; the desktop stays
+    in SDR. Hyprland's own automatic switch came too late: the game window was
+    already tearing and the driver rejects HDR changes in a tearing page flip.
+    `--no-hdr` or the `"no_hdr": True` profile key keeps a game in SDR.
 - **Waybar**:
   - English only; the calendar weeks now start on Sunday.
   - Every tooltip follows `Name: state`, details, then one line per click.

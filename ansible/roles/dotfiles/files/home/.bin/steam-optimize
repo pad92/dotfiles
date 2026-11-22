@@ -43,10 +43,23 @@ NVIDIA_ENV_VARS = {
     "PROTON_HIDE_NVIDIA_GPU": "0",  # Exposes NVIDIA GPU (required for NVAPI/DLSS).
 }
 
+# Set only when Gamescope runs with --hdr-enabled. Values already in the
+# environment (for example DXVK_HDR=0 from a launcher) are kept.
+HDR_ENV_VARS = {
+    "ENABLE_GAMESCOPE_WSI": "1",  # Gamescope's WSI layer exposes HDR10 to the game.
+    "DXVK_HDR": "1",  # Lets DXGI games (DXVK/VKD3D-Proton) see the HDR swapchain.
+    "PROTON_ENABLE_HDR": "1",  # Proton's own HDR switch (Proton 10 and later).
+}
+
+# Brightness (nits) of SDR content shown on the monitor while it is in HDR.
+# Hyprland's default (203) looked too dark on the desktop overlays.
+HDR_SDR_MAX_LUMINANCE = 250
+
 # --- Game Profiles (Declarative Overrides Registry) ---
 #
 # "force_grab_cursor": True restores Gamescope's --force-grab-cursor for a game
 # whose camera misbehaves when the pointer is only grabbed on demand.
+# "no_hdr": True keeps a game in SDR on an HDR monitor (same as --no-hdr).
 
 _FORZA_PROFILE = {
     "env": {
@@ -188,6 +201,7 @@ MOUSE_DPI_MAX = 50000
 _dpi_changed = False
 _original_mouse_dpi = None
 _mako_dnd_added = False
+_hdr_monitor = None
 
 # --- Helpers ---
 
@@ -552,12 +566,69 @@ def find_workspace_monitor(monitors: list[dict], ws_id: int) -> dict | None:
     return None
 
 
-def get_gamescope_args(monitor_selector, gamescope_supports_output, grab_cursor=False):
+def monitor_supports_hdr(monitor: dict) -> bool:
+    """Return whether Hyprland reports the monitor as HDR capable (EDID)."""
+    details = monitor.get("hardwareDetails")
+    return isinstance(details, dict) and details.get("hdr") is True
+
+
+def monitor_hdr_lua(monitor: dict) -> str:
+    """Build the hl.monitor() call that switches a monitor to HDR.
+
+    The mode, position, scale and transform come from Hyprland's own monitor
+    state, so only the colour settings change. VRR is left untouched.
+    """
+    refresh = f"{float(monitor.get('refreshRate') or 0):.3f}".rstrip("0").rstrip(".")
+    mode = f"{monitor['width']}x{monitor['height']}"
+    if refresh != "0":
+        mode += f"@{refresh}"
+    # repr() keeps every digit: a rounded fractional scale (1.33333 for 4/3)
+    # is not a clean divisor and Hyprland would replace it.
+    scale = repr(float(monitor.get("scale") or 1)).removesuffix(".0")
+    return (
+        "hl.monitor({"
+        f"output={json.dumps(monitor['name'])}, "
+        f'mode="{mode}", '
+        f'position="{monitor.get("x", 0)}x{monitor.get("y", 0)}", '
+        f"scale={scale}, "
+        f"transform={int(monitor.get('transform') or 0)}, "
+        'bitdepth=10, cm="hdr", '
+        f"sdr_max_luminance={HDR_SDR_MAX_LUMINANCE}"
+        "})"
+    )
+
+
+def enable_monitor_hdr(monitor: dict) -> bool:
+    """Switch the game monitor to HDR before the game window opens.
+
+    Hyprland's automatic switch (render:cm_auto_hdr) happens once the
+    fullscreen game window is already tearing; the driver rejects HDR
+    property changes in an async (tearing) page flip, so the monitor stayed
+    in SDR. Switching first keeps HDR active once tearing starts. The
+    hyprctl reload in hyprland_end() restores the configured SDR mode.
+    """
+    if run_silent(["hyprctl", "eval", monitor_hdr_lua(monitor)]):
+        log_info_silent(f"Switched {monitor['name']} to HDR")
+        return True
+    log_warn(f"Failed to switch {monitor['name']} to HDR; the game may run in SDR")
+    return False
+
+
+def get_gamescope_args(
+    monitor_selector, gamescope_supports_output, grab_cursor=False, hdr=False
+):
     # Without --force-grab-cursor, Gamescope grabs the pointer only while the
     # game hides it (relative mouse); Hyprland's windowrules.lua confines the
     # visible pointer to the game window while that window is fullscreen in
     # Hyprland. Forcing the grab also hid and captured the pointer in menus,
     # so it is opt-in per game profile.
+    #
+    # HDR (hdr=True) is turned on only for a monitor that Hyprland reports as
+    # HDR capable. That monitor is kept in _hdr_monitor so main() can switch it
+    # to HDR before the game starts (see enable_monitor_hdr); hyprland_end()
+    # brings it back to SDR, so the desktop never stays in HDR.
+    global _hdr_monitor
+    _hdr_monitor = None
     args = ["-f", *(["--force-grab-cursor"] if grab_cursor else [])]
 
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -606,13 +677,27 @@ def get_gamescope_args(monitor_selector, gamescope_supports_output, grab_cursor=
     if name and gamescope_supports_output:
         args.extend(["-O", name])
 
+    hdr_enabled = bool(
+        hdr and name and w and h and monitor_supports_hdr(target_monitor)
+    )
+    if hdr_enabled:
+        args.append("--hdr-enabled")
+        _hdr_monitor = target_monitor
+
     # Format gamescope info cleanly
     res_str = f"{w}x{h}" if (w and h) else "auto"
     ref_str = f" @ {r_rate}Hz" if r_rate > 0 else ""
     out_str = f" on {name}" if name and gamescope_supports_output else ""
-    collector.gamescope = f"Enabled ({res_str}{ref_str}{out_str})"
+    hdr_str = ", HDR" if hdr_enabled else ""
+    collector.gamescope = f"Enabled ({res_str}{ref_str}{out_str}{hdr_str})"
 
     return args
+
+
+def apply_hdr_env() -> None:
+    """Export the HDR variables, keeping any value the launcher already set."""
+    for key, value in HDR_ENV_VARS.items():
+        os.environ.setdefault(key, value)
 
 
 def hyprland_start():
@@ -1392,6 +1477,10 @@ Options:
                             reports a generic SteamAppId (e.g. 480/Spacewar)
                             instead of the game's real store AppID.
   -g, --no-gamescope        Skip the Gamescope wrapper entirely.
+  --no-hdr                  Keep the game in SDR. By default, Gamescope runs
+                            with --hdr-enabled when Hyprland reports the
+                            target monitor as HDR capable; the monitor
+                            switches to HDR only while the game runs.
   -h, --help                Show this help message and exit
 
 Examples:
@@ -1416,6 +1505,9 @@ Examples:
   # Force the game profile for a non-Steam shortcut (real AppID known)
   {script_name} --app-id 2483190 -- %command%
 
+  # Keep the game in SDR on an HDR monitor
+  {script_name} --no-hdr -- %command%
+
   # Skip Gamescope entirely (diagnostics)
   {script_name} --no-gamescope -- %command%
 
@@ -1433,6 +1525,7 @@ def parse_args():
     install_mode = False
     mangohud = False
     no_gamescope = False
+    no_hdr = False
     app_id_override = None
     mouse_dpi = None
     game_cmd = []
@@ -1451,6 +1544,9 @@ def parse_args():
             idx += 1
         elif arg in ("-g", "--no-gamescope"):
             no_gamescope = True
+            idx += 1
+        elif arg == "--no-hdr":
+            no_hdr = True
             idx += 1
         elif arg in ("-m", "--monitor"):
             if idx + 1 >= len(argv):
@@ -1498,6 +1594,7 @@ def parse_args():
         monitor_selector,
         mangohud,
         no_gamescope,
+        no_hdr,
         app_id_override,
         mouse_dpi,
         game_cmd,
@@ -1510,6 +1607,7 @@ def main():
         monitor_selector,
         mangohud,
         no_gamescope,
+        no_hdr,
         app_id_override,
         mouse_dpi,
         game_cmd,
@@ -1568,7 +1666,11 @@ def main():
                 monitor_selector,
                 gamescope_supports_output,
                 grab_cursor=profile_flag(profile, "force_grab_cursor"),
+                hdr=not (no_hdr or profile_flag(profile, "no_hdr")),
             )
+            if _hdr_monitor is not None:
+                apply_hdr_env()
+                log_info_silent("HDR monitor detected; Gamescope runs with HDR")
             cmd = ["gamescope"] + gs_args + ["--"] + cmd
             log_info(f"Applying Gamescope wrapper for {game_name}")
         else:
@@ -1601,6 +1703,11 @@ def main():
     atexit.register(hyprland_end)
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGHUP, _signal_handler)
+
+    # Only once hyprland_end() is registered, so its hyprctl reload always
+    # brings the monitor back to SDR.
+    if _hdr_monitor is not None:
+        enable_monitor_hdr(_hdr_monitor)
 
     launch_command = build_launch_command(cmd, game_performance)
     log_info_silent(f"Launching: {' '.join(launch_command[4:])}")
