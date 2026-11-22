@@ -196,7 +196,8 @@ Release history and changes planned for the next version.
   demo. It starts on the empty desktop, opens the editor and the terminal one
   by one, and moves the terminal across and back before the launcher,
   notification, logout menu and lock frames. The logout menu uses the
-  wlogout command of `SUPER + Delete`. Fastfetch shows a 1997 PC (Pentium MMX
+  wlogout command of `SUPER + Delete`, and the notification is dismissed
+  before it opens. Fastfetch shows a 1997 PC (Pentium MMX
   233, 3dfx Voodoo, 256 MiB, 3.2 GiB disk) with matching fixed process figures,
   and plausible made-up kernel, package, uptime and load values; Waybar shows fixed CPU, memory,
   volume and Bluetooth values and leaves out the VPN, LACT and headset modules.

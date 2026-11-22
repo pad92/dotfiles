@@ -968,6 +968,13 @@ demo_notification()
     wait_until "the notification" layer_mapped notifications
     sleep "$REDRAW_DELAY"
     capture_frame "$output" "$DELAY_NOTIFICATION"
+
+    # The notification lasts 10 s on the overlay layer: close it so the next
+    # frames (logout menu, lock screen) do not show it.
+    if has makoctl; then
+        spawn makoctl dismiss --all
+        wait_until "the notification to close" layer_gone notifications
+    fi
 }
 
 # logout_menu_command - the wlogout command of the $mod + Delete binding
