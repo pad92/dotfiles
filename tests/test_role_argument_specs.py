@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 from ansible_host_profiles import configured_hostnames, inventory_arguments
 from ansible_test_environment import (
+    COLLECTIONS,
     ROOT,
     ansible_test_environment,
     ansible_tree,
@@ -128,6 +129,7 @@ class RoleArgumentSpecFileTests(unittest.TestCase):
 
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "requires ansible-playbook")
+@unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
 class RoleArgumentValidationTests(unittest.TestCase):
     """Ansible accepts the host configurations and refuses invalid values."""
 

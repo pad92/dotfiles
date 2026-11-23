@@ -58,7 +58,6 @@ class Print3dRoleTests(unittest.TestCase):
         self.cache = self.work / "cache/thumbnails"
         self.environment = ansible_test_environment(self.work)
         self.environment["ANSIBLE_ROLES_PATH"] = str(ROOT / "ansible/roles")
-        self.environment["ANSIBLE_COLLECTIONS_PATH"] = str(COLLECTIONS)
 
     def run_role(self, options):
         playbook = write_playbook(

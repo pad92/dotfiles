@@ -46,7 +46,6 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             *arguments,
             env={
                 **ansible_test_environment(self.work),
-                "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
                 **(env or {}),
             },
         )

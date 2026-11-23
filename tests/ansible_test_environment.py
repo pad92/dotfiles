@@ -22,7 +22,8 @@ LOCAL_VAULT_PATTERN = "vault*.yml"
 # A play takes seconds on a workstation but minutes on a loaded CI runner (four
 # workers on an old CPU, coverage tracing): the limit only catches a hang.
 PLAYBOOK_TIMEOUT = int(os.environ.get("TEST_PLAYBOOK_TIMEOUT", "600"))
-# The test ansible.cfg replaces the repository one, which sets collections_path.
+# Installed by `make galaxy`. The test ansible.cfg replaces the repository one,
+# which sets collections_path, so ansible_test_environment() points at it.
 COLLECTIONS = ROOT / ".ansible/collections"
 # Resolved once: some tests run plays with a PATH that only holds fake tools.
 ANSIBLE_PLAYBOOK = shutil.which("ansible-playbook") or "ansible-playbook"
@@ -68,6 +69,10 @@ def ansible_test_environment(work: Path) -> dict[str, str]:
     return {
         **os.environ,
         "ANSIBLE_CONFIG": str(config),
+        # Pinned collections only: CI installs ansible-core without the
+        # collections a distribution "ansible" package ships in sys.path.
+        "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
+        "ANSIBLE_COLLECTIONS_SCAN_SYS_PATH": "False",
         "ANSIBLE_LIBRARY": str(ROOT / "ansible/library"),
         "ANSIBLE_MODULE_UTILS": str(ROOT / "ansible/module_utils"),
         "ANSIBLE_FILTER_PLUGINS": str(ROOT / "ansible/filter_plugins"),
