@@ -13,7 +13,8 @@ moving across and back, a Hyprlauncher search, a Mako notification, the
 logout menu, then Hyprlock, recorded by `make screenshot` from the Hyprland
 config in this repository. Click it for the full-size still.
 
-[Changelog](./CHANGELOG.md) · [Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
+[Quick start guide](./QUICKSTART.md) · [Changelog](./CHANGELOG.md) ·
+[Releases](https://gitlab.com/pad92/dotfiles/-/releases) ·
 [Arch installation guide](./dist/arch/install.md) · [Ansible guide](./ansible/README.md)
 
 ## Highlights
@@ -34,32 +35,23 @@ config in this repository. Click it for the full-size still.
 
 ## Quick start
 
-You need Git, `make`, a regular user with `sudo` access, and Ansible with the
-collections in [`ansible/requirements.yml`](./ansible/requirements.yml). The
-full `ansible` package ships them; with `ansible-core` alone, install them
-into the repository after cloning.
+New to this repository? The [quick start guide](./QUICKSTART.md) goes from
+SSH access to the first deploy. The summary below assumes you know Ansible.
 
 ```sh
 git clone https://gitlab.com/pad92/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-# Only with ansible-core:
-make galaxy
-make check   # preview
-make deploy
+make galaxy                  # only with ansible-core
+make check BECOME_PASS=1     # preview
+make deploy BECOME_PASS=1
 ```
 
-`make deploy` installs packages and deploys the configuration to your home
-directory. Installation is additive: packages that were already installed stay
-unmanaged.
-
-Ansible reaches the machine over SSH, even when it is the one you type on.
-`HOST` selects a host of `ansible/inventory.yml` and defaults to the short
-hostname (`uname -n` up to the first dot).
-The target needs an SSH server; the repository only has to be cloned on the
-machine you run `make` from, and that clone can be deleted once deployed:
-`make deploy HOST=PadsP5560` configures the laptop from the desktop. A new
-machine first gets an inventory entry; see
-[Per-host settings](./ansible/README.md#per-host-settings).
+Ansible reaches the machine over SSH, even when it is the one you type on, so
+it needs an SSH server that accepts your key. `HOST` defaults to the short
+hostname (`uname -n` up to the first dot), which must be listed in
+`ansible/inventory.yml`; see
+[Per-host settings](./ansible/README.md#per-host-settings). Installation is
+additive: packages that were already installed stay unmanaged.
 
 ## Editor packages
 
@@ -101,19 +93,9 @@ curl -fsSL 'https://gitlab.com/pad92/dotfiles/-/jobs/artifacts/main/raw/zsh.tar.
 
 ## Common tasks
 
-`make help` lists the targets and their variables. `deploy`, `check`, `plan`,
-`tags` and `tasks` share these variables, except that `plan` refuses `TAGS` and
-`SKIP_TAGS`: a selection could skip the stop after the package plan and let
-the next roles change the host.
-
-| Variable       | Effect                                                      |
-| :------------- | :---------------------------------------------------------- |
-| `PLAYBOOK`     | Only `site` exists; `TAGS=obs` runs its OBS profile.        |
-| `HOST`         | Inventory host or pattern; defaults to this machine.        |
-| `TAGS`         | Run only these comma-separated tags (`--tags`).             |
-| `SKIP_TAGS`    | Skip these comma-separated tags (`--skip-tags`).            |
-| `BECOME_PASS`  | Any value asks for the sudo password (`--ask-become-pass`). |
-| `ANSIBLE_ARGS` | Any other option, passed last to `ansible-playbook`.        |
+`make help` lists the targets. [Running](./ansible/README.md#running)
+describes the variables they take (`HOST`, `TAGS`, `SKIP_TAGS`,
+`BECOME_PASS`, `ANSIBLE_ARGS`).
 
 | Goal                                 | Command                                                      |
 | :----------------------------------- | :----------------------------------------------------------- |
@@ -130,31 +112,24 @@ the next roles change the host.
 | Remove backups and leftovers         | `make clean`, or `make clean DRY_RUN=1` to list them only    |
 | Build and open the documentation     | `make pages`                                                 |
 
-`make install` still works as an alias of `make deploy`, and
-`make install-obs` as an alias of `make deploy TAGS=obs`. Reconciliation previews the removals and asks for
+`make install` is an alias of `make deploy`, and `make install-obs` of
+`make deploy TAGS=obs`. Reconciliation previews the removals and asks for
 confirmation.
 
-`make clean` removes what deployments and earlier versions left behind: the
-`.bak` backups of managed paths, broken links under deployed paths, files a
-role no longer ships, retired submodule metadata, Python caches and `.desktop`
-launchers whose program, Wine prefix or Steam game is gone. Ansible
-backups of the managed files in `/etc` (`name.PID.DATE@TIME~`) are included;
-they are root-owned, so `sudo make clean CLEAN_ROOT=$HOME` removes them and a
-plain run only lists them. It lists
-everything first and asks you to type `REMOVE` before deleting backups and
-launchers; see
-[Cleaning up](./ansible/README.md#cleaning-up). `make ansible-backup-ls` and
-`make ansible-backup-rm` remain as aliases of `make clean DRY_RUN=1` and
-`make clean`.
+`make clean` removes backups, broken links, obsolete files and dead `.desktop`
+launchers left by deployments and earlier versions. It lists everything first
+and asks you to type `REMOVE` before it deletes backups and launchers; see
+[Cleaning up](./ansible/README.md#cleaning-up).
 
 <details>
 <summary>Package selection and Arch specifics</summary>
 
-Package groups come from OS defaults and detected GPUs. Each machine sets its
-own list, `packages_host_groups`, in `ansible/host_vars/<hostname>.yml`,
-or you pass `-e packages_group_selection=...` for one run. Automatic GPU selection
-requires every controller to be identified. Package variables load by OS
-family, then use the first matching exact-version, major-version, or
+Package groups come from OS defaults and, on Arch, detected GPUs. Each
+machine can set its own list, `packages_host_groups`, in
+`ansible/host_vars/<hostname>.yml`, or you pass
+`-e packages_group_selection=...` for one run. Automatic GPU selection
+requires every graphics controller to be identified. Package variables load
+by OS family, then use the first matching exact-version, major-version, or
 distribution override.
 
 On Arch, Ansible configures pacman, enables the standard `multilib` repository,
@@ -167,49 +142,25 @@ makepkg builds disable debug packages and may not run on a different CPU.
 
 ## Ansible tags
 
-Run a subset with `make deploy TAGS=<tag>`. The
-supported-distribution check and the read-only package group selection always
-run. The [Ansible guide](./ansible/README.md) lists the roles and covers
-variables, package ownership, and system settings.
+Run a subset with `make deploy TAGS=<tag>`, and list the tags with
+`make tags`. The `pre_tasks` (facts, hostname and distribution checks, package
+group selection) are tagged `always` and run whatever tags you pass.
 
-| Tags                                       | Action                                                                          |
-| :----------------------------------------- | :------------------------------------------------------------------------------ |
-| `package_manager`                          | Configure pacman and makepkg.                                                   |
-| `packages`                                 | Configure pacman, then install and reconcile packages.                          |
-| `pacman`                                   | Configure `/etc/pacman.conf`.                                                   |
-| `yay`                                      | Configure pacman and run the AUR flow only.                                     |
-| `system`                                   | Run every host role from `lact` to `gnome_keyring`, and makepkg.                |
-| `package_services`                         | Enable the services and user groups of the selected package groups.             |
-| `docker`                                   | Add the Docker group users.                                                     |
-| `hardening`                                | Configure SSH client defaults and desktop sysctls.                              |
-| `ssh_client_hardening`, `kernel_hardening` | Configure SSH client defaults or desktop sysctls.                               |
-| `dns`                                      | Make systemd-resolved the only resolver, for the host and Docker.               |
-| `vpn`                                      | Configure the openfortivpn SAML VPN.                                            |
-| `gpu`                                      | Configure NVIDIA/i915 kernel modules and hybrid runtime PM.                     |
-| `makepkg`                                  | Configure native Arch builds.                                                   |
-| `cpu_power`                                | Apply supported AMD CPU settings.                                               |
-| `time_sync`                                | Enable systemd-timesyncd when no other NTP client runs.                         |
-| `power_save`                               | Set audio (and opt-in Wi-Fi) power-saving module options on a portable machine. |
-| `iwlwifi`                                  | Write the Intel Wi-Fi module options a host lists.                              |
-| `wireless_regdom`                          | Set the Wi-Fi regulatory domain (`wireless_regdom_country`).                    |
-| `gnome_keyring`                            | Unlock the GNOME keyring at a TTY login through PAM.                            |
-| `gaming`                                   | Check dependencies and configure services for the Steam group.                  |
-| `lact`                                     | Manage `/etc/lact/config.yaml`.                                                 |
-| `obs`, `obs_config`, `obs_virtualcam`      | Configure OBS for `22_obs`. On its own, `obs` installs OBS and nothing else.    |
-| `3dprint`                                  | Install PrusaSlicer and F3D, and set up F3D previews of 3D files in Nautilus.   |
-| `dotfiles`                                 | Run the `dotfiles`, `audio` and `agent_cli` roles.                              |
-| `audio`                                    | Write the PipeWire and WirePlumber configuration: clean mic and voice effects.  |
-| `dotfiles_deploy`                          | Run only the `dotfiles` role: configuration, pinned Vim and Zsh plugins.        |
-| `agent_cli`                                | Set the Claude Code and Codex status lines and the Claude Code token savings.   |
-| `dotfiles_claude`                          | Add the Claude Code status line when `claude` is installed.                     |
-| `dotfiles_rtk`                             | Install RTK and merge its Claude Code hook (`agent_cli_rtk_enabled`).           |
-| `dotfiles_codex`                           | Set the Codex status line when `codex` is installed.                            |
-| `systemd`                                  | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`.   |
-| `hyprlock_carousel`                        | Render the lock-screen carousel helper.                                         |
+Each role has a tag named after it, except `print3d`, whose tag is `3dprint`.
+The [roles table](./ansible/README.md#roles) says what each role does, and
+[Playbooks](./ansible/PLAYBOOKS.md#tags) lists the order, the conditions and
+the finer tags. These tags select more than one role or a part of one:
 
-Changed files notify their handlers: Mako and Waybar reload, active audio
-services reload or restart (the SwayOSD server restarts with them), and active user units whose definitions changed
-restart after `daemon-reload`. Hypridle needs `WAYLAND_DISPLAY` in the user
+| Tag               | Runs                                                                  |
+| :---------------- | :-------------------------------------------------------------------- |
+| `system`          | The host roles from `lact` to `gnome_keyring`, and the makepkg tasks. |
+| `dotfiles`        | The `dotfiles`, `audio` and `agent_cli` roles, as the SSH user.       |
+| `dotfiles_deploy` | The configuration and the pinned Vim and Zsh plugins only.            |
+| `packages`        | The pacman configuration, then the package installation.              |
+| `obs`             | On its own, the [OBS profile](./ansible/PLAYBOOKS.md#obs-profile).    |
+
+Changed files notify [handlers](./ansible/PLAYBOOKS.md#handlers) that reload
+or restart the affected services. Hypridle needs `WAYLAND_DISPLAY` in the user
 systemd environment to start.
 
 ## Desktop
@@ -392,7 +343,8 @@ exit status are documented at the top of the script.
 - `-v`, `--verbose` lists each transferred file.
 - `--clean-packages` cleans the package cache (Arch) or removes unneeded
   packages (Debian) after a successful backup.
-- `--max-deletions=N` and `--force-delete` bound or lift the deletion limit (rsync `--max-delete`).
+- `--max-deletions=N` and `--force-delete` bound or lift the deletion limit
+  (rsync `--max-delete`).
 
 ## Development
 

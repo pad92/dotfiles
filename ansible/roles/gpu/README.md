@@ -1,59 +1,90 @@
 # gpu
 
-Configures the NVIDIA and i915 kernel modules, the runtime power management of
-a hybrid laptop's NVIDIA GPU, and regenerates the initramfs when the module
+Configures the NVIDIA and i915 kernel modules and the runtime power management
+of a hybrid laptop's NVIDIA GPU, then regenerates the initramfs when the module
 options change.
 
 ## Requirements
 
-- Arch Linux. The NVIDIA settings need an NVIDIA package profile, and the
-  i915 option the modern Intel profile, both selected by the `packages` role.
+- Arch Linux, with `packages_selected_groups` set by the group selection of the
+  `packages` role (see [Pre-tasks](../../PLAYBOOKS.md#pre-tasks)). Every task
+  is skipped otherwise.
+- Exactly one of `mkinitcpio` and `dracut` installed, or
+  `gpu_initramfs_generator` set to the one to use. This check runs on every
+  such host, with or without an NVIDIA GPU.
 - Privilege escalation (`become: true`).
 
 ## Role Variables
 
-| Variable                     | Default         | Description                                                                                           |
-| :--------------------------- | :-------------- | :---------------------------------------------------------------------------------------------------- |
-| `gpu_initramfs_generator`    | `auto`          | `auto`, `mkinitcpio` or `dracut`. Set it when both or neither are installed.                          |
-| `gpu_initramfs_report_roots` | `[/boot, /efi]` | Trees listed before and after generation to report the written images. Add custom output directories. |
-| `gpu_i915_enable_guc`        | `null`          | i915 `enable_guc`: `-1` automatic, `0` off, `1` GuC submission, `2` HuC authentication, `3` both.     |
-| `gpu_i915_guc_supported`     | `false`         | Required for the values `1` to `3`. Set it only once the GPU is known to support them.                |
+| Variable                     | Default         | Description                                                                                       |
+| :--------------------------- | :-------------- | :------------------------------------------------------------------------------------------------ |
+| `gpu_initramfs_generator`    | `auto`          | `auto`, `mkinitcpio` or `dracut`. Set it when both or neither are installed.                      |
+| `gpu_initramfs_report_roots` | `[/boot, /efi]` | Trees compared before and after generation to report the written images. Add custom output paths. |
+| `gpu_i915_enable_guc`        | `null`          | i915 `enable_guc`: `-1` automatic, `0` off, `1` GuC submission, `2` HuC authentication, `3` both. |
+| `gpu_i915_guc_supported`     | `false`         | Required for the values `1` to `3`. Set it only once the GPU is known to support them.            |
+
+External variable:
+
+- `packages_selected_groups`: `09_nvidia_legacy` or `09_nvidia_modern` enables
+  the NVIDIA options, `09_nvidia_modern` the runtime power management, and
+  `08_intel_modern` the i915 option.
 
 ## Kernel modules
 
-With an NVIDIA profile, the role manages `/etc/modprobe.d/nvidia.conf`. It
-removes the `zz-dotfiles-gpu.conf` and `zz-dotfiles-i915.conf` files written by
-earlier versions. Both profiles enable zero-initialized
-system memory and DRM modesetting. Runtime D3 uses the driver default:
-supported Ampere and newer notebooks use fine-grained power management. GSP
-firmware is enabled by default on supported GPUs, so the role does not set it.
-Open kernel modules preserve video memory on their own; the role does not
-force it on the legacy proprietary driver, which would need systemd
-integration and enough temporary storage. Reboot after deployment to apply
-the module options.
+With an NVIDIA group selected, the role writes `/etc/modprobe.d/nvidia.conf`:
 
-The i915 GuC option stays at the kernel default unless `gpu_i915_enable_guc`
-is set; the role then writes it to `/etc/modprobe.d/i915.conf`. Support varies by platform; see the kernel's
-[i915 documentation](https://docs.kernel.org/gpu/i915.html).
+```sh
+options nvidia NVreg_InitializeSystemMemoryAllocations=1
+options nvidia_drm modeset=1
+```
+
+Both NVIDIA groups get the same file: zero-initialized system memory and DRM
+modesetting. The role leaves the following to the driver defaults:
+
+- Runtime D3. Supported Ampere and newer notebooks use fine-grained power
+  management.
+- GSP firmware, which is enabled by default on supported GPUs.
+- Video memory preservation. The open kernel modules handle it on their own.
+  On the legacy proprietary driver it would need the systemd integration and
+  enough temporary storage.
+
+When `gpu_i915_enable_guc` is set and `08_intel_modern` is selected, the role
+writes `options i915 enable_guc=<value>` to `/etc/modprobe.d/i915.conf`. A value
+outside `-1` to `3`, a missing `08_intel_modern`, or a value from `1` to `3`
+without `gpu_i915_guc_supported: true` fails the run. Support varies by
+platform; see the kernel's [i915 documentation](https://docs.kernel.org/gpu/i915.html).
+
+Each file is removed when its condition no longer holds. The role also removes
+`zz-dotfiles-gpu.conf` and `zz-dotfiles-i915.conf`, written by earlier
+versions. Reboot to apply the module options.
 
 ## Runtime power management
 
-A udev rule is installed only when sysfs reports a host battery, an Intel or
-AMD boot VGA GPU, a separate NVIDIA GPU, and the modern NVIDIA profile is
-selected. The rule matches the bound driver and sets PCI `power/control` to
-`auto`; it holds no device identifier. When it changes, the role reloads the
-udev rules and replays a `bind` event for the PCI devices bound to `nvidia`,
-so it applies without a reboot. Removing the rule leaves `power/control` at
-`auto` until the next reboot.
+`files/detect-hybrid-laptop.sh` reads sysfs and prints `true`, `false` or
+`unknown`:
 
-Peripheral batteries marked `Device` do not count. If the battery or GPU
-detection is incomplete, the existing rule is kept and the run asks for a new
-attempt once the drivers load, so a first installation may need a second run
-with `TAGS=gpu` after a reboot.
+- `true`: a host battery, a boot VGA GPU bound to `i915`, `xe` or `amdgpu`, and
+  a GPU bound to `nvidia`.
+- `false`: no host battery. Batteries with the `Device` scope, such as those of
+  a mouse or headset, do not count.
+- `unknown`: anything else, including a battery whose type or scope cannot be
+  read, or a GPU whose driver is not bound yet.
+
+On `true` with `09_nvidia_modern` selected, the role installs
+`/etc/udev/rules.d/80-dotfiles-nvidia-runtime-pm.rules`. The rule matches the
+bound `nvidia` driver rather than a PCI ID, and sets PCI `power/control` to
+`auto`. The handlers then reload the udev rules and replay a `bind` event for
+the PCI devices bound to `nvidia`, so the rule applies without a reboot.
+
+On `false`, or when `09_nvidia_modern` is not selected, the rule is removed.
+The devices keep `power/control=auto` until the next reboot. On `unknown`, the
+rule is kept as it is and the run asks for a new attempt once the drivers
+load. A first installation may therefore need a second run with `TAGS=gpu`
+after a reboot.
 
 An active GPU workload or a monitoring client can keep the NVIDIA GPU awake.
-After deployment and reboot, check idle runtime suspend, `prime-run`
-offload, external displays and suspend/resume. See NVIDIA's
+After deploying and rebooting, check idle runtime suspend, `prime-run` offload,
+external displays and suspend and resume. See NVIDIA's
 [runtime D3](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/dynamicpowermanagement.html)
 and
 [power management](https://download.nvidia.com/XFree86/Linux-x86_64/615.78.08/README/powermanagement.html)
@@ -61,18 +92,21 @@ documentation.
 
 ## Initramfs
 
-With an NVIDIA profile, the role detects `mkinitcpio` or `dracut` and
-regenerates the initramfs after the module configuration changes. The
-`dotfiles_initramfs` module reports the images written under
-`gpu_initramfs_report_roots`. An unreadable path fails the task instead of
-giving a partial report. Package hooks and other external writers are not
-audited.
+A change to `nvidia.conf` or `i915.conf`, including their removal, or the
+removal of a legacy file, notifies the regeneration handler. The
+`dotfiles_initramfs` module runs the selected generator and reports the images
+written under `gpu_initramfs_report_roots`. An unreadable path fails the task
+rather than give a partial report. Package hooks and other external writers
+are not audited.
 
-Tags: `gpu`, `system`.
+## Tags
+
+`site.yml` tags the role `system` and `gpu`. See
+[Running](../../README.md#running) for how to pass tags.
 
 ## Dependencies
 
-None.
+None. In `site.yml` it runs after `packages`.
 
 ## Example Playbook
 
@@ -81,7 +115,8 @@ None.
   become: true
   roles:
     - role: gpu
-      tags: [gpu]
+      when: packages_action | default('install') != 'plan'
+      tags: [system, gpu]
 ```
 
 ## License

@@ -163,7 +163,10 @@ Release history and changes planned for the next version.
   removed.
 - **Documentation**: one README per role, `ansible/PLAYBOOKS.md`, an Arch guide
   aligned with the ArchWiki and CachyOS, and a README that opens with the
-  demo and lists every Hyprland shortcut.
+  demo and lists every Hyprland shortcut. `QUICKSTART.md` (Quick start in the
+  Pages menu) goes from SSH access to the first deploy, with generic monitor
+  and GPU examples. The role READMEs follow the `ansible-galaxy role init`
+  template.
 - **Dotfiles**:
   - `~/.vim`, the Zsh tree and the Hyprlock background are copied instead of
     linked. A manifest lets the next deployment delete files the repository no

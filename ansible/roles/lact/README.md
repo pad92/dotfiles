@@ -1,54 +1,73 @@
 # lact
 
-Writes the LACT GPU profiles to `/etc/lact/config.yaml` for the GPUs that LACT
-reports.
+Enables the LACT daemon and writes the `Auto`, `Adaptive` and
+`PreferMaximumPerformance` GPU profiles to `/etc/lact/config.yaml` for the AMD
+and NVIDIA GPUs that LACT reports.
 
 ## Requirements
 
-- `lactd.service` installed. Without it the role changes nothing.
-- A running LACT daemon in check mode, which it needs to list the GPUs.
+- `lactd.service` installed. The `08_amd` package group installs `lact`.
+  Without the unit, the role changes nothing.
+- In check mode, a running LACT daemon, since the role cannot start it there
+  and needs it to list the GPUs.
 - Privilege escalation (`become: true`).
 
 ## Role Variables
 
-| Variable               | Default                 | Description                                                                                              |
-| :--------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------- |
-| `lact_config_path`     | `/etc/lact/config.yaml` | LACT daemon configuration.                                                                               |
-| `lact_profiles`        | see `defaults/main.yml` | AMD profiles: `auto` performance level for `Auto` and `Adaptive`, `high` for `PreferMaximumPerformance`. |
-| `lact_nvidia_profiles` | see `defaults/main.yml` | NVIDIA profiles, each set to the PowerMizer mode of the same name.                                       |
+| Variable               | Default                 | Description                                                                                               |
+| :--------------------- | :---------------------- | :-------------------------------------------------------------------------------------------------------- |
+| `lact_config_path`     | `/etc/lact/config.yaml` | LACT daemon configuration. It must be a regular file, or absent.                                          |
+| `lact_profiles`        | See below.              | AMD profiles: `performance_level: auto` for `Auto` and `Adaptive`, `high` for `PreferMaximumPerformance`. |
+| `lact_nvidia_profiles` | See below.              | NVIDIA profiles: each sets `power_mizer_mode` to the profile name.                                        |
+
+The profile names match LACT's NVIDIA PowerMizer modes, and the Waybar
+`lact-profile` module deployed by `dotfiles` cycles through them. The defaults
+set no fan control, so the fan curves stay as they are.
 
 ## Behavior
 
-The role reads the GPU identifiers and drivers from LACT, then creates the
-missing `Auto`, `Adaptive` and `PreferMaximumPerformance` profiles for AMD and
-NVIDIA GPUs. These names match LACT's NVIDIA PowerMizer modes. Profiles do not
-override fan control. Intel GPUs keep their settings.
+The role enables and starts `lactd.service`, then reads the GPU identifiers
+with `lact cli list` and each driver with `lact cli info`, with a 10-second
+timeout on each call. Only GPUs using `amdgpu` or `nvidia` get profiles. When
+LACT reports neither, the configuration is left unchanged. Intel GPUs keep
+their settings.
 
-Existing `Balance`, `Silence`, `Performance` and `Jeux-perf` profiles are
-renamed. Their settings move to the new name when it is unused; an existing
-profile with the new name wins. The current selection follows the rename.
-Defaults fill only the missing GPU entries of existing profiles; other
-settings and automation are kept. With no named profile, `Auto` becomes
-active.
+The `lact_config` filter (`filter_plugins/lact.py`) then merges the defaults
+into the existing file:
 
-Identifier casing is repaired. An unknown GPU or conflicting entries stop the
-play before the file is written, and so does a link or a directory at
-`lact_config_path`. A changed file is backed up and restarts `lactd`. The
-former `~/.config/lact/config.yaml` is left untouched and no longer deployed.
+- The file must be at `version: 7`, or the run fails.
+- Earlier profile names are renamed: `Balance` to `Auto`, `Silence` to
+  `Adaptive`, and `Performance` or `Jeux-perf` to `PreferMaximumPerformance`.
+  When the new name already exists, that profile is kept and the old one is
+  dropped. A `current_profile` that pointed to an old name follows the rename.
+- Defaults fill only the missing GPU entries of each profile. Saved per-GPU
+  settings and other keys are kept.
+- When the file had no profile and no `current_profile`, `Auto` is selected and
+  `auto_switch_profiles` is set to `false`.
+- GPU identifier casing is corrected to match LACT's output.
 
-With LACT 0.7.5+ and power-profiles-daemon 0.30+, LACT disables PPD's
-conflicting `amdgpu_dpm` action
+The run fails before writing when a GPU in the file is not detected, when two
+entries map to the same GPU, when the selected profile does not exist, or when
+`lact_config_path` is a link or a directory. The role creates the directory
+with mode `0755` and writes the file with mode `0644`. A changed file is backed
+up and notifies the `Restart LACT` handler. The former
+`~/.config/lact/config.yaml` is no longer deployed, and the role leaves it
+alone.
+
+With LACT 0.7.5 or later and power-profiles-daemon 0.30 or later, LACT
+disables the conflicting `amdgpu_dpm` action of power-profiles-daemon
 ([LACT documentation](https://github.com/ilya-zlobintsev/LACT#power-profiles-daemon-note)).
-Check `powerprofilesctl list-actions` and `journalctl -u lactd -b` after a
-deployment.
+After a deployment, check `powerprofilesctl list-actions` and
+`journalctl -u lactd -b`.
 
-```sh
-make deploy TAGS=lact BECOME_PASS=1
-```
+## Tags
+
+`site.yml` tags the role `system` and `lact`. See
+[Running](../../README.md#running) for how to pass tags.
 
 ## Dependencies
 
-None.
+None. In `site.yml` it runs after `packages`.
 
 ## Example Playbook
 
@@ -57,7 +76,8 @@ None.
   become: true
   roles:
     - role: lact
-      tags: [lact]
+      when: packages_action | default('install') != 'plan'
+      tags: [system, lact]
 ```
 
 ## License
