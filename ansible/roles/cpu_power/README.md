@@ -5,43 +5,67 @@ restores them at boot.
 
 ## Requirements
 
-- An AMD CPU with AMD P-State in active mode, read from the facts and from the
-  controls the kernel exposes. Other CPUs are left alone.
+- An AMD CPU: the role runs only when the processor facts contain
+  `AuthenticAMD`. EPP also needs AMD P-State in active mode.
 - Privilege escalation (`become: true`).
 
 ## Role Variables
 
-| Variable                      | Default                                 | Description                                                                                                   |
-| :---------------------------- | :-------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `cpu_power_amd_pstate_epp`    | `balance_performance`                   | EPP value. `null` disables EPP management.                                                                    |
-| `cpu_power_amd_x3d_mode`      | `null`                                  | `cache` or `frequency`; `null` leaves the X3D mode unchanged.                                                 |
-| `cpu_power_amd_tmpfiles_path` | `/etc/tmpfiles.d/dotfiles-amd-cpu.conf` | Boot-time copy of the applied settings.                                                                       |
-| `cpu_power_managers`          | see `defaults/main.yml`                 | Power managers that take over EPP: power-profiles-daemon, auto-cpufreq, TLP, tuned, cpupower, system76-power. |
+| Variable                      | Default                                 | Description                                                                                       |
+| :---------------------------- | :-------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| `cpu_power_amd_pstate_epp`    | `balance_performance`                   | `performance`, `balance_performance`, `balance_power` or `power`. `null` disables EPP management. |
+| `cpu_power_amd_x3d_mode`      | `null`                                  | `frequency` or `cache`. `null` leaves the X3D mode unchanged.                                     |
+| `cpu_power_amd_tmpfiles_path` | `/etc/tmpfiles.d/dotfiles-amd-cpu.conf` | Boot-time copy of the applied settings.                                                           |
+| `cpu_power_managers`          | See below.                              | Power managers that own EPP while they are active or enabled.                                     |
 
-## Behavior
+`cpu_power_managers` defaults to `power-profiles-daemon.service`,
+`auto-cpufreq.service`, `tlp.service`, `tuned.service`, `tuned-ppd.service`,
+`cpupower.service` and `system76-power.service`.
 
-The role selects the `powersave` governor, then applies the EPP value. Both
-must be available on the CPU policy. With `powersave`, EPP guides the
-performance and energy balance.
+Any other value of the first two variables fails the run before a change.
 
-EPP is not changed while a power manager of `cpu_power_managers` is active or
-enabled, which keeps its profile, including a game's temporary performance
-profile. The X3D mode changes only when `cpu_power_amd_x3d_mode` is set and the
-kernel exposes the control; choose it for the host's workloads. Core
-Performance Boost and the kernel boot parameters are never changed.
+## EPP
 
-The applied settings are written to `cpu_power_amd_tmpfiles_path`, so
-`systemd-tmpfiles` restores them at boot: governor, then EPP, then X3D mode.
-EPP lines are written only while no power manager is active or enabled. The
-file is removed when the role no longer manages any of these controls. See the
+EPP is applied only when `/sys/devices/system/cpu/amd_pstate/status` reads
+`active` and no power manager of `cpu_power_managers` is active or enabled.
+This keeps a power manager's profile, including a game's temporary performance
+profile.
+
+For each CPU policy under `/sys/devices/system/cpu/cpufreq`, the role selects
+the `powersave` governor, then writes the EPP value. With `powersave`, EPP
+guides the balance between performance and energy. Both the governor and the
+value must be available on the policy. If a step fails, the role restores the
+original governor and EPP of that policy, then fails.
+
+On a host with `21_steam`, the [gaming](../gaming/README.md) role enables
+power-profiles-daemon, so this role never sets EPP there.
+
+## X3D mode
+
+The X3D mode changes only when `cpu_power_amd_x3d_mode` is set and the
+`amd_x3d_vcache` driver exposes an `amd_x3d_mode` control under
+`/sys/bus/platform/drivers/amd_x3d_vcache`. A running power manager does not
+block it. Choose the mode for the host's workloads.
+
+Core Performance Boost and the kernel boot parameters are never changed.
+
+## Boot persistence
+
+The settings applied in this run are written to `cpu_power_amd_tmpfiles_path`,
+so `systemd-tmpfiles` restores them at boot in this order: governor, EPP, X3D
+mode. The file is removed when the run manages none of these controls, for
+example once a power manager is enabled. See the
 [CachyOS CPU tuning guide](https://wiki.cachyos.org/fr/configuration/general_system_tweaks/)
 for firmware requirements.
 
-Tags: `cpu_power`, `system`.
+The `power_manager_facts` tasks, which list the active or enabled power
+managers, are also used by the `gaming` role.
 
-```sh
-make deploy TAGS=cpu_power BECOME_PASS=1
-```
+## Tags
+
+`site.yml` tags the role `system` and `cpu_power`. The EPP tasks included for
+each policy also carry `cpu_power`. See [Running](../../README.md#running) for
+how to pass tags.
 
 ## Dependencies
 
@@ -54,7 +78,8 @@ None.
   become: true
   roles:
     - role: cpu_power
-      tags: [cpu_power]
+      when: packages_action | default('install') != 'plan'
+      tags: [system, cpu_power]
 ```
 
 ## License

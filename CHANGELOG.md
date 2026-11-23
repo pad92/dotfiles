@@ -29,6 +29,9 @@ Release history and changes planned for the next version.
   - New roles `iwlwifi` (per-host module options), `print3d` (`24_3dprint`
     group, F3D thumbnails in Nautilus) and `audio` (PipeWire and WirePlumber
     files).
+  - Every role has a `meta/argument_specs.yml` that types and describes its
+    defaults. A wrong type, a value outside a closed set or an unknown key in
+    a structured item stops the run before the first task of the role.
 - **AppImage**: `appimage-integrate.path` watches `~/Applications` and adds
   each AppImage to the application menu (`appimage-<id>.desktop`, with its
   icon). The desktop entry is read with 7-Zip, so the AppImage never runs. A
@@ -163,7 +166,10 @@ Release history and changes planned for the next version.
   removed.
 - **Documentation**: one README per role, `ansible/PLAYBOOKS.md`, an Arch guide
   aligned with the ArchWiki and CachyOS, and a README that opens with the
-  demo and lists every Hyprland shortcut.
+  demo and lists every Hyprland shortcut. `QUICKSTART.md` (Quick start in the
+  Pages menu) goes from SSH access to the first deploy, with generic monitor
+  and GPU examples. The role READMEs follow the `ansible-galaxy role init`
+  template.
 - **Dotfiles**:
   - `~/.vim`, the Zsh tree and the Hyprlock background are copied instead of
     linked. A manifest lets the next deployment delete files the repository no

@@ -1,38 +1,45 @@
-# Arch Linux Manual Installation Guide (LUKS and LVM)
+# Manual Arch Linux installation (LUKS and LVM)
 
 This is a worked example for installing Arch Linux on a UEFI system with an
 LVM volume group inside a LUKS-encrypted root partition. The EFI System
-Partition (`/efi`) remains unencrypted; `/boot` is a directory on the encrypted
-root filesystem, not a separate encrypted partition. These commands erase or
-repartition disks and need to be adapted to the target machine.
+Partition (`/efi`) stays unencrypted. `/boot` is a directory on the encrypted
+root filesystem, not a separate partition. These commands erase or repartition
+disks: adapt them to the target machine.
 
 For current installation and security guidance, start with the
 [Arch Linux Installation Guide](https://wiki.archlinux.org/title/Installation_guide)
 and the [dm-crypt encryption guide](https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system).
 An unencrypted EFI System Partition does not protect boot files from offline
-modification. Consult the
+modification. Read the
 [Secure Boot guide](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot)
-if that threat matters.
+if that threat matters to you.
 
 The workstations run CachyOS, which builds on Arch and adds CPU-optimized
 repositories, its own kernels and `cachyos-settings`. You can install it with
 the [CachyOS installer](https://wiki.cachyos.org/installation/installation_on_root/)
-and go straight to [Dotfiles](#dotfiles), or follow this guide and then add
-the [CachyOS repositories](#cachyos-repositories). In both cases, read the
+and go straight to the [quick start](../../QUICKSTART.md), or follow this
+guide and then add the [CachyOS repositories](#cachyos-repositories). In both
+cases, read the
 [CachyOS post-install setup](https://wiki.cachyos.org/configuration/post_install_setup/).
+
+This guide only covers what has to happen before Ansible can run. Once the
+system boots, the [quick start](../../QUICKSTART.md) deploys the dotfiles, and
+the roles under [`ansible/roles`](../../ansible/roles/) handle packages,
+services, drivers and desktop settings.
 
 ## Preface
 
-This page retains a GRUB-based example. [Huntrar's current guide](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268)
-now uses systemd-boot and unified kernel images; follow the ArchWiki for
+This page keeps a GRUB-based example.
+[Huntrar's current guide](https://gist.github.com/huntrar/e42aee630bee3295b2c671d098c81268)
+now uses systemd-boot and unified kernel images. Follow the ArchWiki for
 bootloader-specific details.
 
-_Note:_ The device examples use `/dev/nvme0n1`. Replace the disk and partition
-paths, partition sizes, and logical volume sizes to match your hardware.
+The device examples use `/dev/nvme0n1`. Replace the disk and partition paths,
+partition sizes and logical volume sizes to match your hardware.
 
-Arch Linux changes frequently. Check package names and commands against the
-official wiki before using this machine-specific example. You can also use
-`archinstall` and follow the dotfiles setup section below.
+Arch Linux changes often. Check package names and commands against the
+official wiki before using this machine-specific example. You can also install
+with `archinstall`, then continue with the [quick start](../../QUICKSTART.md).
 
 ## Table of contents
 
@@ -41,7 +48,7 @@ official wiki before using this machine-specific example. You can also use
 # Create a USB installer
 
 Download the ISO and its detached signature from the official
-[Arch Linux downloads page](https://archlinux.org/download/). Verify the
+[Arch Linux downloads page](https://archlinux.org/download/), and verify the
 signature before writing the image. Replace the date below with the filename
 you downloaded.
 
@@ -52,12 +59,12 @@ gpg --verify archlinux-YYYY.MM.DD-x86_64.iso.sig archlinux-YYYY.MM.DD-x86_64.iso
 ```
 
 Compare the displayed fingerprint with the one on the downloads page before
-accepting the signature.
+you trust the signature.
 
-Identify the USB device with `lsblk` and verify its model and size. Writing the
+Identify the USB device with `lsblk` and check its model and size. Writing the
 image erases the selected device. Use the whole device, not a partition. Find
-its stable path with `ls -l /dev/disk/by-id/usb-*` and replace the example only
-after checking it:
+its stable path with `ls -l /dev/disk/by-id/usb-*`, and replace the example
+only after checking it:
 
 ```sh
 lsblk -o NAME,PATH,SIZE,MODEL,TRAN
@@ -75,16 +82,16 @@ ping -c 3 archlinux.org
 timedatectl
 ```
 
-The example creates a 1 MiB BIOS boot partition, a 1 GiB EFI System
-Partition, and one LUKS partition using the remaining space. The BIOS boot
-partition is not needed for UEFI-only systems; omit it only if you also update
-the partition numbers used below.
+The example creates a 1 MiB BIOS boot partition, a 1 GiB EFI System Partition
+and one LUKS partition on the remaining space. A UEFI-only system does not need
+the BIOS boot partition. If you leave it out, update the partition numbers in
+the commands below.
 
 ## Partitions
 
 ### Create
 
-Check the target disk with `lsblk` before starting. The `o` command below
+Check the target disk with `lsblk` before you start. The `o` command below
 replaces its partition table.
 
 ```text
@@ -115,14 +122,24 @@ cryptsetup luksFormat --type luks2 /dev/nvme0n1p3
 cryptsetup luksOpen /dev/nvme0n1p3 cryptlvm
 ```
 
-Before relying on GRUB to unlock the encrypted `/boot`, check that the installed
-GRUB version supports the LUKS2 key-derivation function in use. See the
-[ArchWiki GRUB guidance](https://wiki.archlinux.org/title/GRUB#LUKS2).
-Keep the default key-derivation settings unless the bootloader requires a
-compatible alternative. A LUKS header backup can recover from header damage, but
-it also lets someone attempt offline passphrase guesses. Protect it, store it
-separately from the encrypted disk, and do not rely on it to recover a forgotten
-passphrase.
+GRUB unlocks the encrypted `/boot` itself, so it must support the LUKS2
+key-derivation function of at least one key slot. `luksFormat` uses Argon2id
+by default. The GRUB package in Arch `core` (2.16) reads Argon2i, Argon2id and
+PBKDF2: its `luks2` module depends on an `argon2` module. Older GRUB builds
+read PBKDF2 only. Before you reboot, check that the GRUB you installed ships
+that module:
+
+```sh
+grep '^luks2:' /usr/lib/grub/x86_64-efi/moddep.lst   # must list argon2
+```
+
+If `argon2` is missing, add a PBKDF2 key slot with
+`cryptsetup luksAddKey --pbkdf pbkdf2 /dev/nvme0n1p3`, otherwise the machine
+will not boot.
+
+A LUKS header backup can recover from header damage, but it also lets someone
+try offline passphrase guesses. Protect it, store it away from the encrypted
+disk, and do not count on it to recover a forgotten passphrase.
 
 ```sh
 cryptsetup luksHeaderBackup /dev/nvme0n1p3 \
@@ -140,7 +157,7 @@ cryptsetup --allow-discards --persistent refresh cryptlvm
 lsblk --discard   # DISC-GRAN and DISC-MAX must not be 0 for cryptlvm
 ```
 
-Discards show which blocks are free, which leaks the rough amount of data and
+Discards reveal which blocks are free, which leaks the rough amount of data and
 the filesystem type. See the
 [ArchWiki dm-crypt TRIM notes](<https://wiki.archlinux.org/title/Dm-crypt/Specialties#Discard/TRIM_support_for_solid_state_drives_(SSD)>).
 
@@ -236,27 +253,32 @@ pacstrap -K /mnt \
 
 Add `sof-firmware` on laptops whose built-in audio needs Sound Open Firmware,
 which covers most recent Intel laptops. `os-prober` is only needed when
-another operating system shares the machine.
+another operating system shares the machine, and GRUB ignores it until you set
+`GRUB_DISABLE_OS_PROBER=false` in `/etc/default/grub`.
 
 ### Configure resolv.conf
 
 systemd-resolved is the only resolver. Point `/etc/resolv.conf` at its stub
 from outside the chroot, because `arch-chroot` bind-mounts that file. The
-Ansible `dns` tag then configures resolved and NetworkManager.
+[`dns` role](../../ansible/roles/dns/README.md) then configures resolved and
+NetworkManager.
 
 ```sh
 ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 ```
 
-Hosts installed with the earlier openresolv instructions are migrated by the
-same tag; follow the [DNS migration note](./dns-migration.md).
+The same role migrates hosts installed with the earlier openresolv
+instructions; follow the [DNS migration note](./dns-migration.md).
 
 ### Wi-Fi and audio
 
-Ansible sets the Wi-Fi regulatory domain (`wireless_regdom` tag, `wireless_regdom_country: FR` in
-`group_vars/all/main.yml`) and, on a portable machine, the HDA audio
-power-saving module options (`power_save` tag). Intel Wi-Fi power saving stays
-off unless `power_save_wifi: true` is set. Nothing is needed here.
+Nothing is needed here. The
+[`wireless_regdom` role](../../ansible/roles/wireless_regdom/README.md) sets
+the Wi-Fi regulatory domain (`wireless_regdom_country: FR` in
+`group_vars/all/main.yml`). On a portable machine, the
+[`power_save` role](../../ansible/roles/power_save/README.md) writes the HDA
+audio power-saving options, and leaves Intel Wi-Fi power saving off unless
+`power_save_wifi: true` is set.
 
 ### Create fstab
 
@@ -274,7 +296,7 @@ arch-chroot /mnt
 ```
 
 Check the resulting layout with `lsblk`. Device names and sizes will vary; this
-output illustrates the example commands above.
+output matches the example commands above.
 
 | NAME                         | MAJ:MIN | RM  | SIZE   | RO  | TYPE  | MOUNTPOINT      |
 | ---------------------------- | ------- | --- | ------ | --- | ----- | --------------- |
@@ -291,11 +313,11 @@ output illustrates the example commands above.
 
 ## Build flags
 
-Leave `/etc/makepkg.conf` alone. The Ansible `makepkg` tag writes its overrides
-to `/etc/makepkg.conf.d/zz-dotfiles.conf`: `-march=native -mtune=native`, half
-the CPU cores for `MAKEFLAGS`, and no debug packages. These settings only affect
-packages built on this machine, such as AUR packages. A package built this way
-may not run on a different CPU, so do not copy it to another computer.
+Leave `/etc/makepkg.conf` alone. The
+[`package_manager` role](../../ansible/roles/package_manager/README.md)
+(`makepkg` tag) writes its native-CPU build flags to
+`/etc/makepkg.conf.d/zz-dotfiles.conf`. A package built this way may not run on
+a different CPU, so do not copy it to another computer.
 
 ## Time zone
 
@@ -334,7 +356,8 @@ echo "${myhostname}" > /etc/hostname
 ```
 
 Leave `/etc/hosts` as installed: systemd's `nss-myhostname` resolves the host
-name and `localhost`.
+name and `localhost`. Ansible later reaches the machine by this name, so use
+the one you will declare in `ansible/inventory.yml`.
 
 ## Boot
 
@@ -352,6 +375,9 @@ grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
 ### initramfs
+
+GRUB asks for the passphrase to read `/boot`. A key file embedded in the
+initramfs then unlocks the root volume, so you type the passphrase only once.
 
 ```sh
 mkdir -p /etc/cryptsetup-keys.d
@@ -377,8 +403,9 @@ systemctl enable NetworkManager
 systemctl enable systemd-resolved
 ```
 
-The Ansible `time_sync` tag enables `systemd-timesyncd` later, unless another
-NTP client such as chrony is in use.
+The
+[`time_sync` role](../../ansible/roles/time_sync/README.md) enables
+`systemd-timesyncd` later, unless another NTP client such as chrony is in use.
 
 ## User
 
@@ -391,17 +418,17 @@ passwd "${MYUSER}"
 
 In `visudo`, add `%wheel ALL=(ALL:ALL) ALL` to require the user's password for
 administrative commands. Do not edit sudoers files with a plain text editor.
+
 Once `sudo` works for this user, you can lock the root account with
-`passwd -l root`. Otherwise, set a root password with `passwd`.
+`passwd -l root`. systemd's emergency and rescue shells then refuse to open,
+so a boot failure needs the live USB to repair. Otherwise, set a root password
+with `passwd`.
 
 ### Package manager
 
-Leave `/etc/pacman.conf` alone. The Ansible installer enables `Color`,
-`CheckSpace`, and `multilib` in it, and sets `ParallelDownloads = 5`. When it
-enables `multilib`, it runs `pacman -Syu`, which syncs package databases and
-upgrades installed packages. Run `pacman -Syu` separately when you want a full system
-upgrade and `multilib` is already enabled. The base and Steam groups include
-`lib32-*` packages from `multilib`.
+Leave `/etc/pacman.conf` alone. The
+[`package_manager` role](../../ansible/roles/package_manager/README.md) sets
+its options and enables `multilib`, which runs a full `pacman -Syu`.
 
 ### CachyOS repositories
 
@@ -415,7 +442,8 @@ tar xvf cachyos-repo.tar.xz && cd cachyos-repo
 sudo ./cachyos-repo.sh
 ```
 
-`sudo ./cachyos-repo.sh --remove` undoes it. Check the CPU level with
+The archive is not signed, so read `cachyos-repo.sh` before you run it as
+root. `sudo ./cachyos-repo.sh --remove` undoes it. Check the CPU level with
 `/lib/ld-linux-x86-64.so.2 --help | grep supported`. Intel 12th generation and
 later CPUs may list x86-64-v4, but AVX-512 is disabled on them, so use v3. The
 `[cachyos]` repository replaces pacman with the CachyOS build. See
@@ -426,6 +454,8 @@ enable `reflector.timer`, because both rewrite the mirror lists.
 
 ### Dotfiles
 
+You can clone the repository now, as the regular user:
+
 ```sh
 # Run setup commands in the regular user's context.
 sudo -u "${MYUSER}" -i bash -c '
@@ -434,27 +464,12 @@ sudo -u "${MYUSER}" -i bash -c '
 '
 ```
 
-### AUR packages
-
-The installer uses `yay` when it is installed. If selected AUR packages need
-it and it is missing, the installer builds `yay` from the AUR as the regular
-user, then installs it. Set `-e packages_aur_action=ask` to confirm the helper
-build and AUR package installation, or `-e packages_aur_action=skip` to skip
-AUR packages. Review AUR build files before installing them. See the
-[ArchWiki AUR guidance](https://wiki.archlinux.org/title/Arch_User_Repository)
-for the security model and recommended workflow.
-
 ### Window manager and applications
 
-Install the dotfiles and selected package groups as the regular user. The
-read-only package plan is optional. Avoid passing every package list to an AUR
-helper: the lists contain optional and hardware-specific groups that should not
-all be installed together.
-
-```sh
-sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make check'
-sudo -u "${MYUSER}" -i bash -c 'cd ~/.dotfiles && make deploy'
-```
+Do not deploy from the chroot. The playbook connects over SSH to the host
+named in the inventory and checks that its hostname matches, and its roles
+start services through systemd. None of that works until the installed system
+runs. Leave the chroot and reboot:
 
 ```sh
 exit
@@ -466,81 +481,112 @@ umount -R /mnt
 reboot
 ```
 
+After the first login, follow the [quick start](../../QUICKSTART.md). It
+enables `sshd`, which Ansible needs even on the machine it runs from, then
+adds the inventory entry and runs `make check` and `make deploy`. No role
+configures `sshd`, so review `/etc/ssh/sshd_config` if the machine is
+reachable from an untrusted network. Select only the package
+groups the host needs; the lists include optional and hardware-specific groups
+that should not all be installed together.
+
+AUR packages are built with `yay`, which the
+[`packages` role](../../ansible/roles/packages/README.md) builds first when it
+is missing. `-e packages_aur_action=ask` confirms each AUR build, and
+`-e packages_aur_action=skip` skips them. AUR build files are user-submitted:
+review them before you install them, as the
+[ArchWiki AUR guidance](https://wiki.archlinux.org/title/Arch_User_Repository)
+explains.
+
 # Optional
 
 ## Auto CPUfreq
+
+No package group installs auto-cpufreq, and the roles assume
+`power-profiles-daemon` instead. With the `21_steam` group, the
+[`gaming` role](../../ansible/roles/gaming/README.md) offers to remove
+auto-cpufreq (`gaming_power_manager_conflict_action`), and the
+[`cpu_power` role](../../ansible/roles/cpu_power/README.md) leaves the AMD
+energy preference alone while it runs. If you install it anyway:
 
 ```sh
 sudo systemctl enable --now auto-cpufreq
 ```
 
-auto-cpufreq conflicts with `power-profiles-daemon`. With the `21_steam`
-group, the `gaming` tag offers to remove it
-(`gaming_power_manager_conflict_action`).
-
 ## Firewall
 
 The CachyOS installer enables `ufw`, which denies incoming and allows outgoing
-connections. A system installed from this guide has no firewall, and Ansible
-does not configure one. See the
+connections. A system installed from this guide has no firewall, and no role
+configures one. See the
 [ArchWiki security guide](https://wiki.archlinux.org/title/Security#Firewalls)
 and the [CachyOS post-install setup](https://wiki.cachyos.org/configuration/post_install_setup/).
 
 ## SSD Trim
 
-The `package_services` tag enables `fstrim.timer` with the `01_base` group.
+The [`package_services` role](../../ansible/roles/package_services/README.md)
+enables `fstrim.timer` with the `01_base` group. On the encrypted volumes it
+needs [TRIM through LUKS](#trim-through-luks).
 
 ## Package cache
 
-The `package_services` tag also enables `paccache.timer` with the `01_base`
-group. It keeps the last three versions of each package in the pacman cache.
+The [`package_services` role](../../ansible/roles/package_services/README.md)
+also enables `paccache.timer` with the `01_base` group. It keeps the last three
+versions of each package in the pacman cache.
 
 ## USBGuard
 
+No role installs or configures USBGuard. Generate the policy with every device
+you need plugged in, keyboard included: the daemon blocks any device the
+policy does not list. The daemon refuses a rules file that other users can
+read, hence the `0600` mode.
+
 ```sh
-yay -S usbguard usbguard-applet-qt
-sudo usbguard generate-policy | sudo tee /etc/usbguard/rules.conf
-sudo systemctl start usbguard.service
-sudo systemctl enable usbguard.service
+sudo pacman -S usbguard
+sudo sh -c 'usbguard generate-policy > /etc/usbguard/rules.conf'
+sudo chmod 0600 /etc/usbguard/rules.conf
+sudo systemctl enable --now usbguard.service
 ```
+
+The `usbguard-applet-qt` tray applet comes from the AUR; review it before you
+build it.
 
 ## Docker
 
-Select the Docker package group in the dotfiles installer. For access to the
-Docker daemon without `sudo`, follow the Docker post-install guidance and
-consider the security implications of membership in the `docker` group.
+Select the `12_containers_docker` package group. The
+[`docker` role](../../ansible/roles/docker/README.md) adds the user to the
+`docker` group, which grants root-equivalent access to the Docker daemon. The
+[`dns` role](../../ansible/roles/dns/README.md) sets the bridge address and the
+DNS server in `daemon.json`.
 
 ## Nvidia
 
-Select the matching NVIDIA driver group in the dotfiles installer. It separates
-legacy and modern hardware; avoid mixing both groups. Ansible manages the
-NVIDIA module options and regenerates the initramfs when its configuration
-changes. It detects `mkinitcpio` or `dracut`; if both or neither are installed,
-set `gpu_initramfs_generator` to the one in use. For manual driver changes,
-follow the driver's initramfs instructions.
+Select the NVIDIA driver group that matches the GPU; the
+[`packages` role README](../../ansible/roles/packages/README.md) lists them.
+Legacy and modern hardware have separate groups, so do not mix them. The
+[`gpu` role](../../ansible/roles/gpu/README.md) manages the module options and
+regenerates the initramfs when they change.
 
 ## Nvidia Prime
 
 The NVIDIA package groups include `nvidia-prime`. Select the driver group that
-matches the GPU rather than installing a second driver set manually.
+matches the GPU instead of installing a second driver set by hand.
 
-## GNOME Keyring PAM Setup
+## GNOME Keyring PAM setup
 
-The `gnome_keyring` tag adds the `pam_gnome_keyring.so` auth, session and
-password rules to `/etc/pam.d/login`, for TTY logins. Automatic unlock requires
-the login password and the keyring password to match. Display managers may
-already configure PAM; set `gnome_keyring_pam_enabled: false` and use their PAM
-file instead. See the
+The [`gnome_keyring` role](../../ansible/roles/gnome_keyring/README.md) adds
+the `pam_gnome_keyring.so` rules to `/etc/pam.d/login`, for TTY logins.
+Automatic unlock requires the login password and the keyring password to
+match. Display managers may already configure PAM: set
+`gnome_keyring_pam_enabled: false` and use their PAM file instead. See the
 [ArchWiki GNOME Keyring guide](https://wiki.archlinux.org/title/GNOME/Keyring)
 for other login methods.
 
 ## Start Hyprland with UWSM
 
-For complete documentation, see [Hyprland Wiki](https://wiki.hypr.land/Useful-Utilities/Systemd-start/).
-
 [UWSM](https://github.com/Vladimir-csp/uwsm) (Universal Wayland Session
 Manager) runs the compositor in systemd units and manages the session
-environment and applications.
+environment and applications. The
+[Hyprland wiki](https://wiki.hypr.land/Useful-Utilities/Systemd-start/) has
+the full documentation.
 
 ### Installation
 
@@ -549,10 +595,12 @@ The `01_base` package group installs `uwsm` and `libnewt`, which provides the
 
 ### Launch from TTY
 
-This dotfiles setup installs the following logic in `~/.zprofile`, so it runs
-only for a login shell attached to a terminal:
+The [`dotfiles` role](../../ansible/roles/dotfiles/README.md) installs
+`~/.zprofile`, which runs this only for a login shell attached to a terminal.
 
 #### Option A: Interactive selection menu at login
+
+This is the installed version:
 
 ```zsh
 if [[ -o login && -t 0 ]] && command -v uwsm >/dev/null 2>&1; then
@@ -564,6 +612,8 @@ fi
 
 #### Option B: Direct launch
 
+To skip the menu, replace it with:
+
 ```zsh
 if [[ -o login && -t 0 ]] && command -v uwsm >/dev/null 2>&1; then
     if uwsm check may-start; then
@@ -572,11 +622,12 @@ if [[ -o login && -t 0 ]] && command -v uwsm >/dev/null 2>&1; then
 fi
 ```
 
-_Note: For display managers, select `Hyprland (uwsm-managed)`._
+A later deploy restores the installed version. With a display manager, select
+`Hyprland (uwsm-managed)` instead.
 
-### Application Launching
+### Application launching
 
-Launch graphical applications as Systemd scopes:
+Launch graphical applications as systemd scopes:
 
 ```sh
 uwsm app -- alacritty
@@ -584,13 +635,14 @@ uwsm app -- alacritty
 
 ### Autostart
 
-- **XDG Autostart**: Handled automatically by the Systemd session target.
-- **Native User Services**:
-  ```sh
-  systemctl --user enable <service>
-  # If the service lacks an [Install] section:
-  systemctl --user add-wants graphical-session.target <service>
-  ```
+The systemd session target starts XDG autostart entries. Enable native user
+services in the usual way:
+
+```sh
+systemctl --user enable <service>
+# If the service lacks an [Install] section:
+systemctl --user add-wants graphical-session.target <service>
+```
 
 ## Real-time audio scheduling
 
@@ -599,16 +651,16 @@ Do not install `realtime-privileges`: its limits let Chromium and Electron apps
 run at nice -8, along with every process they start, and that load then
 starves a WebRTC call in Firefox.
 
-On a machine that already has it, the `package_services` tag removes the user
-from the `realtime` group. That alone does not drop the nice limit:
-`cachyos-settings` gives the `audio` group the same one. The tag also writes
-`/etc/security/limits.d/90-no-negative-nice.conf` with `<user> - nice 0`; a
-user line wins over a group line in `pam_limits`. Close every session of the
-user, or reboot: the systemd user manager, which starts the apps that `uwsm`
-launches, keeps the limits it started with. The deploy does not remove the
-package. Reconcile with
-`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"` and type `REMOVE`;
-the reconcile only removes packages this repository installed, so otherwise
+On a machine that already has it, the
+[`package_services` role](../../ansible/roles/package_services/README.md)
+removes the user from the `realtime` group and writes a `nice 0` limit for the
+user, which also overrides the `audio` group limit from `cachyos-settings`.
+Close every session of the user, or reboot: the systemd user manager keeps the
+limits it started with.
+
+The deploy does not remove the package. Reconcile with
+`make deploy ANSIBLE_ARGS="-e packages_action=reconcile"` and type `REMOVE`.
+The reconcile only removes packages this repository installed, so otherwise
 run `sudo pacman -Rs realtime-privileges`.
 
 To check that PipeWire has a real-time thread (`FF` class):
@@ -622,7 +674,7 @@ After a new login, `ulimit -e` prints `20` (lowest nice 0), not `31` (-11).
 ## Security follow-up
 
 Security settings depend on how the machine is used and who can access it.
-Consult the [ArchWiki security recommendations](https://wiki.archlinux.org/title/Security)
-for current guidance on networking, remote access, updates, Secure Boot, and
-backups. Keep an independently stored backup of the LUKS header and recovery
-material; do not store the only copy on the encrypted disk.
+The [ArchWiki security recommendations](https://wiki.archlinux.org/title/Security)
+cover networking, remote access, updates, Secure Boot and backups. Keep an
+independently stored backup of the LUKS header and recovery material, and do
+not store the only copy on the encrypted disk.

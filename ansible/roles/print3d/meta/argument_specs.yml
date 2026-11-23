@@ -1,0 +1,29 @@
+---
+argument_specs:
+  main:
+    short_description: Install PrusaSlicer and F3D and configure F3D thumbnails
+    options:
+      print3d_packages:
+        type: list
+        elements: str
+        description: Packages of the 3D printing group installed by the role.
+      print3d_f3d_config_dir:
+        type: path
+        description: System F3D configuration directory.
+      print3d_f3d_config_owner:
+        type: str
+        description: Owner of the F3D configuration directory and file.
+      print3d_f3d_config_group:
+        type: str
+        description: Group of the F3D configuration directory and file.
+      print3d_f3d_thumbnail_options:
+        type: dict
+        description: F3D options applied to thumbnail rendering, keyed by option name.
+      print3d_thumbnail_cache_dir:
+        type: path
+        description: GNOME thumbnail cache directory of the SSH user.
+      print3d_thumbnail_cache_subdirs:
+        type: list
+        elements: str
+        description: >-
+          Subdirectories of the thumbnail cache cleared when the F3D configuration changes.

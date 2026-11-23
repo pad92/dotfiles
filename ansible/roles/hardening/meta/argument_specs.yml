@@ -1,0 +1,8 @@
+---
+argument_specs:
+  main:
+    short_description: Harden the kernel, network and SSH settings.
+    options:
+      hardening_ipv6_enabled:
+        type: bool
+        description: Whether IPv6 stays enabled; false disables it through sysctl.

@@ -46,7 +46,6 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
             *arguments,
             env={
                 **ansible_test_environment(self.work),
-                "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
                 **(env or {}),
             },
         )
@@ -219,12 +218,31 @@ class AnsibleReviewRegressionTests(unittest.TestCase):
     # The former hostname map must fail loudly instead of selecting its keys.
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")
     def test_package_role_rejects_a_hostname_map_of_groups(self):
+        hostname_map = {"PadsTower": ["01_base"]}
+        # site.yml runs the selection entry point first, which has no argument
+        # spec: its assert must name the fix.
+        selection = self.package_role_play(packages_host_groups=hostname_map)
+        selection[0]["roles"] = []
+        selection[0]["tasks"].insert(
+            0,
+            {
+                "ansible.builtin.include_role": {
+                    "name": str(ROLES / "packages"),
+                    "tasks_from": "selection",
+                }
+            },
+        )
+        output = self.run_play(selection, "--check", expect_success=False)
+        self.assertIn("packages_host_groups takes a list of package groups", output)
+        self.assertNotIn(MARKER, output)
+        # Run on its own, the role refuses the map in its argument spec.
         output = self.run_play(
-            self.package_role_play(packages_host_groups={"PadsTower": ["01_base"]}),
+            self.package_role_play(packages_host_groups=hostname_map),
             "--check",
             expect_success=False,
         )
-        self.assertIn("packages_host_groups takes a list of package groups", output)
+        self.assertIn("Validation of arguments failed", output)
+        self.assertIn("packages_host_groups", output)
         self.assertNotIn(MARKER, output)
 
     @unittest.skipUnless(COLLECTIONS.is_dir(), "requires pinned Ansible collections")

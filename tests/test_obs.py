@@ -1197,10 +1197,7 @@ class ProfileContractTests(unittest.TestCase):
                 "ansible_become=false",
                 "--tags",
                 "obs",
-                env={
-                    **ansible_test_environment(work),
-                    "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
-                },
+                env=ansible_test_environment(work),
             )
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn(

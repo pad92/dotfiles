@@ -1,0 +1,19 @@
+---
+argument_specs:
+  main:
+    short_description: Run ananicy-cpp and power-profiles-daemon as the only gaming tweaks.
+    options:
+      gaming_power_manager_conflict_action:
+        type: str
+        choices: [ask, remove, fail]
+        description: >-
+          What to do when another CPU power manager is active or enabled: ask,
+          remove it (stop, disable, uninstall) or fail.
+      gaming_ananicy_rule_packages:
+        type: list
+        elements: str
+        description: Packages whose update restarts ananicy-cpp to reload its rules.
+      gaming_sched_ext_units:
+        type: list
+        elements: str
+        description: sched-ext scheduler units that are stopped, disabled and masked.

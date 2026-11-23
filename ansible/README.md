@@ -1,20 +1,21 @@
 # Ansible setup
 
-This directory configures the workstations: it installs the selected package
-groups, applies the system settings, and deploys the home directory files.
-Everything is copied from the controller over SSH, so a target needs no clone
-of this repository.
+This directory configures the workstations. It installs the selected package
+groups, applies the system settings and deploys the home directory files. The
+controller pushes everything over SSH, so a managed node needs no clone of
+this repository.
 
 Supported distributions: Arch Linux and CachyOS, Debian and Ubuntu, and
 Fedora. Some roles only act on Arch Linux; their README says so.
 
-Documentation goes from the general to the specific:
+The documentation goes from the general to the specific:
 
-1. This file: requirements, layout, inventory, `make` targets and the rules
-   every role follows.
-2. [Playbooks](PLAYBOOKS.md): what `site.yml` and its OBS profile run, in
-   which order, with which tags and conditions.
-3. The README of each role (see [Roles](#roles)): its requirements,
+1. This file covers the requirements, the layout, the inventory, the `make`
+   targets and the conventions every role follows.
+2. [Playbooks](PLAYBOOKS.md) describes the play in `site.yml`: its
+   `pre_tasks`, the role order, the tags, the `when` conditions and the OBS
+   profile.
+3. Each role has a README (see [Roles](#roles)) with its requirements,
    variables and behavior.
 
 ## Requirements
@@ -23,75 +24,99 @@ On the controller:
 
 - `ansible-core` 2.21 or later.
 - The collections pinned in `requirements.yml` (`ansible.posix`,
-  `community.general`). `make galaxy` installs the missing ones under
-  `.ansible/collections`.
+  `community.general`). `make galaxy` installs them under
+  `.ansible/collections`, and `make galaxy-force` reinstalls them.
 
-On each target:
+On each managed node:
 
 - An SSH server that accepts the user's key. No role configures `sshd`.
 - Network access to GitHub, to clone the pinned Zsh and Vim plugins.
-- `sudo` for the user, for the roles that change the system.
+- `sudo` rights for the user, since most roles run with `become`.
 
 ## Layout
 
 | Path                       | Content                                                  |
 | :------------------------- | :------------------------------------------------------- |
-| `inventory.yml`            | The workstations, by hostname.                           |
+| `inventory.yml`            | The workstations, by short hostname.                     |
 | `group_vars/all/`          | Settings shared by every host; `vault.yml` is encrypted. |
 | `host_vars/<hostname>.yml` | Settings of one host.                                    |
 | `site.yml`                 | The playbook, see [PLAYBOOKS.md](PLAYBOOKS.md).          |
-| `tasks/`                   | Tasks shared by the playbooks (`target.yml`).            |
+| `tasks/`                   | Task files shared by the playbooks (`target.yml`).       |
 | `roles/`                   | One role per function.                                   |
 | `library/`                 | Custom modules (`dotfiles_*`).                           |
 | `module_utils/`            | Code shared by the custom modules.                       |
 | `filter_plugins/`          | Custom Jinja filters.                                    |
 | `requirements.yml`         | Pinned collections.                                      |
 
-`ansible.cfg`, at the repository root, points Ansible at these directories.
+`ansible.cfg`, at the repository root, points Ansible at these directories and
+at `.ansible/collections`. It also sets `[diff] always = true`, so every run
+shows the diff of the files it changes.
 
 ## Running
 
-The `make` targets run `ansible-playbook` on `HOST`, this machine by default:
+The `make` targets run `ansible-playbook ansible/site.yml --limit "$HOST"` with
+the options below:
 
 ```sh
 make check BECOME_PASS=1
 make deploy BECOME_PASS=1
 ```
 
-| Variable       | Effect                                                                |
-| :------------- | :-------------------------------------------------------------------- |
-| `HOST`         | Inventory host to configure. Default: `uname -n` up to the first dot. |
-| `PLAYBOOK`     | Only `site` exists; `TAGS=obs` runs its OBS profile.                  |
-| `TAGS`         | Run only these tags.                                                  |
-| `SKIP_TAGS`    | Skip these tags.                                                      |
-| `BECOME_PASS`  | `1` asks for the sudo password.                                       |
-| `ANSIBLE_ARGS` | Any other `ansible-playbook` option, such as `-e var=value`.          |
+| Variable       | Effect                                                                                             |
+| :------------- | :------------------------------------------------------------------------------------------------- |
+| `HOST`         | Inventory host or pattern passed to `--limit`. Default: `uname -n` up to the first dot.            |
+| `PLAYBOOK`     | Playbook of `ansible/` to run. Only `site` exists; `TAGS=obs` runs its OBS profile.                |
+| `TAGS`         | Run only these comma-separated tags (`--tags`).                                                    |
+| `SKIP_TAGS`    | Skip these comma-separated tags (`--skip-tags`).                                                   |
+| `BECOME_PASS`  | Any non-empty value adds `--ask-become-pass`, which asks for the sudo password once.               |
+| `ANSIBLE_ARGS` | Any other `ansible-playbook` option, passed last, such as `-e packages_action=reconcile` or `-vv`. |
 
-`make check` previews a run with `--check` and diffs. `make plan` prints the
-package plan and changes nothing. `make tags` and `make tasks` list what a run
-would do. `make help` lists every target.
+The main targets:
+
+- `make deploy` applies the playbook. `make install` is an alias.
+- `make check` runs it in check mode (`--check`), with diff mode on.
+- `make plan` adds `-e packages_action=plan`. The run prints the package plan,
+  then the play ends and nothing changes. It refuses `TAGS` and `SKIP_TAGS`,
+  because a tag selection could skip that stop and let later roles change the
+  host (see [PLAYBOOKS.md](PLAYBOOKS.md#roles)).
+- `make tags` and `make tasks` add `--list-tags` and `--list-tasks`. They run
+  no task, so they never ask for the sudo password, even with `BECOME_PASS`.
+- `make install-obs` forces `TAGS=obs` and clears `SKIP_TAGS`.
+- `make help` lists every target.
 
 ## Per-host settings
 
-`inventory.yml` lists the workstations by short hostname, and Ansible reaches
-each one over SSH, the machine that runs `make deploy` included. SSH resolves
-the name through `~/.ssh/config` or DNS; set `ansible_host` in the host file
-when it cannot.
+`inventory.yml` lists the workstations by short hostname. Ansible reaches each
+one over SSH, including the machine that runs `make deploy`. SSH resolves the
+name through `~/.ssh/config` or DNS; set `ansible_host` in the host's
+`host_vars` file when it cannot.
 
 ```sh
 make check HOST=PadsP5560 BECOME_PASS=1
 ```
 
-Ansible loads `host_vars/<hostname>.yml` on top of `group_vars/all/`. The
-playbooks stop if the machine reports another hostname than its inventory
-name, because its `host_vars` describe other monitors and packages.
+Variables come from several places. From lowest to highest precedence, as in
+the official precedence rules:
+
+1. Role defaults (`roles/<role>/defaults/main.yml`).
+2. `group_vars/all/`, shared by every host.
+3. `host_vars/<hostname>.yml`, which overrides `group_vars/all/` for one host.
+4. Play `vars` in `site.yml`. They override `host_vars`, so
+   `packages_group_selection` and `packages_state_merge_selection` cannot be
+   set per host.
+5. Role `vars/` and `include_vars` files (`dotfiles`, `gpu`, `packages`), which
+   hold internal values a host should not change.
+6. Extra vars (`-e` in `ANSIBLE_ARGS`), which override everything for one run.
+
+The shared files:
 
 - `group_vars/all/packages.yml` defines `packages_workstation_groups`, the
   package groups both workstations share.
 - `group_vars/all/main.yml` holds the shared desktop settings: the external
-  monitors, where they sit, and the workspaces they open. Monitors are
-  identified by make and model, so they need no Vault.
-- A host file sets what differs:
+  monitors, where they sit and the workspaces they open. Monitors are matched
+  by make and model, so they need no Vault.
+
+A host file sets what differs on one machine:
 
 ```yaml
 # host_vars/PadsP5560.yml
@@ -100,35 +125,65 @@ hardening_ipv6_enabled: false
 dotfiles_hypridle_enabled: false
 ```
 
-To add a machine, add its short hostname (`hostname -s`) to `inventory.yml`
-and create `host_vars/<hostname>.yml`, even an empty one. A `-e` option still
-overrides any setting for one run.
+To add a machine, add its short hostname (`uname -n | cut -d. -f1`) to
+`inventory.yml` and create `host_vars/<hostname>.yml`, even an empty one.
+
+### Hostname check
+
+The first `pre_tasks` of `site.yml` (in `tasks/target.yml`) compare the
+`hostname` fact of the machine reached with `inventory_hostname`, and the play
+stops when they differ:
+
+```text
+PadsP5560 reached a machine named PadsTower, which its host_vars do not
+describe. Fix the SSH address of PadsP5560.
+```
+
+The check exists because `host_vars` describe the monitors, sensors and
+packages of one machine. A wrong `ansible_host`, a stale DNS record or an SSH
+alias pointing elsewhere would otherwise apply them to another computer. The
+comparison is case-sensitive and uses the short hostname. To fix it, point
+`ansible_host` or `~/.ssh/config` at the right machine, or rename the
+inventory entry to match `uname -n | cut -d. -f1` on the managed node.
 
 ## Vault
 
 The Vault is optional. When `.vault` (ignored by Git) exists at the repository
 root, the `make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
 `DOTFILES_VAULT_PASSWORD_FILE=/path` to use another file. A clone without
-`.vault` runs without the Vault. The `vpn` role reads its gateway from it.
+`.vault` runs without the Vault. Only the `vpn` role reads from it, for its
+gateway.
 
 ## Role conventions
 
 - One role per function. A role's variables start with its name, for example
-  `dns_manage` or `cpu_power_amd_pstate_epp`. Each role documents them in its
-  README, and `defaults/main.yml` holds the values with comments.
+  `dns_manage` or `cpu_power_amd_pstate_epp`. `defaults/main.yml` holds the
+  default values with comments.
+- Each role README follows the `ansible-galaxy role init` template:
+  Requirements, Role Variables, Dependencies, Example Playbook, License and
+  Author Information. Sections specific to the role sit between Role Variables
+  and Dependencies.
 - Each role has a `meta/main.yml` with its Galaxy information (description,
-  platforms, tags) and no dependency: the playbooks set the order.
-- Roles stay generic: hardware and hosts are detected from facts or set in
+  platforms, tags) and no `dependencies`. The play sets the order.
+- Each role has a `meta/argument_specs.yml` that types and describes every
+  variable of `defaults/main.yml`, and nothing else. Ansible checks the role
+  variables against it before the first task of the role, so a wrong type, a
+  value outside a closed set or an unknown key in a structured item stops the
+  run there. The defaults stay in `defaults/main.yml` only.
+  `tests/test_role_argument_specs.py` keeps the specs in step with the
+  defaults and checks that every inventory host passes.
+- Roles stay generic. Hardware and hosts are detected from facts or set in
   `host_vars`, never written in a role.
-- Changes go through Ansible modules. When no module fits, a custom module of
-  `library/` does the work and reports each file it writes (sysfs controls,
-  package builds, initramfs images, backups).
-- Roles that change the host skip `packages_action=plan`, so `make plan`
+- Tasks call modules by their FQCN, such as `ansible.builtin.template`. When
+  no module fits, a custom module of `library/` does the work and reports each
+  file it writes (sysfs controls, package builds, initramfs images, backups).
+- With `packages_action=plan`, the roles before `packages` are skipped by a
+  `when` condition and `packages` ends the play after the plan, so `make plan`
   changes nothing.
 - Check mode changes nothing and reports what a run would do.
-- A conflicting file, directory or link at a managed path is moved to `.bak`
-  with an atomic move that refuses an existing target, so a run stops before
-  overwriting an earlier backup.
+- A conflicting file, directory or link at a managed path is moved to `.bak`.
+  The move is atomic and refuses an existing target, so a run stops before it
+  overwrites an earlier backup.
 
 ### Custom modules
 
@@ -145,53 +200,70 @@ root, the `make` targets export it as `ANSIBLE_VAULT_PASSWORD_FILE`. Set
 
 ## Cleaning up
 
-`make clean` removes what deployments and earlier versions left behind. It also
-lists the Ansible backups (`<path>.<pid>.<date>@<time>~`) of the `/etc` files the
-roles manage (`SYSTEM_MANAGED_FILES` in `scripts/ansible_backup_files.py`) and
-removes them after the `REMOVE` confirmation; they are root-owned, so run
-`sudo make clean CLEAN_ROOT=$HOME`, otherwise they are kept and reported. In the
-home directory (`CLEAN_ROOT`, `$HOME` by default) it deletes the backups the
-`dotfiles` role made next to the paths it manages (`<path>.bak` and
-`<path>.<pid>.<date>@<time>~`). It also deletes the broken links
-under the paths the role deploys, such as a link into a deleted `~/.dotfiles` clone
-or a `.wants` link to a unit that is gone, and leaves other broken links in
-the home alone. It deletes the files a role no longer ships, such as the
-`audio` role's former `10-realtime.conf`, while they still hold the shipped
-content; an edited copy or a link is kept and reported. In the repository it removes the Git metadata of the retired
-submodules (Vundle, tpm, dotbot, the Zsh plugins: their `[submodule]` sections
-and their clones under `.git/modules`), the records of worktrees whose
-directory is gone, the Python tool caches and untracked broken links. It does
-not look into nested Git checkouts or Python virtual environments. A
-submodule clone with a commit that no remote branch or tag holds, or whose
-checkout still exists, is kept and reported.
+`make clean` removes what deployments and earlier versions left behind. It
+runs `scripts/clean_obsolete.py` with the Python interpreter of
+`ansible-playbook`; set `ANSIBLE_PYTHON` to use another one.
 
-In `~/.local/share/applications` and `~/.config/autostart` it lists the
-`.desktop` launchers that can no longer start: their `TryExec` or `Exec`
-program is missing, the `WINEPREFIX` they set is gone, or the
-`steam://rungameid/<id>` game has no `appmanifest` in any Steam library
-(native or Flatpak). The reason is printed next to each one. The launchers the `dotfiles` role deploys
-are left to it. An absence counts only when it is certain: a path on an fstab
-filesystem that is not mounted, on a removable medium (`/media`,
-`/run/media`), or a game whose Steam library is missing keeps the launcher.
-Empty folders left behind (such as `wine/Programs/<game>`) are removed and
-`update-desktop-database` refreshes the MIME cache when there is one.
-Under `sudo`, launchers are not checked (a note says so): root's `PATH` would
-hide the owner's programs, so run `make clean` as the home's owner for them.
+In the home directory (`CLEAN_ROOT`, `$HOME` by default) it handles:
 
-Everything is listed before anything changes. The backups, the launchers, the
-submodule metadata and the worktree records go only after you type `REMOVE` on
-a terminal; without a terminal they stay.
-Caches, broken links and unchanged obsolete files go without asking. `DRY_RUN` accepts only `1` (list)
-and `0`. `make ansible-backup-ls` and `make ansible-backup-rm` remain
-as aliases of `make clean DRY_RUN=1` and `make clean`, and
-`ANSIBLE_BACKUP_ROOT` still selects the home. It runs with the Python
-interpreter of `ansible-playbook`; set `ANSIBLE_PYTHON` to use another. The
-home is `$HOME` by default; set `CLEAN_ROOT=/path` to select another one.
+- The backups the `dotfiles` role made next to the paths it manages
+  (`<path>.bak` and `<path>.<pid>.<date>@<time>~`).
+- Broken links under the paths the role deploys, such as a link into a
+  deleted `~/.dotfiles` clone or a `.wants` link to a unit that is gone. Other
+  broken links in the home are left alone.
+- Files a role no longer ships, such as the former `10-realtime.conf` of the
+  `audio` role, while they still hold the shipped content. An edited copy or a
+  link is kept and reported.
+
+In `/etc`, it lists the Ansible backups (`<path>.<pid>.<date>@<time>~`) of the
+files the roles manage, as listed in `SYSTEM_MANAGED_FILES` of
+`scripts/ansible_backup_files.py`. They belong to root, so run
+`sudo make clean CLEAN_ROOT=$HOME` to remove them. A plain run keeps and
+reports them.
+
+In the repository, it removes:
+
+- The Git metadata of the retired submodules (Vundle, tpm, dotbot and the Zsh
+  plugins): their `[submodule]` sections and their clones under
+  `.git/modules`. This only happens from the main worktree. A clone with a
+  commit that no remote branch or tag holds, or whose checkout still exists,
+  is kept and reported.
+- The records of worktrees whose directory is gone.
+- Python tool caches and untracked broken links. Nested Git checkouts and
+  Python virtual environments are not searched.
+
+In `~/.local/share/applications` and `~/.config/autostart`, it lists the
+`.desktop` launchers that can no longer start, with the reason next to each
+one: the `TryExec` or `Exec` program is missing, the `WINEPREFIX` they set is
+gone, or the `steam://rungameid/<id>` game has no `appmanifest` in any native
+or Flatpak Steam library. The launchers the `dotfiles` role deploys are left
+to it. An absence counts only when it is certain, so a path on an unmounted
+fstab filesystem or on removable media (`/media`, `/run/media`) keeps its
+launcher, and so does a game whose Steam library is missing. Empty folders
+left behind (such as `wine/Programs/<game>`) are removed, and
+`update-desktop-database` refreshes the MIME cache when there is one. Under
+`sudo` the launchers are skipped with a note, since root's `PATH` would hide
+the owner's programs. Run `make clean` as the home's owner to check them.
+
+Everything is listed before anything changes. Backups, launchers, submodule
+metadata and worktree records are removed only after you type `REMOVE` on a
+terminal; without a terminal they stay. Caches, broken links and unchanged
+obsolete files go without asking.
+
+| Variable              | Effect                                                            |
+| :-------------------- | :---------------------------------------------------------------- |
+| `DRY_RUN`             | `1` lists only, `0` or empty removes. Any other value is refused. |
+| `CLEAN_ROOT`          | Home directory to clean. Default: `ANSIBLE_BACKUP_ROOT`.          |
+| `ANSIBLE_BACKUP_ROOT` | Former name of `CLEAN_ROOT`, still read. Default: `$HOME`.        |
+| `ANSIBLE_PYTHON`      | Python interpreter that runs the script.                          |
+
+`make ansible-backup-ls` and `make ansible-backup-rm` remain as aliases of
+`make clean DRY_RUN=1` and `make clean`.
 
 ## Roles
 
-`site.yml` runs them in this order; [PLAYBOOKS.md](PLAYBOOKS.md) gives the tags
-and conditions.
+`site.yml` runs them in this order. [PLAYBOOKS.md](PLAYBOOKS.md#roles) gives
+their tags, `when` conditions and `become` setting.
 
 | Role                                                   | Function                                                                                    |
 | :----------------------------------------------------- | :------------------------------------------------------------------------------------------ |

@@ -1,0 +1,57 @@
+---
+argument_specs:
+  main:
+    short_description: Unlock the GNOME keyring at a TTY login through PAM.
+    options:
+      gnome_keyring_pam_enabled:
+        type: bool
+        description: Add the GNOME keyring rules to the login PAM service.
+      gnome_keyring_pam_directory:
+        type: path
+        description: Directory of the PAM service files.
+      gnome_keyring_pam_service:
+        type: str
+        description: PAM service file that receives the rules.
+      gnome_keyring_pam_module:
+        type: path
+        description: Path of pam_gnome_keyring.so, checked before any rule is added.
+      gnome_keyring_pam_rules:
+        type: list
+        elements: dict
+        description: Rules added after the include system-local-login rule of their type.
+        options:
+          after_type:
+            type: str
+            required: true
+            choices:
+              - account
+              - -account
+              - auth
+              - -auth
+              - password
+              - -password
+              - session
+              - -session
+            description: Type of the include system-local-login rule the new rule follows.
+          type:
+            type: str
+            required: true
+            choices:
+              - account
+              - -account
+              - auth
+              - -auth
+              - password
+              - -password
+              - session
+              - -session
+            description: Type of the new rule; a leading dash skips it when the module is missing.
+          control:
+            type: str
+            required: true
+            description: Control of the new rule.
+          args:
+            type: list
+            elements: str
+            required: true
+            description: Module arguments of the new rule.

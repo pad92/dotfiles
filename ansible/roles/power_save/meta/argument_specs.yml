@@ -1,0 +1,61 @@
+---
+argument_specs:
+  main:
+    short_description: Write power-saving kernel module options for audio and Intel Wi-Fi.
+    options:
+      power_save_mode:
+        type: str
+        choices: [auto, 'true', 'false']
+        description: >-
+          auto enables power saving only on a portable chassis; true or false
+          forces it.
+      power_save_wifi:
+        type: bool
+        description: Also apply the Intel Wi-Fi power-saving options.
+      power_save_portable_form_factors:
+        type: list
+        elements: str
+        description: DMI chassis types that count as portable in auto mode.
+      power_save_module_directory:
+        type: path
+        description: Directory where loaded kernel modules are listed.
+      power_save_modprobe_directory:
+        type: path
+        description: Directory whose other modprobe files keep their own module options.
+      power_save_modprobe_path:
+        type: path
+        description: modprobe file the role writes.
+      power_save_legacy_modprobe_paths:
+        type: list
+        elements: path
+        description: Earlier names of the options file, removed on every run.
+      power_save_module_options:
+        type: list
+        elements: dict
+        description: >-
+          Module groups whose first loaded module gets its options, applied
+          whatever power_save_wifi says.
+        options:
+          modules:
+            type: list
+            elements: str
+            required: true
+            description: Modules of the group, in order of preference.
+          options:
+            type: dict
+            required: true
+            description: Option lists keyed by module name, each a list of name=value strings.
+      power_save_wifi_module_options:
+        type: list
+        elements: dict
+        description: Module groups applied only when power_save_wifi is true.
+        options:
+          modules:
+            type: list
+            elements: str
+            required: true
+            description: Modules of the group, in order of preference.
+          options:
+            type: dict
+            required: true
+            description: Option lists keyed by module name, each a list of name=value strings.

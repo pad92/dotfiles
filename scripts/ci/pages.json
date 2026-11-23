@@ -5,6 +5,7 @@
   "image": "dist/hyprland.webp",
   "nav": [
     { "label": "Home", "target": "README.md" },
+    { "label": "Quick start", "target": "QUICKSTART.md" },
     { "label": "Ansible", "target": "ansible/" },
     { "label": "Arch Linux", "target": "dist/arch/" },
     {

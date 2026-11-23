@@ -1,0 +1,11 @@
+---
+argument_specs:
+  main:
+    short_description: Add users to the docker group.
+    options:
+      docker_group_users:
+        type: list
+        elements: str
+        description: >-
+          Users added to the docker group, which grants root-equivalent access
+          to the Docker daemon.

@@ -1,0 +1,59 @@
+---
+argument_specs:
+  main:
+    short_description: Make systemd-resolved the only resolver and migrate the former relay.
+    options:
+      dns_manage:
+        type: bool
+        description: Apply the DNS policy; false leaves the resolver setup untouched.
+      dns_llmnr:
+        type: str
+        choices: ['yes', 'no', resolve]
+        description: LLMNR setting written to resolved.conf.
+      dns_multicast_dns:
+        type: str
+        choices: ['yes', 'no', resolve]
+        description: MulticastDNS setting written to resolved.conf.
+      dns_fallback_servers:
+        type: list
+        elements: str
+        description: >-
+          Resolvers used only when no link has DNS servers; empty disables
+          the compiled-in ones.
+      dns_resolved_dropin:
+        type: path
+        description: systemd-resolved drop-in the role writes.
+      dns_networkmanager_conf:
+        type: path
+        description: NetworkManager configuration file the role writes.
+      dns_docker_bridge_ip:
+        type: str
+        description: Address and prefix of docker0, also used as a resolved stub listener.
+      dns_docker_daemon_config_path:
+        type: path
+        description: Docker daemon.json that receives the bridge address.
+      dns_relay_files:
+        type: list
+        elements: path
+        description: Files of the former dnsmasq relay, removed after a backup.
+      dns_legacy_files:
+        type: list
+        elements: path
+        description: >-
+          Legacy NetworkManager DNS settings, removed when they set only dns=
+          or rc-manager=.
+      dns_backup_dir:
+        type: path
+        description: Directory where removed files are copied under their full path.
+      dns_resolv_conf:
+        type: path
+        description: Path of resolv.conf.
+      dns_resolved_stub:
+        type: path
+        description: systemd-resolved stub file that resolv.conf links to.
+      dns_force_resolv_conf_link:
+        type: bool
+        description: Replace a regular resolv.conf even when another program owns it.
+      dns_unit_directory:
+        type: path
+        description: Directory where the dnsmasq unit file is looked up.

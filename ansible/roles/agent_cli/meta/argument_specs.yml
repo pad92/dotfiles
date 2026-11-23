@@ -1,0 +1,70 @@
+---
+argument_specs:
+  main:
+    short_description: Configure Claude Code and Codex settings and install RTK
+    options:
+      agent_cli_home:
+        type: path
+        description: Home directory of the user whose agent CLI settings are managed.
+      agent_cli_claude_binary:
+        type: str
+        description: Claude Code command whose presence enables the Claude Code settings.
+      agent_cli_claude_settings:
+        type: path
+        description: Claude Code settings file, relative to agent_cli_home.
+      agent_cli_claude_statusline:
+        type: dict
+        description: Value written to the statusLine key of the Claude Code settings.
+      agent_cli_claude_env:
+        type: dict
+        description: >-
+          Environment variables merged key by key into the env table of the Claude Code settings.
+      agent_cli_claude_enabled_plugins:
+        type: dict
+        description: >-
+          Plugins merged key by key into the enabledPlugins table of the Claude Code settings.
+      agent_cli_claude_permissions_deny:
+        type: list
+        elements: str
+        description: >-
+          Rules added to permissions.deny of the Claude Code settings, keeping the existing ones.
+      agent_cli_claude_state:
+        type: path
+        description: >-
+          Claude Code state file, relative to agent_cli_home, read to find user-scope MCP servers.
+      agent_cli_claude_mcp_absent:
+        type: list
+        elements: str
+        description: User-scope MCP servers removed with claude mcp remove.
+      agent_cli_rtk_enabled:
+        type: bool
+        description: Whether to install RTK and merge its Claude Code hook on x86_64 hosts.
+      agent_cli_rtk_version:
+        type: str
+        description: Pinned RTK release version, without the leading v.
+      agent_cli_rtk_asset:
+        type: str
+        description: File name of the RTK release archive.
+      agent_cli_rtk_checksum:
+        type: str
+        description: Checksum of the RTK release archive, in the get_url algorithm:hash form.
+      agent_cli_rtk_url:
+        type: str
+        description: Download URL of the RTK release archive.
+      agent_cli_rtk_bin_dir:
+        type: path
+        description: Directory the RTK binary is installed in.
+      agent_cli_rtk_hook_command:
+        type: str
+        description: Command of the RTK PreToolUse hook in the Claude Code settings.
+      agent_cli_codex_binary:
+        type: str
+        description: Codex command whose presence enables the Codex status line.
+      agent_cli_codex_config:
+        type: path
+        description: Codex configuration file, relative to agent_cli_home.
+      agent_cli_codex_status_line:
+        type: list
+        elements: str
+        description: >-
+          Codex status line item identifiers, made of lowercase letters, digits and hyphens.

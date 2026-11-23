@@ -1,0 +1,12 @@
+---
+argument_specs:
+  main:
+    short_description: Enable systemd-timesyncd unless another NTP client runs.
+    options:
+      time_sync_unit:
+        type: str
+        description: NTP client unit enabled and started by the role.
+      time_sync_alternatives:
+        type: list
+        elements: str
+        description: NTP units that, when enabled or running, leave time_sync_unit alone.

@@ -55,10 +55,7 @@ class InstallGuideRoleTests(unittest.TestCase):
         result = run_playbook(
             playbook,
             cwd=ROOT,
-            env={
-                **ansible_test_environment(self.work),
-                "ANSIBLE_COLLECTIONS_PATH": str(COLLECTIONS),
-            },
+            env=ansible_test_environment(self.work),
         )
         output = result.stdout + result.stderr
         if expect_success:

@@ -1,0 +1,113 @@
+---
+argument_specs:
+  main:
+    short_description: Configure OBS Studio profiles, demo scenes and the virtual camera
+    options:
+      obs_home:
+        type: path
+        description: Home directory of the user whose OBS configuration is written.
+      obs_config_dir:
+        type: path
+        description: OBS Studio configuration directory.
+      obs_profiles:
+        type: list
+        elements: dict
+        description: OBS profiles the role creates; existing profiles are left untouched.
+        options:
+          name:
+            type: str
+            required: true
+            description: Profile name shown in OBS.
+          directory:
+            type: str
+            required: true
+            description: Profile directory under basic/profiles, unique among the profiles.
+          usage:
+            type: str
+            required: true
+            choices: [record, stream]
+            description: Whether the profile records at canvas size or streams at obs_output_height.
+      obs_scene_collection_name:
+        type: str
+        description: Base name of the demo scene collections, followed by the palette name.
+      obs_scene_collection_file:
+        type: str
+        description: Base file name of the demo scene collections under basic/scenes.
+      obs_config_force:
+        type: bool
+        description: Whether to regenerate the OBS files that already exist, with backups.
+      obs_encoder:
+        type: str
+        choices: [auto, nvenc, vaapi, x264]
+        description: Video encoder, or auto to probe the GPU that renders the desktop.
+      obs_capture_output:
+        type: str
+        description: >-
+          Connector the canvas is sized from; empty picks the largest active external output.
+      obs_output_height:
+        type: int
+        description: Output height in pixels of the streaming profile.
+      obs_webcam:
+        type: str
+        description: >-
+          Substring of the /dev/v4l/by-id name of the webcam; empty prefers an external camera.
+      obs_webcam_background:
+        type: str
+        choices: [cutout, blur, none]
+        description: Webcam background treatment by obs-backgroundremoval.
+      obs_webcam_blur:
+        type: int
+        description: Background blur strength from 1 to 20 when obs_webcam_background is blur.
+      obs_webcam_model:
+        type: str
+        choices: [rvm, mediapipe]
+        description: Segmentation model of obs-backgroundremoval.
+      obs_webcam_threshold:
+        type: float
+        description: MediaPipe mask threshold between 0 and 1.
+      obs_webcam_edge_trim:
+        type: int
+        description: MediaPipe pixels trimmed off the person outline, from 0 to 30.
+      obs_mic_device:
+        type: str
+        description: PulseAudio device of the microphone source.
+      obs_desktop_audio_device:
+        type: str
+        description: PulseAudio device of the desktop audio source.
+      obs_mic_noise_suppression:
+        type: bool
+        description: Whether the microphone source gets an OBS noise suppression filter.
+      obs_demo_title:
+        type: str
+        description: Title text of the demo scenes.
+      obs_pause_text:
+        type: str
+        description: Text of the pause scene.
+      obs_brand_palettes:
+        type: dict
+        description: >-
+          Palettes of the demo scene collections, keyed by name, each with text, background and
+          primary colours.
+      obs_brand_font:
+        type: str
+        description: Font family of the OBS text sources.
+      obs_virtualcam_enabled:
+        type: bool
+        description: Whether to configure the v4l2loopback virtual camera.
+      obs_virtualcam_label:
+        type: str
+        description: >-
+          Card label of the virtual camera, at most 31 letters, digits, spaces, dots, dashes or
+          underscores.
+      obs_virtualcam_video_nr:
+        type: int
+        description: Number of the /dev/video device of the virtual camera, from 0 to 63.
+      obs_virtualcam_firefox_v4l2:
+        type: bool
+        description: Whether a Firefox policy makes Firefox read cameras through V4L2.
+      obs_firefox_binary_path:
+        type: path
+        description: Firefox binary whose presence enables the Firefox policy.
+      obs_firefox_policies_file:
+        type: path
+        description: Firefox policies file the V4L2 preference is merged into.

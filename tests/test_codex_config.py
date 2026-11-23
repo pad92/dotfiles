@@ -80,7 +80,6 @@ class CodexConfigTests(unittest.TestCase):
         playbook = write_playbook(self.work / "play.yml", [play])
         environment = ansible_test_environment(self.work)
         environment["PATH"] = f"{self.fake_bin}:{environment['PATH']}"
-        environment["ANSIBLE_COLLECTIONS_PATH"] = str(COLLECTIONS)
         return run_playbook(playbook, *(["--check"] if check else []), env=environment)
 
     def assert_succeeded(self, result, changed):

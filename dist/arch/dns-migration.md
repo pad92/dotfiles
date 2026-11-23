@@ -9,8 +9,8 @@ profiles point their DNS at it. Steps marked "with the relay" apply only to
 those hosts.
 
 The Ansible `dns` tag does the migration. The
-[`dns` role README](../../ansible/roles/dns/README.md) describes the rules it applies;
-this note is the procedure. On a host installed with the current guide there is
+[`dns` role README](../../ansible/roles/dns/README.md) describes the rules it applies,
+and this note gives the procedure. On a host installed with the current guide there is
 nothing to migrate, but the tag still writes the resolved, NetworkManager and
 Docker settings.
 
@@ -139,7 +139,7 @@ done
 ```
 
 A later run of the tag may have backed up a stub copy over the original
-`resolv.conf`; the original then sits next to it as
+`resolv.conf`. The original then sits next to it as
 `resolv.conf.<pid>.<date>~`. Reinstall the earliest copy written by openresolv,
 if there is one. The order comes from the backup date in the name: file
 times keep the time of the original file, not of the backup.
@@ -246,8 +246,8 @@ sudo grep -rl 'method=shared' /etc/NetworkManager/system-connections/
 
 Keep dnsmasq when one of these applies:
 
-- `pgrep` shows a process with `--conf-file=/var/lib/libvirt/dnsmasq/...`;
-- `virsh net-list` shows an active network, or one with autostart;
+- `pgrep` shows a process with `--conf-file=/var/lib/libvirt/dnsmasq/...`.
+- `virsh net-list` shows an active network, or one with autostart.
 - `grep` prints a file name.
 
 A libvirt NAT network such as `default` stops working without dnsmasq: its

@@ -1,0 +1,13 @@
+---
+argument_specs:
+  main:
+    short_description: Set the Wi-Fi regulatory domain.
+    options:
+      wireless_regdom_country:
+        type: str
+        description: >-
+          ISO 3166-1 alpha-2 country code or 00, or null to leave the
+          regulatory domain alone.
+      wireless_regdom_config:
+        type: path
+        description: wireless-regdb configuration file that holds WIRELESS_REGDOM.

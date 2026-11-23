@@ -1,32 +1,36 @@
 # Playbooks
 
-`site.yml` is the only playbook. It applies the [roles](README.md#roles) to
-the workstations of the inventory, from packages to system settings to the
-home directory. `make deploy` runs all of it, and `make deploy TAGS=obs` runs
-the [OBS profile](#obs-profile). The [Ansible guide](README.md) covers the
-inventory, the per-host settings and the `make` targets. Each role's README
-documents its variables.
+`site.yml` is the only playbook. It holds one play that targets `hosts: all`
+with `become: true` and `gather_facts: false`, and applies the
+[roles](README.md#roles) from packages to system settings to the home
+directory. `make deploy` runs all of it, and `make deploy TAGS=obs` runs the
+[OBS profile](#obs-profile). The [Ansible guide](README.md) covers the
+inventory, `host_vars` and `group_vars`, and the `make` targets. Each role's
+README documents its variables.
 
 ## Pre-tasks
 
-These steps are tagged `always` and run before any role, whatever tags you
-pass:
+The `pre_tasks` are tagged `always`, so they run before any role whatever tags
+you pass:
 
-1. `tasks/target.yml` gathers the facts as the SSH user, not as root, so
-   `user_id`, `user_dir` and `env` describe the account whose home the roles
-   configure. It then stops if the machine reports another hostname than its
-   inventory name, because its `host_vars` describe other monitors and
-   packages.
-2. A check of the distribution.
-3. The package groups are selected (`include_role` of `packages`,
-   `tasks_from: selection`). This step reads the host without changing it and
-   sets `packages_selected_groups` for the roles that need it.
+1. With the OBS profile only, an assert refuses `packages_action=reconcile`.
+   It checks an argument, not the host, so it runs before the facts are
+   gathered.
+2. `tasks/target.yml` gathers the facts with `ansible.builtin.setup` as the
+   SSH user (`become: false`), so `user_id`, `user_dir` and `env` describe
+   the account whose home the roles configure. It then runs the
+   [hostname check](README.md#hostname-check).
+3. With the OBS profile only, an assert requires Arch Linux or CachyOS.
+4. An assert requires a supported distribution: Arch Linux or CachyOS,
+   Debian, Ubuntu or Fedora.
+5. `ansible.builtin.include_role` runs the `selection` tasks of the `packages`
+   role. This step reads the host without changing it and sets
+   `packages_selected_groups` for the roles that need it.
 
 ## Roles
 
-`site.yml` supports Arch Linux and CachyOS, Debian and Ubuntu, and Fedora.
-The play runs with `become`, except the home roles, which set
-`become: false`.
+The play runs with `become: true`. The three home roles (`dotfiles`, `audio`,
+`agent_cli`) set `become: false` and run as the SSH user.
 
 | Order | Role               | Tags                         | Runs when                                           |
 | ----: | :----------------- | :--------------------------- | :-------------------------------------------------- |
@@ -52,27 +56,59 @@ The play runs with `become`, except the home roles, which set
 |    20 | `obs`              | `obs`                        | `22_obs` selected                                   |
 |    21 | `print3d`          | `3dprint`                    | not `plan`, Arch Linux, `24_3dprint` selected       |
 
-"not `plan`" means `packages_action` is not `plan`. `make plan` sets it, so
-the run prints the package plan and changes nothing.
+"not `plan`" means `packages_action` is not `plan`. `make plan` sets it. The
+`packages` role then prints the package plan and ends the play with
+`ansible.builtin.meta: end_play`, so no later role runs. That is why
+`dotfiles`, `agent_cli` and `obs` have no plan condition, and why `make plan`
+refuses tags: a tag selection that skips `packages` would skip that stop.
+`vpn` reads `packages_host_groups` when `packages_selected_groups` is not
+defined.
 
-Each role has one tag named after it. Two group tags cover several roles:
-`system` runs the host roles from `lact` to `gnome_keyring` plus the makepkg
-tasks of `package_manager`, and `dotfiles` runs the three home roles. A few
-roles also have finer tags for part of their tasks, listed in their README.
-`make tags` prints every tag.
+## Tags
 
-The [main README](../README.md#ansible-tags) lists the tags with what each
-one does.
+Each role has a tag named after it, except `print3d`, whose tag is `3dprint`
+(a role name cannot start with a digit). Two group tags cover several roles:
+`system` runs the host roles from `lact` to `gnome_keyring`, and `dotfiles`
+runs the three home roles. The `pre_tasks` are tagged `always`. `make tags`
+prints every tag.
 
-### Handlers
+Some roles also tag part of their tasks. These finer tags are listed in the
+role READMEs:
 
-Changed files notify their handlers: Mako and Waybar reload, the audio
-services reload or restart (the SwayOSD server restarts with them), and active
-user units whose definitions changed restart after `daemon-reload`. Service
-jobs are queued without waiting, so a successful play confirms submission,
-not service health: check `systemctl --user --failed` afterwards.
+| Tag                                        | Role              | Tasks                                                                         |
+| :----------------------------------------- | :---------------- | :---------------------------------------------------------------------------- |
+| `pacman`                                   | `package_manager` | Configure `/etc/pacman.conf`. The tasks also carry `packages` and `yay`.      |
+| `makepkg`                                  | `package_manager` | Configure native Arch builds. The tasks also carry `system`.                  |
+| `yay`                                      | `packages`        | Configure pacman and run the AUR flow only.                                   |
+| `kernel_hardening`, `ssh_client_hardening` | `hardening`       | Apply the desktop sysctls, or the SSH client defaults.                        |
+| `dotfiles_deploy`                          | `dotfiles`        | Deploy the configuration and the pinned Vim and Zsh plugins.                  |
+| `systemd`                                  | `dotfiles`        | Deploy user units and enable the units in `dotfiles_systemd_graphical_units`. |
+| `hyprlock_carousel`                        | `dotfiles`        | Render the lock-screen carousel helper.                                       |
+| `dotfiles_claude`                          | `agent_cli`       | Configure Claude Code when `claude` is installed, and RTK.                    |
+| `dotfiles_rtk`                             | `agent_cli`       | Install RTK and merge its Claude Code hook (`agent_cli_rtk_enabled`).         |
+| `dotfiles_codex`                           | `agent_cli`       | Set the Codex status line when `codex` is installed.                          |
+| `obs_config`, `obs_virtualcam`             | `obs`             | Configure OBS, or its virtual camera.                                         |
 
-### Examples
+Because the `pacman` tasks also carry `packages`, `make deploy TAGS=packages`
+configures pacman before it installs anything, and `makepkg` runs with the
+`system` tag.
+
+## Handlers
+
+Roles notify their handlers when a task changes something. Each notified
+handler runs once, after all the roles of the play, unless a role flushes them
+earlier with `ansible.builtin.meta: flush_handlers` (`dns` and the user units
+of `dotfiles` do). Most of them restart or
+reload a service: Mako, Waybar, Hyprland, the audio user services (with the
+SwayOSD server), systemd-resolved, LACT, and the active user units whose
+definitions changed, after a `daemon-reload`. Others only print what needs a
+new login or a reboot, such as a new group membership or new module options.
+
+Service jobs are queued without waiting, so a successful play confirms that
+they were submitted, not that the services are healthy. Check
+`systemctl --user --failed` afterwards.
+
+## Examples
 
 ```sh
 make deploy BECOME_PASS=1
@@ -85,17 +121,16 @@ make deploy BECOME_PASS=1 ANSIBLE_ARGS="-e packages_action=reconcile"
 
 When `obs` is the only tag, `site.yml` installs OBS and nothing else. The
 `packages` role installs `22_obs` and the GPU groups that `lspci` detects,
-then the `obs` role configures OBS. The other roles are skipped by the tag
-selection. With other tags next to it, `obs` only selects the `obs` role and
-the host's usual package selection applies.
+then the `obs` role configures OBS. The tag selection skips the other roles.
+With other tags next to it, `obs` only selects the `packages` and `obs` roles,
+and the host's usual package selection applies.
 
 - The profile needs Arch Linux or CachyOS, the only distributions that
   define the OBS packages.
 - `packages_state_merge_selection: true` adds these groups to the selection
   saved on the workstation instead of replacing it.
 - The profile refuses `packages_action=reconcile`, since every other managed
-  package would look obsolete. The check runs before the facts are gathered.
-  To reconcile, run without tags.
+  package would look obsolete. To reconcile, run without tags.
 - When a `*-dkms` package is selected, the headers of the running kernel are
   installed too. Their name comes from the package that owns
   `/usr/lib/modules/<kernel>/vmlinuz`, for example `linux-zen-headers`.
