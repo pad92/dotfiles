@@ -25,8 +25,9 @@ from ansible_test_environment import (
 ROLES_DIR = ROOT / "ansible/roles"
 SITE = ROOT / "ansible/site.yml"
 VALIDATION_TASK = "Validating arguments against arg spec 'main'"
-# Only the validation tasks carry the always tag inside the roles, so a tag
-# that matches nothing runs them and skips the rest of each role.
+# A tag that matches nothing runs only always-tagged tasks: the argument
+# validation of each role, and the package selection include of the packages
+# role, which the selection pre_task skips by defining packages_selected_groups.
 NO_ROLE_TAG = "argument_spec_validation_only"
 
 
@@ -166,7 +167,8 @@ class RoleArgumentValidationTests(unittest.TestCase):
         # tasks branch on, a boolean, or a list item shape. An unknown gaming
         # action would otherwise fall through to the fail branch unnoticed.
         # packages_action is left out: the selection pre-task of site.yml
-        # asserts it before any role validation runs.
+        # asserts it before any role validation runs. The last item of each
+        # case is a fragment only the expected argument error contains.
         cases = [
             (
                 "gaming",
@@ -183,23 +185,23 @@ class RoleArgumentValidationTests(unittest.TestCase):
             (
                 "iwlwifi",
                 {"iwlwifi_module_options": [{"module": "e1000e", "options": ["x=1"]}]},
-                "module",
+                "got: e1000e found in iwlwifi_module_options",
             ),
             (
                 "iwlwifi",
                 {"iwlwifi_module_options": [{"module": "iwlwifi", "option": "x=1"}]},
-                "option",
+                "iwlwifi_module_options.option. Supported parameters include",
             ),
         ]
         hostname = configured_hostnames()[0]
-        for role, variables, option in cases:
+        for role, variables, expected in cases:
             with self.subTest(role=role, variables=variables):
                 result = self.validate(hostname, variables)
                 output = result.stdout + result.stderr
                 self.assertNotEqual(result.returncode, 0, output)
                 self.assertIn(f"{role} : {VALIDATION_TASK}", output)
                 self.assertIn("Validation of arguments failed", output)
-                self.assertIn(option, output)
+                self.assertIn(expected, output)
 
 
 if __name__ == "__main__":
