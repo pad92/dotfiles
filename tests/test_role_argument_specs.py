@@ -7,6 +7,7 @@ every inventory host while refusing values the roles cannot use.
 """
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -30,6 +31,13 @@ VALIDATION_TASK = "Validating arguments against arg spec 'main'"
 # validation of each role, and the package selection include of the packages
 # role, which the selection pre_task skips by defining packages_selected_groups.
 NO_ROLE_TAG = "argument_spec_validation_only"
+# The platform of the inventory hosts, whatever machine runs the tests.
+HOST_PLATFORM = {
+    "os_family": "Archlinux",
+    "distribution": "Archlinux",
+    "distribution_version": "rolling",
+    "distribution_major_version": "rolling",
+}
 
 
 def load_yaml(path: Path) -> Any:
@@ -69,6 +77,14 @@ def validation_playbook(hostname: str) -> list[dict[str, Any]]:
                 {
                     "name": "Gather the facts the role defaults read",
                     "ansible.builtin.setup": {"gather_subset": ["min", "hardware"]},
+                    "tags": ["always"],
+                },
+                {
+                    # The facts come from the machine running the tests, the
+                    # CI runner is Alpine; the inventory hosts run Arch Linux.
+                    # Cached facts replace those keys in ansible_facts.
+                    "name": "Pin the platform facts to the inventory hosts",
+                    "ansible.builtin.set_fact": {**HOST_PLATFORM, "cacheable": True},
                     "tags": ["always"],
                 },
                 {
@@ -145,12 +161,22 @@ class RoleArgumentValidationTests(unittest.TestCase):
         playbook.write_text(yaml.safe_dump(validation_playbook(hostname)))
         for variables in extra_vars:
             arguments += ["-e", json.dumps(variables)]
+        # The package selection detects the graphics controllers with lspci.
+        # This one lists none, so the result does not depend on the machine
+        # running the tests, the CI runner included.
+        tools = self.work / "bin"
+        tools.mkdir(exist_ok=True)
+        lspci = tools / "lspci"
+        lspci.write_text("#!/bin/sh\nexit 0\n")
+        lspci.chmod(0o755)
+        env = ansible_test_environment(self.work)
+        env["PATH"] = f"{tools}{os.pathsep}{env['PATH']}"
         return run_playbook(
             playbook,
             *arguments,
             "--tags",
             NO_ROLE_TAG,
-            env=ansible_test_environment(self.work),
+            env=env,
             inventory=None,
             cwd=self.work,
         )
