@@ -1,0 +1,14 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy LACT GPU profiles for the detected AMD and NVIDIA GPUs.
+    options:
+      lact_config_path:
+        type: path
+        description: LACT daemon configuration file; it must be a regular file or absent.
+      lact_profiles:
+        type: dict
+        description: AMD GPU settings keyed by profile name.
+      lact_nvidia_profiles:
+        type: dict
+        description: NVIDIA GPU settings keyed by profile name.

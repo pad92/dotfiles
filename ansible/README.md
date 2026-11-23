@@ -165,6 +165,13 @@ gateway.
   and Dependencies.
 - Each role has a `meta/main.yml` with its Galaxy information (description,
   platforms, tags) and no `dependencies`. The play sets the order.
+- Each role has a `meta/argument_specs.yml` that types and describes every
+  variable of `defaults/main.yml`, and nothing else. Ansible checks the role
+  variables against it before the first task of the role, so a wrong type, a
+  value outside a closed set or an unknown key in a structured item stops the
+  run there. The defaults stay in `defaults/main.yml` only.
+  `tests/test_role_argument_specs.py` keeps the specs in step with the
+  defaults and checks that every inventory host passes.
 - Roles stay generic. Hardware and hosts are detected from facts or set in
   `host_vars`, never written in a role.
 - Tasks call modules by their FQCN, such as `ansible.builtin.template`. When

@@ -1,0 +1,22 @@
+---
+argument_specs:
+  main:
+    short_description: Configure GPU kernel modules and regenerate the initramfs.
+    options:
+      gpu_initramfs_generator:
+        type: str
+        choices: [auto, mkinitcpio, dracut]
+        description: >-
+          Initramfs generator to run, or auto to use the only one installed.
+      gpu_initramfs_report_roots:
+        type: list
+        elements: path
+        description: Trees compared before and after generation to report the written images.
+      gpu_i915_enable_guc:
+        type: int
+        choices: [null, -1, 0, 1, 2, 3]
+        description: >-
+          i915 enable_guc module option, or null to leave it unset.
+      gpu_i915_guc_supported:
+        type: bool
+        description: Whether the Intel GPU is known to support enable_guc values 1 to 3.

@@ -1,0 +1,109 @@
+---
+argument_specs:
+  main:
+    short_description: Configure the user PipeWire echo canceller, RNNoise and voice effects
+    options:
+      audio_config_home:
+        type: path
+        description: User configuration directory that holds the PipeWire and WirePlumber files.
+      audio_pipewire_dir:
+        type: path
+        description: Directory of the PipeWire drop-in files the role writes.
+      audio_wireplumber_dir:
+        type: path
+        description: Directory of the WirePlumber drop-in files the role writes.
+      audio_config_directories:
+        type: list
+        elements: path
+        description: Directories the role creates and refuses to write through when one is a link.
+      audio_rate:
+        type: int
+        description: Sample rate in Hz of the echo canceller, RNNoise and voice effect nodes.
+      audio_quantum:
+        type: int
+        description: >-
+          Quantum the echo canceller asks for, a power of two of at least audio_rate / 100 samples.
+      audio_node_prefix:
+        type: str
+        description: Prefix of the name of every node the role creates.
+      audio_clean_source:
+        type: str
+        description: Node name of the clean source, the smart filter nearest the applications.
+      audio_clean_source_description:
+        type: str
+        description: Description shown for the clean source.
+      audio_echo_cancel_source:
+        type: str
+        description: >-
+          Node name of the echo-cancelled source that RNNoise reads when RNNoise is enabled.
+      audio_echo_cancel_source_description:
+        type: str
+        description: Description shown for the echo-cancelled source when RNNoise is enabled.
+      audio_echo_cancel_args:
+        type: dict
+        description: >-
+          WebRTC options of the echo canceller, each written as webrtc.<key> with a boolean value.
+      audio_rnnoise_enabled:
+        type: bool
+        description: Whether RNNoise runs after the echo canceller.
+      audio_rnnoise_controls:
+        type: dict
+        description: RNNoise LADSPA control values, keyed by control name.
+      audio_disable_suspend:
+        type: bool
+        description: Whether WirePlumber keeps ALSA and Bluetooth devices from suspending when idle.
+      audio_voice_effects_group:
+        type: str
+        description: Package group whose selection enables the voice effects.
+      audio_voice_effects_enabled:
+        type: bool
+        description: Whether the voice effect sources are deployed.
+      audio_voice_effects:
+        type: list
+        elements: dict
+        description: >-
+          Voice effects, each a source fed by the clean source through a chain of filter nodes.
+        options:
+          name:
+            type: str
+            required: true
+            description: Effect name, appended to audio_node_prefix to name its source.
+          description:
+            type: str
+            required: true
+            description: Description shown for the effect source.
+          nodes:
+            type: list
+            elements: dict
+            required: true
+            description: Filter-chain nodes of the effect, linked in order.
+            options:
+              type:
+                type: str
+                required: true
+                description: PipeWire filter-chain node type, such as ladspa or builtin.
+              name:
+                type: str
+                required: true
+                description: Node name, unique within the effect.
+              plugin:
+                type: str
+                description: Plugin library of the node, needed for LADSPA nodes.
+              label:
+                type: str
+                required: true
+                description: Plugin label or builtin filter name.
+              control:
+                type: dict
+                description: Control values of the node, keyed by control name.
+              input:
+                type: str
+                description: Input port name when it is not Input (LADSPA) or In (builtin).
+              output:
+                type: str
+                description: Output port name when it is not Output (LADSPA) or Out (builtin).
+      audio_obsolete_files:
+        type: dict
+        description: >-
+          Files the role used to ship, relative to audio_config_home, mapped to the SHA-1 of the
+          shipped content.

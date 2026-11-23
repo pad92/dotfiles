@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Configure pacman and makepkg.
+    options:
+      package_manager_pacman_progress_options:
+        type: list
+        elements: str
+        description: Options added to the [options] section of /etc/pacman.conf.

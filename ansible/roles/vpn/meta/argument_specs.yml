@@ -1,0 +1,39 @@
+---
+argument_specs:
+  main:
+    short_description: Configure a SAML VPN through openfortivpn.
+    options:
+      vpn_gateway_host:
+        type: str
+        description: DNS name of the VPN gateway; empty leaves the VPN unconfigured.
+      vpn_gateway_port:
+        type: int
+        description: TCP port of the VPN gateway.
+      vpn_name:
+        type: str
+        description: Instance name of openfortivpn@.service and base name of its configuration file.
+      vpn_saml_port:
+        type: int
+        description: Local port where the browser hands the SAML session back to openfortivpn.
+      vpn_start_timeout:
+        type: str
+        description: systemd start timeout of the VPN unit, as a time span.
+      vpn_config_dir:
+        type: path
+        description: Directory of the openfortivpn configuration files.
+      vpn_unit_dropin_dir:
+        type: path
+        description: Drop-in directory of the VPN unit instance.
+      vpn_polkit_rule:
+        type: path
+        description: polkit rule that lets vpn_users start and stop the VPN unit.
+      vpn_waybar_config:
+        type: path
+        description: File where the Waybar module reads the unit name and the login URL.
+      vpn_users:
+        type: list
+        elements: str
+        description: Users of an active local session who may start and stop the VPN unit.
+      vpn_unit_directory:
+        type: path
+        description: Directory where openfortivpn@.service is looked up.

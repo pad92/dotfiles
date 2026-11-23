@@ -29,6 +29,9 @@ Release history and changes planned for the next version.
   - New roles `iwlwifi` (per-host module options), `print3d` (`24_3dprint`
     group, F3D thumbnails in Nautilus) and `audio` (PipeWire and WirePlumber
     files).
+  - Every role has a `meta/argument_specs.yml` that types and describes its
+    defaults. A wrong type, a value outside a closed set or an unknown key in
+    a structured item stops the run before the first task of the role.
 - **AppImage**: `appimage-integrate.path` watches `~/Applications` and adds
   each AppImage to the application menu (`appimage-<id>.desktop`, with its
   icon). The desktop entry is read with 7-Zip, so the AppImage never runs. A

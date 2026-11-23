@@ -1,0 +1,24 @@
+---
+argument_specs:
+  main:
+    short_description: Set the AMD P-State EPP preference and the AMD X3D CCD mode.
+    options:
+      cpu_power_amd_pstate_epp:
+        type: str
+        choices: [null, performance, balance_performance, balance_power, power]
+        description: >-
+          EPP preference applied with the powersave governor on unmanaged AMD
+          P-State CPUs, or null to leave EPP unchanged.
+      cpu_power_amd_x3d_mode:
+        type: str
+        choices: [null, frequency, cache]
+        description: AMD X3D CCD mode to set, or null to leave it unchanged.
+      cpu_power_amd_tmpfiles_path:
+        type: path
+        description: tmpfiles.d file that reapplies the AMD CPU settings at boot.
+      cpu_power_managers:
+        type: list
+        elements: str
+        description: >-
+          systemd units of CPU power managers that own EPP while they are
+          active or enabled.

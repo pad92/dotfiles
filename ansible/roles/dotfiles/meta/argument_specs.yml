@@ -1,0 +1,277 @@
+---
+argument_specs:
+  main:
+    short_description: Copy and render the user configuration files into the home directory.
+    options:
+      dotfiles_home:
+        type: path
+        description: Home directory that receives the deployed files.
+      dotfiles_owner:
+        type: str
+        description: User that owns the deployed files.
+      dotfiles_group:
+        type: str
+        description: Group that owns the rendered files.
+      dotfiles_source_repository:
+        type: path
+        description: Controller path of the repository the files are copied from.
+      dotfiles_source_root:
+        type: path
+        description: Controller directory that mirrors the home tree to copy.
+      dotfiles_legacy_link_root:
+        type: path
+        description: >-
+          Directory that earlier versions linked into the home; links that
+          still point there are replaced by copies.
+      dotfiles_icon_theme:
+        type: str
+        description: Icon theme written into the GTK, hyprtoolkit and Mako configurations.
+      dotfiles_icon_theme_parent:
+        type: str
+        description: Parent icon theme that Mako also searches.
+      dotfiles_zsh_dest:
+        type: path
+        description: Zsh tree destination, relative to the home directory.
+      dotfiles_zsh_home:
+        type: path
+        description: Absolute path of the deployed Zsh tree.
+      dotfiles_trees:
+        type: list
+        elements: dict
+        description: Directories copied with only the files Git tracks.
+        options:
+          src:
+            type: path
+            required: true
+            description: Source directory, relative to dotfiles_source_root.
+          dest:
+            type: path
+            required: true
+            description: Destination directory, relative to the home directory.
+      dotfiles_manifest_directory:
+        type: path
+        description: Directory of the manifests that list the files deployed per copied directory.
+      dotfiles_zsh_plugins:
+        type: list
+        elements: dict
+        description: Zsh plugins cloned on the target at a pinned commit.
+        options:
+          repo:
+            type: str
+            required: true
+            description: Git URL of the plugin.
+          dest:
+            type: path
+            required: true
+            description: Clone destination, relative to the home directory.
+          version:
+            type: str
+            required: true
+            description: Commit the clone is moved to.
+      dotfiles_vim_pack_plugins:
+        type: list
+        elements: dict
+        description: Vim plugins cloned on the target at a pinned commit into a Vim package.
+        options:
+          repo:
+            type: str
+            required: true
+            description: Git URL of the plugin.
+          dest:
+            type: path
+            required: true
+            description: Clone destination under .vim/pack/, relative to the home directory.
+          version:
+            type: str
+            required: true
+            description: Commit the clone is moved to.
+      dotfiles_retired_plugin_paths:
+        type: list
+        elements: path
+        description: Vundle and tpm paths removed from the home directory.
+      dotfiles_retired_plugin_parents:
+        type: list
+        elements: path
+        description: Parents of the retired plugin paths, removed once empty.
+      dotfiles_hyprlock_wallpaper_source:
+        type: path
+        description: Hyprlock background, relative to the repository root.
+      dotfiles_hyprlock_wallpaper:
+        type: path
+        description: Hyprlock background destination, relative to the home directory.
+      dotfiles_directories:
+        type: list
+        elements: path
+        description: Directories copied whole, relative to the home directory.
+      dotfiles_directory_handlers:
+        type: dict
+        description: >-
+          Handler names notified when a file changes in a copied directory,
+          keyed by the directory path.
+      dotfiles_file_handlers:
+        type: dict
+        description: Handler names notified when a single file changes, keyed by the file path.
+      dotfiles_systemd_directory:
+        type: path
+        description: User systemd directory, relative to the home directory.
+      dotfiles_openrazer_group:
+        type: str
+        description: Package group whose selection enables the OpenRazer user daemon.
+      dotfiles_openrazer_enabled:
+        type: bool
+        description: Whether the OpenRazer user daemon is enabled.
+      dotfiles_openrazer_unit:
+        type: path
+        description: Unit file of the OpenRazer user daemon.
+      dotfiles_hypridle_enabled:
+        type: bool
+        description: Whether hypridle runs.
+      dotfiles_obsolete_user_unit_links:
+        type: list
+        elements: path
+        description: >-
+          User unit links deleted when they are still symlinks, relative to the
+          user systemd directory.
+      dotfiles_systemd_graphical_units:
+        type: list
+        elements: str
+        description: User units enabled for the graphical session.
+      dotfiles_files:
+        type: list
+        elements: path
+        description: Static files copied, relative to the home directory.
+      dotfiles_templates:
+        type: list
+        elements: dict
+        description: Templates rendered into the home directory.
+        options:
+          src:
+            type: path
+            required: true
+            description: Template path under the role templates directory.
+          dest:
+            type: path
+            required: true
+            description: Destination, relative to the home directory.
+          mode:
+            type: str
+            description: Octal mode of the rendered file, instead of dotfiles_template_mode.
+      dotfiles_template_mode:
+        type: str
+        description: Octal mode of rendered files without their own mode, such as '0644'.
+      dotfiles_portable_form_factors:
+        type: list
+        elements: str
+        description: DMI chassis types treated as portable machines.
+      dotfiles_is_portable:
+        type: bool
+        description: Whether the machine is portable.
+      dotfiles_hypridle_lock_timeout:
+        type: int
+        description: Seconds without input before hypridle locks the session.
+      dotfiles_hypridle_dpms_timeout:
+        type: int
+        description: Seconds without input before hypridle turns the monitors off.
+      dotfiles_hypridle_suspend_timeout:
+        type: int
+        description: Seconds without input before hypridle suspends; 0 never suspends.
+      dotfiles_hypr_monitors:
+        type: list
+        elements: dict
+        description: Physical monitors and their relative placement for the Hyprland layout.
+        options:
+          name:
+            type: str
+            required: true
+            description: Unique layout name used by the relations and the rules.
+          match:
+            type: str
+            description: Prefix of the EDID description that identifies the monitor.
+          internal:
+            type: bool
+            description: True for the built-in panel of a laptop.
+          right_of:
+            type: str
+            description: Layout name of the neighbour on the left.
+          left_of:
+            type: str
+            description: Layout name of the neighbour on the right.
+          above:
+            type: str
+            description: Layout name of the neighbour below.
+          below:
+            type: str
+            description: Layout name of the neighbour above.
+          mode:
+            type: str
+            choices: [preferred, highrr, highres]
+            description: Mode policy of this monitor, instead of dotfiles_hypr_monitor_mode.
+          bitdepth:
+            type: int
+            choices: [8, 10]
+            description: Framebuffer bit depth.
+      dotfiles_hypr_monitor_mode:
+        type: str
+        choices: [preferred, highrr, highres]
+        description: Mode policy for every monitor without its own mode.
+      dotfiles_hypr_workspace_rules:
+        type: list
+        elements: dict
+        description: >-
+          Hyprland workspace rule tables passed to hl.workspace_rule(), with
+          monitor set to a layout name.
+      dotfiles_hypr_window_rules:
+        type: list
+        elements: dict
+        description: >-
+          Hyprland window rule tables passed to hl.window_rule(), with monitor
+          set to a layout name.
+      dotfiles_hypr_effects_enabled:
+        type: bool
+        description: Whether Hyprland blur and shadows stay enabled.
+      dotfiles_hypr_touch_monitor:
+        type: str
+        description: Layout name of the monitor a touchscreen maps to, or empty to leave it unset.
+      dotfiles_waybar_modules_right:
+        type: list
+        elements: raw
+        description: >-
+          Waybar modules on the right, as module names or nested lists of
+          module names.
+      dotfiles_waybar_portable_modules:
+        type: list
+        elements: str
+        description: Waybar modules shown only on a portable machine.
+      dotfiles_waybar_temperature_sensors:
+        type: list
+        elements: dict
+        description: hwmon temperature sensors shown as temperature#<name> Waybar modules.
+        options:
+          name:
+            type: str
+            required: true
+            description: Unique sensor name used in the module name.
+          label:
+            type: str
+            required: true
+            description: Label shown in the tooltip.
+          hwmon_path:
+            type: path
+            required: true
+            description: Absolute /sys path of the directory that contains the hwmonN directory.
+          input_filename:
+            type: str
+            required: true
+            description: Temperature input file, tempN_input.
+          critical_threshold:
+            type: int
+            description: >-
+              Critical temperature in degrees Celsius, instead of
+              dotfiles_waybar_temperature_critical.
+      dotfiles_waybar_temperature_critical:
+        type: int
+        description: Default critical temperature of the sensors in degrees Celsius.
+      dotfiles_waybar_includes:
+        type: list
+        elements: path
+        description: Waybar configuration files included by the main configuration.

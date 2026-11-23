@@ -1,0 +1,55 @@
+---
+argument_specs:
+  main:
+    short_description: Select, install and reconcile the package groups of the host.
+    options:
+      packages_host_groups:
+        type: list
+        elements: str
+        description: Package groups of this host; null keeps the OS and GPU defaults.
+      packages_state_directory:
+        type: path
+        description: Directory where the saved selection and the owned packages are recorded.
+      packages_action:
+        type: str
+        choices: [install, plan, reconcile]
+        description: >-
+          plan is read-only, install adds packages, reconcile also removes
+          what the role owns and no longer lists.
+      packages_state_merge_selection:
+        type: bool
+        description: Add the selection to the saved one instead of replacing it.
+      packages_upgrade_system:
+        type: bool
+        description: On Arch Linux, upgrade the system before installing missing packages.
+      packages_aur_action:
+        type: str
+        choices: [ask, install, skip]
+        description: Whether AUR packages are installed, asked for, or skipped.
+      packages_aur_helper_preference:
+        type: list
+        elements: str
+        description: AUR helpers, in order of preference.
+      packages_razer_detection:
+        type: bool
+        description: Add packages_razer_group when a Razer USB device is connected.
+      packages_razer_required_group:
+        type: str
+        description: Group the selection must hold for the Razer detection to run.
+      packages_razer_group:
+        type: str
+        description: Group added by the Razer detection.
+      packages_razer_usb_vendor_id:
+        type: str
+        description: Razer USB vendor ID as a quoted hexadecimal string.
+      packages_usb_sysfs_devices:
+        type: path
+        description: Directory where the USB devices are read.
+      packages_gaming_required_packages:
+        type: list
+        elements: str
+        description: Packages the gaming role checks before configuring services.
+      packages_protected:
+        type: list
+        elements: str
+        description: Extra packages that removals never touch.

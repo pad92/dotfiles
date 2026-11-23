@@ -1,0 +1,39 @@
+---
+argument_specs:
+  main:
+    short_description: Enable package services and manage the package user groups.
+    options:
+      package_services_by_group:
+        type: dict
+        description: >-
+          Units to enable and start, keyed by OS family, then by package group,
+          each group mapping to a list of unit names.
+      package_services_boot_only:
+        type: list
+        elements: str
+        description: Units that are enabled but not started, because they only run at boot.
+      package_services_unit_directory:
+        type: path
+        description: Directory where the unit files of installed packages are looked up.
+      package_services_device_requirements:
+        type: dict
+        description: >-
+          Device each unit needs, keyed by unit name, with a path and the
+          file patterns that must match an entry in it.
+      package_services_user_groups_by_group:
+        type: dict
+        description: >-
+          System groups the regular users join, keyed by OS family, then by
+          package group, each group mapping to a list of group names.
+      package_services_retired_user_groups:
+        type: dict
+        description: >-
+          Groups the regular users must leave, keyed by OS family, each
+          mapping to a list of group names.
+      package_services_nice_limits_file:
+        type: path
+        description: limits.d file that caps the nice value of the regular users at 0.
+      package_services_group_users:
+        type: list
+        elements: str
+        description: Regular users who join the package groups and get the nice limit.

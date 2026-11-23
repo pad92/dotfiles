@@ -1,0 +1,31 @@
+---
+argument_specs:
+  main:
+    short_description: Write the Intel Wi-Fi kernel module options.
+    options:
+      iwlwifi_module_options:
+        type: list
+        elements: dict
+        description: >-
+          Options per Intel Wi-Fi module; null leaves the file alone and an
+          empty list removes it.
+        options:
+          module:
+            type: str
+            required: true
+            choices: [iwlwifi, iwlmvm, iwldvm]
+            description: Module that receives the options, listed at most once.
+          options:
+            type: list
+            elements: str
+            required: true
+            description: Module options written as name=value.
+      iwlwifi_modprobe_path:
+        type: path
+        description: modprobe file the role writes.
+      iwlwifi_vendor_modprobe_path:
+        type: path
+        description: Packaged modprobe file that iwlwifi_modprobe_path must not mask.
+      iwlwifi_module_directory:
+        type: path
+        description: Directory where loaded kernel modules are listed.
