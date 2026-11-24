@@ -93,13 +93,18 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(visualizer.bar_count(0), 1)
         self.assertEqual(visualizer.bar_count(10**6), visualizer.MAX_BARS)
 
-    def test_widest_monitor_uses_logical_rotated_widths(self):
+    def test_widest_monitor_uses_rotated_pixel_widths(self):
         monitors = [
-            {"width": 2560, "height": 1440, "scale": 2.0, "transform": 0},
             {"width": 1080, "height": 1920, "scale": 1.0, "transform": 1},
             {"width": "broken"},
         ]
         self.assertEqual(visualizer.widest_monitor(monitors), 1920)
+
+    def test_widest_monitor_ignores_the_scale(self):
+        # hyprlock does not scale font_size: on a scale 2 output the bars may
+        # be as narrow as at scale 1, so they must cover the pixel width.
+        monitors = [{"width": 2560, "height": 1440, "scale": 2.0, "transform": 0}]
+        self.assertEqual(visualizer.widest_monitor(monitors), 2560)
         self.assertEqual(visualizer.widest_monitor([]), visualizer.FALLBACK_WIDTH)
 
 
@@ -182,9 +187,37 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertTrue(wait_for(marker.exists))
 
+    def fake_daemon_with_marker(self):
+        marker = self.root / "started"
+        fake_daemon = self.root / "daemon"
+        fake_daemon.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        fake_daemon.chmod(0o755)
+        return fake_daemon, marker
+
+    def test_label_starts_the_daemon_when_its_pid_was_reused(self):
+        # The pid file names a live process, but one that started at another
+        # time than the daemon: the pid now belongs to someone else.
+        fake_daemon, marker = self.fake_daemon_with_marker()
+        self.state.mkdir()
+        start = int(visualizer.start_time(os.getpid()))
+        (self.state / "pid").write_text(f"{os.getpid()}\n{start + 1}\n")
+        (self.state / "frame").write_text("stale\n")
+
+        result = subprocess.run(
+            ["sh", str(LABEL)],
+            env={**self.env, "HYPRLOCK_VISUALIZER_DAEMON": str(fake_daemon)},
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(result.stdout, "")
+        self.assertTrue(wait_for(marker.exists))
+
     def test_label_prints_the_frame_of_a_live_daemon(self):
         self.state.mkdir()
-        (self.state / "pid").write_text(f"{os.getpid()}\n")
+        (self.state / "pid").write_text(
+            f"{os.getpid()}\n{visualizer.start_time(os.getpid())}\n"
+        )
         (self.state / "frame").write_text("<span>top\nmiddle\nbottom</span>")
         result = subprocess.run(
             ["sh", str(LABEL)], env=self.env, capture_output=True, text=True, check=True
@@ -200,7 +233,10 @@ class ProcessTests(unittest.TestCase):
 
         frame = self.state / "frame"
         self.assertTrue(wait_for(lambda: frame.exists() and "█" in frame.read_text()))
-        self.assertEqual((self.state / "pid").read_text(), f"{daemon.pid}\n")
+        self.assertEqual(
+            (self.state / "pid").read_text(),
+            f"{daemon.pid}\n{visualizer.start_time(daemon.pid)}\n",
+        )
         self.assertIn(
             f"bars = {visualizer.bar_count(visualizer.FALLBACK_WIDTH)}\n",
             (self.state / "cava.conf").read_text(),
@@ -244,6 +280,26 @@ class ProcessTests(unittest.TestCase):
         self.assertIsNone(daemon.poll())
         self.stop_fake_hyprlock(hyprlock)
         self.assertEqual(daemon.wait(timeout=5), 0)
+
+    def test_daemon_stays_idle_when_cava_cannot_start(self):
+        # A cava that fails to exec must not crash the daemon: its pid file
+        # would be left behind and the label would start a new daemon, failing
+        # the same way, every 50 ms.
+        self.write_tool("cava", "exit 0")
+        (self.bin / "cava").write_text("#!/nonexistent/interpreter\n")
+        hyprlock = self.start_fake_hyprlock()
+        daemon = subprocess.Popen(
+            [str(DAEMON)], env=self.env, stderr=subprocess.DEVNULL
+        )
+        self.addCleanup(daemon.wait)
+        self.addCleanup(daemon.kill)
+        self.assertTrue(wait_for((self.state / "pid").exists))
+        time.sleep(0.5)
+        self.assertIsNone(daemon.poll())
+        self.assertTrue((self.state / "pid").exists())
+        self.stop_fake_hyprlock(hyprlock)
+        self.assertEqual(daemon.wait(timeout=5), 0)
+        self.assertFalse((self.state / "pid").exists())
 
     @staticmethod
     def read_eof(fd):

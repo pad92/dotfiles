@@ -54,6 +54,12 @@ Release history and changes planned for the next version.
     three rows, each bar a yellow tip over orange and red, in Gruvbox colors
     at 65 % opacity. `visualizer.py` reads `cava` while Hyprlock runs and
     stops with it. Without `cava` the strip stays empty.
+  - If `cava` fails to start, the daemon keeps its pid file and waits for
+    Hyprlock to exit, so the label does not start a new one every frame. The
+    label checks the process start time as well as the pid, so a reused pid
+    does not pass for the daemon.
+  - The bar count follows the monitor width in pixels, ignoring the scale, so
+    the strip covers the whole edge on a scaled output too.
   - The media block sits higher, above the bars.
   - `11_hyprland` installs `cava`.
 - **Makefile**:

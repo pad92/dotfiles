@@ -124,17 +124,22 @@ def bar_count(width_px):
 
 
 def widest_monitor(monitors):
-    """Returns the widest logical width among `hyprctl monitors -j` entries."""
+    """Returns the widest width in pixels among `hyprctl monitors -j` entries.
+
+    The width is not divided by the monitor scale: hyprlock passes font_size
+    to Pango unscaled, so on a scaled output the glyphs may cover as few
+    pixels as at scale 1. Too many bars only get clipped, too few would leave
+    part of the edge empty.
+    """
     widths = []
     for monitor in monitors:
         try:
             width, height = float(monitor["width"]), float(monitor["height"])
-            scale = float(monitor.get("scale") or 1) or 1
             transform = int(monitor.get("transform") or 0)
         except (KeyError, TypeError, ValueError):
             continue
         # Odd transforms rotate the output by 90 or 270 degrees.
-        widths.append((height if transform % 2 else width) / scale)
+        widths.append(height if transform % 2 else width)
     return max(widths, default=FALLBACK_WIDTH)
 
 
@@ -203,6 +208,17 @@ def runtime_dir():
     return path
 
 
+def start_time(pid="self"):
+    """Returns the start time of a process, field 22 of /proc/<pid>/stat.
+
+    visualizer.sh compares it with the pid file, so a reused pid does not
+    pass for a live daemon.
+    """
+    stat = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+    # The command name in parentheses may hold spaces: split after it.
+    return stat.rsplit(")", 1)[1].split()[19]
+
+
 def write_atomic(path, text):
     tmp = path.with_name(f".{path.name}.{os.getpid()}")
     tmp.write_text(text, encoding="utf-8")
@@ -238,25 +254,37 @@ class Daemon:
         while hyprlock_running():
             time.sleep(CHECK_INTERVAL_SECONDS)
 
+    def start_cava(self):
+        """Returns the running cava, or None when it is missing or fails to
+        start. The caller then idles: exiting would remove the pid file and
+        the label would start a new daemon, failing the same way, every
+        frame."""
+        cava = shutil.which("cava")
+        if cava is None:
+            return None
+        config = self.state_dir / "cava.conf"
+        try:
+            write_atomic(config, cava_config(bar_count(monitor_width())))
+            return subprocess.Popen(
+                [cava, "-p", str(config)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError as error:
+            print(f"hyprlock-visualizer: cannot start cava: {error}", file=sys.stderr)
+            return None
+
     def run(self):
         signal.signal(signal.SIGTERM, self.cleanup)
         signal.signal(signal.SIGINT, self.cleanup)
-        write_atomic(self.pid_path, f"{os.getpid()}\n")
+        write_atomic(self.pid_path, f"{os.getpid()}\n{start_time()}\n")
         self.write_frame("")
 
-        cava = shutil.which("cava")
-        if cava is None:
+        self.cava = self.start_cava()
+        if self.cava is None:
             self.idle()
             self.cleanup()
-
-        config = self.state_dir / "cava.conf"
-        write_atomic(config, cava_config(bar_count(monitor_width())))
-        self.cava = subprocess.Popen(
-            [cava, "-p", str(config)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
 
         selector = selectors.DefaultSelector()
         selector.register(self.cava.stdout, selectors.EVENT_READ)
