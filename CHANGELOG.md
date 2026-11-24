@@ -49,6 +49,13 @@ Release history and changes planned for the next version.
     `~/Videos/Recordings`, with a Waybar `REC` indicator.
   - `bitdepth: 10` in a monitor entry for a 10-bit framebuffer.
   - `SUPER + F1` lists the keybindings; every bind needs a description.
+- **Hyprlock**:
+  - Winamp-style "fire" bars move with the audio along the bottom edge:
+    three rows, each bar a yellow tip over orange and red, in Gruvbox colors
+    at 65 % opacity. `visualizer.py` reads `cava` while Hyprlock runs and
+    stops with it. Without `cava` the strip stays empty.
+  - The media block sits higher, above the bars.
+  - `11_hyprland` installs `cava`.
 - **Makefile**:
   - `make clean` removes backups and migration leftovers (asks for `REMOVE`,
     `DRY_RUN=1` only lists).
