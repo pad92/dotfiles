@@ -65,7 +65,8 @@ Release history and changes planned for the next version.
   - Glyphs and colors are looked up in tables built once at startup, and
     neighboring cells of the same color share a span: a frame costs about a
     third of the CPU it used to.
-  - The media block sits higher, above the bars.
+  - The media block stays in the bottom-left corner, opaque and drawn over
+    the bars.
   - `11_hyprland` installs `cava`.
 - **Makefile**:
   - `make clean` removes backups and migration leftovers (asks for `REMOVE`,

@@ -144,6 +144,18 @@ class ConfigTests(unittest.TestCase):
         # Drawn before every other widget, so it stays underneath.
         self.assertLess(block.start(), text.index("input-field {"))
 
+    def test_music_block_is_opaque_and_above_the_visualizer(self):
+        text = CONFIG.read_text()
+        colors = dict(re.findall(r"^(\$\w+) = rgba\((\w{8})\)$", text, re.MULTILINE))
+        blocks = re.findall(r"\w+ \{[^}]*playerctlock\.sh[^}]*\}", text)
+        self.assertEqual(len(blocks), 6)
+        # The visualizer label has the default zindex, 0.
+        for block in blocks:
+            self.assertRegex(block, r"\n    zindex = [1-9]\d*\n", block)
+            color = re.search(r"\n    color = (\$\w+)\n", block)
+            if color:
+                self.assertTrue(colors[color.group(1)].endswith("ff"), block)
+
     def test_the_carousel_lock_screen_has_no_visualizer(self):
         self.assertNotIn("visualizer", CAROUSEL.read_text())
 
