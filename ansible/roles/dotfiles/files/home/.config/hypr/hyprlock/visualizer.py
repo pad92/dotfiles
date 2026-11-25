@@ -3,8 +3,7 @@
 
 visualizer.sh starts this daemon from the label. It runs cava, turns each
 frame into ROWS lines of Pango markup (stacked block characters colored by
-height, with peak markers that fall back slowly, like a Winamp spectrum) and
-writes it to $XDG_RUNTIME_DIR/hyprlock-visualizer/frame. It stops
+height, like a Winamp spectrum) and writes it to $XDG_RUNTIME_DIR/hyprlock-visualizer/frame. It stops
 cava and exits once no hyprlock process of the user is left.
 """
 
@@ -36,11 +35,6 @@ EXTRA_BARS = 2
 FALLBACK_WIDTH = 1920
 MAX_BARS = 512
 FRAMERATE = 25
-# Peak markers stay at the highest recent level of their bar for HOLD_FRAMES
-# frames, then fall FALL_PER_FRAME levels a frame: a row (STEPS levels) in
-# about a third of a second, the whole strip in about two seconds.
-HOLD_FRAMES = 8
-FALL_PER_FRAME = 1
 
 STEPS = 8
 MAX_LEVEL = ROWS * STEPS
@@ -52,8 +46,6 @@ GLYPHS = EMPTY + "▁▂▃▄▅▆▇█"
 # first, so quiet bars stay green and only loud ones reach the red. Gruvbox
 # Dark, kept in sync with hyprlock.conf. One color per row.
 ROW_COLORS = ("#b8bb26", "#b8bb26", "#fabd2f", "#fabd2f", "#fe8019", "#fb4934")
-PEAK_GLYPH = "▔"
-PEAK_COLOR = "#a89984"
 # Faint: the strip is a backdrop behind the clock and the music block.
 ALPHA = "20%"
 
@@ -72,43 +64,17 @@ def parse_frame(line):
         return None
 
 
-def cell(level, row, peak=0):
-    """Returns the glyph and color of a bar at row (0 is the bottom), with
-    its peak marker in the cell that holds the peak, above the bar."""
+def cell(level, row):
+    """Returns the glyph and color of a bar at row (0 is the bottom)."""
     full, part = divmod(level, STEPS)
     if row < full:
         return GLYPHS[STEPS], ROW_COLORS[row]
     if row == full and part:
         return GLYPHS[part], ROW_COLORS[row]
-    if peak > 0 and row == (peak - 1) // STEPS:
-        return PEAK_GLYPH, PEAK_COLOR
     return EMPTY, None
 
 
-class Peaks:
-    """Tracks the peak marker of every bar across frames."""
-
-    def __init__(self):
-        self.levels = []
-        self.holds = []
-
-    def update(self, levels):
-        """Returns the peak of every bar after a frame of levels."""
-        if len(levels) != len(self.levels):
-            self.levels = [0] * len(levels)
-            self.holds = [0] * len(levels)
-        for index, level in enumerate(levels):
-            if level >= self.levels[index]:
-                self.levels[index] = level
-                self.holds[index] = HOLD_FRAMES
-            elif self.holds[index]:
-                self.holds[index] -= 1
-            else:
-                self.levels[index] = max(level, self.levels[index] - FALL_PER_FRAME)
-        return list(self.levels)
-
-
-def render_row(levels, peaks, row):
+def render_row(levels, row):
     parts = []
     run = []
     run_color = None
@@ -125,8 +91,8 @@ def render_row(levels, peaks, row):
             )
         run.clear()
 
-    for level, peak in zip(levels, peaks):
-        glyph, color = cell(level, row, peak)
+    for level in levels:
+        glyph, color = cell(level, row)
         if color != run_color:
             flush()
             run_color = color
@@ -135,14 +101,12 @@ def render_row(levels, peaks, row):
     return "".join(parts)
 
 
-def render(levels, peaks=None):
+def render(levels):
     """Returns the ROWS lines of markup of one frame, top row first, or ""
-    when every bar is silent and every peak has fallen."""
-    if peaks is None:
-        peaks = [0] * len(levels)
-    if not any(levels) and not any(peaks):
+    when every bar is silent."""
+    if not any(levels):
         return ""
-    rows = "\n".join(render_row(levels, peaks, row) for row in reversed(range(ROWS)))
+    rows = "\n".join(render_row(levels, row) for row in reversed(range(ROWS)))
     return f'<span letter_spacing="{LETTER_SPACING_PT * 1024}">{rows}</span>'
 
 
@@ -267,7 +231,6 @@ class Daemon:
         self.pid_path = state_dir / "pid"
         self.cava = None
         self.last_frame = None
-        self.peaks = Peaks()
 
     def write_frame(self, markup):
         if markup != self.last_frame:
@@ -341,7 +304,7 @@ class Daemon:
                 if lines:
                     levels = parse_frame(lines[-1].decode("ascii", "replace"))
                     if levels is not None:
-                        self.write_frame(render(levels, self.peaks.update(levels)))
+                        self.write_frame(render(levels))
             if time.monotonic() >= next_check:
                 if not hyprlock_running():
                     break

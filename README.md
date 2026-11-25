@@ -224,10 +224,9 @@ the encoder does not start.
 
 Hyprlock shows the time, date, battery, and current media, with the
 clock and date at the top and the password field at the bottom, leaving the
-wallpaper sharp and its center clear. Along the bottom edge, a faint Winamp-style
-spectrum driven by `cava`, with falling peak markers, follows whatever is
-playing. Its carousel option, without the spectrum, uses the
-`awww` sources; see the
+wallpaper sharp and its center clear. A faint Winamp-style spectrum, fed by
+`cava`, moves with whatever is playing along the bottom edge. The carousel
+option has no spectrum and uses the `awww` sources; see the
 [Hyprlock template](./ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2).
 
 ## Gaming and GPUs

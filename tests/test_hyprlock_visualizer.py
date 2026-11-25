@@ -80,35 +80,12 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(visualizer.cell(0, 0), (NBSP, None))
         self.assertEqual(visualizer.cell(visualizer.STEPS, 1), (NBSP, None))
 
-    def test_peak_marker_sits_in_the_cell_of_the_peak_above_the_bar(self):
-        steps = visualizer.STEPS
-        peak = (visualizer.PEAK_GLYPH, visualizer.PEAK_COLOR)
-        self.assertEqual(visualizer.cell(steps, 3, peak=3 * steps + 2), peak)
-        self.assertEqual(visualizer.cell(steps, 3, peak=4 * steps), peak)
-        self.assertEqual(visualizer.cell(steps, 2, peak=3 * steps + 2), (NBSP, None))
-        # Inside the bar, the bar wins.
-        self.assertEqual(
-            visualizer.cell(steps + 3, 1, peak=steps + 3)[0], visualizer.GLYPHS[3]
-        )
-
-    def test_peaks_hold_then_fall_to_the_bar(self):
-        peaks = visualizer.Peaks()
-        self.assertEqual(peaks.update([0, 20]), [0, 20])
-        for _ in range(visualizer.HOLD_FRAMES):
-            self.assertEqual(peaks.update([0, 5]), [0, 20])
-        self.assertEqual(peaks.update([0, 5]), [0, 20 - visualizer.FALL_PER_FRAME])
-        for _ in range(40):
-            last = peaks.update([0, 5])
-        self.assertEqual(last, [0, 5])
-        # A louder frame lifts the peak at once.
-        self.assertEqual(peaks.update([3, 30]), [3, 30])
-        # A new bar count starts over.
-        self.assertEqual(peaks.update([7]), [7])
-
-    def test_falling_peaks_keep_drawing_after_the_audio_stops(self):
-        markup = visualizer.render([0, 0], [0, visualizer.STEPS + 1])
-        self.assertIn(visualizer.PEAK_GLYPH, markup)
-        self.assertEqual(visualizer.render([0, 0], [0, 0]), "")
+    def test_frames_hold_only_bar_glyphs(self):
+        # No peak marker or other glyph above the bars: only blocks and gaps.
+        levels = [level % (visualizer.MAX_LEVEL + 1) for level in range(80)]
+        text = re.sub(r"<[^>]*>", "", visualizer.render(levels))
+        self.assertLessEqual(set(text) - {"\n"}, set(visualizer.GLYPHS))
+        self.assertEqual(visualizer.render([0, 0]), "")
 
     def test_every_row_has_one_cell_per_bar(self):
         levels = [level % (visualizer.MAX_LEVEL + 1) for level in range(80)]
