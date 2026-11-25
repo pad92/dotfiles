@@ -2,8 +2,9 @@
 """Feeds the audio visualizer label at the bottom of hyprlock.
 
 visualizer.sh starts this daemon from the label. It runs cava, turns each
-frame into ROWS lines of Pango markup (stacked block characters in "fire"
-colors) and writes it to $XDG_RUNTIME_DIR/hyprlock-visualizer/frame. It stops
+frame into ROWS lines of Pango markup (stacked block characters colored by
+height, with peak markers that fall back slowly, like a Winamp spectrum) and
+writes it to $XDG_RUNTIME_DIR/hyprlock-visualizer/frame. It stops
 cava and exits once no hyprlock process of the user is left.
 """
 
@@ -19,11 +20,12 @@ import sys
 import time
 from pathlib import Path
 
-# Must match the label in hyprlock.conf and hyprlock-carousel.conf. At 10 pt
-# the block glyphs of JetBrains Mono stack without a gap between rows.
-FONT_SIZE_PT = 10
+# Must match the label in hyprlock.conf (the carousel lock screen has none).
+# At 48 pt the block glyphs of JetBrains Mono stack without a gap between rows,
+# and six rows (516 px) fill about the bottom third of a 1440 px screen.
+FONT_SIZE_PT = 48
 LETTER_SPACING_PT = 2
-ROWS = 3
+ROWS = 6
 # JetBrains Mono advance: 600 units of a 1000-unit em. Pango renders points at
 # 96 dpi.
 ADVANCE_EM = 0.6
@@ -34,6 +36,11 @@ EXTRA_BARS = 2
 FALLBACK_WIDTH = 1920
 MAX_BARS = 512
 FRAMERATE = 25
+# Peak markers stay at the highest recent level of their bar for HOLD_FRAMES
+# frames, then fall FALL_PER_FRAME levels a frame: a row (STEPS levels) in
+# about a third of a second, the whole strip in about two seconds.
+HOLD_FRAMES = 8
+FALL_PER_FRAME = 1
 
 STEPS = 8
 MAX_LEVEL = ROWS * STEPS
@@ -41,11 +48,14 @@ MAX_LEVEL = ROWS * STEPS
 # spaces, which would shift the centered bars.
 EMPTY = "\u00a0"
 GLYPHS = EMPTY + "▁▂▃▄▅▆▇█"
-# "Fire" style: the color follows the distance from the top of the bar, so
-# every bar has a yellow tip over an orange then red body. Gruvbox Dark, kept
-# in sync with hyprlock.conf.
-FIRE = ("#fabd2f", "#fe8019", "#fb4934", "#cc241d")
-ALPHA = "65%"
+# Winamp-style spectrum: the color follows the height of the row, bottom row
+# first, so quiet bars stay green and only loud ones reach the red. Gruvbox
+# Dark, kept in sync with hyprlock.conf. One color per row.
+ROW_COLORS = ("#b8bb26", "#b8bb26", "#fabd2f", "#fabd2f", "#fe8019", "#fb4934")
+PEAK_GLYPH = "▔"
+PEAK_COLOR = "#a89984"
+# Faint: the strip is a backdrop behind the clock and the music block.
+ALPHA = "20%"
 
 CHECK_INTERVAL_SECONDS = 1.0
 
@@ -62,20 +72,43 @@ def parse_frame(line):
         return None
 
 
-def cell(level, row):
-    """Returns the glyph and color of a bar at row (0 is the bottom)."""
+def cell(level, row, peak=0):
+    """Returns the glyph and color of a bar at row (0 is the bottom), with
+    its peak marker in the cell that holds the peak, above the bar."""
     full, part = divmod(level, STEPS)
     if row < full:
-        glyph = GLYPHS[STEPS]
-    elif row == full and part:
-        glyph = GLYPHS[part]
-    else:
-        return EMPTY, None
-    top = full if part else full - 1
-    return glyph, FIRE[min(top - row, len(FIRE) - 1)]
+        return GLYPHS[STEPS], ROW_COLORS[row]
+    if row == full and part:
+        return GLYPHS[part], ROW_COLORS[row]
+    if peak > 0 and row == (peak - 1) // STEPS:
+        return PEAK_GLYPH, PEAK_COLOR
+    return EMPTY, None
 
 
-def render_row(levels, row):
+class Peaks:
+    """Tracks the peak marker of every bar across frames."""
+
+    def __init__(self):
+        self.levels = []
+        self.holds = []
+
+    def update(self, levels):
+        """Returns the peak of every bar after a frame of levels."""
+        if len(levels) != len(self.levels):
+            self.levels = [0] * len(levels)
+            self.holds = [0] * len(levels)
+        for index, level in enumerate(levels):
+            if level >= self.levels[index]:
+                self.levels[index] = level
+                self.holds[index] = HOLD_FRAMES
+            elif self.holds[index]:
+                self.holds[index] -= 1
+            else:
+                self.levels[index] = max(level, self.levels[index] - FALL_PER_FRAME)
+        return list(self.levels)
+
+
+def render_row(levels, peaks, row):
     parts = []
     run = []
     run_color = None
@@ -92,8 +125,8 @@ def render_row(levels, row):
             )
         run.clear()
 
-    for level in levels:
-        glyph, color = cell(level, row)
+    for level, peak in zip(levels, peaks):
+        glyph, color = cell(level, row, peak)
         if color != run_color:
             flush()
             run_color = color
@@ -102,19 +135,21 @@ def render_row(levels, row):
     return "".join(parts)
 
 
-def render(levels):
+def render(levels, peaks=None):
     """Returns the ROWS lines of markup of one frame, top row first, or ""
-    when every bar is silent."""
-    if not any(levels):
+    when every bar is silent and every peak has fallen."""
+    if peaks is None:
+        peaks = [0] * len(levels)
+    if not any(levels) and not any(peaks):
         return ""
-    rows = "\n".join(render_row(levels, row) for row in reversed(range(ROWS)))
+    rows = "\n".join(render_row(levels, peaks, row) for row in reversed(range(ROWS)))
     return f'<span letter_spacing="{LETTER_SPACING_PT * 1024}">{rows}</span>'
 
 
 def bar_count(width_px):
     """Returns how many bars fill a line of width_px logical pixels."""
     # Measured with PangoCairo: hinting rounds the glyph advance to whole
-    # pixels and the letter spacing is truncated (10 pt: 8 + 2 px).
+    # pixels and the letter spacing is truncated (48 pt: 38 + 2 px).
     cell_px = round(FONT_SIZE_PT * ADVANCE_EM * PT_TO_PX) + int(
         LETTER_SPACING_PT * PT_TO_PX
     )
@@ -232,6 +267,7 @@ class Daemon:
         self.pid_path = state_dir / "pid"
         self.cava = None
         self.last_frame = None
+        self.peaks = Peaks()
 
     def write_frame(self, markup):
         if markup != self.last_frame:
@@ -305,7 +341,7 @@ class Daemon:
                 if lines:
                     levels = parse_frame(lines[-1].decode("ascii", "replace"))
                     if levels is not None:
-                        self.write_frame(render(levels))
+                        self.write_frame(render(levels, self.peaks.update(levels)))
             if time.monotonic() >= next_check:
                 if not hyprlock_running():
                     break

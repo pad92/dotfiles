@@ -50,10 +50,13 @@ Release history and changes planned for the next version.
   - `bitdepth: 10` in a monitor entry for a 10-bit framebuffer.
   - `SUPER + F1` lists the keybindings; every bind needs a description.
 - **Hyprlock**:
-  - Winamp-style "fire" bars move with the audio along the bottom edge:
-    three rows, each bar a yellow tip over orange and red, in Gruvbox colors
-    at 65 % opacity. `visualizer.py` reads `cava` while Hyprlock runs and
-    stops with it. Without `cava` the strip stays empty.
+  - A Winamp-style spectrum moves with the audio behind the bottom third of
+    the screen, under the clock and the music block: six rows at 48 pt, green
+    at the bottom, then yellow, orange and red at the top, with gray peak
+    markers that hold, then fall back slowly. Gruvbox colors at 20 %
+    opacity. `visualizer.py` reads `cava` while Hyprlock runs and stops with
+    it. Without `cava` the strip stays empty. The carousel lock screen has no
+    spectrum.
   - If `cava` fails to start, the daemon keeps its pid file and waits for
     Hyprlock to exit, so the label does not start a new one every frame. The
     label checks the process start time as well as the pid, so a reused pid

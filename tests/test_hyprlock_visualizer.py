@@ -12,9 +12,9 @@ ROOT = Path(__file__).parents[1]
 HYPRLOCK_DIR = ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock"
 DAEMON = HYPRLOCK_DIR / "visualizer.py"
 LABEL = HYPRLOCK_DIR / "visualizer.sh"
-CONFIGS = (
-    ROOT / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2",
-    ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock-carousel.conf",
+CONFIG = ROOT / "ansible/roles/dotfiles/templates/home/.config/hypr/hyprlock.conf.j2"
+CAROUSEL = (
+    ROOT / "ansible/roles/dotfiles/files/home/.config/hypr/hyprlock-carousel.conf"
 )
 
 spec = importlib.util.spec_from_file_location("hyprlock_visualizer", DAEMON)
@@ -46,8 +46,9 @@ class RenderTests(unittest.TestCase):
     def test_silence_renders_nothing(self):
         self.assertEqual(visualizer.render([0, 0, 0]), "")
 
-    def test_fire_colors_follow_the_distance_from_the_top_of_each_bar(self):
-        yellow, orange, red, _ = visualizer.FIRE
+    def test_colors_follow_the_height_of_each_row(self):
+        colors = visualizer.ROW_COLORS
+        alpha = visualizer.ALPHA
         steps = visualizer.STEPS
         # Bar 1 fills two and a half rows, bar 2 one full row.
         markup = visualizer.render([0, 2 * steps + 4, steps])
@@ -56,19 +57,58 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(len(rows), visualizer.ROWS)
         top, middle, bottom = rows[-3:]
         self.assertIn(
-            f'{NBSP}<span foreground="{yellow}" fgalpha="65%">▄</span>{NBSP}', top
+            f'{NBSP}<span foreground="{colors[2]}" fgalpha="{alpha}">▄</span>{NBSP}',
+            top,
         )
         self.assertIn(
-            f'{NBSP}<span foreground="{orange}" fgalpha="65%">█</span>{NBSP}', middle
+            f'{NBSP}<span foreground="{colors[1]}" fgalpha="{alpha}">█</span>{NBSP}',
+            middle,
         )
-        # The full bar has its yellow tip on the bottom row, next to the red base.
+        # Both bars share the color of the bottom row, whatever their height.
         self.assertIn(
-            f'<span foreground="{red}" fgalpha="65%">█</span>'
-            f'<span foreground="{yellow}" fgalpha="65%">█</span>',
-            bottom,
+            f'<span foreground="{colors[0]}" fgalpha="{alpha}">██</span>', bottom
         )
         # No ordinary space: hyprlock's text_trim would strip it and shift the bars.
         self.assertNotIn(" ", re.sub(r"<[^>]*>", "", markup))
+
+    def test_every_row_has_its_own_color(self):
+        self.assertEqual(len(visualizer.ROW_COLORS), visualizer.ROWS)
+        top = visualizer.ROWS - 1
+        self.assertEqual(
+            visualizer.cell(visualizer.MAX_LEVEL, top)[1], visualizer.ROW_COLORS[-1]
+        )
+        self.assertEqual(visualizer.cell(0, 0), (NBSP, None))
+        self.assertEqual(visualizer.cell(visualizer.STEPS, 1), (NBSP, None))
+
+    def test_peak_marker_sits_in_the_cell_of_the_peak_above_the_bar(self):
+        steps = visualizer.STEPS
+        peak = (visualizer.PEAK_GLYPH, visualizer.PEAK_COLOR)
+        self.assertEqual(visualizer.cell(steps, 3, peak=3 * steps + 2), peak)
+        self.assertEqual(visualizer.cell(steps, 3, peak=4 * steps), peak)
+        self.assertEqual(visualizer.cell(steps, 2, peak=3 * steps + 2), (NBSP, None))
+        # Inside the bar, the bar wins.
+        self.assertEqual(
+            visualizer.cell(steps + 3, 1, peak=steps + 3)[0], visualizer.GLYPHS[3]
+        )
+
+    def test_peaks_hold_then_fall_to_the_bar(self):
+        peaks = visualizer.Peaks()
+        self.assertEqual(peaks.update([0, 20]), [0, 20])
+        for _ in range(visualizer.HOLD_FRAMES):
+            self.assertEqual(peaks.update([0, 5]), [0, 20])
+        self.assertEqual(peaks.update([0, 5]), [0, 20 - visualizer.FALL_PER_FRAME])
+        for _ in range(40):
+            last = peaks.update([0, 5])
+        self.assertEqual(last, [0, 5])
+        # A louder frame lifts the peak at once.
+        self.assertEqual(peaks.update([3, 30]), [3, 30])
+        # A new bar count starts over.
+        self.assertEqual(peaks.update([7]), [7])
+
+    def test_falling_peaks_keep_drawing_after_the_audio_stops(self):
+        markup = visualizer.render([0, 0], [0, visualizer.STEPS + 1])
+        self.assertIn(visualizer.PEAK_GLYPH, markup)
+        self.assertEqual(visualizer.render([0, 0], [0, 0]), "")
 
     def test_every_row_has_one_cell_per_bar(self):
         levels = [level % (visualizer.MAX_LEVEL + 1) for level in range(80)]
@@ -77,19 +117,12 @@ class RenderTests(unittest.TestCase):
             [len(row) for row in text.split("\n")], [len(levels)] * visualizer.ROWS
         )
 
-    def test_tall_bars_keep_the_darkest_red_at_the_base(self):
-        self.assertEqual(
-            visualizer.cell(visualizer.MAX_LEVEL, 0)[1],
-            visualizer.FIRE[visualizer.ROWS - 1],
-        )
-        self.assertEqual(visualizer.cell(0, 0), (NBSP, None))
-        self.assertEqual(visualizer.cell(visualizer.STEPS, 1), (NBSP, None))
-
     def test_bar_count_fills_the_width_and_is_bounded(self):
         bars = visualizer.bar_count(2560)
-        # PangoCairo measured a 10 px cell at 10 pt (8 px glyph + 2 px spacing).
-        self.assertGreaterEqual(bars * 10, 2560)
-        self.assertLessEqual(bars * 10, 2560 * 1.05)
+        # PangoCairo measured a 40 px cell at 48 pt (38 px glyph + 2 px
+        # spacing).
+        self.assertGreaterEqual(bars * 40, 2560)
+        self.assertLessEqual(bars * 40, 2560 + 2 * 40 + 40)
         self.assertEqual(visualizer.bar_count(0), 1)
         self.assertEqual(visualizer.bar_count(10**6), visualizer.MAX_BARS)
 
@@ -110,26 +143,16 @@ class RenderTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_label_font_size_matches_the_daemon(self):
-        for config in CONFIGS:
-            with self.subTest(config=config.name):
-                text = config.read_text()
-                block = re.search(r"label \{[^}]*visualizer\.sh[^}]*\}", text)
-                self.assertIsNotNone(block)
-                self.assertIn(
-                    f"font_size = {visualizer.FONT_SIZE_PT}\n", block.group(0)
-                )
-                self.assertIn("valign = bottom", block.group(0))
-                # Drawn before every other widget, so it stays underneath.
-                self.assertLess(block.start(), text.index("input-field {"))
+        text = CONFIG.read_text()
+        block = re.search(r"label \{[^}]*visualizer\.sh[^}]*\}", text)
+        self.assertIsNotNone(block)
+        self.assertIn(f"font_size = {visualizer.FONT_SIZE_PT}\n", block.group(0))
+        self.assertIn("valign = bottom", block.group(0))
+        # Drawn before every other widget, so it stays underneath.
+        self.assertLess(block.start(), text.index("input-field {"))
 
-    def test_bottom_left_widgets_stay_above_the_strip(self):
-        text = CONFIGS[0].read_text()
-        for block in re.findall(r"(?:label|image) \{[^}]*\}", text):
-            if "visualizer.sh" in block or "valign = bottom" not in block:
-                continue
-            y = int(re.search(r"position = -?\d+, (-?\d+)", block).group(1))
-            # The strip is ROWS lines of 18 px (10 pt) above a 2 px margin.
-            self.assertGreaterEqual(y, 2 + visualizer.ROWS * 18 + 8, block)
+    def test_the_carousel_lock_screen_has_no_visualizer(self):
+        self.assertNotIn("visualizer", CAROUSEL.read_text())
 
 
 class ProcessTests(unittest.TestCase):

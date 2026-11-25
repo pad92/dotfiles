@@ -39,15 +39,15 @@ background {
     vibrancy_darkness = 0.0
 }
 
-# AUDIO VISUALIZER: "fire" bars (3 rows) along the bottom edge, drawn first so
-# every other widget stays on top. The music block sits above it. font_size
-# must match FONT_SIZE_PT in hyprlock/visualizer.py, which sizes the bars to
-# the widest monitor.
+# AUDIO VISUALIZER: faint Winamp-style spectrum (6 rows, falling peaks) over
+# the bottom third, drawn first so the text and the music block stay on top
+# of it. font_size must match FONT_SIZE_PT in hyprlock/visualizer.py, which
+# sizes the bars to the widest monitor.
 label {
     monitor =
     text = cmd[update:50] ~/.config/hypr/hyprlock/visualizer.sh
     color = $accent_secondary_color
-    font_size = 10
+    font_size = 48
     font_family = $font_family
     position = 0, 2
     halign = center
