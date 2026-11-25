@@ -62,6 +62,9 @@ Release history and changes planned for the next version.
     does not pass for the daemon.
   - The bar count follows the monitor width in pixels, ignoring the scale, so
     the strip covers the whole edge on a scaled output too.
+  - Glyphs and colors are looked up in tables built once at startup, and
+    neighboring cells of the same color share a span: a frame costs about a
+    third of the CPU it used to.
   - The media block sits higher, above the bars.
   - `11_hyprland` installs `cava`.
 - **Makefile**:

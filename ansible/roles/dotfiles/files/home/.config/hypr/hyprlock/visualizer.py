@@ -34,6 +34,11 @@ PT_TO_PX = 96 / 72
 EXTRA_BARS = 2
 FALLBACK_WIDTH = 1920
 MAX_BARS = 512
+# Width of one bar, measured with PangoCairo: hinting rounds the glyph advance
+# to whole pixels and truncates the letter spacing (48 pt: 38 + 2 px).
+CELL_PX = round(FONT_SIZE_PT * ADVANCE_EM * PT_TO_PX) + int(
+    LETTER_SPACING_PT * PT_TO_PX
+)
 FRAMERATE = 25
 
 STEPS = 8
@@ -74,30 +79,36 @@ def cell(level, row):
     return EMPTY, None
 
 
+# The glyph and the color of every cell, by row then level, worked out once:
+# a frame is rendered 25 times a second.
+GLYPH_TABLE = tuple(
+    tuple(cell(level, row)[0] for level in range(MAX_LEVEL + 1)) for row in range(ROWS)
+)
+COLOR_TABLE = tuple(
+    tuple(cell(level, row)[1] for level in range(MAX_LEVEL + 1)) for row in range(ROWS)
+)
+SPAN_OPEN = {
+    color: f'<span foreground="{color}" fgalpha="{ALPHA}">' for color in ROW_COLORS
+}
+
+
 def render_row(levels, row):
+    """Returns the markup of one row. Neighboring cells of the same color
+    share one span."""
+    glyphs, colors = GLYPH_TABLE[row], COLOR_TABLE[row]
     parts = []
-    run = []
-    run_color = None
-
-    def flush():
-        if not run:
-            return
-        text = "".join(run)
-        if run_color is None:
-            parts.append(text)
-        else:
-            parts.append(
-                f'<span foreground="{run_color}" fgalpha="{ALPHA}">{text}</span>'
-            )
-        run.clear()
-
+    current = None
     for level in levels:
-        glyph, color = cell(level, row)
-        if color != run_color:
-            flush()
-            run_color = color
-        run.append(glyph)
-    flush()
+        color = colors[level]
+        if color != current:
+            if current is not None:
+                parts.append("</span>")
+            if color is not None:
+                parts.append(SPAN_OPEN[color])
+            current = color
+        parts.append(glyphs[level])
+    if current is not None:
+        parts.append("</span>")
     return "".join(parts)
 
 
@@ -112,14 +123,9 @@ def render(levels):
 
 def bar_count(width_px):
     """Returns how many bars fill a line of width_px logical pixels."""
-    # Measured with PangoCairo: hinting rounds the glyph advance to whole
-    # pixels and the letter spacing is truncated (48 pt: 38 + 2 px).
-    cell_px = round(FONT_SIZE_PT * ADVANCE_EM * PT_TO_PX) + int(
-        LETTER_SPACING_PT * PT_TO_PX
-    )
     if width_px <= 0:
         return 1
-    return min(math.ceil(width_px / cell_px) + EXTRA_BARS, MAX_BARS)
+    return min(math.ceil(width_px / CELL_PX) + EXTRA_BARS, MAX_BARS)
 
 
 def widest_monitor(monitors):

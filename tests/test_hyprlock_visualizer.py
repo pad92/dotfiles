@@ -87,6 +87,22 @@ class RenderTests(unittest.TestCase):
         self.assertLessEqual(set(text) - {"\n"}, set(visualizer.GLYPHS))
         self.assertEqual(visualizer.render([0, 0]), "")
 
+    def test_rows_agree_with_cell_for_every_level(self):
+        # render_row reads tables computed once from cell(): reading the color
+        # of every cell back from the markup must give the same answer.
+        levels = list(range(visualizer.MAX_LEVEL + 1)) * 2
+        token = re.compile(r'<span foreground="([^"]+)"[^>]*>|</span>|([^<])')
+        for row in range(visualizer.ROWS):
+            cells, color = [], None
+            for match in token.finditer(visualizer.render_row(levels, row)):
+                if match.group(2):
+                    cells.append((match.group(2), color))
+                else:
+                    color = match.group(1)
+            self.assertEqual(
+                cells, [visualizer.cell(level, row) for level in levels], row
+            )
+
     def test_every_row_has_one_cell_per_bar(self):
         levels = [level % (visualizer.MAX_LEVEL + 1) for level in range(80)]
         text = re.sub(r"<[^>]*>", "", visualizer.render(levels))
