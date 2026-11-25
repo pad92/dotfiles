@@ -10,10 +10,10 @@ $entry_border_color = rgba(83a59855)
 $entry_check_color = rgba(fabd2fff)
 $entry_fail_color = rgba(fb4934ff)
 $entry_color = rgba(ebdbb2ff)
-$accent_secondary_color = rgba(b8bb26cc)
-$accent_secondary_dim_color = rgba(b8bb2699)
-$muted_text_color = rgba(928374cc)
-$muted_text_opaque_color = rgba(928374ff)
+# Opaque: the music block sits on top of the audio visualizer.
+$accent_secondary_color = rgba(b8bb26ff)
+$accent_secondary_dim_color = rgba(98971aff)
+$muted_text_color = rgba(928374ff)
 $font_family = JetBrainsMono Nerd Font
 
 general {
@@ -37,6 +37,21 @@ background {
     brightness = 0.8000
     vibrancy = 0.2100
     vibrancy_darkness = 0.0
+}
+
+# AUDIO VISUALIZER: faint Winamp-style spectrum (6 rows) over
+# the bottom third, drawn first so the text and the music block stay on top
+# of it. font_size must match FONT_SIZE_PT in hyprlock/visualizer.py, which
+# sizes the bars to the widest monitor.
+label {
+    monitor =
+    text = cmd[update:50] ~/.config/hypr/hyprlock/visualizer.sh
+    color = $accent_secondary_color
+    font_size = 48
+    font_family = $font_family
+    position = 0, 2
+    halign = center
+    valign = bottom
 }
 
 # INPUT FIELD
@@ -114,6 +129,7 @@ image {
     position = 10, 40
     halign = left
     valign = bottom
+    zindex = 1
 }
 
 # PLAYER SOURCE
@@ -126,6 +142,7 @@ label {
     position = 10, 10
     halign = left
     valign = bottom
+    zindex = 1
 }
 
 # PLAYER STATUS
@@ -138,6 +155,7 @@ label {
     position = 170, 114
     halign = left
     valign = bottom
+    zindex = 1
 }
 
 # PLAYER TITLE
@@ -150,18 +168,20 @@ label {
     position = 170, 90
     halign = left
     valign = bottom
+    zindex = 1
 }
 
 # PLAYER ALBUM
 label {
     monitor =
     text = cmd[update:3000] ~/.config/hypr/hyprlock/playerctlock.sh --album
-    color = $muted_text_opaque_color
+    color = $muted_text_color
     font_size = 12
     font_family = $font_family
     position = 170, 70
     halign = left
     valign = bottom
+    zindex = 1
 }
 # PLAYER Artist
 label {
@@ -173,4 +193,5 @@ label {
     position = 170, 50
     halign = left
     valign = bottom
+    zindex = 1
 }

@@ -49,6 +49,25 @@ Release history and changes planned for the next version.
     `~/Videos/Recordings`, with a Waybar `REC` indicator.
   - `bitdepth: 10` in a monitor entry for a 10-bit framebuffer.
   - `SUPER + F1` lists the keybindings; every bind needs a description.
+- **Hyprlock**:
+  - A faint Winamp-style spectrum follows the audio across the bottom third
+    of the screen, under the clock and the music block. It has six rows at
+    48 pt, green at the bottom up to red at the top (Gruvbox, 20 % opacity).
+    `visualizer.py` reads `cava` while Hyprlock runs and stops with it;
+    without `cava` the strip stays empty. The carousel lock screen has no
+    spectrum.
+  - If `cava` fails to start, the daemon keeps its pid file and waits for
+    Hyprlock to exit, so the label does not start a new one every frame. The
+    label checks the process start time as well as the pid, so a reused pid
+    does not pass for the daemon.
+  - The bar count follows the monitor width in pixels, ignoring the scale, so
+    the strip covers the whole edge on a scaled output too.
+  - Glyphs and colors are looked up in tables built once at startup, and
+    neighboring cells of the same color share a span: a frame costs about a
+    third of the CPU it used to.
+  - The media block stays in the bottom-left corner, opaque and drawn over
+    the bars.
+  - `11_hyprland` installs `cava`.
 - **Makefile**:
   - `make clean` removes backups and migration leftovers (asks for `REMOVE`,
     `DRY_RUN=1` only lists).
@@ -252,6 +271,9 @@ Release history and changes planned for the next version.
 - **Ansible**:
   - Missing official packages go to pacman again instead of yay.
   - No more `junk after the JSON data` or `PluginLoader` warnings.
+  - The dotfiles deployment no longer warns that `skipped` was converted to
+    a bool: `dotfiles_retired_plugins` returns the paths left alone under
+    `skipped_paths`.
   - `bluetooth.service` is enabled only with a controller, broken user unit
     links are removed, and `01_base` installs `libnewt` for `uwsm select`.
 - **Audio**: the echo canceller options match PipeWire 1.6, and a missing

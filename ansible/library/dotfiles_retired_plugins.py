@@ -176,7 +176,7 @@ def plan(home: str, paths: list[str], parents: list[str]) -> dict:
         "unlink": unlink,
         "backup": backup,
         "emptied": emptied,
-        "skipped": skipped,
+        "skipped_paths": skipped,
     }
 
 
@@ -276,7 +276,9 @@ def main() -> None:
         removed=removed,
         backed_up=decided["backup"],
         kept=kept,
-        skipped=decided["skipped"],
+        # Not "skipped": Ansible reserves that result key for a boolean and
+        # warns when a module returns a list under it.
+        skipped_paths=decided["skipped_paths"],
     )
 
 

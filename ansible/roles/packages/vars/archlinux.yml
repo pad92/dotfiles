@@ -210,6 +210,7 @@ packages_family_groups:
       - 7zip
       - awww
       - brightnessctl
+      - cava
       - cliphist
       - grim
       - hypridle
