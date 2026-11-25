@@ -229,6 +229,23 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertTrue(wait_for(marker.exists))
 
+    def test_label_starts_the_daemon_with_busybox_setsid(self):
+        # Busybox setsid (Alpine, the CI image) has no -f option and fails on
+        # it, so the label must not rely on it.
+        self.write_tool(
+            "setsid",
+            'case "$1" in -*) echo "setsid: unrecognized option" >&2; exit 1 ;; esac\n'
+            'exec "$@"',
+        )
+        fake_daemon, marker = self.fake_daemon_with_marker()
+
+        subprocess.run(
+            ["sh", str(LABEL)],
+            env={**self.env, "HYPRLOCK_VISUALIZER_DAEMON": str(fake_daemon)},
+            check=True,
+        )
+        self.assertTrue(wait_for(marker.exists))
+
     def test_label_prints_the_frame_of_a_live_daemon(self):
         self.state.mkdir()
         (self.state / "pid").write_text(

@@ -27,7 +27,9 @@ alive() {
 }
 
 if ! alive; then
-    setsid -f "$daemon" < /dev/null > /dev/null 2>&1
+    # Started in the background rather than with setsid -f, which busybox
+    # does not know.
+    setsid "$daemon" < /dev/null > /dev/null 2>&1 &
     exit 0
 fi
 
