@@ -722,8 +722,15 @@ class RetiredPluginsBackupTests(unittest.TestCase):
         (self.home / ".vim").symlink_to(target)
         result = self.run_module([".vim/bundle"])
         self.assertFalse(result.data["changed"])
-        self.assertEqual(len(result.data["skipped"]), 1)
+        self.assertEqual(len(result.data["skipped_paths"]), 1)
         self.assertTrue((target / "bundle").is_dir())
+
+    def test_the_result_leaves_the_reserved_skipped_key_alone(self):
+        # Ansible reserves "skipped" for a boolean: a list there makes every
+        # run warn that it was converted to a bool.
+        result = self.run_module([".vim/bundle"])
+        self.assertNotIn("skipped", result.data)
+        self.assertEqual(result.data["skipped_paths"], [])
 
     def test_a_path_outside_the_home_fails(self):
         result = self.run_module(["../escape"])

@@ -265,6 +265,9 @@ Release history and changes planned for the next version.
 - **Ansible**:
   - Missing official packages go to pacman again instead of yay.
   - No more `junk after the JSON data` or `PluginLoader` warnings.
+  - The dotfiles deployment no longer warns that `skipped` was converted to
+    a bool: `dotfiles_retired_plugins` returns the paths left alone under
+    `skipped_paths`.
   - `bluetooth.service` is enabled only with a controller, broken user unit
     links are removed, and `01_base` installs `libnewt` for `uwsm select`.
 - **Audio**: the echo canceller options match PipeWire 1.6, and a missing
